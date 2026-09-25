@@ -1,6 +1,8 @@
 # Edukey Agent Toolbox
 
-This public repository contains Edukey-authored skills and, over time, agent plugins for developers and business users. Keep every contribution generic enough to share with course participants and clients.
+This public repository contains skills created by [Edukey](https://edukey.ai) for its course participants, clients, and anyone else using AI agents. The first collection serves developers; business skills will follow. We plan to package useful collections as agent plugins so people can install several skills together. Keep every contribution generic enough to share publicly and useful across supported agents and operating systems.
+
+The [README](README.md) is for people discovering and installing the toolbox. Keep its skill list and install examples accurate when adding or renaming skills. This file guides agents contributing to the repository.
 
 ## Skills
 
