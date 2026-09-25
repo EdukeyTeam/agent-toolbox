@@ -207,53 +207,53 @@ To grab just the favicon you can run the helper (it also handles fonts — see S
 
 If the `fontFaces` you collected in Step 4 / Call C point at real font files on the site's domain, download them:
 
-1. **Fetch all binary assets in-page** (fonts + favicon), writing base64 to a file so it never floods context. Use the command for how this skill was installed. Run project-install commands from the project root. If installed elsewhere (for example `.claude/skills/create-design-system` in the project or `$HOME/.claude/skills/create-design-system` globally), locate this `SKILL.md` and use its adjacent `scripts/` files.
+1. **Fetch all binary assets in-page** (fonts + favicon), writing base64 to a file so it never floods context. Use the command for the folder containing this skill. Run project-folder commands from the project root. If the skill lives elsewhere (for example `.claude/skills/create-design-system` in the project or `$HOME/.claude/skills/create-design-system` in the user folder), locate this `SKILL.md` and use its adjacent `scripts/` files.
 
-   Bash, project install:
+   Bash, script in the project skills folder:
    ```bash
    playwright-cli -s=design eval "$(cat '.agents/skills/create-design-system/scripts/fetch-binary-assets.browser.js')" --filename=binary-assets.json
    ```
 
-   Bash, global install:
+   Bash, script in the user skills folder:
    ```bash
    playwright-cli -s=design eval "$(cat "$HOME/.agents/skills/create-design-system/scripts/fetch-binary-assets.browser.js")" --filename=binary-assets.json
    ```
 
-   Windows PowerShell, project install:
+   Windows PowerShell, script in the project skills folder:
    ```powershell
    playwright-cli -s=design eval (Get-Content -Raw '.agents\skills\create-design-system\scripts\fetch-binary-assets.browser.js') --filename=binary-assets.json
    ```
 
-   Windows PowerShell, global install:
+   Windows PowerShell, script in the user skills folder:
    ```powershell
    playwright-cli -s=design eval (Get-Content -Raw (Join-Path $HOME '.agents\skills\create-design-system\scripts\fetch-binary-assets.browser.js')) --filename=binary-assets.json
    ```
 
    The script returns an object mapping asset paths to base64 data.
 
-2. **Decode to real files** with the Node helper in the foreground. Use the matching install location:
+2. **Decode to real files** with the Node helper in the foreground. Use the matching script location:
 
-   Bash, project install:
+   Bash, script in the project skills folder:
    ```bash
    node '.agents/skills/create-design-system/scripts/decode-binary-assets.cjs' binary-assets.json assets
    ```
 
-   Bash, global install:
+   Bash, script in the user skills folder:
    ```bash
    node "$HOME/.agents/skills/create-design-system/scripts/decode-binary-assets.cjs" binary-assets.json assets
    ```
 
-   Windows PowerShell, project install:
+   Windows PowerShell, script in the project skills folder:
    ```powershell
    node '.agents\skills\create-design-system\scripts\decode-binary-assets.cjs' binary-assets.json assets
    ```
 
-   Windows PowerShell, global install:
+   Windows PowerShell, script in the user skills folder:
    ```powershell
    node (Join-Path $HOME '.agents\skills\create-design-system\scripts\decode-binary-assets.cjs') binary-assets.json assets
    ```
 
-   It writes `assets/fonts/<family>/*` and `assets/favicon.*`, then prints how many files it wrote.
+   It writes `assets/fonts/<family>/*` and `assets/favicon.*` in the current project, regardless of where the helper script is stored, then prints how many files it wrote.
 
 3. **Verify and clean up:** Inspect `assets/fonts/` and its subdirectories. Font files should have nonzero, plausible sizes, and no unexpected files should appear at the top level. Delete the temporary `binary-assets.json` when done.
 
