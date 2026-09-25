@@ -1,7 +1,6 @@
 ---
 name: create-design-system
 description: Extract a design system from any website URL by driving a real browser with the Playwright CLI. Produces design tokens (JSON), brand assets (logo SVG, favicon), a homepage screenshot, and a design-guidelines.md document. Use when the user wants to clone, match, or stay consistent with an external brand.
-allowed-tools: Bash(playwright-cli:*), Bash(pnpm exec playwright-cli:*), Bash(node:*), Read, Write
 ---
 
 # Create Design System from Website
@@ -12,15 +11,13 @@ Extract design tokens and brand assets from any website and save them as structu
 
 ## Prerequisites
 
-This skill drives `playwright-cli`, not the Playwright MCP server: the CLI writes big
-results (snapshots, evaluation output) to files instead of the context window, which is
-the difference between a cheap run and an expensive one.
+This skill needs Node.js and the [Playwright CLI](https://github.com/microsoft/playwright-cli). The CLI saves large snapshots and evaluation results to files instead of filling the agent's context.
 
-Use the installed `playwright-cli` with one named session so commands share a browser.
-The examples use `playwright-cli -s=design`. If the project provides its own copy,
-use its runner (for example, `pnpm exec playwright-cli -s=design`) in each command.
-Do not rely on a shell alias persisting between agent calls. Close the session with
-`playwright-cli -s=design close` when finished.
+Check for Node.js and `playwright-cli --version` first. If a required component is missing, briefly tell the user what you are about to install, then carry out the setup through the permitted package manager. Do not stop merely to ask whether to install it; request approval only if the environment requires it. Prefer `pnpm add -g @playwright/cli@latest` when pnpm is available; otherwise use `npm install -g @playwright/cli@latest`. A project-local installation can instead be invoked with `pnpm exec playwright-cli` or `npm exec -- playwright-cli` in each command. Follow the project's normal dependency process when it has one.
+
+From the project root, run `playwright-cli install` once to initialize its browser setup. Tell the user first if this step needs to download a browser. It uses installed Chrome or Edge when available and otherwise installs managed Chromium. It may create `.playwright/` configuration and update `.gitignore`, so inspect those changes in an existing repository. Do not assume Chrome is installed or that an unconfigured CLI will fall back automatically.
+
+The examples use the installed `playwright-cli` with one named session. Use the selected runner in every call; do not rely on shell aliases surviving between agent calls. Close the session with `playwright-cli -s=design close` when finished.
 
 ---
 
@@ -30,19 +27,16 @@ Do not rely on a shell alias persisting between agent calls. Close the session w
 
 Create the required directories before starting:
 
-```bash
-mkdir -p assets docs
-```
+On Bash, use `mkdir -p assets docs`. On Windows PowerShell, use `New-Item -ItemType Directory -Force assets, docs | Out-Null`.
 
 ### Step 2 — Navigate and dismiss overlays
 
 > ⚠️ **MUST DO — dismiss every cookie banner / modal / overlay covering the page BEFORE you screenshot or extract styles.** This is the single most common failure of this skill. An overlay both skews computed styles and ruins the screenshot.
 
-Open the browser on the URL. Use `--browser=chrome` if system Chrome is installed;
-otherwise use the browser configured for Playwright CLI:
+Open the URL with the browser configured during the one-time install:
 
-```bash
-playwright-cli -s=design open <URL> --browser=chrome
+```text
+playwright-cli -s=design open <URL>
 ```
 
 **Cookie/consent banners frequently load on a DELAY and are NOT present in the first snapshot.** (Real example: a banner appeared only several seconds after load and silently ended up in the screenshot.) So:
@@ -203,13 +197,9 @@ playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.j
 
 ### Step 5 — Save brand assets
 
-**Logo SVG:** If `logoSVG` was found, save it directly:
+**Logo SVG:** If `logoSVG` was found, save it to `assets/logo.svg` with the agent's available file-writing tool.
 
-```js
-Write({ file_path: "assets/logo.svg", content: `<svg ...>...</svg>` })
-```
-
-**Favicon + custom fonts (binary assets):** Download these with the in-page fetch helper, NOT with shell downloaders.
+**Favicon + custom fonts (binary assets):** Download these with the in-page fetch helper when direct downloads are unavailable.
 
 > Use the browser helper in **Step 5b** to fetch same-origin assets when direct downloads are unavailable. Respect the permissions of the agent environment and the site's asset rights.
 
@@ -223,24 +213,35 @@ To grab just the favicon you can run the helper (it also handles fonts — see S
 
 If the `fontFaces` you collected in Step 4 / Call C point at real font files on the site's domain, download them:
 
-1. **Fetch all binary assets in-page** (fonts + favicon), writing the base64 to a FILE so it never floods context. Locate the installed directory containing this `SKILL.md` and replace `/absolute/path/to/create-design-system` below with that directory; do not assume the skill is installed inside the project. Pass the helper script straight into `eval`:
-   ```bash
-   playwright-cli -s=design eval "$(cat "/absolute/path/to/create-design-system/scripts/fetch-binary-assets.browser.js")" --filename=binary-assets.json
-   ```
-   The script **returns an object** `{ "fonts/<family>/<file>": "<base64>", "favicon.ico": "<base64>" }`.
+1. **Fetch all binary assets in-page** (fonts + favicon), writing base64 to a file so it never floods context. Locate the installed directory containing this `SKILL.md`; use its actual path, which may be outside the project. Pass the helper script to `eval`:
 
-2. **Decode to real files** with the Node helper (run in the FOREGROUND so you see its output):
+   Bash:
    ```bash
-   node "/absolute/path/to/create-design-system/scripts/decode-binary-assets.cjs" binary-assets.json assets
+   playwright-cli -s=design eval "$(cat '/absolute/path/to/create-design-system/scripts/fetch-binary-assets.browser.js')" --filename=binary-assets.json
    ```
+
+   Windows PowerShell:
+   ```powershell
+   playwright-cli -s=design eval (Get-Content -Raw 'C:\path\to\create-design-system\scripts\fetch-binary-assets.browser.js') --filename=binary-assets.json
+   ```
+
+   The script returns an object mapping asset paths to base64 data.
+
+2. **Decode to real files** with the Node helper in the foreground. Use the actual skill directory in the path:
+
+   Bash:
+   ```bash
+   node '/absolute/path/to/create-design-system/scripts/decode-binary-assets.cjs' binary-assets.json assets
+   ```
+
+   Windows PowerShell:
+   ```powershell
+   node 'C:\path\to\create-design-system\scripts\decode-binary-assets.cjs' binary-assets.json assets
+   ```
+
    It writes `assets/fonts/<family>/*` and `assets/favicon.*`, then prints how many files it wrote.
 
-3. **Verify and clean up:**
-   ```bash
-   find assets/fonts -name '*.woff2' -o -name '*.ttf' -o -name '*.otf' -o -name '*.woff' | wc -l
-   ls -la assets/fonts/*/    # sizes should be tens–hundreds of KB, never 0 bytes
-   ```
-   Delete the temporary `binary-assets.json` when done.
+3. **Verify and clean up:** Inspect `assets/fonts/` and its subdirectories. Font files should have nonzero, plausible sizes, and no unexpected files should appear at the top level. Delete the temporary `binary-assets.json` when done.
 
 > 🧨 **Learn from this incident — read before writing your own decode loop.** If the in-page code returns a *string* (e.g. `JSON.stringify(obj)`), the saved file can end up **double-encoded** (a JSON string of JSON). A naive `JSON.parse(file)` then yields a *string*, and `Object.entries(string)` iterates **one entry per character** — a previous run wrote **~600,000 zero-byte files** named `0`,`1`,`2`,… into `assets/fonts/`. The provided helpers prevent this two ways: (a) `fetch-binary-assets.browser.js` returns an **object**, not a stringified string; (b) `decode-binary-assets.cjs` re-parses if it still sees a string AND **refuses to write** if there are >200 entries, numeric keys, or values too short to be a font. **Always prefer the helpers. If you must hand-roll, replicate those guards, and never run the decoder in the background.**
 
@@ -316,7 +317,7 @@ Delete temporary files (e.g. `binary-assets.json`, snapshot dumps), confirm no j
 | Cookie banner missed — ends up in the screenshot | It loads on a **delay** and is absent from the first snapshot. Wait 3s → `find` the banner → dismiss → `find` again and expect no matches, THEN screenshot. Also visually inspect the saved PNG to confirm it is clean. |
 | Cookie consent dialog never dismissed | Always check for and click "Accept all" / "OK" / "Akceptuj wszystkie" before extracting styles — overlays produce incorrect computed styles |
 | Decode created hundreds of thousands of 0-byte files | The `filename` sink double-encodes a *string* return. Return an **object** from the in-page script; the decoder must re-parse a string AND refuse >200 entries / numeric keys. Use the provided helpers; never `run_in_background` the decoder. |
-| Verifying only the subfolders you expected | After downloading fonts, check the **parent** dir too (`find assets/fonts -maxdepth 1 -type f | wc -l`). Junk files land at the top level and a subfolder-only `ls` hides them. |
+| Verifying only the subfolders you expected | After downloading fonts, inspect the **parent** `assets/fonts/` directory too. Junk files can land at the top level and a subfolder-only check hides them. |
 | Computed style returns `rgba(0, 0, 0, 0)` for bg | This means transparent — skip these when building color palettes |
 | Fonts show as `Arial` instead of brand font | Check `@font-face` rules in stylesheets — the brand font may load as a custom alias (e.g., `Euclid` = Euclid Circular B) |
 
