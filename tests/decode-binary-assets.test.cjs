@@ -44,7 +44,11 @@ test('rejects an output subdirectory that is a symlink', t => {
   const outside = path.join(dir, 'outside');
   fs.mkdirSync(output);
   fs.mkdirSync(outside);
-  fs.symlinkSync(outside, path.join(output, 'fonts'), 'dir');
+  try { fs.symlinkSync(outside, path.join(output, 'fonts'), 'dir'); }
+  catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) return t.skip('symlinks unavailable');
+    throw error;
+  }
   const result = run({ 'fonts/font.woff2': asset });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unsafe output directory/);
@@ -56,7 +60,27 @@ test('rejects an existing output file that is a symlink', t => {
   const outside = path.join(dir, 'outside.bin');
   fs.mkdirSync(output);
   fs.writeFileSync(outside, 'untouched');
-  fs.symlinkSync(outside, path.join(output, 'favicon.ico'));
+  try { fs.symlinkSync(outside, path.join(output, 'favicon.ico')); }
+  catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) return t.skip('symlinks unavailable');
+    throw error;
+  }
+  const result = run({ 'favicon.ico': asset });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unsafe output file/);
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'untouched');
+});
+
+test('rejects an existing output file that is hard-linked elsewhere', t => {
+  const { dir, output, run } = fixture(t);
+  const outside = path.join(dir, 'outside.bin');
+  fs.mkdirSync(output);
+  fs.writeFileSync(outside, 'untouched');
+  try { fs.linkSync(outside, path.join(output, 'favicon.ico')); }
+  catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) return t.skip('hard links unavailable');
+    throw error;
+  }
   const result = run({ 'favicon.ico': asset });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unsafe output file/);

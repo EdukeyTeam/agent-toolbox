@@ -42,7 +42,7 @@ const entries = Object.entries(data);
 const root = path.resolve(outDir);
 
 function abort(message) {
-  console.error("ABORT: " + message + " Nothing written.");
+  console.error("ABORT: " + message);
   process.exit(1);
 }
 
@@ -132,7 +132,9 @@ for (const [rel, b64] of entries) {
     if (!stat) fs.mkdirSync(dir);
   }
   const target = existingStat(dest);
-  if (target && (!target.isFile() || target.isSymbolicLink())) abort('unsafe output file "' + dest + '".');
+  if (target && (!target.isFile() || target.isSymbolicLink() || target.nlink > 1)) {
+    abort('unsafe output file "' + dest + '".');
+  }
   const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC |
     (fs.constants.O_NOFOLLOW || 0);
   const fd = fs.openSync(dest, flags, 0o644);
