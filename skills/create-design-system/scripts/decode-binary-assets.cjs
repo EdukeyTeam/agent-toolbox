@@ -39,6 +39,32 @@ if (data === null || typeof data !== "object" || Array.isArray(data)) {
   process.exit(1);
 }
 const entries = Object.entries(data);
+const root = path.resolve(outDir);
+
+function abort(message) {
+  console.error("ABORT: " + message + " Nothing written.");
+  process.exit(1);
+}
+
+function existingStat(file) {
+  try { return fs.lstatSync(file); }
+  catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function safeDestination(rel) {
+  const parts = rel.split("/");
+  if (path.isAbsolute(rel) || path.win32.isAbsolute(rel) || rel.includes("\\") ||
+      rel.includes(":") || rel.includes("\0") ||
+      parts.some(part => !part || part === "." || part === "..")) {
+    abort('unsafe asset path "' + rel + '".');
+  }
+  const dest = path.resolve(root, ...parts);
+  if (!dest.startsWith(root + path.sep)) abort('asset path escapes output folder: "' + rel + '".');
+  return { parts, dest };
+}
 if (entries.length === 0) {
   console.error("ABORT: input object is empty.");
   process.exit(1);
@@ -54,6 +80,7 @@ if (entries.length > 200) {
   process.exit(1);
 }
 for (const [key, val] of entries) {
+  safeDestination(key);
   if (/^\d+$/.test(key)) {
     console.error('ABORT: key "' + key + '" is a bare number — mis-encoded input. Nothing written.');
     process.exit(1);
@@ -72,6 +99,9 @@ for (const [key, val] of entries) {
 // Font/icon magic numbers for a sanity check (warn-only; we still write).
 const FONT_SIGS = new Set([0x00010000, 0x4f54544f /*OTTO*/, 0x74727565 /*true*/, 0x774f4646 /*wOFF*/, 0x774f4632 /*wOF2*/]);
 
+if (existingStat(root)?.isSymbolicLink()) abort("output folder is a symlink.");
+fs.mkdirSync(root, { recursive: true });
+
 let written = 0, skipped = 0;
 for (const [rel, b64] of entries) {
   if (b64.startsWith("ERR:")) {
@@ -79,8 +109,7 @@ for (const [rel, b64] of entries) {
     skipped++;
     continue;
   }
-  const dest = path.join(outDir, rel);
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  const { parts, dest } = safeDestination(rel);
   const buf = Buffer.from(b64, "base64");
 
   if (buf.length < 100) {
@@ -93,7 +122,22 @@ for (const [rel, b64] of entries) {
   if (isFont && buf.length >= 4 && !FONT_SIGS.has(buf.readUInt32BE(0))) {
     console.warn("WARN: " + rel + " has no known font signature (0x" + buf.readUInt32BE(0).toString(16) + ") — writing anyway, verify it.");
   }
-  fs.writeFileSync(dest, buf);
+  // Check each directory before creating or entering it, so existing symlinks
+  // cannot redirect writes outside the selected output folder.
+  let dir = root;
+  for (const part of parts.slice(0, -1)) {
+    dir = path.join(dir, part);
+    const stat = existingStat(dir);
+    if (stat && (!stat.isDirectory() || stat.isSymbolicLink())) abort('unsafe output directory "' + dir + '".');
+    if (!stat) fs.mkdirSync(dir);
+  }
+  const target = existingStat(dest);
+  if (target && (!target.isFile() || target.isSymbolicLink())) abort('unsafe output file "' + dest + '".');
+  const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC |
+    (fs.constants.O_NOFOLLOW || 0);
+  const fd = fs.openSync(dest, flags, 0o644);
+  try { fs.writeFileSync(fd, buf); }
+  finally { fs.closeSync(fd); }
   written++;
 }
 
