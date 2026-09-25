@@ -11,13 +11,9 @@ Extract design tokens and brand assets from any website and save them as structu
 
 ## Prerequisites
 
-This skill needs Node.js and the [Playwright CLI](https://github.com/microsoft/playwright-cli). The CLI saves large snapshots and evaluation results to files instead of filling the agent's context.
+This skill needs Node.js, Playwright CLI, and a configured browser. Check that they are available. If any are missing, briefly inform the user, then follow [the one-time setup guide](references/setup.md) and install them through the permitted package manager. Ask for approval only if the environment requires it.
 
-Check for Node.js and `playwright-cli --version` first. If a required component is missing, briefly tell the user what you are about to install, then carry out the setup through the permitted package manager. Do not stop merely to ask whether to install it; request approval only if the environment requires it. Prefer `pnpm add -g @playwright/cli@latest` when pnpm is available; otherwise use `npm install -g @playwright/cli@latest`. A project-local installation can instead be invoked with `pnpm exec playwright-cli` or `npm exec -- playwright-cli` in each command. Follow the project's normal dependency process when it has one.
-
-From the project root, run `playwright-cli install` once to initialize its browser setup. Tell the user first if this step needs to download a browser. It uses installed Chrome or Edge when available and otherwise installs managed Chromium. It may create `.playwright/` configuration and update `.gitignore`, so inspect those changes in an existing repository. Do not assume Chrome is installed or that an unconfigured CLI will fall back automatically.
-
-The examples use the installed `playwright-cli` with one named session. Use the selected runner in every call; do not rely on shell aliases surviving between agent calls. Close the session with `playwright-cli -s=design close` when finished.
+The examples use `playwright-cli` with one named session. If the project uses a local CLI, use its runner in each command. Do not rely on a shell alias persisting between calls. Close the session with `playwright-cli -s=design close` when finished.
 
 ---
 
