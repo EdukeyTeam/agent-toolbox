@@ -1,6 +1,6 @@
 ---
 name: create-design-system
-description: Extract a design system from any website URL by driving a real browser with the Playwright CLI. Produces design tokens (JSON), brand assets (logo SVG, favicon), a homepage screenshot, and a design-guidelines.md document. Use when the user wants to clone, match, or stay consistent with an external brand.
+description: Extract a design system from any website URL by driving a real browser with the Playwright CLI. Produces design tokens (JSON), brand assets (logo and favicon when available), a homepage screenshot, and a design-guidelines.md document. Use when the user wants to clone, match, or stay consistent with an external brand.
 ---
 
 # Create Design System from Website
@@ -201,7 +201,9 @@ playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.j
 
 ### Step 5 — Save brand assets
 
-**Logo SVG:** Save `logoSVG` to `assets/logo.svg` only when it contains SVG markup. If it is absent, inspect `logoImageCandidates` and the visible header to identify the actual wordmark, not a flag or product image. When its image URL serves SVG and the page permits fetching it, fetch the SVG in-page, validate the returned text, then save it as `assets/logo.svg`. A `--filename` result containing SVG text may be a JSON-encoded string: inspect it and parse once, not twice. If the site only provides a raster logo or blocks the fetch, report that accurately; do not write HTML or raster bytes to a `.svg` file.
+**Logo:** Save `logoSVG` to `assets/logo.svg` only when it contains SVG markup. If it is absent, inspect `logoImageCandidates` and the visible header to identify the actual wordmark, not a flag or product image. When its image URL serves SVG and the page permits fetching it, fetch the SVG in-page, validate the returned text, then save it as `assets/logo.svg`. A `--filename` result containing SVG text may be a JSON-encoded string: inspect it and parse once, not twice.
+
+If the selected wordmark is a PNG, JPEG, or WebP image, fetch its actual bytes in the page context. Return a **single-entry object** mapping `logo.png`, `logo.jpg`, or `logo.webp` to base64 (choose the extension from the response type or file signature), save that object with `--filename=logo-binary.json`, and decode it with the existing Node helper in Step 5b, using `logo-binary.json` as the input. Open the saved image to verify it. If the fetch is blocked, report that the logo could not be saved. Never put raster bytes or HTML in `logo.svg`.
 
 **Favicon + custom fonts (binary assets):** Use the in-page fetch helper in **Step 5b** on every platform. Do not use `curl`, `wget`, or PowerShell `Invoke-WebRequest` to download these assets; shell downloaders can bypass the site's same-origin context and may be denied by the agent environment. Respect the site's asset rights.
 
@@ -316,7 +318,7 @@ The guidelines document must include:
 4. **Spacing section** — base unit and common values
 5. **Border radius section** — all radii with usage context
 6. **Components section** — header, nav, button, inputs, promo bar etc.
-7. **Logo usage** — how/where to use the SVG, inverted variant on dark bg
+7. **Logo usage** — how/where to use the saved logo, with an inverted variant on dark backgrounds if one exists
 8. **Visual style summary** — 3–5 sentences describing the brand personality
 
 Save as `docs/design-guidelines.md`.
@@ -332,7 +334,7 @@ Delete temporary files (e.g. `binary-assets.json`, snapshot dumps), confirm no j
 | Issue | Fix |
 |---|---|
 | `eval` result floods the context | Add `--filename=<file>.json` and read the file back, rather than printing it |
-| Logo selector misses the wordmark | Inspect visible header images; the wordmark may be an `<img>` pointing to an SVG rather than inline SVG |
+| Logo selector misses the wordmark | Inspect visible header images; the wordmark may be an `<img>` pointing to an SVG or raster file rather than inline SVG |
 | Site opens to a 403 or blocked page | Retry briefly in the same browser session; if access remains blocked, report it and do not extract the block page |
 | No `wait` command in the CLI | Use `playwright-cli -s=design run-code "async page => await page.waitForTimeout(3000)"` |
 | `eval` fails with `SyntaxError: Unexpected token ';'` | The argument must be an *expression*. A script file ending in `};` breaks it — the helper script deliberately ends in `}` with no semicolon |
@@ -355,7 +357,7 @@ All files are saved to the project root:
 ```
 assets/
   homepage.png           # Full-page screenshot (no overlays!)
-  logo.svg               # Brand wordmark (inline SVG or fetched image source)
+  logo.<source-format>   # Brand wordmark, e.g. logo.svg or logo.png (only when obtainable)
   favicon.ico            # Favicon binary
   design-tokens.json     # Structured design tokens
   fonts/                 # Self-hosted custom fonts (only if the site provides them)
