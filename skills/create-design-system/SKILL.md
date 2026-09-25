@@ -16,14 +16,11 @@ This skill drives `playwright-cli`, not the Playwright MCP server: the CLI write
 results (snapshots, evaluation output) to files instead of the context window, which is
 the difference between a cheap run and an expensive one.
 
-Run every command through the project's own copy, and keep all of them on one named
-session so they share a browser:
-
-```bash
-alias pw="pnpm exec playwright-cli -s=design"
-```
-
-The examples below use `pw`. Close the session with `pw close` when finished.
+Use the installed `playwright-cli` with one named session so commands share a browser.
+The examples use `playwright-cli -s=design`. If the project provides its own copy,
+use its runner (for example, `pnpm exec playwright-cli -s=design`) in each command.
+Do not rely on a shell alias persisting between agent calls. Close the session with
+`playwright-cli -s=design close` when finished.
 
 ---
 
@@ -41,33 +38,34 @@ mkdir -p assets docs
 
 > ⚠️ **MUST DO — dismiss every cookie banner / modal / overlay covering the page BEFORE you screenshot or extract styles.** This is the single most common failure of this skill. An overlay both skews computed styles and ruins the screenshot.
 
-Open the browser on the URL. Use the system Chrome — it avoids the browser download, which fails on some Linux distributions:
+Open the browser on the URL. Use `--browser=chrome` if system Chrome is installed;
+otherwise use the browser configured for Playwright CLI:
 
 ```bash
-pw open <URL> --browser=chrome
+playwright-cli -s=design open <URL> --browser=chrome
 ```
 
 **Cookie/consent banners frequently load on a DELAY and are NOT present in the first snapshot.** (Real example: a banner appeared only several seconds after load and silently ended up in the screenshot.) So:
 
 1. Wait for a delayed banner to mount. There is no `wait` command; use `run-code`:
    ```bash
-   pw run-code "async page => await page.waitForTimeout(3000)"
+   playwright-cli -s=design run-code "async page => await page.waitForTimeout(3000)"
    ```
 2. Search for the banner instead of reading a whole snapshot. `find` returns only matching nodes with context, which costs a fraction of the tokens:
    ```bash
-   pw find --regex "/cookie|consent|accept|akceptuj|zgadzam/i"
+   playwright-cli -s=design find --regex "/cookie|consent|accept|akceptuj|zgadzam/i"
    ```
 3. Snapshot just the banner region by its ref to see the exact buttons:
    ```bash
-   pw snapshot e945
+   playwright-cli -s=design snapshot e945
    ```
 4. Click the accept button by ref. Common labels: "Accept", "Accept all", "Accept All Cookies", "OK", "I agree", "Allow all", and Polish: "Akceptuj", "Akceptuj wszystkie", "Zgadzam się", "Rozumiem".
    ```bash
-   pw click e955
+   playwright-cli -s=design click e955
    ```
 5. **Confirm it is gone** before continuing — re-run `find` for the button label and expect no matches:
    ```bash
-   pw find --regex "/Accept All Cookies/i"
+   playwright-cli -s=design find --regex "/Accept All Cookies/i"
    ```
 6. Also dismiss any tooltip / onboarding / newsletter popups that appear after consent.
 
@@ -78,22 +76,22 @@ Every command prints a snapshot link (`.playwright-cli/page-<timestamp>.yml`) ra
 > 🛑 **STOP — re-check for overlays first (yes, again).** Before this screenshot, take one more snapshot and confirm NO cookie banner, modal, or popup is covering content. Banners load on a delay, so even if the page looked clean in Step 2 one may have appeared since. If anything is covering the page, dismiss it (Step 2) and only then screenshot.
 
 ```bash
-pw screenshot --filename=assets/homepage.png --full-page
+playwright-cli -s=design screenshot --filename=assets/homepage.png --full-page
 ```
 
-After saving, **open `assets/homepage.png` with the Read tool and visually verify** there is no banner/overlay strip across it. If there is, dismiss it and retake — do not move on with a polluted screenshot.
+After saving, **open `assets/homepage.png` with an available image viewer and visually verify** there is no banner/overlay strip across it. If there is, dismiss it and retake — do not move on with a polluted screenshot.
 
 ### Step 4 — Extract design tokens via eval (run in multiple small calls)
 
-Each call below is a JavaScript arrow function passed to `pw eval`. Keep the three calls separate: a single mega-call is hard to debug and its output is hard to read.
+Each call below is a JavaScript arrow function passed to `playwright-cli -s=design eval`. Keep the three calls separate: a single mega-call is hard to debug and its output is hard to read.
 
 Small results can print inline; anything sizeable should go to a file with `--filename` so it never enters the context window:
 
 ```bash
-pw eval "<the arrow function below>" --filename=tokens-a.json
+playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.json
 ```
 
-`--filename` writes the returned value as real JSON (an object stays an object), so read it back with the Read tool or `node -e`.
+`--filename` writes the returned value as real JSON (an object stays an object), so inspect it with the agent's file-reading tool or `node -e`.
 
 #### Call A — Core element styles
 
@@ -213,7 +211,7 @@ Write({ file_path: "assets/logo.svg", content: `<svg ...>...</svg>` })
 
 **Favicon + custom fonts (binary assets):** Download these with the in-page fetch helper, NOT with shell downloaders.
 
-> ⚠️ **Do NOT use `curl`, `wget`, or `powershell Invoke-WebRequest` for downloads.** In sandboxed/permissioned environments these are routinely **denied** (observed first-hand: every shell-downloader attempt was blocked). The reliable, permission-safe path is to `fetch()` the asset **inside the page** (same-origin) and decode it locally with Node. The two helper scripts in this skill do exactly that — see **Step 5b**.
+> Use the browser helper in **Step 5b** to fetch same-origin assets when direct downloads are unavailable. Respect the permissions of the agent environment and the site's asset rights.
 
 To grab just the favicon you can run the helper (it also handles fonts — see Step 5b) and keep `favicon.*` from its output.
 
@@ -225,15 +223,15 @@ To grab just the favicon you can run the helper (it also handles fonts — see S
 
 If the `fontFaces` you collected in Step 4 / Call C point at real font files on the site's domain, download them:
 
-1. **Fetch all binary assets in-page** (fonts + favicon), writing the base64 to a FILE so it never floods context. Pass the helper script straight into `eval` — no copy-paste, no escaping:
+1. **Fetch all binary assets in-page** (fonts + favicon), writing the base64 to a FILE so it never floods context. Locate the installed directory containing this `SKILL.md` and replace `/absolute/path/to/create-design-system` below with that directory; do not assume the skill is installed inside the project. Pass the helper script straight into `eval`:
    ```bash
-   pw eval "$(cat .agents/skills/create-design-system/scripts/fetch-binary-assets.browser.js)" --filename=binary-assets.json
+   playwright-cli -s=design eval "$(cat "/absolute/path/to/create-design-system/scripts/fetch-binary-assets.browser.js")" --filename=binary-assets.json
    ```
    The script **returns an object** `{ "fonts/<family>/<file>": "<base64>", "favicon.ico": "<base64>" }`.
 
 2. **Decode to real files** with the Node helper (run in the FOREGROUND so you see its output):
    ```bash
-   node .agents/skills/create-design-system/scripts/decode-binary-assets.cjs binary-assets.json assets
+   node "/absolute/path/to/create-design-system/scripts/decode-binary-assets.cjs" binary-assets.json assets
    ```
    It writes `assets/fonts/<family>/*` and `assets/favicon.*`, then prints how many files it wrote.
 
@@ -246,7 +244,7 @@ If the `fontFaces` you collected in Step 4 / Call C point at real font files on 
 
 > 🧨 **Learn from this incident — read before writing your own decode loop.** If the in-page code returns a *string* (e.g. `JSON.stringify(obj)`), the saved file can end up **double-encoded** (a JSON string of JSON). A naive `JSON.parse(file)` then yields a *string*, and `Object.entries(string)` iterates **one entry per character** — a previous run wrote **~600,000 zero-byte files** named `0`,`1`,`2`,… into `assets/fonts/`. The provided helpers prevent this two ways: (a) `fetch-binary-assets.browser.js` returns an **object**, not a stringified string; (b) `decode-binary-assets.cjs` re-parses if it still sees a string AND **refuses to write** if there are >200 entries, numeric keys, or values too short to be a font. **Always prefer the helpers. If you must hand-roll, replicate those guards, and never run the decoder in the background.**
 
-> 📜 **Tell the user about licensing (REQUIRED).** Custom fonts are usually licensed. In your final response to the user, include a clear note: *"The downloaded fonts (`<families>`) are the website's font assets — verify their license before using or redistributing them in our application."* Do not assume they are free to reuse.
+> 📜 **Tell the user about asset rights (REQUIRED).** Custom fonts and logos may be licensed. In your final response to the user, identify the downloaded fonts and logos and ask them to verify usage rights before using or redistributing those assets. Do not assume fonts, logos, or other brand assets are free to reuse or redistribute.
 
 ### Step 6 — Build design-tokens.json
 
@@ -298,15 +296,9 @@ The guidelines document must include:
 
 Save as `docs/design-guidelines.md`.
 
-### Step 8 — Commit
+### Step 8 — Verify and hand off
 
-First delete any temporary files (e.g. `binary-assets.json`, snapshot dumps) and confirm no junk slipped into `assets/` (especially `assets/fonts/` — see the pitfalls table). Then:
-
-```bash
-git status --short          # sanity-check: only the intended files
-git add assets/ docs/design-guidelines.md
-git commit -m "Docs: add <BrandName> design tokens and assets"
-```
+Delete temporary files (e.g. `binary-assets.json`, snapshot dumps), confirm no junk slipped into `assets/`, and review the generated files with the user. In a Git repository, check `git status --short` so unrelated changes are not included. Commit only when the user requested a commit and the repository's contribution process permits it.
 
 ---
 
@@ -316,13 +308,12 @@ git commit -m "Docs: add <BrandName> design tokens and assets"
 |---|---|
 | `eval` result floods the context | Add `--filename=<file>.json` and read the file back, rather than printing it |
 | Logo selector returns country flag image | Use `header .logo` or `[class*="header"] [class*="logo"]` — the wordmark is usually an inline SVG, not `<img>` |
-| No `wait` command in the CLI | Use `pw run-code "async page => await page.waitForTimeout(3000)"` |
+| No `wait` command in the CLI | Use `playwright-cli -s=design run-code "async page => await page.waitForTimeout(3000)"` |
 | `eval` fails with `SyntaxError: Unexpected token ';'` | The argument must be an *expression*. A script file ending in `};` breaks it — the helper script deliberately ends in `}` with no semicolon |
-| Decoder dies with `require is not defined in ES module scope` | The project sets `"type": "module"`, so a CommonJS helper must use the `.cjs` extension. That is why it is `decode-binary-assets.cjs` |
-| Snapshot too large to read | Use `pw find "<text>"` or `pw find --regex "/pattern/i"` — it returns only matching nodes with context |
-| `Write` tool error on `path` param | Use `file_path`, not `path` |
-| `curl` / `wget` / `powershell Invoke-WebRequest` download **denied** | Don't shell out to download. `fetch()` the asset **in-page** (same-origin) and decode with Node — use `scripts/fetch-binary-assets.browser.js` + `scripts/decode-binary-assets.cjs` |
-| Cookie banner missed — ends up in the screenshot | It loads on a **delay** and is absent from the first snapshot. Wait 3s → `find` the banner → dismiss → `find` again and expect no matches, THEN screenshot. Also visually Read the saved PNG to confirm it's clean. |
+| Decoder dies with `require is not defined in ES module scope` | In projects using ES modules, run the provided `.cjs` helper rather than changing its extension |
+| Snapshot too large to read | Use `playwright-cli -s=design find "<text>"` or `playwright-cli -s=design find --regex "/pattern/i"` — it returns only matching nodes with context |
+| Direct asset downloads are denied | Fetch same-origin assets in-page with `scripts/fetch-binary-assets.browser.js`, then decode with `scripts/decode-binary-assets.cjs` |
+| Cookie banner missed — ends up in the screenshot | It loads on a **delay** and is absent from the first snapshot. Wait 3s → `find` the banner → dismiss → `find` again and expect no matches, THEN screenshot. Also visually inspect the saved PNG to confirm it is clean. |
 | Cookie consent dialog never dismissed | Always check for and click "Accept all" / "OK" / "Akceptuj wszystkie" before extracting styles — overlays produce incorrect computed styles |
 | Decode created hundreds of thousands of 0-byte files | The `filename` sink double-encodes a *string* return. Return an **object** from the in-page script; the decoder must re-parse a string AND refuse >200 entries / numeric keys. Use the provided helpers; never `run_in_background` the decoder. |
 | Verifying only the subfolders you expected | After downloading fonts, check the **parent** dir too (`find assets/fonts -maxdepth 1 -type f | wc -l`). Junk files land at the top level and a subfolder-only `ls` hides them. |

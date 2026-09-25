@@ -1,14 +1,9 @@
 // ============================================================================
 // fetch-binary-assets.browser.js
 // ----------------------------------------------------------------------------
-// Run this INSIDE the page via mcp__playwright__browser_evaluate, and ALWAYS
-// pass a `filename` arg (e.g. "binary-assets.json") so the (large) base64 result
-// is written to a file and does NOT flood the agent's context.
-//
-//   mcp__playwright__browser_evaluate({
-//     function: <contents of this file>,
-//     filename: "binary-assets.json"
-//   })
+// Run this INSIDE the page via playwright-cli eval, with --filename so the
+// large base64 result is written to a file instead of the agent's context.
+// Pass the full contents of this file as the eval expression; see SKILL.md.
 //
 // It returns an OBJECT mapping  "<subdir>/<filename>" -> base64 string, covering:
 //   - self-hosted @font-face fonts (woff2/woff/ttf/otf) under "fonts/<family>/..."
@@ -16,13 +11,13 @@
 //
 // ----------------------------------------------------------------------------
 // WHY AN OBJECT, NOT JSON.stringify(...) ?  (read this — it caused a real incident)
-// The browser_evaluate `filename` sink JSON-encodes the return value EXACTLY ONCE.
+// The CLI `--filename` sink JSON-encodes the return value exactly once.
 //   - Return an OBJECT  -> file is a normal JSON object -> JSON.parse() once = object. GOOD.
 //   - Return a STRING (e.g. JSON.stringify(obj)) -> file is a JSON *string of JSON*
 //     (double-encoded) -> JSON.parse() once yields a STRING, and iterating that
 //     string with Object.entries() gives one entry PER CHARACTER. A naive decoder
 //     then writes hundreds of thousands of 0-byte files named "0","1","2",...
-// So: return the object directly. The companion decode-binary-assets.js also
+// So: return the object directly. The companion decode-binary-assets.cjs also
 // defends against the double-encoding just in case, but don't rely on luck.
 // ----------------------------------------------------------------------------
 // SAME-ORIGIN ONLY: in-page fetch() can read the site's OWN assets. Cross-origin

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // ============================================================================
-// decode-binary-assets.js
+// decode-binary-assets.cjs
 // ----------------------------------------------------------------------------
 // Decodes the base64 JSON produced by fetch-binary-assets.browser.js into real
 // binary files (fonts, favicon) on disk.
 //
-//   node decode-binary-assets.js <input.json> [outDir=assets]
+//   node decode-binary-assets.cjs <input.json> [outDir=assets]
 //
 // Run it in the FOREGROUND (never with run_in_background) so you SEE its output
 // and catch problems immediately. It is fast — there is no reason to background it.
@@ -22,13 +22,13 @@ const path = require("path");
 const inputFile = process.argv[2];
 const outDir = process.argv[3] || "assets";
 if (!inputFile) {
-  console.error("Usage: node decode-binary-assets.js <input.json> [outDir=assets]");
+  console.error("Usage: node decode-binary-assets.cjs <input.json> [outDir=assets]");
   process.exit(1);
 }
 
 let data = JSON.parse(fs.readFileSync(inputFile, "utf8"));
 
-// The browser_evaluate `filename` sink JSON-encodes the return value once. If the
+// The CLI `--filename` sink JSON-encodes the return value once. If the
 // in-page code mistakenly returned a STRING (e.g. via JSON.stringify), the file is
 // DOUBLE-encoded and one parse yields a string — parse again to recover the object.
 if (typeof data === "string") data = JSON.parse(data);
