@@ -99,7 +99,15 @@ for (const [key, val] of entries) {
 // Font/icon magic numbers for a sanity check (warn-only; we still write).
 const FONT_SIGS = new Set([0x00010000, 0x4f54544f /*OTTO*/, 0x74727565 /*true*/, 0x774f4646 /*wOFF*/, 0x774f4632 /*wOF2*/]);
 
-if (existingStat(root)?.isSymbolicLink()) abort("output folder is a symlink.");
+// Check the entire selected output path before creating it: a symlinked
+// parent would otherwise redirect even a safe-looking output folder.
+let rootPart = path.parse(root).root;
+for (const part of path.relative(rootPart, root).split(path.sep).filter(Boolean)) {
+  rootPart = path.join(rootPart, part);
+  if (existingStat(rootPart)?.isSymbolicLink()) {
+    abort('output folder path contains a symlink: "' + rootPart + '".');
+  }
+}
 fs.mkdirSync(root, { recursive: true });
 
 let written = 0, skipped = 0;

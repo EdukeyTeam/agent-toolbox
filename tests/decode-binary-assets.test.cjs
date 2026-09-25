@@ -86,3 +86,21 @@ test('rejects an existing output file that is hard-linked elsewhere', t => {
   assert.match(result.stderr, /unsafe output file/);
   assert.equal(fs.readFileSync(outside, 'utf8'), 'untouched');
 });
+
+test('rejects an output folder beneath a symlinked ancestor', t => {
+  const { dir } = fixture(t);
+  const outside = path.join(dir, 'outside');
+  const linked = path.join(dir, 'linked');
+  const input = path.join(dir, 'ancestor-input.json');
+  fs.mkdirSync(outside);
+  fs.writeFileSync(input, JSON.stringify({ 'favicon.ico': asset }));
+  try { fs.symlinkSync(outside, linked, 'dir'); }
+  catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) return t.skip('symlinks unavailable');
+    throw error;
+  }
+  const result = spawnSync(process.execPath, [decoder, input, path.join(linked, 'assets')], { encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /symlink/);
+  assert.equal(fs.existsSync(path.join(outside, 'assets', 'favicon.ico')), false);
+});

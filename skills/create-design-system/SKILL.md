@@ -195,9 +195,7 @@ playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.j
 
 **Logo SVG:** If `logoSVG` was found, save it to `assets/logo.svg` with the agent's available file-writing tool.
 
-**Favicon + custom fonts (binary assets):** Download these with the in-page fetch helper when direct downloads are unavailable.
-
-> Use the browser helper in **Step 5b** to fetch same-origin assets when direct downloads are unavailable. Respect the permissions of the agent environment and the site's asset rights.
+**Favicon + custom fonts (binary assets):** Use the in-page fetch helper in **Step 5b** on every platform. Do not use `curl`, `wget`, or PowerShell `Invoke-WebRequest` to download these assets; shell downloaders can bypass the site's same-origin context and may be denied by the agent environment. Respect the site's asset rights.
 
 To grab just the favicon you can run the helper (it also handles fonts — see Step 5b) and keep `favicon.*` from its output.
 
