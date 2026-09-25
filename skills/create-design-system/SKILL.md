@@ -35,6 +35,8 @@ Open the URL with the browser configured during the one-time install:
 playwright-cli -s=design open <URL>
 ```
 
+If the page returns HTTP 403 or displays a blocked/challenge page, **do not extract styles or screenshot that page**. Wait briefly and retry navigation once or twice in the same session; a temporary block can clear. A configured alternative browser may be tried, but do not assume Chrome is installed or bypass a site's access controls. If the real page remains unavailable, stop and report the block instead of inventing a design system. This is a site response, not necessarily a Linux or Playwright setup problem.
+
 **Cookie/consent banners frequently load on a DELAY and are NOT present in the first snapshot.** (Real example: a banner appeared only several seconds after load and silently ended up in the screenshot.) So:
 
 1. Wait for a delayed banner to mount. There is no `wait` command; use `run-code`:
@@ -81,7 +83,7 @@ Small results can print inline; anything sizeable should go to a file with `--fi
 playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.json
 ```
 
-`--filename` writes the returned value as real JSON (an object stays an object), so inspect it with the agent's file-reading tool or `node -e`.
+`--filename` writes an object as JSON; a returned string may be JSON-quoted. Inspect the file before parsing and parse a string only once.
 
 #### Call A — Core element styles
 
@@ -157,7 +159,12 @@ playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.j
   // Logo: look in header .logo or [class*="logo"] — NOT country flag selectors
   const logoEl = document.querySelector('header .logo') ||
                  document.querySelector('[class*="header"] [class*="logo"]');
-  const logoSVG = logoEl?.innerHTML?.trim() ?? null;
+  const logoSVGEl = logoEl?.matches('svg') ? logoEl : logoEl?.querySelector('svg');
+  const logoSVG = logoSVGEl?.outerHTML?.trim() ?? null;
+  const logoImageCandidates = [...document.querySelectorAll('header img, [class*="header"] img')]
+    .filter(img => img.getBoundingClientRect().width > 50)
+    .slice(0, 8)
+    .map(img => ({ alt: img.alt, src: img.currentSrc || img.src }));
 
   // Favicon href
   const favicon = document.querySelector('link[rel*="icon"]');
@@ -183,7 +190,8 @@ playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.j
   }));
 
   return {
-    logoSVG: logoSVG?.substring(0, 3000),
+    logoSVG,
+    logoImageCandidates,
     faviconHref: favicon?.href ?? null,
     fontFaces: fontFaces.slice(0, 8),
     navLinks
@@ -193,7 +201,7 @@ playwright-cli -s=design eval "<the arrow function below>" --filename=tokens-a.j
 
 ### Step 5 — Save brand assets
 
-**Logo SVG:** If `logoSVG` was found, save it to `assets/logo.svg` with the agent's available file-writing tool.
+**Logo SVG:** Save `logoSVG` to `assets/logo.svg` only when it contains SVG markup. If it is absent, inspect `logoImageCandidates` and the visible header to identify the actual wordmark, not a flag or product image. When its image URL serves SVG and the page permits fetching it, fetch the SVG in-page, validate the returned text, then save it as `assets/logo.svg`. A `--filename` result containing SVG text may be a JSON-encoded string: inspect it and parse once, not twice. If the site only provides a raster logo or blocks the fetch, report that accurately; do not write HTML or raster bytes to a `.svg` file.
 
 **Favicon + custom fonts (binary assets):** Use the in-page fetch helper in **Step 5b** on every platform. Do not use `curl`, `wget`, or PowerShell `Invoke-WebRequest` to download these assets; shell downloaders can bypass the site's same-origin context and may be denied by the agent environment. Respect the site's asset rights.
 
@@ -265,6 +273,8 @@ If the `fontFaces` you collected in Step 4 / Call C point at real font files on 
 
 Map the extracted values into a structured JSON. Follow this schema:
 
+After dismissing consent, its elements may remain hidden in the DOM. Ignore hidden or zero-size elements when choosing colors and components; verify candidate buttons, links, and headings against the visible page instead of trusting the first selector match.
+
 ```json
 {
   "colors": {
@@ -322,7 +332,8 @@ Delete temporary files (e.g. `binary-assets.json`, snapshot dumps), confirm no j
 | Issue | Fix |
 |---|---|
 | `eval` result floods the context | Add `--filename=<file>.json` and read the file back, rather than printing it |
-| Logo selector returns country flag image | Use `header .logo` or `[class*="header"] [class*="logo"]` — the wordmark is usually an inline SVG, not `<img>` |
+| Logo selector misses the wordmark | Inspect visible header images; the wordmark may be an `<img>` pointing to an SVG rather than inline SVG |
+| Site opens to a 403 or blocked page | Retry briefly in the same browser session; if access remains blocked, report it and do not extract the block page |
 | No `wait` command in the CLI | Use `playwright-cli -s=design run-code "async page => await page.waitForTimeout(3000)"` |
 | `eval` fails with `SyntaxError: Unexpected token ';'` | The argument must be an *expression*. A script file ending in `};` breaks it — the helper script deliberately ends in `}` with no semicolon |
 | Decoder dies with `require is not defined in ES module scope` | In projects using ES modules, run the provided `.cjs` helper rather than changing its extension |
@@ -344,7 +355,7 @@ All files are saved to the project root:
 ```
 assets/
   homepage.png           # Full-page screenshot (no overlays!)
-  logo.svg               # Brand wordmark (extracted from DOM)
+  logo.svg               # Brand wordmark (inline SVG or fetched image source)
   favicon.ico            # Favicon binary
   design-tokens.json     # Structured design tokens
   fonts/                 # Self-hosted custom fonts (only if the site provides them)
