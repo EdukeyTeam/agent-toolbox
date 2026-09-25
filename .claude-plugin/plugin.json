@@ -1,0 +1,7 @@
+{
+  "name": "agent-toolbox",
+  "version": "0.1.0",
+  "description": "Edukey skills for developer and business workflows",
+  "author": { "name": "Edukey" },
+  "repository": "https://github.com/EdukeyTeam/agent-toolbox"
+}
