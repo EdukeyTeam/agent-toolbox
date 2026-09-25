@@ -207,7 +207,7 @@ To grab just the favicon you can run the helper (it also handles fonts — see S
 
 If the `fontFaces` you collected in Step 4 / Call C point at real font files on the site's domain, download them:
 
-1. **Fetch all binary assets in-page** (fonts + favicon), writing base64 to a file so it never floods context. Use the command for how this skill was installed. Run project-install commands from the project root. If installed outside `.agents/skills` (for example in a Claude-specific folder), locate this `SKILL.md` and use its adjacent `scripts/` files.
+1. **Fetch all binary assets in-page** (fonts + favicon), writing base64 to a file so it never floods context. Use the command for how this skill was installed. Run project-install commands from the project root. If installed elsewhere (for example `.claude/skills/create-design-system` in the project or `$HOME/.claude/skills/create-design-system` globally), locate this `SKILL.md` and use its adjacent `scripts/` files.
 
    Bash, project install:
    ```bash
