@@ -33,6 +33,47 @@ npx --yes skills@latest list -g
 npx --yes skills@latest update -g
 ```
 
+## Install the whole toolbox
+
+To add every skill in one run with the [skills CLI](https://skills.sh/), use `--skill '*'`. The installer lets you choose which agent to target. `--all` also targets every supported agent, so it is not needed here.
+
+```bash
+npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill '*' -g
+```
+
+### Claude Code and Claude Desktop / Cowork
+
+This repository is also a Claude plugin marketplace. In Claude Code, run:
+
+```text
+/plugin install agent-toolbox --marketplace EdukeyTeam/agent-toolbox
+```
+
+If your Claude Code version does not offer that shortcut, add the marketplace and install the plugin separately:
+
+```bash
+claude plugin marketplace add EdukeyTeam/agent-toolbox
+claude plugin install agent-toolbox@edukey-agent-toolbox
+```
+
+In Claude Desktop or Cowork, open **Customize → Plugins**, add this GitHub repository as a marketplace, then install **Agent Toolbox**. A maintainer can also build a ZIP for manual upload with PowerShell 7:
+
+```powershell
+pwsh -NoProfile -File ./scripts/build-claude-plugin.ps1
+```
+
+The ZIP builder includes every folder under `skills/` that has a `SKILL.md`. It creates a file in `~/Downloads/Claude Plugins/` by default; it does not install the plugin or change your agent settings.
+
+### GitHub Copilot CLI
+
+Copilot CLI can install the same repository as a plugin using its root plugin manifest:
+
+```bash
+copilot plugin install EdukeyTeam/agent-toolbox
+```
+
+For Codex and other agents, the skills CLI command above installs the skills directly. The root `plugin.json` also provides a portable plugin manifest; availability in a particular plugin catalog depends on that catalog's publishing process.
+
 ## Contribute
 
 Skills live in `skills/<name>/`. Open a pull request for a new skill or a change to an existing one. Include tests for executable behavior and describe a realistic manual trial for instruction-only skills. The [test workflow](.github/workflows/test-skills.yml) checks pull requests; [AGENTS.md](AGENTS.md) has the contribution rules.
