@@ -1,6 +1,6 @@
 ---
 name: write-adr
-description: Use when the user wants to create an ADR, document architecture decisions, plan technical implementation, or prepare a codebase for AI-agent-driven development.
+description: Use when the user wants to write ADRs (Architecture Decision Records), document technical decisions about system design, data models, API contracts, diagrams, or testing strategy, or plan implementation architecture from a PRD or feature brief.
 ---
 
 This skill creates one or more ADR documents that — together with the PRD — give an AI development agent everything it needs to implement the feature or application without ambiguity. All technical decisions, reasoning, diagrams, data structures, and test plans are defined here so the implementing agent does not have to make architectural guesses.
