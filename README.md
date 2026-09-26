@@ -19,7 +19,7 @@ The recommended installer is the [skills CLI](https://skills.sh/). You need Node
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system -g
 ```
 
-Replace `create-design-system` with `write-prd` or `write-adr` to install either of those. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
+Replace `create-design-system` with `write-prd`, `write-adr`, or `respond-to-code-review` to install another skill. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
 
 ```bash
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system --project
