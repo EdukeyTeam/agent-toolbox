@@ -5,7 +5,7 @@ description: Use when the user wants to write a PRD, create a product requiremen
 
 This skill creates a Product Requirements Document (PRD). The PRD covers functional requirements, user flows, UX/UI, personas, and business constraints. Technical architecture, implementation decisions, and testing strategy are NOT part of PRD — they belong in a separate ADR document created in a later step.
 
-Skip steps that are clearly not applicable. Ask about missing decisions without repeating information the user has already provided.
+Skip steps that are clearly not applicable, but do not skip the required question step. Do not repeat information the user has already provided.
 
 ---
 
@@ -17,8 +17,8 @@ If not already provided, ask the user for a detailed description of the product 
 ### Step 2 — Explore the repo (if applicable)
 If this is a feature added to an existing codebase, explore it to understand the current state. Verify the user's assumptions. Do not skip this if there is relevant existing code.
 
-### Step 3 — Clarify missing decisions
-Ask focused questions about information needed to write a useful PRD. If the initial brief already answers a topic, do not ask it again. Do not impose a fixed question count.
+### Step 3 — Ask clarifying questions (REQUIRED — minimum 5)
+Ask the user at least five focused clarifying questions before writing the PRD. Do not start writing until you have answers. If the brief already covers a listed topic, ask a deeper question about another decision instead of repeating it.
 
 Cover at minimum:
 - Who are the users? Any specific personas or edge cases?

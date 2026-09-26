@@ -14,11 +14,11 @@ Technical implementation details and testing strategy intentionally excluded fro
 ### Step 1 — Read the PRD (if it exists)
 Check for `docs/PRD.md`. If found, read it fully before proceeding. If not found, ask the user to provide a description of the feature or application: what it does, who uses it, what the main flows are.
 
-### Step 2 — Clarify missing decisions
-Ask focused questions about decisions the PRD, user, and codebase do not already answer. Do not impose a fixed question count. Relevant topics include:
+### Step 2 — Ask clarifying questions (REQUIRED — minimum 5)
+Ask the user at least five focused clarifying questions before writing any ADR. Do not start writing until you have answers. If the PRD, user, or codebase already answers a topic, ask a deeper question about another decision instead of repeating it. Relevant topics include:
 
 - Which frameworks, languages, and runtime environments are being used or preferred?
-- Are there specific libraries or tools already decided?
+- Are there specific libraries or tools already decided? If their Context7 IDs are known, record them for Step 3.
 - What are the deployment constraints — local dev only, Docker, cloud, serverless?
 - What is the persistence strategy — which database/storage, why?
 - Are there external APIs or services being integrated? What are their constraints?
