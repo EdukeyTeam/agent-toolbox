@@ -43,13 +43,7 @@ npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill '*' -g
 
 ### Claude Code and Claude Desktop / Cowork
 
-This repository is also a Claude plugin marketplace. In Claude Code, run:
-
-```text
-/plugin install agent-toolbox --marketplace EdukeyTeam/agent-toolbox
-```
-
-If your Claude Code version does not offer that shortcut, add the marketplace and install the plugin separately:
+This repository is also a Claude plugin marketplace. Register the marketplace, then install its plugin from a terminal:
 
 ```bash
 claude plugin marketplace add EdukeyTeam/agent-toolbox
