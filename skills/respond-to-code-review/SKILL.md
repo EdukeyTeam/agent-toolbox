@@ -16,7 +16,9 @@ Work from the actual review comments and current code. Verify claims before chan
 
 ## Workflow
 
-1. **Collect all feedback.** Read review summaries, inline comments and replies, unresolved threads, and CI status. Check for newer comments after the last push. Human and bot reviewers vary by repository; never assume Copilot, Codex, Claude, or any other bot is configured. Use the matching platform reference: [GitHub](references/github.md), [GitLab](references/gitlab.md), or [Bitbucket](references/bitbucket.md).
+**Required on every use:** Identify the review platform and read its procedure before collecting feedback: [GitHub](references/github.md), [GitLab](references/gitlab.md), or [Bitbucket](references/bitbucket.md). Read the matching reference even if you have used this skill before; it contains the platform's collection, reply, and resolution steps. Skip the other platforms' references; read a one-time setup guide only when setup is needed.
+
+1. **Collect all feedback.** Read review summaries, inline comments and replies, unresolved threads, and CI status. Check for newer comments after the last push. Human and bot reviewers vary by repository; never assume Copilot, Codex, Claude, or any other bot is configured.
 2. **Verify each finding.** Inspect the relevant code and reproduce the behavior or run a focused check where possible. For claims about a library or API, consult current documentation. Mark each finding as valid, already addressed, unclear, or unsupported; explain the evidence for anything not changed.
 3. **Make focused fixes when requested.** Follow the repository's branch, commit, and test rules. Keep independent fixes reviewable. Do not change unrelated behavior to satisfy a comment, and do not claim a fix until its relevant check passes.
 4. **Respond to the review.** Post one consolidated reply covering every finding, with fixes, evidence, and reasons for items not changed. This is the default even when findings came from several reviewers. Reply in individual threads only when the user asks, or the platform or repository requires thread-specific replies or resolution. Avoid duplicate replies.
