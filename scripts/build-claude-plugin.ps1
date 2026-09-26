@@ -127,7 +127,7 @@ try {
         sourceHash = $sourceHash
         builtAt = $builtAt.ToString('o')
     } -Force
-    $manifestOutputPath = Join-Path $pluginRoot '.claude-plugin\plugin.json'
+    $manifestOutputPath = Join-Path (Join-Path $pluginRoot '.claude-plugin') 'plugin.json'
     $manifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $manifestOutputPath -Encoding utf8
 
     if (-not $SkipClaudeValidation) {
@@ -150,7 +150,7 @@ try {
 
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
     try {
-        $entries = @($archive.Entries | ForEach-Object { $_.FullName -replace '\\', '/' })
+        $entries = @($archive.Entries | ForEach-Object { $_.FullName })
         $requiredEntries = @("$PluginName/.claude-plugin/plugin.json") + @(
             $skillNames | ForEach-Object { "$PluginName/skills/$_/SKILL.md" }
         )
