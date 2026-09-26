@@ -46,7 +46,7 @@ Ask the user whether they want to continue now with the `write-adr` skill to gen
 
 ## Rules
 
-- **Language**: Use the language the user requests; otherwise, match the language of their brief.
+- **Language**: Always write the PRD in English, regardless of the language of the brief or conversation.
 - **No marketing language**: No fluff, no "users will be delighted", no vague superlatives. Every sentence must be useful to a developer or agent implementing the product.
 - **No technical implementation details**: Do not specify frameworks, libraries, file paths, SDK choices, database schemas, or code patterns. Those belong in the ADR (Architecture Decision Records). Mention functional behavior only.
 - **No testing strategy**: Test cases and testing decisions belong in the ADR, not the PRD.

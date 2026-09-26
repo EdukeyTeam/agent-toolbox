@@ -30,7 +30,9 @@ Ask focused questions about decisions the PRD, user, and codebase do not already
 Resolve decisions that affect the architecture before writing. Record any remaining assumptions or open questions instead of inventing answers.
 
 ### Step 3 — Check current technology documentation
-For libraries, frameworks, and SDKs that affect a decision, prefer the Context7 CLI (`ctx7` or `npx ctx7@latest`): run `library <name> "<question>"`, then `docs <libraryId> "<question>"`. If the CLI is unavailable, use configured Context7 MCP; if neither is available, use official documentation. Record verified IDs or documentation links. Follow an installed Context7 skill for setup details.
+For libraries, frameworks, and SDKs that affect a decision, prefer the Context7 CLI (`ctx7` or `npx ctx7@latest`). Use a verified Context7 ID already supplied in the PRD or brief directly with `docs <libraryId> "<question>"`; otherwise resolve it with `library <name> "<question>"` first. If the CLI is unavailable, use configured Context7 MCP; if neither is available, use official documentation. Follow an installed Context7 skill for setup details.
+
+Store every verified Context7 ID used in the ADR's **Technology Documentation References** table so implementing agents can fetch current docs directly without resolving the library again. Where no Context7 ID is available, record the official documentation link instead. Do not invent IDs.
 
 ### Step 4 — Determine ADR structure
 Choose based on complexity:
@@ -58,7 +60,7 @@ Use the templates below. Save to `docs/ADR/`.
 
 ## Rules
 
-- **Language**: Use the language the user requests; otherwise, match the language of their brief or PRD.
+- **Language**: Always write the ADR in English, regardless of the language of the brief or conversation.
 - **No code snippets**: Do not include implementation code. The implementing agent can get exact API usage from current documentation. Describe what, not how.
 - **No vague statements**: Every constraint, decision, or requirement must be concrete and verifiable — same standard as Acceptance Criteria in the PRD.
 - **Diagrams are mandatory**: Include architecture diagrams, data flow diagrams, and sequence diagrams for all flows where applicable. Only skip a diagram type if it genuinely cannot be expressed that way. More detail is better.
@@ -88,7 +90,7 @@ What is being built. What problem it solves. How this ADR relates to the PRD.
 
 ## 2. Technology Documentation References
 
-Libraries, frameworks, and SDKs relevant to the decisions below. Record a verified Context7 ID or an official documentation link.
+Libraries, frameworks, and SDKs relevant to the decisions below. Record each verified Context7 ID so implementing agents can fetch current docs directly without searching again; use an official documentation link when no ID is available.
 
 | Library | Context7 ID or official docs | Used for |
 |---|---|---|
