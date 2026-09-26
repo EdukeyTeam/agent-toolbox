@@ -5,14 +5,15 @@ Use the team's existing GitHub method if it can read reviews and post replies. T
 ## Collect
 
 ```bash
-gh pr view <number-or-url> --json state,reviewDecision,reviewRequests,reviews
+gh pr view <number-or-url> --json state,reviewDecision,reviewRequests
 # Replace OWNER, REPO, and NUMBER with the PR's actual values, even outside a checkout:
+gh api --paginate repos/OWNER/REPO/pulls/NUMBER/reviews
 gh api --paginate repos/OWNER/REPO/pulls/NUMBER/comments
 gh api --paginate repos/OWNER/REPO/issues/NUMBER/comments
 gh pr checks <number-or-url>
 ```
 
-The first REST API call includes inline review comments and replies; the second includes top-level conversation comments. Review bodies are in `reviews`. REST comments do not report whether their review thread was resolved. To distinguish active threads from historical feedback, check the PR's **Files changed** conversations in GitHub, or query `reviewThreads.isResolved` with GraphQL:
+The first REST API call returns every submitted review and its body across pages. The second includes inline review comments and replies; the third includes top-level conversation comments. REST comments do not report whether their review thread was resolved. To distinguish active threads from historical feedback, check the PR's **Files changed** conversations in GitHub, or query `reviewThreads.isResolved` with GraphQL:
 
 ```bash
 # Replace OWNER, REPO, and NUMBER with the PR's actual values.
