@@ -50,7 +50,7 @@ Ask the user whether they want to continue now with the `write-adr` skill to gen
 - **No marketing language**: No fluff, no "users will be delighted", no vague superlatives. Every sentence must be useful to a developer or agent implementing the product.
 - **No technical implementation details**: Do not specify frameworks, libraries, file paths, SDK choices, database schemas, or code patterns. Those belong in the ADR (Architecture Decision Records). Mention functional behavior only.
 - **No testing strategy**: Test cases and testing decisions belong in the ADR, not the PRD.
-- **Measurable acceptance criteria**: Every AC must be verifiable. "Works correctly" is not an AC. "Rejects a file over 10 MB with a clear error message" is.
+- **Measurable acceptance criteria**: Every AC must be verifiable. "Works correctly" is not an AC. "For a file larger than 10 MB, the product does not save the file and displays 'File exceeds the 10 MB limit'" is.
 - **Out of Scope is mandatory**: Explicitly listing what is NOT in scope is as important as listing what is. It prevents scope creep during implementation.
 - **Purpose**: The PRD will be used by a developer agent to create an ADR, and then to implement the application. Write for that audience.
 
