@@ -19,3 +19,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Build and verify Claude plugin ZIP
+        shell: pwsh
+        run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation

@@ -11,6 +11,7 @@ The [README](README.md) is for people discovering and installing the toolbox. Ke
 - Add only skills we authored. Install third-party skills from their original source instead of copying them here.
 - Do not include secrets, client-specific information, private repository paths, or machine-specific assumptions in public skills.
 - Edit the source in this repository, then reinstall or update the skill. Do not patch an installed `.agents/skills/` or `.claude/skills/` copy.
+- `skills/` is also the source for the Claude and Copilot plugin bundles. Do not copy skill folders into plugin-specific directories. Keep the root `plugin.json`, Claude `.claude-plugin/plugin.json`, and marketplace entry consistent when changing the plugin name or description.
 
 ## Changes and checks
 
@@ -18,3 +19,4 @@ The [README](README.md) is for people discovering and installing the toolbox. Ke
 - Every new skill is checked by the repository-wide structure test. Add focused automated tests for its scripts and other testable behavior, including regression cases for bugs. For a skill with no executable behavior, describe a realistic manual trial in the pull request.
 - Put Node tests in `tests/` with a `.test.cjs` or `.test.js` suffix. Run `npm ci` and `npm test` locally. The [Test skills workflow](.github/workflows/test-skills.yml) runs the same tests on every pull request and on pushes to `main`, so Node tests with these names are discovered automatically.
 - If a new skill needs tests in another language or an extra setup step, update the workflow in the same pull request so CI actually runs them. Check the workflow result before merging.
+- The Claude ZIP builder discovers all `skills/*/SKILL.md` folders. The test workflow builds and checks that ZIP on every pull request; update the builder and its checks if the skill layout changes.
