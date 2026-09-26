@@ -6,8 +6,8 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 
 | Skill | What it helps you do |
 | --- | --- |
-| [write-a-prd](skills/write-a-prd/SKILL.md) | Interview stakeholders and write a product requirements document (PRD). |
-| [create-adr](skills/create-adr/SKILL.md) | Document architecture decisions (ADRs) for a feature or application. |
+| [write-prd](skills/write-prd/SKILL.md) | Interview stakeholders and write a product requirements document (PRD). |
+| [write-adr](skills/write-adr/SKILL.md) | Write Architecture Decision Records (ADRs) covering system design, data models, API contracts, diagrams, and testing strategy. |
 | [create-design-system](skills/create-design-system/SKILL.md) | Extract design tokens, a screenshot, and available brand assets from a website. |
 | [respond-to-code-review](skills/respond-to-code-review/SKILL.md) | Address and answer review comments on GitHub, GitLab, or Bitbucket pull and merge requests. |
 
@@ -19,7 +19,7 @@ The recommended installer is the [skills CLI](https://skills.sh/). You need Node
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system -g
 ```
 
-Replace `create-design-system` with `write-a-prd` or `create-adr` to install either of those. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
+Replace `create-design-system` with `write-prd` or `write-adr` to install either of those. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
 
 ```bash
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system --project
@@ -33,6 +33,41 @@ To see your installed user-level skills or refresh them later:
 npx --yes skills@latest list -g
 npx --yes skills@latest update -g
 ```
+
+## Install the whole toolbox
+
+To add every skill in one run with the [skills CLI](https://skills.sh/), use `--skill '*'`. The installer lets you choose which agent to target. `--all` also targets every supported agent, so it is not needed here.
+
+```bash
+npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill '*' -g
+```
+
+### Claude Code and Claude Desktop / Cowork
+
+This repository is also a Claude plugin marketplace. Register the marketplace, then install its plugin from a terminal:
+
+```bash
+claude plugin marketplace add EdukeyTeam/agent-toolbox
+claude plugin install agent-toolbox@edukey-agent-toolbox
+```
+
+In Claude Desktop or Cowork, open **Customize → Plugins**, add this GitHub repository as a marketplace, then install **Agent Toolbox**. A maintainer can also build a ZIP for manual upload with PowerShell 7:
+
+```powershell
+pwsh -NoProfile -File ./scripts/build-claude-plugin.ps1
+```
+
+The ZIP builder includes every folder under `skills/` that has a `SKILL.md`. It creates a file in `~/Downloads/Claude Plugins/` by default; it does not install the plugin or change your agent settings.
+
+### GitHub Copilot CLI
+
+Copilot CLI can install the same repository as a plugin using its root plugin manifest:
+
+```bash
+copilot plugin install EdukeyTeam/agent-toolbox
+```
+
+For Codex and other agents, the skills CLI command above installs the skills directly. The root `plugin.json` also provides a portable plugin manifest; availability in a particular plugin catalog depends on that catalog's publishing process.
 
 ## Contribute
 

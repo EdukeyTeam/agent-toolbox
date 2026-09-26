@@ -26,9 +26,9 @@ test('the repository contains skills', () => {
 });
 
 test('accepts a quoted YAML name and folded description', () => {
-  assert.doesNotThrow(() => validateMetadata('create-adr', [
+  assert.doesNotThrow(() => validateMetadata('write-adr', [
     '---',
-    'name: "create-adr"',
+    'name: "write-adr"',
     'description: >-',
     '  Create a decision record.',
     '---',
@@ -36,9 +36,9 @@ test('accepts a quoted YAML name and folded description', () => {
 });
 
 test('rejects an empty folded description', () => {
-  assert.throws(() => validateMetadata('create-adr', [
+  assert.throws(() => validateMetadata('write-adr', [
     '---',
-    'name: create-adr',
+    'name: write-adr',
     'description: >-',
     '---',
   ].join('\n')), /description/);

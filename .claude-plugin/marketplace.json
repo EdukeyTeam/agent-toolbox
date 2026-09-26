@@ -1,0 +1,12 @@
+{
+  "name": "edukey-agent-toolbox",
+  "description": "Public Edukey agent skills and plugins",
+  "owner": { "name": "Edukey" },
+  "plugins": [
+    {
+      "name": "agent-toolbox",
+      "source": { "source": "github", "repo": "EdukeyTeam/agent-toolbox" },
+      "description": "Edukey skills for developer and business workflows"
+    }
+  ]
+}
