@@ -12,7 +12,7 @@ See the official [Bitbucket Cloud pull request API](https://developer.atlassian.
 
 ## Data Center
 
-- Read the PR and its comments using the instance's `/rest/api/latest/projects/{projectKey}/repos/{repositorySlug}/pull-requests/{pullRequestId}` endpoints.
+- Read the PR, then collect its activity from `GET /rest/api/latest/projects/{projectKey}/repos/{repositorySlug}/pull-requests/{pullRequestId}/activities`. Activity includes comments and other events. Follow pages using `start`, `isLastPage`, and `nextPageStart`; the endpoint returns 25 items by default. The separate `/comments` endpoint requires a file `path`, so it is not a complete PR-wide comment collection method.
 - Check comment threads and blocker comments or tasks supported by that instance's version. Follow that team's reply and resolution rules.
 
 See the official [Bitbucket Data Center pull request API](https://developer.atlassian.com/server/bitbucket/rest/v811/api-group-pull-requests/). Verify paths against the installed server version.
