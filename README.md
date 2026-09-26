@@ -6,8 +6,8 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 
 | Skill | What it helps you do |
 | --- | --- |
-| [write-a-prd](skills/write-a-prd/SKILL.md) | Interview stakeholders and write a product requirements document (PRD). |
-| [create-adr](skills/create-adr/SKILL.md) | Document architecture decisions (ADRs) for a feature or application. |
+| [write-prd](skills/write-prd/SKILL.md) | Interview stakeholders and write a product requirements document (PRD). |
+| [write-adr](skills/write-adr/SKILL.md) | Document architecture decisions (ADRs) for a feature or application. |
 | [create-design-system](skills/create-design-system/SKILL.md) | Extract design tokens, a screenshot, and available brand assets from a website. |
 
 ## Install a skill
@@ -18,11 +18,13 @@ The recommended installer is the [skills CLI](https://skills.sh/). You need Node
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system -g
 ```
 
-Replace `create-design-system` with `write-a-prd` or `create-adr` to install either of those. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
+Replace `create-design-system` with `write-prd` or `write-adr` to install either of those. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
 
 ```bash
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system --project
 ```
+
+If you previously installed `write-a-prd` or `create-adr`, remove those old names and install `write-prd` and `write-adr`. A skills update does not rename an installed folder.
 
 Then ask your agent to use the installed skill. For example: “Use create-design-system to document the visual style of this website.” The agent reads the skill's instructions and may need to set up a tool the first time it runs; each skill documents its own requirements.
 

@@ -1,6 +1,6 @@
 ---
-name: create-adr
-description: Create Architecture Decision Records (ADR) based on an existing PRD or user-provided feature description. Covers technical decisions, system design, data models, API contracts, diagrams, and testing strategy. Use when the user wants to document architecture, plan technical implementation, or prepare a codebase for AI-agent-driven development.
+name: write-adr
+description: Use when the user wants to create an ADR, document architecture decisions, plan technical implementation, or prepare a codebase for AI-agent-driven development.
 ---
 
 This skill creates one or more ADR documents that — together with the PRD — give an AI development agent everything it needs to implement the feature or application without ambiguity. All technical decisions, reasoning, diagrams, data structures, and test plans are defined here so the implementing agent does not have to make architectural guesses.
@@ -14,11 +14,11 @@ Technical implementation details and testing strategy intentionally excluded fro
 ### Step 1 — Read the PRD (if it exists)
 Check for `docs/PRD.md`. If found, read it fully before proceeding. If not found, ask the user to provide a description of the feature or application: what it does, who uses it, what the main flows are.
 
-### Step 2 — Ask clarifying questions (REQUIRED — minimum 5)
-Do not write any ADR until you have answers. Ask about:
+### Step 2 — Clarify missing decisions
+Ask focused questions about decisions the PRD, user, and codebase do not already answer. Do not impose a fixed question count. Relevant topics include:
 
 - Which frameworks, languages, and runtime environments are being used or preferred?
-- Are there specific libraries or tools already decided? If yes, list their Context7 handles if known (see Step 3).
+- Are there specific libraries or tools already decided?
 - What are the deployment constraints — local dev only, Docker, cloud, serverless?
 - What is the persistence strategy — which database/storage, why?
 - Are there external APIs or services being integrated? What are their constraints?
@@ -27,17 +27,10 @@ Do not write any ADR until you have answers. Ask about:
 - Any testing requirements — unit only, integration, e2e? TDD approach expected?
 - Are there any existing architectural patterns in the codebase that must be followed?
 
-Walk through each decision branch. Resolve dependencies between decisions one by one before writing.
+Resolve decisions that affect the architecture before writing. Record any remaining assumptions or open questions instead of inventing answers.
 
-### Step 3 — Resolve Context7 library references
-For every library, framework, or SDK that will be used:
-
-1. Ask the user if they have the Context7 handle (e.g., `/vercel/ai`, `/spring-projects/spring-boot`).
-2. If not provided, use `mcp__context7__resolve-library-id` to find the correct handle.
-3. Use `mcp__context7__query-docs` to fetch relevant documentation sections needed to make informed decisions.
-4. Store all resolved handles in the ADR under the **Context7 References** section so future agents can fetch docs directly without searching again.
-
-Do not make technology decisions based on training knowledge alone — always verify with current docs via Context7 when available.
+### Step 3 — Check current technology documentation
+For libraries, frameworks, and SDKs that affect a decision, prefer the Context7 CLI (`ctx7` or `npx ctx7@latest`): run `library <name> "<question>"`, then `docs <libraryId> "<question>"`. If the CLI is unavailable, use configured Context7 MCP; if neither is available, use official documentation. Record verified IDs or documentation links. Follow an installed Context7 skill for setup details.
 
 ### Step 4 — Determine ADR structure
 Choose based on complexity:
@@ -65,20 +58,20 @@ Use the templates below. Save to `docs/ADR/`.
 
 ## Rules
 
-- **Language**: Always write in English, regardless of the language the user communicates in.
-- **No code snippets**: Do not include implementation code. The implementing agent will use Context7 to get exact API usage. Describe what, not how.
+- **Language**: Use the language the user requests; otherwise, match the language of their brief or PRD.
+- **No code snippets**: Do not include implementation code. The implementing agent can get exact API usage from current documentation. Describe what, not how.
 - **No vague statements**: Every constraint, decision, or requirement must be concrete and verifiable — same standard as Acceptance Criteria in the PRD.
 - **Diagrams are mandatory**: Include architecture diagrams, data flow diagrams, and sequence diagrams for all flows where applicable. Only skip a diagram type if it genuinely cannot be expressed that way. More detail is better.
 - **Testing is mandatory**: Every ADR must include a testing strategy. TDD is the primary self-validation tool for implementing agents.
-- **Context7 handles must be stored**: Any library referenced in the ADR must have its Context7 handle recorded so future agents can fetch docs without searching.
-- **Purpose**: This document, together with the PRD, must give a developer agent a complete, unambiguous picture of the system. If something is unclear, resolve it with the user before writing.
+- **Documentation references**: Record Context7 IDs when available; otherwise record official documentation links. Do not invent IDs.
+- **Purpose**: This document, together with the PRD, must give a developer agent a clear picture of the system. Resolve decisions that affect implementation with the user; record lesser open questions explicitly.
 - **Do NOT implement the code**: Focus on describing Architecture Decisions (ADRs) to provide all technical details for the agent that will implement the code.
 
 ---
 
 ## ADR-000 Template — Main Architecture (or Single ADR)
 
-```markdown
+````markdown
 # ADR: [Product / Feature Name] — Main Architecture
 
 **Date:** [today]
@@ -93,11 +86,11 @@ What is being built. What problem it solves. How this ADR relates to the PRD.
 
 ---
 
-## 2. Context7 Library References
+## 2. Technology Documentation References
 
-All libraries, frameworks, and SDKs used in this project. Implementing agents must use these handles to fetch docs — do not search for them again.
+Libraries, frameworks, and SDKs relevant to the decisions below. Record a verified Context7 ID or an official documentation link.
 
-| Library | Context7 Handle | Used for |
+| Library | Context7 ID or official docs | Used for |
 |---|---|---|
 | [Library name] | `/org/repo` | [purpose] |
 
@@ -250,7 +243,7 @@ Measurable, verifiable criteria that confirm the implementation is correct from 
 
 - TAC-01: [concrete, testable statement]
 - TAC-02: ...
-```
+````
 
 ---
 
@@ -258,7 +251,7 @@ Measurable, verifiable criteria that confirm the implementation is correct from 
 
 Use this for each focused technical area in a complex project.
 
-```markdown
+````markdown
 # ADR-[NNN]: [Technical Area Name]
 
 **Date:** [today]
@@ -273,11 +266,11 @@ What technical area this ADR covers. What it does NOT cover (leave to other ADRs
 
 ---
 
-## 2. Context7 References
+## 2. Technology Documentation References
 
-Libraries specific to this area.
+Libraries specific to this area, with verified Context7 IDs or official documentation links.
 
-| Library | Context7 Handle | Used for |
+| Library | Context7 ID or official docs | Used for |
 |---|---|---|
 
 ---
@@ -334,4 +327,4 @@ sequenceDiagram
 ### Technical acceptance criteria
 
 - TAC-[NNN]-01: [concrete, testable statement]
-```
+````

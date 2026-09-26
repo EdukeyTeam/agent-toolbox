@@ -1,11 +1,11 @@
 ---
-name: write-a-prd
-description: Create a PRD through user interview and research, then save it as a Markdown file. Use when the user wants to write a PRD, create a product requirements document, or plan a new feature/product.
+name: write-prd
+description: Use when the user wants to write a PRD, create a product requirements document, or plan a new feature or product.
 ---
 
 This skill creates a Product Requirements Document (PRD). The PRD covers functional requirements, user flows, UX/UI, personas, and business constraints. Technical architecture, implementation decisions, and testing strategy are NOT part of PRD — they belong in a separate ADR document created in a later step.
 
-You may skip steps below if clearly not applicable, but do not skip the question step.
+Skip steps that are clearly not applicable. Ask about missing decisions without repeating information the user has already provided.
 
 ---
 
@@ -17,8 +17,8 @@ If not already provided, ask the user for a detailed description of the product 
 ### Step 2 — Explore the repo (if applicable)
 If this is a feature added to an existing codebase, explore it to understand the current state. Verify the user's assumptions. Do not skip this if there is relevant existing code.
 
-### Step 3 — Ask clarifying questions (REQUIRED)
-Ask the user a minimum of 5 clarifying questions before writing anything. Do not start writing the PRD until you have answers.
+### Step 3 — Clarify missing decisions
+Ask focused questions about information needed to write a useful PRD. If the initial brief already answers a topic, do not ask it again. Do not impose a fixed question count.
 
 Cover at minimum:
 - Who are the users? Any specific personas or edge cases?
@@ -29,7 +29,7 @@ Cover at minimum:
 - What does the UI/UX need to look like at a wireframe level?
 - If AI/agents are involved: what should the agent do when it cannot make a clear decision? What is it NOT allowed to do?
 
-Walk down each branch of the design tree and resolve dependencies between decisions one by one. Do not proceed until ambiguities are resolved.
+Resolve decisions that affect the main flows before writing. Record any remaining assumptions or open questions in the PRD rather than inventing answers.
 
 ### Step 4 — Research external facts (if needed)
 If the product involves external APIs, file format constraints, legal requirements, or third-party service limits, research them before writing. Do not put unverified numbers or constraints into the PRD.
@@ -40,17 +40,17 @@ Use the template below. Save the result as `docs/PRD.md` (or the path the user s
 ### Step 6 — Stop, then ask about the ADR
 Stop once the PRD is saved. Do not begin implementation, and do not write the ADR in the same run.
 
-Ask the user whether they want to continue now with the `create-adr` skill to generate the ADR from this PRD. **The user decides** — do not start it unprompted, and do not assume the answer is yes.
+Ask the user whether they want to continue now with the `write-adr` skill to generate the ADR from this PRD. **The user decides** — do not start it unprompted, and do not assume the answer is yes.
 
 ---
 
 ## Rules
 
-- **Language**: Always write the PRD in English, regardless of the language the user communicates in.
+- **Language**: Use the language the user requests; otherwise, match the language of their brief.
 - **No marketing language**: No fluff, no "users will be delighted", no vague superlatives. Every sentence must be useful to a developer or agent implementing the product.
 - **No technical implementation details**: Do not specify frameworks, libraries, file paths, SDK choices, database schemas, or code patterns. Those belong in the ADR (Architecture Decision Records). Mention functional behavior only.
 - **No testing strategy**: Test cases and testing decisions belong in the ADR, not the PRD.
-- **Measurable acceptance criteria**: Every AC must be verifiable. "Works correctly" is not an AC. "Returns HTTP 400 with error message if file exceeds 10 MB" is.
+- **Measurable acceptance criteria**: Every AC must be verifiable. "Works correctly" is not an AC. "Rejects a file over 10 MB with a clear error message" is.
 - **Out of Scope is mandatory**: Explicitly listing what is NOT in scope is as important as listing what is. It prevents scope creep during implementation.
 - **Purpose**: The PRD will be used by a developer agent to create an ADR, and then to implement the application. Write for that audience.
 
@@ -58,7 +58,7 @@ Ask the user whether they want to continue now with the `create-adr` skill to ge
 
 ## PRD Template
 
-```markdown
+````markdown
 # PRD — [Product / Feature Name]
 
 ---
@@ -166,4 +166,4 @@ Include this section if the product involves an AI agent, LLM, or automated deci
 ## 12. Further Notes (optional)
 
 Any open questions, assumptions made, or decisions deferred to a later stage.
-```
+````
