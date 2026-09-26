@@ -24,8 +24,6 @@ Replace `create-design-system` with `write-prd` or `write-adr` to install either
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system --project
 ```
 
-If you previously installed `write-a-prd` or `create-adr`, remove those old names and install `write-prd` and `write-adr`. A skills update does not rename an installed folder.
-
 Then ask your agent to use the installed skill. For example: “Use create-design-system to document the visual style of this website.” The agent reads the skill's instructions and may need to set up a tool the first time it runs; each skill documents its own requirements.
 
 To see your installed user-level skills or refresh them later:
