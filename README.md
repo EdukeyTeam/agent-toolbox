@@ -9,6 +9,7 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 | [write-a-prd](skills/write-a-prd/SKILL.md) | Interview stakeholders and write a product requirements document (PRD). |
 | [create-adr](skills/create-adr/SKILL.md) | Document architecture decisions (ADRs) for a feature or application. |
 | [create-design-system](skills/create-design-system/SKILL.md) | Extract design tokens, a screenshot, and available brand assets from a website. |
+| [respond-to-code-review](skills/respond-to-code-review/SKILL.md) | Address and answer review comments on GitHub, GitLab, or Bitbucket pull and merge requests. |
 
 ## Install a skill
 
