@@ -18,6 +18,6 @@ The first API call includes inline review comments and replies; the second inclu
 
 Check out the PR's source branch before editing; fetching alone does not switch branches. Follow the repository's commit and test rules. For a consolidated reply, write the exact text to a file and use `gh pr comment <number> --body-file <file>`. For a reply attached to a specific inline comment, use GitHub's [review-comment reply endpoint](https://docs.github.com/en/rest/pulls/comments#create-a-reply-for-a-review-comment).
 
-After pushing, recheck comments and checks. Request another review only when needed and supported by that repository. Merge only with the user's authorization and the repository's required checks and approvals.
+After pushing, recheck comments and checks. Request another review only when needed and supported by that repository. If the user wants to enable optional bot reviewers, follow the [one-time review bot setup guide](review-bots.md). Merge only with the user's authorization and the repository's required checks and approvals.
 
 Official references: [pull request reviews](https://docs.github.com/en/rest/pulls/reviews), [review comments](https://docs.github.com/en/rest/pulls/comments), [issue comments](https://docs.github.com/en/rest/issues/comments).
