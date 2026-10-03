@@ -51,7 +51,7 @@ Put the folder in the current workspace. Use the UTC time of staging and a short
 | `rollback` | yes | The exact request or dashboard step that undoes it. |
 | `zone`, `zone_id`, `created_at`, `agent` | no | Context for the reviewer and the audit trail. |
 
-After sending the request the script adds `applied_at`, `http_status`, `api_success` and `result` (the API response). A file that already has `applied_at` is refused; stage a new file to retry or to roll back.
+After sending the request the script adds `applied_at`, `http_status`, `api_success` and `result` (the API response). If the connection fails before a response arrives, it records the attempt with `http_status` and `api_success` set to `null`, because the change may have been applied anyway. A file that already has `applied_at` is refused: read the current state, then stage a new file to retry or to roll back.
 
 ## Before staging
 

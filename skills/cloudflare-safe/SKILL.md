@@ -62,7 +62,7 @@ Only if the user chose to store a write token can you apply a change yourself, o
    node "<skill-dir>/scripts/cf-apply.mjs" "<change-file>" --approved
    ```
 
-4. **Check.** The script sends the request and records the outcome in the change file. It does not test the effect and does not roll back. Run the verification you wrote down. If it fails, tell the user at once and propose the rollback as a new change needing its own approval.
+4. **Check.** The script sends the request and records the outcome in the change file. It does not test the effect and does not roll back. Run the verification you wrote down. If it fails, tell the user at once and propose the rollback as a new change needing its own approval. If the script reports that no response was received, the change may still have gone through: read the current state before doing anything else.
 
 If the script says there is no write token, go back to the dashboard hand-over. Do not ask for a token.
 
@@ -74,7 +74,7 @@ Send the user to the dashboard for these. The apply script refuses the ones it c
 - Deleting or pausing a zone, changing its nameservers or registrar settings, or adding a zone.
 - Account members, roles, billing and subscriptions.
 - Cloudflare Access applications and policies.
-- Removing or disabling all WAF rules at once, or deleting a whole ruleset.
+- Removing or disabling all rules of a ruleset at once, or deleting or disabling a whole ruleset.
 - More than 5 DNS records in one change. Split it into batches and check each one.
 
 ## Before proposing rules

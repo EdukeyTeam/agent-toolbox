@@ -208,6 +208,8 @@ test('cf-apply refuses the hard-prohibited operations', async () => {
     ['POST', `${zone}/dns_records/batch`, { posts: [{ type: 'NS' }] }],
     ['DELETE', `${zone}/rulesets/abc`, null],
     ['PUT', `${zone}/rulesets/phases/http_request_firewall_custom/entrypoint`, { rules: [] }],
+    ['PUT', `${zone}/rulesets/abc`, { enabled: false }],
+    ['PATCH', `${zone}/rulesets/abc`, { rules: [{ action: 'block', enabled: false }, { action: 'skip', enabled: false }] }],
   ];
   for (const [method, route, body] of refused) assert.ok(reason(method, route, body), `${method} ${route} should be refused`);
 
@@ -219,6 +221,9 @@ test('cf-apply refuses the hard-prohibited operations', async () => {
     ['DELETE', `${zone}/rulesets/abc/rules/def`, null],
     ['PUT', `${zone}/rulesets/phases/http_request_firewall_custom/entrypoint`, { rules: [{ action: 'block' }] }],
     ['PATCH', `${zone}/settings/ssl`, { value: 'strict' }],
+    ['PATCH', `${zone}/rulesets/abc/rules/def`, { action: 'block', enabled: false }],
+    ['PUT', `${zone}/rulesets/abc`, { rules: [{ action: 'block', enabled: false }, { action: 'skip' }] }],
+    ['PUT', `${zone}/rulesets/abc`, { description: 'renamed' }],
   ];
   for (const [method, route, body] of allowed) assert.equal(reason(method, route, body), null, `${method} ${route} should be allowed`);
 });
@@ -256,6 +261,26 @@ test('cf-apply records a rejected change and exits non-zero', async t => {
   const recorded = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.equal(recorded.api_success, false);
   assert.equal(recorded.http_status, 400);
+});
+
+test('cf-apply makes a change file non-reusable when no response arrives', async t => {
+  const { applyMain } = await load('cf-apply.mjs');
+  const { dir, env } = workspace(t, { write: true });
+  const file = stage(dir, change());
+  let attempts = 0;
+  const fetchImpl = async () => {
+    attempts += 1;
+    throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNRESET' } });
+  };
+  await assert.rejects(applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 6 });
+  const recorded = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.ok(recorded.applied_at);
+  assert.equal(recorded.http_status, null);
+  assert.equal(recorded.api_success, null);
+  assert.match(recorded.result, /ECONNRESET/);
+
+  await assert.rejects(applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 2 });
+  assert.equal(attempts, 1);
 });
 
 test('setup input rules', async () => {

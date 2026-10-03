@@ -11,7 +11,7 @@
 // request and records the outcome in the change file. It does not verify the effect and it
 // does not roll back: both stay with the agent and the human, as described in SKILL.md.
 // Exit codes: 0 applied, 2 usage or invalid change file, 3 credentials file missing,
-// 4 not approved, 6 write token missing or network failure, 7 API rejected the change,
+// 4 not approved, 6 write token missing or no response received, 7 API rejected the change,
 // 8 prohibited operation.
 import fs from 'node:fs';
 import { API_PREFIX, CliError, callApi, isMain, loadTokens, redact, resolveApiUrl, runCli } from './lib.mjs';
@@ -62,7 +62,13 @@ export function prohibitedReason(method, url, body) {
   }
   if (segments.includes('rulesets')) {
     if (method === 'DELETE' && !segments.includes('rules')) return 'deleting a whole ruleset is not allowed';
-    if (method === 'PUT' && Array.isArray(body?.rules) && body.rules.length === 0) return 'replacing a ruleset with an empty rule list is not allowed';
+    if (!segments.includes('rules')) {
+      // Ruleset-level writes replace the whole rule list, so they can switch everything off at once.
+      if (body?.enabled === false) return 'disabling a whole ruleset is not allowed';
+      if (Array.isArray(body?.rules) && body.rules.every(rule => rule?.enabled === false)) {
+        return 'a ruleset update that leaves no enabled rule is not allowed';
+      }
+    }
   }
   return null;
 }
@@ -101,20 +107,31 @@ export async function applyMain({
   }
 
   stdout.write(`Cloudflare change: ${change.summary}\n  category: ${change.category}\n  blast radius: ${change.blast_radius}\n  ${method} ${url}\n`);
-  const result = await callApi({ url, method, token: tokens.CF_TOKEN_WRITE, body, fetchImpl });
   const secrets = [tokens.CF_TOKEN_READ, tokens.CF_TOKEN_WRITE];
-  const success = result.ok && result.json?.success === true;
+  const record = outcome => {
+    const stamped = { ...change, applied_at: now().toISOString(), ...outcome };
+    const temporary = `${file}.tmp`;
+    fs.writeFileSync(temporary, `${JSON.stringify(stamped, null, 2)}\n`);
+    fs.renameSync(temporary, file);
+    return stamped;
+  };
 
-  const stamped = {
-    ...change,
-    applied_at: now().toISOString(),
+  let result;
+  try {
+    result = await callApi({ url, method, token: tokens.CF_TOKEN_WRITE, body, fetchImpl });
+  } catch (error) {
+    if (!(error instanceof CliError)) throw error;
+    // The request may have reached Cloudflare before the connection failed, so the file
+    // must not be reusable: a retry could create the same record or rule twice.
+    record({ http_status: null, api_success: null, result: redact(error.message, secrets) });
+    throw new CliError(`${error.message}\nNo response was received, so the change may or may not have been applied. Recorded in ${file}. Read the current state before staging a new change.`, 6);
+  }
+  const success = result.ok && result.json?.success === true;
+  const stamped = record({
     http_status: result.status,
     api_success: success,
     result: result.json === undefined ? redact(result.text, secrets) : redact(result.json, secrets),
-  };
-  const temporary = `${file}.tmp`;
-  fs.writeFileSync(temporary, `${JSON.stringify(stamped, null, 2)}\n`);
-  fs.renameSync(temporary, file);
+  });
 
   stdout.write(`  HTTP ${result.status}\n${JSON.stringify(stamped.result, null, 2)}\n`);
   if (!success) {
