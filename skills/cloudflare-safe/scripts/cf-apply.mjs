@@ -45,6 +45,11 @@ export function validateChange(change) {
   return problems;
 }
 
+function hasKey(value, name) {
+  if (!value || typeof value !== 'object') return false;
+  return Object.entries(value).some(([key, child]) => key === name || hasKey(child, name));
+}
+
 // Operations no approval can unlock. Returns the reason, or null when the change is allowed.
 export function prohibitedReason(method, url, body) {
   const route = url.pathname.slice(API_PREFIX.length).replace(/\/+$/, '');
@@ -55,6 +60,8 @@ export function prohibitedReason(method, url, body) {
   for (const area of ['members', 'roles', 'billing', 'subscriptions', 'subscription', 'registrar', 'access']) {
     if (segments.includes(area)) return `changes under "${area}" are not allowed`;
   }
+  if (segments.includes('custom_ns')) return 'custom nameservers are not changed through this script';
+  if (segments.includes('dns_settings') && hasKey(body, 'nameservers')) return 'nameserver settings are not changed through this script';
   if (segments.includes('dns_records')) {
     if (segments.includes('import')) return 'bulk DNS import is not allowed';
     if (body && String(body.type).toUpperCase() === 'NS') return 'NS records are not changed through this script';

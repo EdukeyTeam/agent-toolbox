@@ -211,6 +211,9 @@ test('cf-apply refuses the hard-prohibited operations', async () => {
     ['DELETE', `${zone}/rulesets/abc`, null],
     ['PUT', `${zone}/rulesets/phases/http_request_firewall_custom/entrypoint`, { rules: [] }],
     ['PUT', `${zone}/rulesets/abc`, { enabled: false }],
+    ['PATCH', `${zone}/dns_settings`, { nameservers: { type: 'custom.account' } }],
+    ['PATCH', `accounts/${ACCOUNT}/dns_settings`, { zone_defaults: { nameservers: { type: 'cloudflare.standard' } } }],
+    ['PUT', `${zone}/custom_ns`, { enabled: true }],
     ['PATCH', `${zone}/rulesets/abc`, { rules: [{ action: 'block', enabled: false }, { action: 'skip', enabled: false }] }],
   ];
   for (const [method, route, body] of refused) assert.ok(reason(method, route, body), `${method} ${route} should be refused`);
@@ -226,6 +229,7 @@ test('cf-apply refuses the hard-prohibited operations', async () => {
     ['PATCH', `${zone}/rulesets/abc/rules/def`, { action: 'block', enabled: false }],
     ['PUT', `${zone}/rulesets/abc`, { rules: [{ action: 'block', enabled: false }, { action: 'skip' }] }],
     ['PUT', `${zone}/rulesets/abc`, { description: 'renamed' }],
+    ['PATCH', `${zone}/dns_settings`, { flatten_all_cnames: true }],
   ];
   for (const [method, route, body] of allowed) assert.equal(reason(method, route, body), null, `${method} ${route} should be allowed`);
 });
