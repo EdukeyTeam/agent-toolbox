@@ -35,6 +35,11 @@ export function validateChange(change) {
   if (command && typeof command === 'object') {
     if (!WRITE_METHODS.includes(command.method)) problems.push(`apply_command.method must be one of ${WRITE_METHODS.join(', ')}`);
     if (typeof command.url !== 'string' || !command.url) problems.push('apply_command.url is required');
+    // A body given as text would be sent as-is and skip the checks on its content.
+    const body = command.body;
+    if (body !== undefined && body !== null && typeof body !== 'object') {
+      problems.push('apply_command.body must be a JSON object, an array or null, not text');
+    }
   }
   if ('applied_at' in change) problems.push('this change file was already applied; stage a new file');
   return problems;
@@ -116,12 +121,15 @@ export async function applyMain({
     return stamped;
   };
 
+  // Mark the file as used before sending. If the process is killed mid-request, the file is
+  // already refused on reuse, so a retry cannot create the same record or rule twice.
+  record({ http_status: null, api_success: null, result: 'Request sent; no outcome was recorded.' });
+
   let result;
   try {
     result = await callApi({ url, method, token: tokens.CF_TOKEN_WRITE, body, fetchImpl });
   } catch (error) {
-    // Whatever went wrong, the request may have reached Cloudflare, so the file must not be
-    // reusable: a retry could create the same record or rule twice.
+    // Whatever went wrong, the request may have reached Cloudflare.
     record({ http_status: null, api_success: null, result: redact(String(error.message), secrets) });
     throw new CliError(`${error.message}\nNo complete response was received, so the change may or may not have been applied. Recorded in ${file}. Read the current state before staging a new change.`, 6);
   }

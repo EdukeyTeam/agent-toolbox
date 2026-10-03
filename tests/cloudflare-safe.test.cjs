@@ -180,7 +180,9 @@ test('cf-apply rejects incomplete change files and read-only methods', async t =
   delete incomplete.rollback;
   assert.deepEqual(validateChange(incomplete), ['missing field: rollback']);
   assert.deepEqual(validateChange(change()), []);
-  for (const bad of [incomplete, change({ apply_command: { method: 'GET', url: `${API}zones`, body: null } }), []]) {
+  const textBody = change({ apply_command: { method: 'PUT', url: `${API}zones/${ZONE}/rulesets/abc`, body: '{"enabled":false}' } });
+  assert.match(validateChange(textBody).join(), /body must be a JSON object/);
+  for (const bad of [incomplete, textBody, change({ apply_command: { method: 'GET', url: `${API}zones`, body: null } }), []]) {
     await assert.rejects(applyMain({ argv: [stage(dir, bad), '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 2 });
   }
   assert.equal(calls.length, 0);
@@ -281,6 +283,21 @@ test('cf-apply makes a change file non-reusable when no response arrives', async
 
   await assert.rejects(applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 2 });
   assert.equal(attempts, 1);
+});
+
+test('cf-apply marks the change file as used before the request is sent', async t => {
+  const { applyMain } = await load('cf-apply.mjs');
+  const { dir, env } = workspace(t, { write: true });
+  const file = stage(dir, change());
+  let duringRequest;
+  const fetchImpl = async () => {
+    duringRequest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return { status: 200, ok: true, text: async () => JSON.stringify({ success: true, errors: [], result: {} }) };
+  };
+  await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() });
+  assert.ok(duringRequest.applied_at);
+  assert.equal(duringRequest.api_success, null);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).api_success, true);
 });
 
 test('cf-apply treats a response that breaks off, or any unexpected error, as an attempt', async t => {

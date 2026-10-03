@@ -46,12 +46,12 @@ Put the folder in the current workspace. Use the UTC time of staging and a short
 | `current_state` | yes | What the API returned for the affected object before the change; `null` when creating something new. |
 | `proposed_state` | yes | What will exist afterwards; `null` when deleting. |
 | `diff` | yes | The exact difference, in words a reviewer can check against the two states. |
-| `apply_command` | yes | `method` (`POST`, `PUT`, `PATCH` or `DELETE`), `url` (must start with `https://api.cloudflare.com/client/v4/`) and `body` (the full request body, or `null`). |
+| `apply_command` | yes | `method` (`POST`, `PUT`, `PATCH` or `DELETE`), `url` (must start with `https://api.cloudflare.com/client/v4/`) and `body` (the full request body as a JSON object or array, never as text, or `null`). |
 | `verification` | yes | How to confirm the change worked: the read to repeat and the behaviour to test. |
 | `rollback` | yes | The exact request or dashboard step that undoes it. |
 | `zone`, `zone_id`, `created_at`, `agent` | no | Context for the reviewer and the audit trail. |
 
-After sending the request the script adds `applied_at`, `http_status`, `api_success` and `result` (the API response). If the connection fails before a response arrives, it records the attempt with `http_status` and `api_success` set to `null`, because the change may have been applied anyway. A file that already has `applied_at` is refused: read the current state, then stage a new file to retry or to roll back.
+Just before sending the request the script marks the file as used by adding `applied_at`, with `http_status` and `api_success` set to `null`. When the response arrives it fills in `http_status`, `api_success` and `result` (the API response). If those stay `null`, no complete response was received and the change may or may not have been applied. A file that already has `applied_at` is refused: read the current state, then stage a new file to retry or to roll back.
 
 ## Before staging
 
