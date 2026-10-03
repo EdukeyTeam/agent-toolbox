@@ -32,7 +32,9 @@ export function validateChange(change) {
     if (!(field in change) || empty) problems.push(`missing field: ${field}`);
   }
   const command = change.apply_command;
-  if (command && typeof command === 'object') {
+  if ('apply_command' in change && (!command || typeof command !== 'object' || Array.isArray(command))) {
+    problems.push('apply_command must be an object with method, url and body');
+  } else if (command) {
     if (!WRITE_METHODS.includes(command.method)) problems.push(`apply_command.method must be one of ${WRITE_METHODS.join(', ')}`);
     if (typeof command.url !== 'string' || !command.url) problems.push('apply_command.url is required');
     // A body given as text would be sent as-is and skip the checks on its content.

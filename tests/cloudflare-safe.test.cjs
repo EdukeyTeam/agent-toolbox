@@ -182,7 +182,10 @@ test('cf-apply rejects incomplete change files and read-only methods', async t =
   assert.deepEqual(validateChange(change()), []);
   const textBody = change({ apply_command: { method: 'PUT', url: `${API}zones/${ZONE}/rulesets/abc`, body: '{"enabled":false}' } });
   assert.match(validateChange(textBody).join(), /body must be a JSON object/);
-  for (const bad of [incomplete, textBody, change({ apply_command: { method: 'GET', url: `${API}zones`, body: null } }), []]) {
+  for (const broken of [null, 'POST', []]) {
+    assert.deepEqual(validateChange(change({ apply_command: broken })), ['apply_command must be an object with method, url and body']);
+  }
+  for (const bad of [incomplete, textBody, change({ apply_command: null }), change({ apply_command: { method: 'GET', url: `${API}zones`, body: null } }), []]) {
     await assert.rejects(applyMain({ argv: [stage(dir, bad), '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 2 });
   }
   assert.equal(calls.length, 0);
