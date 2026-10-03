@@ -51,6 +51,8 @@ function hasKey(value, name) {
 }
 
 // Operations no approval can unlock. Returns the reason, or null when the change is allowed.
+// This list covers what can be recognised from the request. It cannot cover the whole API,
+// so the permissions of the write token remain the real limit on what a change can do.
 export function prohibitedReason(method, url, body) {
   const route = url.pathname.slice(API_PREFIX.length).replace(/\/+$/, '');
   const segments = route.split('/');
@@ -62,8 +64,9 @@ export function prohibitedReason(method, url, body) {
   }
   if (segments.includes('custom_ns')) return 'custom nameservers are not changed through this script';
   if (segments.includes('dns_settings') && hasKey(body, 'nameservers')) return 'nameserver settings are not changed through this script';
+  if (route.endsWith('certificate_packs/order')) return 'ordering a paid certificate is a purchase and is not allowed';
   if (segments.includes('dns_records')) {
-    if (segments.includes('import')) return 'bulk DNS import is not allowed';
+    if (segments.includes('import') || segments.includes('scan')) return 'bulk DNS import and DNS scans are not allowed';
     if (body && String(body.type).toUpperCase() === 'NS') return 'NS records are not changed through this script';
     if (segments.includes('batch')) {
       const lists = ['deletes', 'patches', 'puts', 'posts'].map(key => (Array.isArray(body?.[key]) ? body[key] : []));

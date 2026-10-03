@@ -72,10 +72,12 @@ Send the user to the dashboard for these. The apply script refuses the ones it c
 
 - Creating, changing or deleting API tokens.
 - Deleting or pausing a zone, changing its nameservers or registrar settings, or adding a zone.
-- Account members, roles, billing and subscriptions.
+- Account members, roles, billing and subscriptions, and anything that buys a paid feature or plan.
 - Cloudflare Access applications and policies.
 - Removing or disabling all rules of a ruleset at once, or deleting or disabling a whole ruleset.
-- More than 5 DNS records in one change. Split it into batches and check each one.
+- More than 5 DNS records in one change, including DNS imports and scans. Split it into batches and check each one.
+
+The script's checks are a backstop for requests it can recognise, not a complete list. What the write token is permitted to do is the real limit, which is why the setup guide asks for a narrowly scoped one.
 
 ## Before proposing rules
 
