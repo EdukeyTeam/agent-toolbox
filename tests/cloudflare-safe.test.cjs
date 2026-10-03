@@ -283,6 +283,23 @@ test('cf-apply makes a change file non-reusable when no response arrives', async
   assert.equal(attempts, 1);
 });
 
+test('cf-apply treats a response that breaks off, or any unexpected error, as an attempt', async t => {
+  const { applyMain } = await load('cf-apply.mjs');
+  const { dir, env } = workspace(t, { write: true });
+  const failures = [
+    async () => ({ status: 200, ok: true, text: async () => { throw new TypeError('terminated'); } }),
+    async () => { throw new RangeError('unexpected'); },
+  ];
+  for (const fetchImpl of failures) {
+    const file = stage(dir, change());
+    await assert.rejects(applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 6 });
+    const recorded = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.ok(recorded.applied_at);
+    assert.equal(recorded.api_success, null);
+    await assert.rejects(applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 2 });
+  }
+});
+
 test('setup input rules', async () => {
   const { checkAccountId, checkToken, mergeAnswer } = await load('setup-tokens.mjs');
   assert.equal(checkAccountId(ACCOUNT), null);

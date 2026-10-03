@@ -112,13 +112,15 @@ export async function callApi({ url, method = 'GET', token, body, fetchImpl = gl
     headers['Content-Type'] = 'application/json';
     init.body = typeof body === 'string' ? body : JSON.stringify(body);
   }
+  // Reading the body is inside the try: a response that breaks off halfway is also "no answer".
   let response;
+  let text;
   try {
     response = await fetchImpl(url.toString(), init);
+    text = await response.text();
   } catch (error) {
     throw new CliError(`Request to ${url.origin} failed: ${error.cause?.code || error.message}`, 6);
   }
-  const text = await response.text();
   let json;
   try { json = JSON.parse(text); } catch { json = undefined; }
   return { status: response.status, ok: response.ok, text, json };

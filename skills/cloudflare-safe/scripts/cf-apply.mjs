@@ -120,11 +120,10 @@ export async function applyMain({
   try {
     result = await callApi({ url, method, token: tokens.CF_TOKEN_WRITE, body, fetchImpl });
   } catch (error) {
-    if (!(error instanceof CliError)) throw error;
-    // The request may have reached Cloudflare before the connection failed, so the file
-    // must not be reusable: a retry could create the same record or rule twice.
-    record({ http_status: null, api_success: null, result: redact(error.message, secrets) });
-    throw new CliError(`${error.message}\nNo response was received, so the change may or may not have been applied. Recorded in ${file}. Read the current state before staging a new change.`, 6);
+    // Whatever went wrong, the request may have reached Cloudflare, so the file must not be
+    // reusable: a retry could create the same record or rule twice.
+    record({ http_status: null, api_success: null, result: redact(String(error.message), secrets) });
+    throw new CliError(`${error.message}\nNo complete response was received, so the change may or may not have been applied. Recorded in ${file}. Read the current state before staging a new change.`, 6);
   }
   const success = result.ok && result.json?.success === true;
   const stamped = record({
