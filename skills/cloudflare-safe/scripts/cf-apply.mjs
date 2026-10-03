@@ -12,7 +12,7 @@
 // does not roll back: both stay with the agent and the human, as described in SKILL.md.
 // Exit codes: 0 applied, 2 usage or invalid change file, 3 credentials file missing,
 // 4 not approved, 6 write token missing or no response received, 7 API rejected the change,
-// 8 prohibited operation.
+// 8 prohibited operation, or a DNS record whose type could not be checked.
 import fs from 'node:fs';
 import { API_PREFIX, CliError, callApi, isMain, loadTokens, redact, resolveApiUrl, runCli } from './lib.mjs';
 
@@ -78,15 +78,56 @@ export function prohibitedReason(method, url, body) {
   return null;
 }
 
-export async function applyMain({
+// DNS records the request changes or deletes by ID. Their type is not in the request, so it
+// has to be looked up before the NS rule can be applied to them.
+export function existingDnsRecords(method, url, body) {
+  const route = url.pathname.slice(API_PREFIX.length).replace(/\/+$/, '');
+  const single = route.match(new RegExp(`^(zones/${ID}/dns_records)/([^/]+)$`));
+  if (!single) return [];
+  if (single[2] !== 'batch') return method === 'POST' ? [] : [`${single[1]}/${single[2]}`];
+  return ['deletes', 'patches', 'puts']
+    .flatMap(key => (Array.isArray(body?.[key]) ? body[key] : []))
+    .map(record => `${single[1]}/${encodeURIComponent(String(record?.id ?? ''))}`);
+}
+
+async function refuseNsRecords({ method, url, body, token, fetchImpl }) {
+  for (const route of existingDnsRecords(method, url, body)) {
+    const lookup = await callApi({ url: resolveApiUrl(route), token, fetchImpl });
+    const type = lookup.ok ? lookup.json?.result?.type : undefined;
+    if (typeof type !== 'string') {
+      throw new CliError(`Refusing: could not read the DNS record ${route} to check its type (HTTP ${lookup.status}). Nothing was changed.`, 8);
+    }
+    if (type.toUpperCase() === 'NS') {
+      throw new CliError('Refusing: NS records are not changed through this script. Ask the human to do this in the Cloudflare dashboard.', 8);
+    }
+  }
+}
+
+export async function applyMain(options = {}) {
+  const file = (options.argv ?? process.argv.slice(2)).find(arg => !arg.startsWith('--'));
+  if (!file) throw new CliError(USAGE, 2);
+  // One run per change file: a second run started at the same moment must not send it too.
+  const lock = `${file}.lock`;
+  try {
+    fs.closeSync(fs.openSync(lock, 'wx'));
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw new CliError(`Cannot read the change file ${file}: ${error.message}`, 2);
+    throw new CliError(`${lock} exists: another run is applying this change, or one was interrupted. Read the current state in Cloudflare; delete the lock file only when no run is active.`, 2);
+  }
+  try {
+    return await applyLocked(file, options);
+  } finally {
+    fs.rmSync(lock, { force: true });
+  }
+}
+
+async function applyLocked(file, {
   argv = process.argv.slice(2),
   env = process.env,
   fetchImpl = globalThis.fetch,
   stdout = process.stdout,
   now = () => new Date(),
-} = {}) {
-  const file = argv.find(arg => !arg.startsWith('--'));
-  if (!file) throw new CliError(USAGE, 2);
+}) {
   if (!argv.includes('--approved')) {
     throw new CliError('Refusing to apply. Pass --approved only after the human typed "approved" in the chat.', 4);
   }
@@ -110,6 +151,8 @@ export async function applyMain({
     throw new CliError(
       `No write token in ${tokensFile}, so writes are disabled (the default). Hand the change to the human for the dashboard.`, 6);
   }
+
+  await refuseNsRecords({ method, url, body, token: tokens.CF_TOKEN_WRITE, fetchImpl });
 
   stdout.write(`Cloudflare change: ${change.summary}\n  category: ${change.category}\n  blast radius: ${change.blast_radius}\n  ${method} ${url}\n`);
   const secrets = [tokens.CF_TOKEN_READ, tokens.CF_TOKEN_WRITE];

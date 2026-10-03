@@ -51,11 +51,12 @@ Put the folder in the current workspace. Use the UTC time of staging and a short
 | `rollback` | yes | The exact request or dashboard step that undoes it. |
 | `zone`, `zone_id`, `created_at`, `agent` | no | Context for the reviewer and the audit trail. |
 
-Just before sending the request the script marks the file as used by adding `applied_at`, with `http_status` and `api_success` set to `null`. When the response arrives it fills in `http_status`, `api_success` and `result` (the API response). If those stay `null`, no complete response was received and the change may or may not have been applied. A file that already has `applied_at` is refused: read the current state, then stage a new file to retry or to roll back.
+Just before sending the request the script marks the file as used by adding `applied_at`, with `http_status` and `api_success` set to `null`. When the response arrives it fills in `http_status`, `api_success` and `result` (the API response). If those stay `null`, no complete response was received and the change may or may not have been applied. While it runs, the script holds a `<change-file>.lock` file so the same change cannot be sent by two runs at once; a lock left behind means a run was interrupted. A file that already has `applied_at` is refused: read the current state, then stage a new file to retry or to roll back.
 
 ## Before staging
 
 - Read the current state in this session. Do not reuse a state from memory or an earlier conversation.
+- Changing or deleting an existing DNS record makes the script look the record up first, to refuse NS records. The write token therefore needs to be able to read DNS records, which DNS edit permission includes.
 - Keep to one request per file. A change that needs several requests becomes several files, approved one by one in an order that is safe to stop halfway.
 - For `PUT` requests that replace a whole object, such as a ruleset, build the body from the state you just read so nothing existing is dropped.
 - Check the change against the "Never, even with approval" list in the skill.

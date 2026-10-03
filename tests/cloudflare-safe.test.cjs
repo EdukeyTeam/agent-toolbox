@@ -285,6 +285,50 @@ test('cf-apply makes a change file non-reusable when no response arrives', async
   assert.equal(attempts, 1);
 });
 
+test('cf-apply looks up records changed by ID and refuses NS records', async t => {
+  const { applyMain, existingDnsRecords } = await load('cf-apply.mjs');
+  const records = `zones/${ZONE}/dns_records`;
+  const ids = (method, route, body) => existingDnsRecords(method, new URL(API + route), body);
+  assert.deepEqual(ids('POST', records, { type: 'A' }), []);
+  assert.deepEqual(ids('DELETE', `${records}/r1`, null), [`${records}/r1`]);
+  assert.deepEqual(ids('PATCH', `${records}/r1`, { content: 'x' }), [`${records}/r1`]);
+  assert.deepEqual(ids('POST', `${records}/batch`, { posts: [{ type: 'A' }], deletes: [{ id: 'r1' }], patches: [{ id: 'r2' }] }),
+    [`${records}/r1`, `${records}/r2`]);
+
+  const { dir, env } = workspace(t, { write: true });
+  const types = { r1: 'A', r2: 'NS' };
+  const server = () => fakeFetch((url, init) => {
+    const id = url.split('/').pop();
+    if (init.method !== 'GET') return { body: { success: true, errors: [], result: {} } };
+    return types[id] ? { body: { success: true, result: { id, type: types[id] } } } : { status: 404, body: { success: false } };
+  });
+  const attempt = async command => {
+    const { calls, fetchImpl } = server();
+    const file = stage(dir, change({ apply_command: command }));
+    const outcome = await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }).then(() => 0, error => error.exitCode);
+    return { outcome, writes: calls.filter(call => call.method !== 'GET').length, used: 'applied_at' in JSON.parse(fs.readFileSync(file, 'utf8')) };
+  };
+
+  assert.deepEqual(await attempt({ method: 'DELETE', url: `${API}${records}/r1`, body: null }), { outcome: 0, writes: 1, used: true });
+  assert.deepEqual(await attempt({ method: 'DELETE', url: `${API}${records}/r2`, body: null }), { outcome: 8, writes: 0, used: false });
+  assert.deepEqual(await attempt({ method: 'PATCH', url: `${API}${records}/missing`, body: { content: 'x' } }), { outcome: 8, writes: 0, used: false });
+  assert.deepEqual(await attempt({ method: 'POST', url: `${API}${records}/batch`, body: { deletes: [{ id: 'r1' }, { id: 'r2' }] } }),
+    { outcome: 8, writes: 0, used: false });
+});
+
+test('cf-apply refuses a change file that another run holds', async t => {
+  const { applyMain } = await load('cf-apply.mjs');
+  const { dir, env } = workspace(t, { write: true });
+  const file = stage(dir, change());
+  const { calls, fetchImpl } = fakeFetch();
+  fs.writeFileSync(`${file}.lock`, '');
+  await assert.rejects(applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 2 });
+  assert.equal(calls.length, 0);
+  fs.rmSync(`${file}.lock`);
+  assert.equal(await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), 0);
+  assert.equal(fs.existsSync(`${file}.lock`), false);
+});
+
 test('cf-apply marks the change file as used before the request is sent', async t => {
   const { applyMain } = await load('cf-apply.mjs');
   const { dir, env } = workspace(t, { write: true });
@@ -328,6 +372,25 @@ test('setup input rules', async () => {
   assert.equal(mergeAnswer('stored', ' new '), 'new');
   assert.equal(mergeAnswer('stored', '-', { optional: true }), '');
   assert.equal(mergeAnswer(undefined, ''), '');
+});
+
+test('credentials are written to a private file without touching the parent folder', async t => {
+  const { writePrivateFile } = await load('setup-tokens.mjs');
+  const { dir } = workspace(t);
+  const file = path.join(dir, 'private-credentials');
+  fs.writeFileSync(file, 'old', { mode: 0o644 });
+  if (process.platform !== 'win32') fs.chmodSync(dir, 0o755);
+  writePrivateFile(file, 'new');
+  assert.equal(fs.readFileSync(file, 'utf8'), 'new');
+  assert.deepEqual(fs.readdirSync(dir).filter(name => name.endsWith('.new')), []);
+  if (process.platform === 'win32') {
+    const acl = spawnSync('icacls', [file], { encoding: 'utf8' }).stdout;
+    assert.doesNotMatch(acl, /\(I\)/, 'no inherited permissions remain');
+    assert.equal(acl.split(/\r?\n/).filter(line => /:\(/.test(line)).length, 1, 'exactly one grant remains');
+  } else {
+    assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(dir).mode & 0o777, 0o755);
+  }
 });
 
 test('the scripts run as commands, including through a symlink, and setup refuses a non-interactive run', t => {

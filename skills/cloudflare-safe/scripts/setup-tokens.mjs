@@ -64,17 +64,28 @@ async function askChecked(question, current, check, options = {}) {
   }
 }
 
-function restrictToCurrentUser(file) {
-  if (process.platform !== 'win32') {
-    fs.chmodSync(path.dirname(file), 0o700);
-    fs.chmodSync(file, 0o600);
-    return true;
-  }
+// Writes the credentials through a new file that is private before any token is in it, then
+// swaps it into place. An existing file's looser permissions are therefore never reused, and
+// the parent folder is left as it is (it may be a shared folder the user chose).
+export function writePrivateFile(file, content) {
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  const temporary = `${file}.${process.pid}.new`;
+  fs.rmSync(temporary, { force: true });
   try {
-    execFileSync('icacls', [file, '/inheritance:r', '/grant:r', `${os.userInfo().username}:F`], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
+    fs.closeSync(fs.openSync(temporary, 'wx', 0o600));
+    if (process.platform === 'win32') {
+      // A new file has only inherited permissions; dropping those leaves the single grant below.
+      const { USERDOMAIN, USERNAME } = process.env;
+      const user = USERDOMAIN && USERNAME ? `${USERDOMAIN}\\${USERNAME}` : os.userInfo().username;
+      execFileSync('icacls', [temporary, '/inheritance:r', '/grant:r', `${user}:F`], { stdio: 'ignore' });
+    } else {
+      fs.chmodSync(temporary, 0o600);
+    }
+    fs.writeFileSync(temporary, content);
+    fs.renameSync(temporary, file);
+  } catch (error) {
+    fs.rmSync(temporary, { force: true });
+    throw new CliError(`Could not create a private credentials file at ${file}: ${error.message}\nNothing was stored.`, 1);
   }
 }
 
@@ -99,15 +110,12 @@ Write token: leave it blank. Without it the agent can only read; you make change
       current.CF_TOKEN_WRITE, checkToken, { hidden: true, optional: true }),
   };
 
-  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  fs.writeFileSync(file, serializeTokens(tokens), { mode: 0o600 });
-  const restricted = restrictToCurrentUser(file);
+  writePrivateFile(file, serializeTokens(tokens));
 
   process.stdout.write(`\nStored in ${file}\n  account ID: ${tokens.CF_ACCOUNT_ID}\n  read token: set\n`);
   process.stdout.write(tokens.CF_TOKEN_WRITE
     ? '  write token: set - the agent can now apply changes you approve in chat\n'
     : '  write token: not set - the agent is read-only (recommended)\n');
-  if (!restricted) process.stdout.write('  Could not restrict the file to your user with icacls; check its permissions.\n');
 
   process.stdout.write('\nChecking the read token...\n');
   try {
