@@ -74,10 +74,12 @@ export function writePrivateFile(file, content) {
   try {
     fs.closeSync(fs.openSync(temporary, 'wx', 0o600));
     if (process.platform === 'win32') {
-      // A new file has only inherited permissions; dropping those leaves the single grant below.
+      // Drop inherited permissions, grant the user, and remove the broad groups by their
+      // well-known IDs (Everyone, Authenticated Users, Users). Windows keeps SYSTEM and
+      // Administrators on the file, as it does for other private files such as SSH keys.
       const { USERDOMAIN, USERNAME } = process.env;
       const user = USERDOMAIN && USERNAME ? `${USERDOMAIN}\\${USERNAME}` : os.userInfo().username;
-      execFileSync('icacls', [temporary, '/inheritance:r', '/grant:r', `${user}:F`], { stdio: 'ignore' });
+      execFileSync('icacls', [temporary, '/inheritance:r', '/grant:r', `${user}:F`, '/remove:g', '*S-1-1-0', '*S-1-5-11', '*S-1-5-32-545'], { stdio: 'ignore' });
     } else {
       fs.chmodSync(temporary, 0o600);
     }

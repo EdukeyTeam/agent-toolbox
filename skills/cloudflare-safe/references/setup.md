@@ -28,7 +28,7 @@ In your own terminal, not through the agent:
 node "<skill-dir>/scripts/setup-tokens.mjs"
 ```
 
-It asks for the account ID and the read token (input is hidden), leaves the write token empty unless you supply one, saves the file readable only by your user, and checks that the token works. Run it again at any time to replace a value; pressing Enter keeps the stored one.
+It asks for the account ID and the read token (input is hidden), leaves the write token empty unless you supply one, saves the file so that other users of the machine cannot read it (on Windows, the system account and administrators keep access, as with any file), and checks that the token works. Run it again at any time to replace a value; pressing Enter keeps the stored one.
 
 The file is `~/.config/cloudflare/tokens.env` on every system (on Windows, `C:\Users\<you>\.config\cloudflare\tokens.env`). Set the `CLOUDFLARE_TOKENS_FILE` environment variable before running the scripts to keep it elsewhere. Keep it out of synced folders (OneDrive, Dropbox, iCloud) and out of any repository.
 

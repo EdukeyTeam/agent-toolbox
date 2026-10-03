@@ -390,7 +390,10 @@ test('credentials are written to a private file without touching the parent fold
   if (process.platform === 'win32') {
     const acl = spawnSync('icacls', [file], { encoding: 'utf8' }).stdout;
     assert.doesNotMatch(acl, /\(I\)/, `no inherited permissions remain: ${acl}`);
-    assert.equal(acl.split(/\r?\n/).filter(line => /:\(/.test(line)).length, 1, `exactly one grant remains: ${acl}`);
+    const grants = acl.split(/\r?\n/).filter(line => /:\(/.test(line)).map(line => line.replace(file, '').trim());
+    const user = os.userInfo().username.toLowerCase();
+    const expected = grant => /^(NT AUTHORITY\\SYSTEM|BUILTIN\\Administrators):/i.test(grant) || grant.toLowerCase().includes(`\\${user}:`);
+    assert.ok(grants.length >= 1 && grants.every(expected), `only the user, SYSTEM and Administrators have access: ${acl}`);
   } else {
     assert.equal(fs.statSync(file).mode & 0o777, 0o600);
     assert.equal(fs.statSync(dir).mode & 0o777, 0o755);
