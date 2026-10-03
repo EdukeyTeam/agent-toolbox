@@ -389,8 +389,8 @@ test('credentials are written to a private file without touching the parent fold
   assert.deepEqual(fs.readdirSync(dir).filter(name => name.endsWith('.new')), []);
   if (process.platform === 'win32') {
     const acl = spawnSync('icacls', [file], { encoding: 'utf8' }).stdout;
-    assert.doesNotMatch(acl, /\(I\)/, 'no inherited permissions remain');
-    assert.equal(acl.split(/\r?\n/).filter(line => /:\(/.test(line)).length, 1, 'exactly one grant remains');
+    assert.doesNotMatch(acl, /\(I\)/, `no inherited permissions remain: ${acl}`);
+    assert.equal(acl.split(/\r?\n/).filter(line => /:\(/.test(line)).length, 1, `exactly one grant remains: ${acl}`);
   } else {
     assert.equal(fs.statSync(file).mode & 0o777, 0o600);
     assert.equal(fs.statSync(dir).mode & 0o777, 0o755);
