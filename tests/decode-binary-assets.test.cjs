@@ -9,7 +9,7 @@ const decoder = path.resolve(__dirname, '../skills/create-design-system/scripts/
 const asset = Buffer.alloc(128, 65).toString('base64');
 
 function fixture(t) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-toolbox-decoder-'));
+  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'agent-toolbox-decoder-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const output = path.join(dir, 'assets');
   return {

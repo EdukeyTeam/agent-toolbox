@@ -1,6 +1,6 @@
 # Edukey Agent Toolbox
 
-Practical skills for AI agents, created by [Edukey](https://edukey.ai) and shared with our course participants, clients, and the wider community. The first skills help developers plan software and capture website design systems. We plan to add business skills and plugin bundles for easier installation.
+Practical skills for AI agents, created by [Edukey](https://edukey.ai) and shared with our course participants, clients, and the wider community. The first skills help developers plan software, capture website design systems, respond to code review, and work safely with Cloudflare. We plan to add business skills and plugin bundles for easier installation.
 
 ## Available skills
 
@@ -10,6 +10,7 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 | [write-adr](skills/write-adr/SKILL.md) | Write Architecture Decision Records (ADRs) covering system design, data models, API contracts, diagrams, and testing strategy. |
 | [create-design-system](skills/create-design-system/SKILL.md) | Extract design tokens, a screenshot, and available brand assets from a website. |
 | [respond-to-code-review](skills/respond-to-code-review/SKILL.md) | Address and answer review comments on GitHub, GitLab, or Bitbucket pull and merge requests. |
+| [cloudflare-safe](skills/cloudflare-safe/SKILL.md) | Let an agent inspect a Cloudflare account through a read-only token it never sees, and propose changes for you to approve. |
 
 ## Install a skill
 
@@ -19,7 +20,7 @@ The recommended installer is the [skills CLI](https://skills.sh/). You need Node
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system -g
 ```
 
-Replace `create-design-system` with `write-prd`, `write-adr`, or `respond-to-code-review` to install another skill. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
+Replace `create-design-system` with `write-prd`, `write-adr`, `respond-to-code-review`, or `cloudflare-safe` to install another skill. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
 
 ```bash
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system --project
