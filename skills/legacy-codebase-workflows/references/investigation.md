@@ -2,6 +2,8 @@
 
 Start from the question, not a predetermined documentation tree. For a new repository, establish language/runtime, build descriptors, entry points, dependency manifests, modules, tests and integration boundaries. Record the examined commit and working-copy changes. Inventory counts must come from commands or tool metadata.
 
+Treat skipped source as a coverage gap. For non-UTF-8 text, confirm its encoding from build configuration and inspect the original with that decoder. Record the encoding and original byte hash, and verify its line ranges manually: the bundled map, index and citation checker accept UTF-8 only.
+
 ## Find behavior across an undocumented framework
 
 1. Locate the application's entry point, feature handler or service and trace its actual caller.
