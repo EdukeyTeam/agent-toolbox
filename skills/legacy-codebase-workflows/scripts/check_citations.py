@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from repo_files import read_safe_text
+from repo_files import read_safe_text, split_source_lines
 
 
 def check_cards(root: str | Path, evidence: dict) -> dict:
@@ -38,12 +38,12 @@ def check_cards(root: str | Path, evidence: dict) -> dict:
         if not errors:
             try:
                 text, actual_digest = read_safe_text(root, path, max_file_bytes=20_000_000)
-                lines = text.splitlines(keepends=True)
+                lines = split_source_lines(text)
                 if actual_digest != digest:
                     errors.append("stale source sha256")
                 if end > len(lines):
                     errors.append("line range outside source")
-                elif quote not in "".join(lines[start - 1:end]):
+                elif quote.replace("\r\n", "\n") not in "\n".join(lines[start - 1:end]):
                     errors.append("quote does not occur in cited lines")
             except ValueError as exc:
                 errors.append(str(exc))

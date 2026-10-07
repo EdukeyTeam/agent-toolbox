@@ -26,7 +26,7 @@ Read the bounded `inventory_summary` on stdout (language counts and up to 20 mod
 | `inventory.json` | Files, content hashes, language/kind, examined revision and working-copy fingerprint. |
 | `map.meta.json` | Selection, limits, coverage, skipped files, parse failures, descriptors, truncation and dependency versions. |
 
-Metadata `status` distinguishes `complete`, `inventory-only`, `in-progress` and `failed`. A failed parse/rank retains the fresh inventory and records the failure stage, while replacing any old symbol map with a diagnostic. Do not use a map unless status is `complete`. A full graph is capped at 200,000 edges and 200,000 tags; map a subtree if either limit is reached.
+Metadata `status` distinguishes `complete`, `inventory-only`, `in-progress` and `failed`. A failed inventory invalidates earlier artifacts and reports unknown coverage. A failed parse/rank retains the fresh inventory and records the failure stage, while replacing any old symbol map with a diagnostic. Do not use a map unless status is `complete`. A full graph is capped at 200,000 edges and 200,000 tags; map a subtree if either limit is reached.
 
 Budget units are estimated tokens using `ceil(Unicode characters / 4)`. This enforces a text-size bound, not a model's tokenizer count or billing cost. Check the metadata's estimator. A short map deliberately omits definitions; it is not a complete repository index.
 
@@ -41,6 +41,8 @@ Create a JSON evidence file with a `citations` array. Each card has `path` (rela
 ```bash
 python /path/to/skill/scripts/check_citations.py /path/to/repository /path/to/artifacts/evidence.json
 ```
+
+The checker counts LF/CRLF source lines and normalizes CRLF quotations to LF while hashing the original bytes. The citation array must be nonempty.
 
 Exit 0 means the checked citations match current source; exit 1 means at least one is invalid/stale; exit 2 means malformed input or an operational error. Read the machine-readable output. An empty citation set supplies no evidence. Matching quotations do not prove a claim or search completeness.
 

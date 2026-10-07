@@ -171,6 +171,67 @@ class MapTests(unittest.TestCase):
         result = subprocess.run([sys.executable, "-c", query_check], capture_output=True, text=True, env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_git_clean_filter_is_never_executed(self):
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.write("a.py", "def alpha(): pass\n")
+        self.write(".gitattributes", "a.py filter=untrusted\n")
+        subprocess.run(["git", "-C", str(self.repo), "add", "a.py", ".gitattributes"], check=True)
+        marker = self.base / "filter-was-run"
+        script = self.base / "filter.py"
+        script.write_text("from pathlib import Path; import sys; Path(%r).touch(); print(sys.stdin.read())" % str(marker))
+        subprocess.run(["git", "-C", str(self.repo), "config", "filter.untrusted.clean", f'"{sys.executable}" "{script}"'], check=True)
+        self.write("a.py", "def changed(): pass\n")
+        inventory = scan_repository(self.repo)
+        self.assertIsNone(inventory["dirty"])
+        self.assertTrue(inventory["git_notes"])
+        self.assertFalse(marker.exists())
+
+    def test_failed_scan_invalidates_previous_successful_artifacts(self):
+        self.write("a.py", "def alpha(): pass\n")
+        self.map()
+        with patch("repo_map.scan_repository", side_effect=ValueError("cannot inventory directory")):
+            with self.assertRaisesRegex(ValueError, "cannot inventory"):
+                self.map()
+        meta = json.loads((self.out / "map.meta.json").read_text())
+        inventory = json.loads((self.out / "inventory.json").read_text())
+        self.assertEqual(meta["status"], "failed")
+        self.assertEqual(meta["failure"]["stage"], "inventory")
+        self.assertEqual(inventory["status"], "failed")
+        self.assertIsNone(meta["coverage"])
+        self.assertNotIn("alpha", (self.out / "repo-map.md").read_text())
+
+    @unittest.skipUnless(os.name == "posix" and os.geteuid() != 0, "requires non-root POSIX permissions")
+    def test_unreadable_subtree_is_reported_as_scan_failure(self):
+        hidden = self.repo / "blocked"
+        hidden.mkdir()
+        self.write("blocked/a.py", "def inaccessible(): pass\n")
+        hidden.chmod(0)
+        try:
+            with self.assertRaisesRegex(ValueError, "cannot inventory directory"):
+                self.map()
+            self.assertEqual(json.loads((self.out / "map.meta.json").read_text())["status"], "failed")
+        finally:
+            hidden.chmod(0o700)
+
+    def test_git_trace_cannot_write_inside_source(self):
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.write("a.py", "def alpha(): pass\n")
+        trace = self.repo / "trace.log"
+        with patch.dict(os.environ, {"GIT_TRACE": str(trace), "GIT_TRACE2_EVENT": str(trace)}):
+            self.map()
+        self.assertFalse(trace.exists())
+
+    def test_form_feed_does_not_shift_original_line_numbers(self):
+        self.write("a.py", "# comment\fcontinued\n\ndef real_definition():\n    pass\n")
+        self.map()
+        self.assertIn("a.py:L3: def real_definition():", (self.out / "repo-map.md").read_text())
+        _text, digest = read_safe_text(self.repo, "a.py")
+        card = {"path": "a.py", "sha256": digest, "start_line": 3, "end_line": 3, "quote": "def real_definition():"}
+        self.assertTrue(check_cards(self.repo, {"citations": [card]})["valid"])
+        self.write("b.py", "def crlf():\r\n    pass\r\n")
+        _text, digest = read_safe_text(self.repo, "b.py")
+        self.assertTrue(check_cards(self.repo, {"citations": [{"path": "b.py", "sha256": digest, "start_line": 1, "end_line": 2, "quote": "def crlf():\n    pass"}]})["valid"])
+
     def test_inventory_only_without_parser_dependencies(self):
         self.write("src/a.py", "def alpha(): pass\n")
         with patch("repo_map._packages", side_effect=ImportError("not installed")), patch("repo_map._tags", side_effect=AssertionError("must not parse")):

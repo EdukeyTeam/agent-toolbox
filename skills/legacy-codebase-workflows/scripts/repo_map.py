@@ -15,7 +15,7 @@ from functools import lru_cache
 from collections import Counter
 from pathlib import Path
 
-from repo_files import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_FILES, read_safe_text, scan_repository
+from repo_files import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_FILES, read_safe_text, scan_repository, split_source_lines
 
 VENDOR = Path(__file__).resolve().parents[1] / "vendor"
 sys.path.insert(0, str(VENDOR))
@@ -138,7 +138,7 @@ def _tags(root: Path, output: Path, inventory: dict):
                     cached = json.loads(cache_path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 pass
-            line_count = len(text.splitlines())
+            line_count = len(split_source_lines(text))
             if _valid_cached(cached, current_digest, query_digest, parser_version, line_count):
                 tags = [{**tag, "path": path} for tag in cached["tags"]]
             else:
@@ -178,7 +178,17 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
         if Path(path).is_absolute() or ".." in Path(path).parts:
             raise ValueError(f"focus/subtree path must be relative: {path}")
     output.mkdir(parents=True, exist_ok=True)
-    inventory = scan_repository(root, subtrees=subtrees, excludes=excludes, max_files=max_files, max_file_bytes=max_file_bytes)
+    initial = {"tool": "legacy-codebase-workflows repo_map", "version": VERSION, "status": "in-progress", "source_root": str(root), "coverage": None, "map_sha256": None}
+    _atomic_write(output / "repo-map.md", "# Repository inventory\n\nNo current symbol map. Inspect map.meta.json for generation status.\n")
+    _atomic_write(output / "map.meta.json", json.dumps(initial, sort_keys=True, indent=2) + "\n")
+    _atomic_write(output / "inventory.json", json.dumps({"root": str(root), "status": "in-progress", "files": []}, sort_keys=True, indent=2) + "\n")
+    try:
+        inventory = scan_repository(root, subtrees=subtrees, excludes=excludes, max_files=max_files, max_file_bytes=max_file_bytes)
+    except (OSError, ValueError) as exc:
+        initial.update(status="failed", failure={"stage": "inventory", "message": str(exc)})
+        _atomic_write(output / "map.meta.json", json.dumps(initial, sort_keys=True, indent=2) + "\n")
+        _atomic_write(output / "inventory.json", json.dumps({"root": str(root), "status": "failed", "files": [], "failure": initial["failure"]}, sort_keys=True, indent=2) + "\n")
+        raise
     groups = Counter("/".join(entry["path"].split("/")[:2]) if entry["path"].count("/") >= 2 else (entry["path"].split("/")[0] if "/" in entry["path"] else "<root>") for entry in inventory["files"])
     summary = {"languages": dict(sorted(Counter(entry["language"] or entry["kind"] for entry in inventory["files"]).items())), "modules": [{"path": path, "files": count} for path, count in sorted(groups.items(), key=lambda item: (-item[1], item[0]))[:20]], "modules_omitted": max(0, len(groups) - 20)}
     # Save the current scope before parsing/ranking can exceed their safety limits.
@@ -186,7 +196,7 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
     preliminary = {
         "tool": "legacy-codebase-workflows repo_map", "version": VERSION,
         "status": "inventory-only" if inventory_only else "in-progress",
-        "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"],
+        "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"], "git_notes": inventory["git_notes"],
         "working_copy_fingerprint": inventory["fingerprint"], "inventory_summary": summary,
         "selection": {"subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},
         "coverage": {"candidates_seen": inventory["totals"]["candidates_seen"], "selected_files": len(inventory["files"]), "parsed_files": None, "definitions_found": None},
@@ -215,7 +225,7 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
         text, digest = read_safe_text(root, path, max_file_bytes=max(by_path[path]["size"], 1))
         if digest != by_path[path]["sha256"]:
             raise ValueError(f"source changed while rendering: {path}")
-        return text.splitlines()
+        return split_source_lines(text)
 
     header = "# Repository map\n\n"
     chunks = [header]
@@ -240,7 +250,7 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
     map_text = "".join(chunks)
     metadata = {
         "tool": "legacy-codebase-workflows repo_map", "version": VERSION, "status": "complete",
-        "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"],
+        "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"], "git_notes": inventory["git_notes"],
         "working_copy_fingerprint": inventory["fingerprint"], "inventory_summary": summary,
         "fingerprint_scope": "selected readable files and skip reasons, from current bytes; ignored files and secret contents are excluded",
         "selection": {"subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},

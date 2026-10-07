@@ -30,8 +30,8 @@ IGNORED_DIRS = {".git", ".aider.tags.cache", "node_modules", ".venv", "venv", "_
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
-    env = os.environ.copy()
-    env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0"})
+    env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
+    env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GIT_LITERAL_PATHSPECS": "1"})
     command = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), *args]
     try:
         return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, check=False)
@@ -97,9 +97,9 @@ def _ignored_non_git(root: Path, relative: PurePosixPath) -> bool:
 
 def _candidates(root: Path, git_repo: bool, subtrees):
     if git_repo:
-        env = os.environ.copy()
-        env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0"})
-        args = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"]
+        env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
+        env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GIT_LITERAL_PATHSPECS": "1"})
+        args = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), "ls-files", "--deduplicate", "-z", "--cached", "--others", "--exclude-standard"]
         if subtrees:
             args.extend(["--", *subtrees])
         proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
@@ -120,7 +120,10 @@ def _candidates(root: Path, git_repo: bool, subtrees):
                 proc.wait()
             proc.stdout.close()
         return
-    for directory, dirs, files in os.walk(root, followlinks=False):
+    def walk_error(error):
+        raise ValueError(f"cannot inventory directory: {error.filename}: {error.strerror}")
+
+    for directory, dirs, files in os.walk(root, followlinks=False, onerror=walk_error):
         dirs[:] = sorted(d for d in dirs if d not in IGNORED_DIRS and not (Path(directory) / d).is_symlink())
         for name in sorted(files):
             relative = (Path(directory) / name).relative_to(root).as_posix()
@@ -142,7 +145,11 @@ def read_safe_text(root: str | Path, relative_path: str, *, max_file_bytes: int 
         size = path.stat().st_size
         if size > max_file_bytes:
             raise ValueError("file exceeds max_file_bytes")
-        data = path.read_bytes()
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+        with os.fdopen(os.open(path, flags), "rb") as handle:
+            data = handle.read(max_file_bytes + 1)
+        if len(data) > max_file_bytes:
+            raise ValueError("file exceeds max_file_bytes")
     except OSError as exc:
         raise ValueError(f"cannot read file: {exc.strerror}") from exc
     if b"\0" in data:
@@ -151,6 +158,16 @@ def read_safe_text(root: str | Path, relative_path: str, *, max_file_bytes: int 
         return data.decode("utf-8"), hashlib.sha256(data).hexdigest()
     except UnicodeDecodeError as exc:
         raise ValueError("non-UTF-8 file") from exc
+
+
+def split_source_lines(text: str) -> list[str]:
+    """Count LF lines like Tree-sitter/Git; accept CRLF without treating form feeds as newlines."""
+    if not text:
+        return []
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return [line[:-1] if line.endswith("\r") else line for line in lines]
 
 
 def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: int = DEFAULT_MAX_FILES, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES) -> dict:
@@ -163,8 +180,22 @@ def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: in
         _safe_relative(subtree)
     top_result = _git(root, "rev-parse", "--show-toplevel")
     git_repo = top_result.returncode == 0 and Path(os.fsdecode(top_result.stdout.strip())).resolve() == root
-    revision = _git(root, "rev-parse", "HEAD").stdout.decode("ascii", "replace").strip() if git_repo else None
-    dirty = bool(_git(root, "status", "--porcelain=v1", "--untracked-files=all").stdout) if git_repo else None
+    head = _git(root, "rev-parse", "HEAD") if git_repo else None
+    revision = head.stdout.decode("ascii", "replace").strip() if head is not None and head.returncode == 0 else None
+    git_notes = []
+    dirty = None
+    if git_repo:
+        filters = _git(root, "config", "--name-only", "--get-regexp", r"^filter\..*\.(clean|process)$")
+        if filters.returncode not in (0, 1):
+            git_notes.append("dirty state unavailable: cannot safely inspect Git filter configuration")
+        elif filters.returncode == 0:
+            git_notes.append("dirty state not checked: Git clean/process filters can execute repository commands")
+        else:
+            state = _git(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=all")
+            if state.returncode == 0:
+                dirty = bool(state.stdout)
+            else:
+                git_notes.append("dirty state unavailable: git status failed")
     files, skipped = [], []
     candidates = 0
     iterator = _candidates(root, git_repo, subtrees)
@@ -192,7 +223,7 @@ def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: in
         iterator.close()
     fingerprint_input = "\n".join([*(f"{f['path']}\0{f['sha256']}" for f in files), *(f"SKIP\0{s['path']}\0{s['reason']}" for s in skipped)])
     return {
-        "root": str(root), "git": git_repo, "revision": revision, "dirty": dirty,
+        "root": str(root), "git": git_repo, "revision": revision, "dirty": dirty, "git_notes": git_notes,
         "fingerprint": hashlib.sha256(fingerprint_input.encode("utf-8")).hexdigest(),
         "files": files, "skipped": skipped,
         "totals": {"candidates_seen": candidates, "selected_files": len(files), "skipped_files": len(skipped)},
