@@ -19,6 +19,14 @@ from repo_map import generate
 
 
 class MapTests(unittest.TestCase):
+    def make_symlink(self, path, target, *, target_is_directory=False):
+        try:
+            path.symlink_to(target, target_is_directory=target_is_directory)
+        except OSError as exc:
+            if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows test account lacks symlink privilege (WinError 1314)")
+            raise
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -392,7 +400,7 @@ class MapTests(unittest.TestCase):
         subprocess.run(["git", "-C", str(self.repo), "add", "-f", ".env"], check=True)
         outside = self.base / "outside.py"
         outside.write_text("def outside(): pass\n", encoding="utf-8", newline="\n")
-        (self.repo / "link.py").symlink_to(outside)
+        self.make_symlink(self.repo / "link.py", outside)
         inventory = scan_repository(self.repo)
         paths = {item["path"] for item in inventory["files"]}
         self.assertIn("tracked.py", paths)
@@ -403,7 +411,7 @@ class MapTests(unittest.TestCase):
         self.assertTrue(any(item["path"] == "link.py" and "symlink" in item["reason"] for item in inventory["skipped"]))
         subprocess.run(["git", "-C", str(self.repo), "add", "-f", "ignored.py"], check=True)
         self.assertIn("ignored.py", {item["path"] for item in scan_repository(self.repo)["files"]})
-        (self.repo / "loop").symlink_to(self.repo, target_is_directory=True)
+        self.make_symlink(self.repo / "loop", self.repo, target_is_directory=True)
         (self.repo / ".git").rename(self.base / "hidden-git")
         inventory = scan_repository(self.repo)
         self.assertNotIn("ignored.py", {item["path"] for item in inventory["files"]})
@@ -560,12 +568,12 @@ class MapTests(unittest.TestCase):
         self.write("a.py", "def safe(): pass\n")
         target = self.write("important.txt", "DO NOT CHANGE\n")
         self.out.mkdir()
-        (self.out / "repo-map.md").symlink_to(target)
+        self.make_symlink(self.out / "repo-map.md", target)
         self.map()
         self.assertEqual(target.read_text(encoding="utf-8"), "DO NOT CHANGE\n")
         self.assertFalse((self.out / "repo-map.md").is_symlink())
         (self.out / "cache").rename(self.out / "old-cache")
-        (self.out / "cache").symlink_to(self.repo, target_is_directory=True)
+        self.make_symlink(self.out / "cache", self.repo, target_is_directory=True)
         with self.assertRaisesRegex(ValueError, "cache path"):
             self.map()
         self.assertEqual(target.read_text(encoding="utf-8"), "DO NOT CHANGE\n")
