@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - run: npm ci
       - run: npm test
       - name: Build and verify Claude plugin ZIP

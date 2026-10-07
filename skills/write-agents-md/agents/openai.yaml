@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write AGENTS.md"
+  short_description: "Minimal scoped guidance from web and desktop templates"
+  default_prompt: "Use $write-agents-md to create or refine minimal root and nested guidance by copying the appropriate template first."
