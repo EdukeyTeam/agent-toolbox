@@ -9,6 +9,13 @@ This skill contains an attributed adaptation of Aider's repository-map code and 
 - Adaptation: [aider_rank.py](vendor/aider_rank.py) retains Aider's definition/reference graph weighting, personalization, PageRank rank distribution, and fallback of definitions lacking reference captures. It removes chat-file exclusion, UI/model imports, sampled model token counts, and source-tree pickle/SQLite caches. [repo_map.py](scripts/repo_map.py) adapts Aider's tag-query extraction to a bounded offline command. Rendering uses original source lines with explicit line numbers and a fixed character budget for checkable citations.
 - The complete upstream `repomap.py` is not bundled. [manifest.json](vendor/manifest.json) records its SHA-256 and each copied file's upstream blob and SHA-256.
 
+## NetworkX
+
+- Source: [networkx/networkx `networkx/algorithms/link_analysis/pagerank_alg.py`](https://github.com/networkx/networkx/blob/2acf1590f82757c01a57b81b8c5dfb79e60aa416/networkx/algorithms/link_analysis/pagerank_alg.py), release 3.4.2, commit `2acf1590f82757c01a57b81b8c5dfb79e60aa416`.
+- License: 3-clause BSD, Copyright (C) 2004-2024 NetworkX Developers; upstream [LICENSE.txt](https://github.com/networkx/networkx/blob/2acf1590f82757c01a57b81b8c5dfb79e60aa416/LICENSE.txt), SHA-256 `5b433b90f755eb9bbd06feff1d1a4f5f232c5208a185694199e45fa95d762792`.
+- Python map: [aider_rank.py](vendor/aider_rank.py) calls the pinned `networkx` dependency; it is not copied into this skill. The standalone bundle includes the package with its license under `licenses/python/networkx-3.4.2/`.
+- Standalone Rust mapper: its `pagerank` function adapts `_pagerank_python` step by step so both tools produce the same order. This is adapted source, not a linked library. The mapper prints the full license through `--notices`, and its release artifact carries the text in `NOTICES.txt` and `licenses/adapted/networkx-3.4.2/LICENSE.txt`, with the hash, origin and commit in `BUILD-INFO.json`. In the toolbox source, `src/legacy-repo-map/licenses/manifest.json` records the copy with an `adaptation` entry.
+
 ## Tag queries
 
 The `.scm` files under `vendor/queries/` are unmodified copies from the pinned Aider revision. Aider's [language-pack query credits](vendor/queries/tree-sitter-language-pack/README.md) and [older query credits](vendor/queries/tree-sitter-languages/README.md) point to the grammar projects. The copied queries are for Java, Python, JavaScript, TypeScript/TSX, C, C++, C#, Go, and Rust. Their grammar projects use the MIT license; their individual license texts, including copyright notices, are under `vendor/licenses/`.

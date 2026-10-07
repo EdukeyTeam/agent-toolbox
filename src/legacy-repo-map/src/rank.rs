@@ -10,6 +10,12 @@
 //! The arithmetic follows the Python code operation by operation, including
 //! the compensated summation that CPython 3.12+ uses in `sum()`, so both
 //! implementations order definitions the same way.
+//!
+//! `pagerank` adapts `_pagerank_python` in
+//! `networkx/algorithms/link_analysis/pagerank_alg.py` from networkx 3.4.2
+//! (networkx/networkx at 2acf1590f82757c01a57b81b8c5dfb79e60aa416,
+//! BSD-3-Clause). `licenses/networkx-LICENSE.txt` is the upstream license and
+//! `--notices` prints it in full.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 

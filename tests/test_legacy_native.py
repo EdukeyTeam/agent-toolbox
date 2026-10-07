@@ -285,32 +285,6 @@ class RustParityTests(FixtureCase):
         self.assertNotIn("EscapedOutside", text)
         self.assertIn({"path": "src/app/Linked.java", "reason": "symlink excluded"}, meta["skipped"])
 
-    def test_selection_policy_tables_match_the_python_modules(self):
-        policy = json.loads(subprocess.run([str(RUST_BINARY), "--print-policy"], check=True, capture_output=True, text=True, encoding="utf-8").stdout)
-        code = "import json, re, repo_files as f; print(json.dumps({k: sorted(v) if isinstance(v, (set, frozenset)) else [v.pattern, bool(v.flags & re.IGNORECASE)] if isinstance(v, re.Pattern) else v for k, v in list(vars(f).items()) if k.isupper()}))"
-        files = json.loads(subprocess.run([sys.executable, "-c", code], check=True, capture_output=True, text=True, cwd=SCRIPTS, env=python_environment()).stdout)
-        self.assertEqual(policy["languages"], files["LANGUAGES"])
-        # Names are lowercased before matching in both tools.
-        self.assertEqual([policy["secret_name_pattern"], True], files["SECRET_PATTERN"])
-        for rust_key, python_key in [("descriptor_suffixes", "DESCRIPTOR_SUFFIXES"), ("descriptor_names", "DESCRIPTOR_NAMES"), ("secret_names", "SECRET_NAMES"), ("secret_suffixes", "SECRET_SUFFIXES"), ("ignored_dirs", "IGNORED_DIRS")]:
-            self.assertEqual(sorted(policy[rust_key]), files[python_key], python_key)
-        limits = policy["limits"]
-        self.assertEqual([limits["default_max_files"], limits["default_max_file_bytes"], limits["hard_max_files"], limits["hard_max_file_bytes"]], [files["DEFAULT_MAX_FILES"], files["DEFAULT_MAX_FILE_BYTES"], files["HARD_MAX_FILES"], files["HARD_MAX_FILE_BYTES"]])
-        # Constants of repo_map.py are read without importing its dependencies.
-        constants = {}
-        for node in ast.parse((SCRIPTS / "repo_map.py").read_text(encoding="utf-8")).body:
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id.isupper():
-                try:
-                    constants[node.targets[0].id] = ast.literal_eval(node.value)
-                except ValueError:
-                    pass
-        self.assertEqual({language: entry["path"] for language, entry in policy["queries"].items()}, constants["QUERY_PATHS"])
-        for language, entry in policy["queries"].items():
-            vendored = SKILL / "vendor" / "queries" / entry["path"]
-            self.assertEqual(entry["sha256"], hashlib.sha256(vendored.read_bytes()).hexdigest(), language)
-        self.assertEqual([limits["max_tags_per_file"], limits["max_total_tags"], limits["max_budget"]], [constants["MAX_TAGS_PER_FILE"], constants["MAX_TOTAL_TAGS"], constants["MAX_BUDGET"]])
-        self.assertEqual(policy["baseline_contract"], f"repo_map.py {constants['VERSION']}")
-
     @unittest.skipIf(os.name != "posix", "requires POSIX file names")
     def test_control_characters_in_paths_are_skipped_identically(self):
         hostile = {
@@ -350,6 +324,31 @@ class RustParityTests(FixtureCase):
                 self.assertFalse([character for character in written if (ord(character) < 32 or ord(character) == 127) and character != "\n"], f"{tool} {artifact}")
         self.assertEqual(before, self.snapshot())
 
+    def test_selection_policy_tables_match_the_python_modules(self):
+        policy = json.loads(subprocess.run([str(RUST_BINARY), "--print-policy"], check=True, capture_output=True, text=True, encoding="utf-8").stdout)
+        code = "import json, re, repo_files as f; print(json.dumps({k: sorted(v) if isinstance(v, (set, frozenset)) else [v.pattern, bool(v.flags & re.IGNORECASE)] if isinstance(v, re.Pattern) else v for k, v in list(vars(f).items()) if k.isupper()}))"
+        files = json.loads(subprocess.run([sys.executable, "-c", code], check=True, capture_output=True, text=True, cwd=SCRIPTS, env=python_environment()).stdout)
+        self.assertEqual(policy["languages"], files["LANGUAGES"])
+        # Names are lowercased before matching in both tools.
+        self.assertEqual([policy["secret_name_pattern"], True], files["SECRET_PATTERN"])
+        for rust_key, python_key in [("descriptor_suffixes", "DESCRIPTOR_SUFFIXES"), ("descriptor_names", "DESCRIPTOR_NAMES"), ("secret_names", "SECRET_NAMES"), ("secret_suffixes", "SECRET_SUFFIXES"), ("ignored_dirs", "IGNORED_DIRS")]:
+            self.assertEqual(sorted(policy[rust_key]), files[python_key], python_key)
+        limits = policy["limits"]
+        self.assertEqual([limits["default_max_files"], limits["default_max_file_bytes"], limits["hard_max_files"], limits["hard_max_file_bytes"]], [files["DEFAULT_MAX_FILES"], files["DEFAULT_MAX_FILE_BYTES"], files["HARD_MAX_FILES"], files["HARD_MAX_FILE_BYTES"]])
+        # Constants of repo_map.py are read without importing its dependencies.
+        constants = {}
+        for node in ast.parse((SCRIPTS / "repo_map.py").read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id.isupper():
+                try:
+                    constants[node.targets[0].id] = ast.literal_eval(node.value)
+                except ValueError:
+                    pass
+        self.assertEqual({language: entry["path"] for language, entry in policy["queries"].items()}, constants["QUERY_PATHS"])
+        for language, entry in policy["queries"].items():
+            vendored = SKILL / "vendor" / "queries" / entry["path"]
+            self.assertEqual(entry["sha256"], hashlib.sha256(vendored.read_bytes()).hexdigest(), language)
+        self.assertEqual([limits["max_tags_per_file"], limits["max_total_tags"], limits["max_budget"]], [constants["MAX_TAGS_PER_FILE"], constants["MAX_TOTAL_TAGS"], constants["MAX_BUDGET"]])
+        self.assertEqual(policy["baseline_contract"], f"repo_map.py {constants['VERSION']}")
 
 
 class RustGitParityTests(RustParityTests):
@@ -498,6 +497,23 @@ class DispatcherTests(FixtureCase):
     def call(self, program, env, *arguments):
         return subprocess.run([*program, *arguments], env=env, capture_output=True, text=True, encoding="utf-8", cwd=self.base)
 
+    def test_csharp_cache_identity_is_available_without_external_python_packages(self):
+        folder = self.source / "csharp"
+        folder.mkdir()
+        (folder / "Example.cs").write_text("class Example { public void Run() {} }\n", encoding="utf-8", newline="\n")
+        for label, program, env in self.programs():
+            with self.subTest(program=label):
+                output = self.base / ("csharp-map-" + label)
+                result = self.call(program, env, "map", str(self.source), "--subtree", "csharp", "--output-dir", str(output))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                metadata = json.loads((output / "map.meta.json").read_text(encoding="utf-8"))
+                self.assertEqual(metadata["dependencies"]["tree-sitter-c-sharp"], "0.23.5")
+                self.assertEqual(metadata["coverage"]["parsed_files"], 1)
+                self.assertIn("Example.cs:L1", (output / "repo-map.md").read_text(encoding="utf-8"))
+                caches = [json.loads(path.read_text(encoding="utf-8")) for path in (output / "cache").glob("*.json")]
+                self.assertEqual(len(caches), 1)
+                self.assertTrue(caches[0]["parser_version"].endswith(":0.23.5"))
+
     def test_info_help_and_unknown_command(self):
         for label, program, env in self.programs():
             with self.subTest(program=label):
@@ -590,24 +606,6 @@ class DispatcherTests(FixtureCase):
                 self.assertIn("AuditLog.java", found.stdout)
                 self.assertNotIn("native-test-secret", found.stdout)
 
-    def test_csharp_cache_identity_is_available_without_external_python_packages(self):
-        folder = self.source / "csharp"
-        folder.mkdir()
-        (folder / "Example.cs").write_text("class Example { public void Run() {} }\n", encoding="utf-8", newline="\n")
-        for label, program, env in self.programs():
-            with self.subTest(program=label):
-                output = self.base / ("csharp-map-" + label)
-                result = self.call(program, env, "map", str(self.source), "--subtree", "csharp", "--output-dir", str(output))
-                self.assertEqual(result.returncode, 0, result.stderr)
-                metadata = json.loads((output / "map.meta.json").read_text(encoding="utf-8"))
-                self.assertEqual(metadata["dependencies"]["tree-sitter-c-sharp"], "0.23.5")
-                self.assertEqual(metadata["coverage"]["parsed_files"], 1)
-                self.assertIn("Example.cs:L1", (output / "repo-map.md").read_text(encoding="utf-8"))
-                caches = [json.loads(path.read_text(encoding="utf-8")) for path in (output / "cache").glob("*.json")]
-                self.assertEqual(len(caches), 1)
-                self.assertTrue(caches[0]["parser_version"].endswith(":0.23.5"))
-
-
 
 
 # Unmodified full notice fixture from https://raw.githubusercontent.com/libffi/libffi/v3.4.4/LICENSE
@@ -627,6 +625,8 @@ class BuildHelperTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("legacy_build_helper", BUILD_HELPER)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        # Initialize the real host before tests mock platform/base_prefix.
+        module.sysconfig.get_config_vars()
         return module
 
     def test_collected_cpython_extension_does_not_claim_adjacent_library(self):
@@ -1020,6 +1020,11 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+# NetworkX 3.4.2: the commit that tag networkx-3.4.2 peels to and its LICENSE.txt.
+NETWORKX_COMMIT = "2acf1590f82757c01a57b81b8c5dfb79e60aa416"
+NETWORKX_LICENSE_SHA256 = "5b433b90f755eb9bbd06feff1d1a4f5f232c5208a185694199e45fa95d762792"
+
+
 class LicenseNoticeTests(unittest.TestCase):
     """Notices for third-party code inside a crate package or a wheel."""
 
@@ -1104,6 +1109,16 @@ class LicenseNoticeTests(unittest.TestCase):
             with self.subTest(notice=record["file"]):
                 self.assertEqual(digest(record["data"]), record["sha256"])
                 self.assertRegex(record["origin"], r"^https://raw\.githubusercontent\.com/[^/]+/[^/]+/[0-9a-f]{40}/")
+                if "adaptation" in record:
+                    # Rewritten source is not a Cargo dependency: nothing in the lockfile stands for it.
+                    adapted = record["adaptation"]
+                    self.assertNotIn("cargo", record)
+                    self.assertNotIn("pypi", record)
+                    self.assertNotIn(adapted["name"], {name for name, _ in checksums})
+                    self.assertIn(f"/{adapted['commit']}/", record["origin"])
+                    self.assertIn(adapted["commit"], (CRATE / adapted["source"]).read_text(encoding="utf-8"))
+                    self.assertRegex(adapted["upstream_sha256"], r"^[0-9a-f]{64}$")
+                    continue
                 use = record["cargo"]
                 self.assertEqual(checksums[(use["name"], use["version"])], use["checksum"])
                 if "pypi" in record:
@@ -1111,6 +1126,76 @@ class LicenseNoticeTests(unittest.TestCase):
                     self.assertRegex(record["pypi"]["sdist_sha256"], r"^[0-9a-f]{64}$")
                     self.assertTrue(record["pypi"]["sdist"].endswith(f"/{record['pypi']['name']}-{record['pypi']['version']}.tar.gz"))
         self.assertGreater(len(checksums), 30)
+        adapted = [record for record in pinned if "adaptation" in record]
+        self.assertEqual([(record["file"], record["sha256"], record["origin"]) for record in adapted], [("networkx-LICENSE.txt", NETWORKX_LICENSE_SHA256, f"https://raw.githubusercontent.com/networkx/networkx/{NETWORKX_COMMIT}/LICENSE.txt")])
+        use = adapted[0]["adaptation"]
+        self.assertEqual((use["name"], use["version"], use["commit"], use["upstream_path"], use["source"]), ("networkx", requirements["networkx"], NETWORKX_COMMIT, "networkx/algorithms/link_analysis/pagerank_alg.py", "src/rank.rs"))
+        self.assertIn(b"Copyright (C) 2004-2024, NetworkX Developers", adapted[0]["data"])
+
+    def test_adapted_source_license_matches_the_installed_distribution(self):
+        if not MAP_DEPS:
+            self.skipTest("LEGACY_MAP_DEPS is not set")
+        record = next(item for item in self.helper.pinned_notices() if "adaptation" in item)
+        use = record["adaptation"]
+        installed = self.helper.selected_distributions(Path(MAP_DEPS))[use["name"]]
+        self.assertEqual(installed.version, use["version"])
+        # The Python bundle ships this file; the Rust artifact ships the same bytes.
+        self.assertEqual([digest(path.read_bytes().replace(b"\r\n", b"\n")) for path in self.helper.distribution_license_files(installed)], [record["sha256"]])
+        self.assertEqual(digest((Path(MAP_DEPS) / use["upstream_path"]).read_bytes().replace(b"\r\n", b"\n")), use["upstream_sha256"])
+
+    def test_adapted_source_notice_is_printed_and_staged_or_the_build_stops(self):
+        pinned = self.helper.pinned_notices()
+        record = next(item for item in pinned if "adaptation" in item)
+        text = record["data"].decode("utf-8")
+        printed = f"header\n\n==== {record['title']} ====\n\n{text.rstrip()}\n"
+        artifact = self.base / "artifact"
+        staged = self.helper.stage_adapted_notices(artifact, printed, pinned, {"tree-sitter", "regex-syntax"})
+        self.assertEqual(staged, [{
+            "component": record["component"], "name": "networkx", "version": "3.4.2", "title": "NetworkX (BSD 3-Clause)",
+            "license": "licenses/adapted/networkx-3.4.2/LICENSE.txt", "sha256": NETWORKX_LICENSE_SHA256, "origin": record["origin"],
+            "commit": NETWORKX_COMMIT, "upstream_path": "networkx/algorithms/link_analysis/pagerank_alg.py",
+            "upstream_sha256": record["adaptation"]["upstream_sha256"], "adapted_in": "src/rank.rs",
+        }])
+        self.assertEqual(digest((artifact / staged[0]["license"]).read_bytes()), NETWORKX_LICENSE_SHA256)
+        cases = [
+            ("lacks the full text of networkx-LICENSE.txt", printed.replace("2004-2024", "2004-2023"), {"tree-sitter"}),
+            ("lacks the full text of networkx-LICENSE.txt", "header\n", {"tree-sitter"}),
+            ("a crate of that name is linked", printed, {"tree-sitter", "networkx"}),
+            ("two license texts of networkx 3.4.2 claim LICENSE.txt", printed, {"tree-sitter"}),
+        ]
+        for message, notices, linked in cases:
+            with self.subTest(message=message), self.assertRaisesRegex(self.helper.BuildError, message):
+                self.helper.stage_adapted_notices(artifact if "claim" in message else self.base / "refused", notices, pinned, linked)
+        self.assertFalse((self.base / "refused").exists())
+
+    def test_notice_records_must_name_a_verified_use(self):
+        copy = self.base / "licenses"
+        shutil.copytree(CRATE / "licenses", copy, copy_function=shutil.copyfile)
+        original = json.loads((copy / "manifest.json").read_text(encoding="utf-8"))
+        index = next(position for position, record in enumerate(original["notices"]) if "adaptation" in record)
+
+        def refused(message, change):
+            manifest = json.loads(json.dumps(original))
+            change(manifest["notices"][index])
+            (copy / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+            with self.subTest(message=message), mock.patch.object(self.helper, "NOTICE_DATA", copy), self.assertRaisesRegex(self.helper.BuildError, message):
+                self.helper.pinned_notices()
+
+        cargo = {"name": "networkx", "version": "3.4.2", "checksum": "c" * 64, "path": None}
+        refused("names neither a linked crate nor an adapted source", lambda record: record.pop("adaptation"))
+        refused("cannot also name a crate", lambda record: record.update(cargo=cargo))
+        refused("lacks adaptation fields: commit, upstream_sha256", lambda record: [record["adaptation"].pop(key) for key in ("commit", "upstream_sha256")])
+        refused("does not originate from the pinned commit of networkx 3.4.2", lambda record: record["adaptation"].update(commit="0" * 40))
+        refused("does not originate from the pinned commit", lambda record: record.update(origin="https://raw.githubusercontent.com/networkx/networkx/main/LICENSE.txt"))
+        refused("src/tags.rs does not name commit", lambda record: record["adaptation"].update(source="src/tags.rs"))
+        refused("src/absent.rs does not name commit", lambda record: record["adaptation"].update(source="src/absent.rs"))
+        refused("networkx-LICENSE.txt differs from the hash pinned", lambda record: record.update(sha256="0" * 64))
+        (copy / "manifest.json").write_text(json.dumps(original), encoding="utf-8")
+        with mock.patch.object(self.helper, "NOTICE_DATA", copy):
+            self.assertEqual(len(self.helper.pinned_notices()), 4)
+            (copy / "networkx-LICENSE.txt").write_bytes((copy / "networkx-LICENSE.txt").read_bytes().replace(b"2004-2024", b"2004-2025"))
+            with self.assertRaisesRegex(self.helper.BuildError, "networkx-LICENSE.txt differs from the hash pinned"):
+                self.helper.pinned_notices()
 
     def test_pinned_notice_survives_a_crlf_checkout_but_not_an_edit(self):
         copy = self.base / "licenses"
@@ -1138,8 +1223,14 @@ class LicenseNoticeTests(unittest.TestCase):
             self.assertRegex(crate["checksum"], r"^[0-9a-f]{64}$")
             self.assertTrue(crate["source"].startswith("registry+"))
         nested = {(crate["name"], crate["version"], item["source"], item["sha256"]) for crate in crates for item in crate["license_files"] if "/" in item["source"]}
-        self.assertEqual(nested, {(record["cargo"]["name"], record["cargo"]["version"], record["cargo"]["path"], record["sha256"]) for record in pinned if record["cargo"]["path"]})
+        self.assertEqual(nested, {(record["cargo"]["name"], record["cargo"]["version"], record["cargo"]["path"], record["sha256"]) for record in pinned if "cargo" in record and record["cargo"]["path"]})
         self.assertEqual({name for name, *_ in nested}, {"tree-sitter", "regex-syntax"})
+        # NetworkX is adapted source: no crate stands for it, and the real output carries its license.
+        linked = {crate["name"] for crate in crates}
+        self.assertNotIn("networkx", linked)
+        staged = self.helper.stage_adapted_notices(artifact, notices, pinned, linked)
+        self.assertEqual([(item["license"], item["sha256"]) for item in staged], [("licenses/adapted/networkx-3.4.2/LICENSE.txt", NETWORKX_LICENSE_SHA256)])
+        self.assertEqual(digest((artifact / staged[0]["license"]).read_bytes()), NETWORKX_LICENSE_SHA256)
         for name, version, source, _ in nested:
             copied = artifact / "licenses" / "rust" / f"{name}-{version}" / source
             self.assertIn("Unicode, Inc.", copied.read_text(encoding="utf-8"))
@@ -1157,6 +1248,9 @@ class LicenseNoticeTests(unittest.TestCase):
                 self.assertIn(f"\n==== {record['title']} ====\n\n{record['data'].decode('utf-8').rstrip()}\n", notices)
         self.assertIn("Copyright © 1991-2019 Unicode, Inc. All rights reserved.", notices)
         self.assertIn("UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE", notices)
+        self.assertIn("\n==== NetworkX (BSD 3-Clause) ====\n\nNetworkX is distributed with the 3-clause BSD license.\n", notices)
+        self.assertIn("Copyright (C) 2004-2024, NetworkX Developers", notices)
+        self.assertIn(NETWORKX_COMMIT, notices)
 
     def test_rust_artifact_ships_every_recorded_license_text(self):
         artifact = Path(RUST_BINARY).parent if RUST_BINARY else None
@@ -1180,7 +1274,20 @@ class LicenseNoticeTests(unittest.TestCase):
                         nested.add((crate["name"], crate["version"], item["source"], item["sha256"]))
                         self.assertIn(f"`licenses/rust/{crate['name']}-{crate['version']}/{item['source']}` | `{item['sha256']}` | {item['origin']} |", table)
         self.assertEqual({path.relative_to(artifact).as_posix() for path in (artifact / "licenses" / "rust").rglob("*") if path.is_file()}, recorded)
-        self.assertEqual(nested, {(record["cargo"]["name"], record["cargo"]["version"], record["cargo"]["path"], record["sha256"]) for record in self.helper.pinned_notices() if record["cargo"]["path"]})
+        pinned = self.helper.pinned_notices()
+        self.assertEqual(nested, {(record["cargo"]["name"], record["cargo"]["version"], record["cargo"]["path"], record["sha256"]) for record in pinned if "cargo" in record and record["cargo"]["path"]})
+        # Adapted source: the license file, its hash and provenance, and the full text in NOTICES.txt.
+        adapted = {record["adaptation"]["name"]: record for record in pinned if "adaptation" in record}
+        self.assertEqual({item["name"] for item in info["adapted_sources"]}, set(adapted))
+        self.assertFalse(set(adapted) & {crate["name"] for crate in info["crates"]})
+        for item in info["adapted_sources"]:
+            record = adapted[item["name"]]
+            with self.subTest(adapted=item["name"]):
+                self.assertEqual((item["sha256"], item["origin"], item["commit"], item["version"]), (record["sha256"], record["origin"], record["adaptation"]["commit"], record["adaptation"]["version"]))
+                self.assertEqual(digest((artifact / item["license"]).read_bytes()), record["sha256"])
+                self.assertIn(f"\n==== {record['title']} ====\n\n{record['data'].decode('utf-8').rstrip()}\n", notices)
+                self.assertIn(f"| `{item['adapted_in']}` | `{item['license']}` | `{item['sha256']}` | {item['origin']} |", table)
+        self.assertEqual({path.relative_to(artifact).as_posix() for path in (artifact / "licenses" / "adapted").rglob("*") if path.is_file()}, {item["license"] for item in info["adapted_sources"]})
         self.assertNotIn(str(REPO), json.dumps(info))
 
     def test_wheel_source_notices_follow_the_selected_distribution(self):

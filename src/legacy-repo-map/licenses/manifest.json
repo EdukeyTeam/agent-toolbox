@@ -1,5 +1,5 @@
 {
-  "description": "Notice texts for third-party code compiled into legacy-repo-map and into the tree-sitter extension of the legacy-tools bundle, where the published package omits the text or keeps it below the package root. Each file is an unmodified copy; sha256 is of the upstream bytes with LF line endings. scripts/build-legacy-tools.py refuses to build when a file, a linked crate or the selected Python distribution differs from these records.",
+  "description": "Notice texts for third-party code compiled into legacy-repo-map and into the tree-sitter extension of the legacy-tools bundle, where the published package omits the text or keeps it below the package root, and for upstream source that the crate adapts without linking it. Each file is an unmodified copy; sha256 is of the upstream bytes with LF line endings. A record names its use: \"cargo\" for a linked crate, \"pypi\" for a Python distribution of the bundle, \"adaptation\" for source rewritten in this crate, which is not a Cargo dependency. scripts/build-legacy-tools.py refuses to build when a file, a linked crate, an adapted source file or the selected Python distribution differs from these records.",
   "notices": [
     {
       "file": "tree-sitter-LICENSE.txt",
@@ -59,6 +59,22 @@
         "checksum": "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4",
         "path": "src/unicode_tables/LICENSE-UNICODE",
         "basis": "The crate package records commit 140167995737fa11dfe11b8af8b9aa143b790b4e (path regex-syntax) in .cargo_vcs_info.json. Cargo.lock resolves regex-syntax with its unicode-* features, which compile the tables in src/unicode_tables/."
+      }
+    },
+    {
+      "file": "networkx-LICENSE.txt",
+      "title": "NetworkX (BSD 3-Clause)",
+      "component": "NetworkX pure-Python PageRank adapted in src/rank.rs",
+      "sha256": "5b433b90f755eb9bbd06feff1d1a4f5f232c5208a185694199e45fa95d762792",
+      "origin": "https://raw.githubusercontent.com/networkx/networkx/2acf1590f82757c01a57b81b8c5dfb79e60aa416/LICENSE.txt",
+      "adaptation": {
+        "name": "networkx",
+        "version": "3.4.2",
+        "commit": "2acf1590f82757c01a57b81b8c5dfb79e60aa416",
+        "upstream_path": "networkx/algorithms/link_analysis/pagerank_alg.py",
+        "upstream_sha256": "06526be9db037d435d534987f019aa58bb7c1f3adafb00705a64051c0ad325cf",
+        "source": "src/rank.rs",
+        "basis": "Tag networkx-3.4.2 peels to commit 2acf1590f82757c01a57b81b8c5dfb79e60aa416. The pagerank function in src/rank.rs follows _pagerank_python of the upstream file step by step in Rust; no NetworkX code is linked and networkx is not a Cargo dependency. The networkx 3.4.2 wheel carries the same LICENSE.txt bytes in its dist-info directory, which the Python bundle ships."
       }
     }
   ]

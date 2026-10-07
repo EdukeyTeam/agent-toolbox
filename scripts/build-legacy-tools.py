@@ -55,8 +55,10 @@ ALLOWED_PACKAGES = {"networkx", "tree_sitter", "tree_sitter_c_sharp", "tree_sitt
 LICENSE_PREFIXES = ("license", "licence", "copying", "notice", "authors", "unlicense")
 # Program sources that merely carry a license-like name, such as `license.rs`.
 SOURCE_SUFFIXES = (".rs", ".c", ".h", ".cc", ".cpp", ".py", ".js", ".ts", ".go", ".java", ".toml", ".json", ".yml", ".yaml")
-# Notice texts for compiled-in code whose package omits or nests the text.
+# Notice texts for compiled-in code whose package omits or nests the text,
+# and for upstream source the crate adapts without linking it.
 NOTICE_DATA = CRATE / "licenses"
+ADAPTATION_FIELDS = ("name", "version", "commit", "upstream_path", "upstream_sha256", "source", "basis")
 EXE = ".exe" if os.name == "nt" else ""
 
 
@@ -201,7 +203,28 @@ def pinned_notices() -> list[dict]:
         record["data"] = (NOTICE_DATA / record["file"]).read_bytes().replace(b"\r\n", b"\n")
         if hashlib.sha256(record["data"]).hexdigest() != record["sha256"]:
             raise BuildError(f"{record['file']} differs from the hash pinned in {NOTICE_DATA.name}/manifest.json")
+        adapted = record.get("adaptation")
+        if adapted is None:
+            if not record.get("cargo"):
+                raise BuildError(f"{record['file']} names neither a linked crate nor an adapted source in {NOTICE_DATA.name}/manifest.json")
+            continue
+        # Adapted source is not a Cargo dependency; its record stands on the
+        # pinned upstream commit and on the crate file that names it.
+        if "cargo" in record or "pypi" in record:
+            raise BuildError(f"{record['file']} is recorded as adapted source and cannot also name a crate or a Python distribution")
+        missing = [field for field in ADAPTATION_FIELDS if not adapted.get(field)]
+        if missing:
+            raise BuildError(f"{record['file']} lacks adaptation fields: {', '.join(missing)}")
+        if not re.fullmatch(r"[0-9a-f]{40}", adapted["commit"]) or f"/{adapted['commit']}/" not in record["origin"]:
+            raise BuildError(f"{record['file']} does not originate from the pinned commit of {adapted['name']} {adapted['version']}")
+        source = CRATE / adapted["source"]
+        if not source.is_file() or adapted["commit"] not in source.read_text(encoding="utf-8"):
+            raise BuildError(f"{adapted['source']} does not name commit {adapted['commit']} of {adapted['name']} that {record['file']} was verified against")
     return records
+
+
+def printed_in_full(record: dict, notices: str) -> bool:
+    return f"\n==== {record['title']} ====\n\n{record['data'].decode('utf-8').rstrip()}\n" in notices
 
 
 def copy_license(source: Path, destination: Path) -> Path:
@@ -757,7 +780,7 @@ def license_crate(crate: dict, directory: Path, artifact: Path, notices: str, pi
             raise BuildError(f"{record['file']} was verified against {use['name']} {use['version']} ({use['checksum']}), not the linked {folder}; verify it against that crate")
         if use["path"] and not any(item["source"] == use["path"] and item["sha256"] == record["sha256"] for item in packaged):
             raise BuildError(f"{record['file']} is not the {use['path']} of crate {folder}")
-        if f"\n==== {record['title']} ====\n\n{record['data'].decode('utf-8').rstrip()}\n" not in notices:
+        if not printed_in_full(record, notices):
             raise BuildError(f"the program's --notices output lacks the full text of {record['file']}")
         embedded.append({"title": record["title"], "source": use["path"], "sha256": record["sha256"], "origin": record["origin"]})
     # A text below the crate root covers code from another project; the
@@ -773,6 +796,30 @@ def license_crate(crate: dict, directory: Path, artifact: Path, notices: str, pi
     else:
         raise BuildError(f"no license text found for crate {folder}; add it to the crate's embedded notices")
     crate.update({"license_text": where, "license_files": packaged, "embedded_notices": embedded})
+
+
+def stage_adapted_notices(artifact: Path, notices: str, pinned: list[dict], linked: set[str]) -> list[dict]:
+    """Ship the license of upstream source that the crate adapts without linking it."""
+    staged = []
+    for record in pinned:
+        use = record.get("adaptation")
+        if not use:
+            continue
+        if use["name"] in linked:
+            raise BuildError(f"{record['file']} records {use['name']} as adapted source, but a crate of that name is linked; verify the notice against that crate")
+        if not printed_in_full(record, notices):
+            raise BuildError(f"the program's --notices output lacks the full text of {record['file']}")
+        destination = artifact / "licenses" / "adapted" / f"{use['name']}-{use['version']}" / record["origin"].rsplit("/", 1)[1]
+        if destination.exists():
+            raise BuildError(f"two license texts of {use['name']} {use['version']} claim {destination.name}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(record["data"])
+        staged.append({
+            "component": record["component"], "name": use["name"], "version": use["version"], "title": record["title"],
+            "license": destination.relative_to(artifact).as_posix(), "sha256": record["sha256"], "origin": record["origin"],
+            "commit": use["commit"], "upstream_path": use["upstream_path"], "upstream_sha256": use["upstream_sha256"], "adapted_in": use["source"],
+        })
+    return staged
 
 
 def build_rust(work: Path, out: Path) -> dict:
@@ -803,12 +850,15 @@ def build_rust(work: Path, out: Path) -> dict:
         lines.append(f"| {crate['name']} | {crate['version']} | {crate['license']} | {crate['repository']} | `{crate['license_text']}` |")
         files = {item["source"]: item["path"] for item in crate["license_files"]}
         nested += [f"| {crate['name']} {crate['version']} | {item['title']} | `{files[item['source']]}` | `{item['sha256']}` | {item['origin']} |" for item in crate["embedded_notices"] if item["source"]]
-    (artifact / "THIRD_PARTY_RUST.md").write_text("\n".join(lines + nested) + "\n", encoding="utf-8")
+    adapted_sources = stage_adapted_notices(artifact, notices, pinned, {crate["name"] for crate in dependencies})
+    adapted = ["", "## Adapted source", "", "Upstream code rewritten in this crate. It is not a Cargo dependency and nothing of it is linked; its license is under `licenses/adapted/` and is printed by `legacy-repo-map --notices`.", "", "| Component | Version | Adapted in | License text | SHA-256 | Origin |", "| --- | --- | --- | --- | --- | --- |"]
+    adapted += [f"| {item['component']} | {item['version']} | `{item['adapted_in']}` | `{item['license']}` | `{item['sha256']}` | {item['origin']} |" for item in adapted_sources]
+    (artifact / "THIRD_PARTY_RUST.md").write_text("\n".join(lines + nested + (adapted if adapted_sources else [])) + "\n", encoding="utf-8")
     info = {
         "artifact": artifact.name, "program": binary.name, "platform": platform_tag(), "status": "experimental",
         "version": subprocess.run([str(program), "--version"], check=True, capture_output=True, text=True).stdout.strip(),
         "rustc": subprocess.run(["rustc", "--version"], check=True, capture_output=True, text=True).stdout.strip(),
-        "cargo_lock_sha256": sha256(CRATE / "Cargo.lock"), "crates": dependencies,
+        "cargo_lock_sha256": sha256(CRATE / "Cargo.lock"), "crates": dependencies, "adapted_sources": adapted_sources,
     }
     (artifact / "BUILD-INFO.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
     return {"directory": artifact, "program": program, "info": info}
@@ -919,7 +969,9 @@ def smoke(python_bundle: dict | None, rust: dict | None) -> list[dict]:
             text = (scratch / "map-rust" / "repo-map.md").read_text(encoding="utf-8") if mapped.returncode == 0 else ""
             check("rust: map lists a Java definition with its line", "src/app/Channel.java:L4: public void openChannel() {}" in text, mapped.stderr)
             check("rust: output inside the source is refused", call(program, str(source), "--output-dir", str(source / "out")).returncode == 2)
-            check("rust: notices include the Apache license", "Apache License" in call(program, "--notices").stdout)
+            printed = call(program, "--notices").stdout
+            check("rust: notices include the Apache license", "Apache License" in printed)
+            check("rust: notices include the NetworkX license", "Copyright (C) 2004-2024, NetworkX Developers" in printed)
 
         if python_bundle and rust:
             same_map = (scratch / "map-python" / "repo-map.md").read_bytes() == (scratch / "map-rust" / "repo-map.md").read_bytes()

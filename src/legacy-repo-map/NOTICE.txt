@@ -5,3 +5,10 @@ Licensed under the Apache License, Version 2.0. The native binary uses
 Tree-sitter grammars and Rust crates. Their notices and license texts are
 included in each distribution archive's NOTICES.txt, THIRD_PARTY_RUST.md
 and licenses/rust/ directory.
+
+The ranking adapts the pure-Python PageRank of NetworkX 3.4.2
+(https://github.com/networkx/networkx at commit
+2acf1590f82757c01a57b81b8c5dfb79e60aa416), Copyright (C) 2004-2024,
+NetworkX Developers, distributed under the 3-clause BSD license. No
+NetworkX code is linked. The license text is in NOTICES.txt and in
+licenses/adapted/networkx-3.4.2/LICENSE.txt.

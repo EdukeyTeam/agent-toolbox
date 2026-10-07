@@ -84,14 +84,18 @@ legacy-repo-map: third-party notices
 The ranking in this program is ported from an adaptation of Aider's
 repository map (https://github.com/Aider-AI/aider, aider/repomap.py at
 5dc9490bb35f9729ef2c95d00a19ccd30c26339c), licensed under the Apache License
-2.0. The embedded tag queries are unmodified copies from that Aider revision
-and derive from the tree-sitter grammar projects below, each under the MIT
-license. The program links the tree-sitter runtime and grammar crates (MIT)
-and other Rust crates whose license texts ship beside the binary in the
-release artifact. The tree-sitter runtime compiles in ICU's UTF-8 and UTF-16
-headers and the regex-syntax crate compiles in tables generated from the
-Unicode Character Database; both Unicode, Inc. notices are printed in full
-below.
+2.0. Its PageRank step adapts the pure-Python implementation of NetworkX
+3.4.2 (https://github.com/networkx/networkx,
+networkx/algorithms/link_analysis/pagerank_alg.py at
+2acf1590f82757c01a57b81b8c5dfb79e60aa416), licensed under the 3-clause BSD
+license printed below; no NetworkX code is linked. The embedded tag queries
+are unmodified copies from that Aider revision and derive from the
+tree-sitter grammar projects below, each under the MIT license. The program
+links the tree-sitter runtime and grammar crates (MIT) and other Rust crates
+whose license texts ship beside the binary in the release artifact. The
+tree-sitter runtime compiles in ICU's UTF-8 and UTF-16 headers and the
+regex-syntax crate compiles in tables generated from the Unicode Character
+Database; both Unicode, Inc. notices are printed in full below.
 ";
 
 macro_rules! vendored {
@@ -102,6 +106,10 @@ macro_rules! vendored {
 
 const NOTICES: &[(&str, &str)] = &[
     ("Aider (Apache License 2.0)", vendored!("LICENSE.txt")),
+    (
+        "NetworkX (BSD 3-Clause)",
+        include_str!("../licenses/networkx-LICENSE.txt"),
+    ),
     (
         "Aider query credits: tree-sitter-language-pack",
         vendored!("queries/tree-sitter-language-pack/README.md"),
@@ -863,9 +871,27 @@ mod tests {
         let manifest: Value = serde_json::from_str(include_str!("../licenses/manifest.json")).unwrap();
         let printed = notices().replace("\r\n", "\n");
         let records = manifest["notices"].as_array().unwrap();
-        assert_eq!(records.len(), 3);
+        assert_eq!(records.len(), 4);
         for record in records {
             let file = record["file"].as_str().unwrap();
+            // A record covers a linked crate or source adapted in this crate.
+            let adaptation = &record["adaptation"];
+            assert_ne!(record["cargo"].is_object(), adaptation.is_object(), "{file}");
+            if adaptation.is_object() {
+                let commit = adaptation["commit"].as_str().unwrap();
+                assert!(record["origin"].as_str().unwrap().contains(&format!("/{commit}/")));
+                let source = Path::new(env!("CARGO_MANIFEST_DIR")).join(adaptation["source"].as_str().unwrap());
+                let adapted = fs::read_to_string(source).unwrap();
+                assert!(
+                    adapted.contains(commit),
+                    "{file}: adapted source does not name {commit}"
+                );
+                let name = format!("name = \"{}\"", adaptation["name"].as_str().unwrap());
+                assert!(
+                    !include_str!("../Cargo.lock").contains(&name),
+                    "{file}: adapted, not linked"
+                );
+            }
             let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("licenses").join(file);
             // A checkout may translate line endings; the pinned hash is of the upstream bytes.
             let text = fs::read_to_string(path).unwrap().replace("\r\n", "\n");
@@ -882,6 +908,11 @@ mod tests {
             );
             assert!(printed.contains(&section), "--notices does not print {file} in full");
         }
+        assert!(printed.contains(
+            "\n==== NetworkX (BSD 3-Clause) ====\n\nNetworkX is distributed with the 3-clause BSD license.\n"
+        ));
+        assert!(printed.contains("Copyright (C) 2004-2024, NetworkX Developers"));
+        assert!(printed.contains("Neither the name of the NetworkX Developers nor the names of its"));
         assert!(printed.contains("Copyright © 1991-2019 Unicode, Inc. All rights reserved."));
         assert!(printed.contains("UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE"));
     }
