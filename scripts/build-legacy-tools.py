@@ -559,9 +559,10 @@ def exclude_windows_redist(spec: Path) -> None:
     if content.count(marker) != 1:
         raise BuildError("cannot locate PyInstaller binary collection in generated spec")
     runtime_filter = (
+        "import re as _legacy_runtime_re\n"
         "def _legacy_system_runtime(name):\n"
         "    name = name.replace('\\\\', '/').rsplit('/', 1)[-1].lower()\n"
-        "    return name.endswith('.dll') and (name == 'ucrtbase.dll' or name.startswith(('vcruntime140', 'msvcp140', 'api-ms-win-crt-')))\n"
+        "    return name.endswith('.dll') and (name == 'ucrtbase.dll' or name.startswith(('vcruntime140', 'msvcp140')) or bool(_legacy_runtime_re.fullmatch(r'(?:api-ms-win|ext-ms-win)-[a-z0-9-]+-l[0-9]+-[0-9]+-[0-9]+\\.dll', name)))\n"
         "a.binaries = [item for item in a.binaries if not _legacy_system_runtime(item[0])]\n"
     )
     content = content.replace(marker, runtime_filter + marker)

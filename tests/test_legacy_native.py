@@ -609,18 +609,23 @@ class BuildHelperTests(unittest.TestCase):
             self.assertIn("vcruntime140", rewritten)
             self.assertIn("msvcp140", rewritten)
             self.assertIn("pyz = PYZ(a.pure)", rewritten)
-            names = [
+            excluded = [
                 "vcruntime140.dll", "VCRUNTIME140_1.DLL", "msvcp140_atomic_wait.dll",
                 "api-ms-win-crt-convert-l1-1-0.dll", "api-ms-win-crt-runtime-l1-1-0.dll",
                 "ucrtbase.dll", "sub\\UCRTBASE.DLL", "sub/API-MS-WIN-CRT-HEAP-L1-1-0.DLL",
-                "api-ms-win-core-file-l1-1-0.dll", "api-ms-win-crtx-custom.dll", "ucrtbase-helper.dll",
+                "api-ms-win-core-file-l1-1-0.dll", "api-ms-win-core-namedpipe-l1-1-0.dll",
+                "ext-ms-win-ntuser-window-l1-1-0.dll",
+            ]
+            retained = [
+                "api-ms-win-crtx-custom.dll", "api-ms-winx-core-file-l1-1-0.dll",
+                "ext-ms-winx-ntuser-window-l1-1-0.dll", "ucrtbase-helper.dll",
                 "libcrypto-3-x64.dll", "unknown.dll", "vcruntime140.txt", "api-ms-win-crt-custom.so",
             ]
-            binaries = [(name, "/original/" + name, "BINARY") for name in names]
+            binaries = [(name, "/original/" + name, "BINARY") for name in excluded + retained]
             analysis = type("FakeAnalysis", (), {"binaries": binaries, "pure": []})()
             namespace = {"Analysis": lambda _: analysis, "PYZ": lambda _: None, "EXE": lambda *_: None}
             exec(compile(rewritten, str(spec), "exec"), namespace)
-            self.assertEqual(analysis.binaries, binaries[8:])
+            self.assertEqual(analysis.binaries, binaries[len(excluded):])
             spec.write_text("a = Analysis([])\n", encoding="utf-8")
             with self.assertRaisesRegex(helper.BuildError, "cannot locate"):
                 helper.exclude_windows_redist(spec)
