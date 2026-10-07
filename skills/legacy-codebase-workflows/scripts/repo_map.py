@@ -214,60 +214,62 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
         tags_by_file, parsed_count, parse_failures = _tags(root, output, inventory)
         stage = "ranking"
         ranked = rank_tags(tags_by_file, focus_files=focus_files, focus_symbols=focus_symbols)
+        stage = "rendering"
+        by_path = {entry["path"]: entry for entry in inventory["files"]}
+
+        @lru_cache(maxsize=32)
+        def source_lines(path):
+            text, digest = read_safe_text(root, path, max_file_bytes=max(by_path[path]["size"], 1))
+            if digest != by_path[path]["sha256"]:
+                raise ValueError(f"source changed while rendering: {path}")
+            return split_source_lines(text)
+
+        header = "# Repository map\n\n"
+        chunks = [header]
+        remaining = budget * 4 - len(header)
+        included = []
+        included_lines = set()
+        for tag in ranked:
+            line_key = (tag["path"], tag["line"])
+            if line_key in included_lines:
+                included.append(tag)
+                continue
+            line = _line(tag, source_lines)
+            if len(line) <= remaining:
+                chunks.append(line)
+                remaining -= len(line)
+                included.append(tag)
+                included_lines.add(line_key)
+        if not included:
+            message = "No supported definitions found in selected files. See inventory.json for descriptors, unsupported files and skips.\n"
+            if len(message) <= remaining:
+                chunks.append(message)
+        map_text = "".join(chunks)
+        metadata = {
+            "tool": "legacy-codebase-workflows repo_map", "version": VERSION, "status": "complete",
+            "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"], "git_notes": inventory["git_notes"],
+            "working_copy_fingerprint": inventory["fingerprint"], "inventory_summary": summary,
+            "fingerprint_scope": "selected readable files and skip reasons, from current bytes; ignored files and secret contents are excluded",
+            "selection": {"subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},
+            "limits": {"budget": budget, "max_files": max_files, "max_file_bytes": max_file_bytes, "max_tags_per_file": MAX_TAGS_PER_FILE, "max_total_tags": MAX_TOTAL_TAGS},
+            "coverage": {"candidates_seen": inventory["totals"]["candidates_seen"], "selected_files": len(inventory["files"]), "parsed_files": parsed_count, "files_with_definitions": len({tag["path"] for tag in ranked}), "definitions_found": len(ranked), "definitions_in_map": len(included)},
+            "skipped": inventory["skipped"], "parse_failures": parse_failures,
+            "unsupported_languages": sorted({entry["path"] for entry in inventory["files"] if entry["language"] is None and entry["kind"] == "other" and Path(entry["path"]).suffix}),
+            "descriptors": sorted(entry["path"] for entry in inventory["files"] if entry["kind"] == "descriptor"),
+            "truncated": len(included) < len(ranked) or any(item["path"] == "*" for item in inventory["skipped"]),
+            "estimated_tokens": math.ceil(len(map_text) / 4), "estimator": "ceil(Unicode characters / 4); a size estimate, not a model tokenizer",
+            "map_sha256": hashlib.sha256(map_text.encode("utf-8")).hexdigest(),
+            "dependencies": _packages(),
+        }
+        stage = "publication"
+        _atomic_write(output / "inventory.json", json.dumps(inventory, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+        _atomic_write(output / "repo-map.md", map_text)
+        _atomic_write(output / "map.meta.json", json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+        return metadata
     except (OSError, ValueError, ImportError, KeyError) as exc:
         preliminary.update(status="failed", failure={"stage": stage, "message": str(exc)})
         _atomic_write(output / "map.meta.json", json.dumps(preliminary, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
         raise
-    by_path = {entry["path"]: entry for entry in inventory["files"]}
-
-    @lru_cache(maxsize=32)
-    def source_lines(path):
-        text, digest = read_safe_text(root, path, max_file_bytes=max(by_path[path]["size"], 1))
-        if digest != by_path[path]["sha256"]:
-            raise ValueError(f"source changed while rendering: {path}")
-        return split_source_lines(text)
-
-    header = "# Repository map\n\n"
-    chunks = [header]
-    remaining = budget * 4 - len(header)
-    included = []
-    included_lines = set()
-    for tag in ranked:
-        line_key = (tag["path"], tag["line"])
-        if line_key in included_lines:
-            included.append(tag)
-            continue
-        line = _line(tag, source_lines)
-        if len(line) <= remaining:
-            chunks.append(line)
-            remaining -= len(line)
-            included.append(tag)
-            included_lines.add(line_key)
-    if not included:
-        message = "No supported definitions found in selected files. See inventory.json for descriptors, unsupported files and skips.\n"
-        if len(message) <= remaining:
-            chunks.append(message)
-    map_text = "".join(chunks)
-    metadata = {
-        "tool": "legacy-codebase-workflows repo_map", "version": VERSION, "status": "complete",
-        "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"], "git_notes": inventory["git_notes"],
-        "working_copy_fingerprint": inventory["fingerprint"], "inventory_summary": summary,
-        "fingerprint_scope": "selected readable files and skip reasons, from current bytes; ignored files and secret contents are excluded",
-        "selection": {"subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},
-        "limits": {"budget": budget, "max_files": max_files, "max_file_bytes": max_file_bytes, "max_tags_per_file": MAX_TAGS_PER_FILE, "max_total_tags": MAX_TOTAL_TAGS},
-        "coverage": {"candidates_seen": inventory["totals"]["candidates_seen"], "selected_files": len(inventory["files"]), "parsed_files": parsed_count, "files_with_definitions": len({tag["path"] for tag in ranked}), "definitions_found": len(ranked), "definitions_in_map": len(included)},
-        "skipped": inventory["skipped"], "parse_failures": parse_failures,
-        "unsupported_languages": sorted({entry["path"] for entry in inventory["files"] if entry["language"] is None and entry["kind"] == "other" and Path(entry["path"]).suffix}),
-        "descriptors": sorted(entry["path"] for entry in inventory["files"] if entry["kind"] == "descriptor"),
-        "truncated": len(included) < len(ranked) or any(item["path"] == "*" for item in inventory["skipped"]),
-        "estimated_tokens": math.ceil(len(map_text) / 4), "estimator": "ceil(Unicode characters / 4); a size estimate, not a model tokenizer",
-        "map_sha256": hashlib.sha256(map_text.encode("utf-8")).hexdigest(),
-        "dependencies": _packages(),
-    }
-    _atomic_write(output / "inventory.json", json.dumps(inventory, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
-    _atomic_write(output / "repo-map.md", map_text)
-    _atomic_write(output / "map.meta.json", json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
-    return metadata
 
 
 def main(argv=None):

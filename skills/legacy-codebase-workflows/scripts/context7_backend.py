@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from repo_files import _candidates, _git, _safe_relative, _secret, read_safe_text, split_source_lines
+from repo_files import _candidates, _git, git_context, _safe_relative, _secret, read_safe_text, split_source_lines
 
 
 EXTENSIONS = {".properties", ".gradle", ".kts", ".ini", ".conf", ".cfg", ".c", ".cc", ".cpp", ".cs", ".css", ".go", ".h", ".hpp", ".html", ".java", ".js", ".json", ".jsx", ".kt", ".md", ".mjs", ".php", ".py", ".rb", ".rs", ".sh", ".sql", ".toml", ".ts", ".tsx", ".xml", ".yaml", ".yml"}
@@ -78,8 +78,7 @@ def digest(data: bytes) -> str:
 
 
 def revision(root: Path) -> str:
-    top = _git(root, "rev-parse", "--show-toplevel")
-    if top.returncode != 0 or Path(os.fsdecode(top.stdout.strip())).resolve() != root:
+    if not git_context(root):
         return "non-git"
     head = _git(root, "rev-parse", "HEAD")
     return head.stdout.decode("ascii", "replace").strip() if head.returncode == 0 else "non-git"
@@ -665,8 +664,9 @@ def serve(database: Path, host: str, port: int, default_mode: str = "lexical", d
                         result = query(con, args.get("query", [""])[0], args.get("mode", [default_mode])[0], args.get("rerank", [default_rerank])[0], requested_limit, args.get("vectorEngine", [default_vector_engine])[0])
                         payload = context_payload(result)
                         if args.get("type", [""])[0] == "txt":
-                            body = "\n\n".join(s["codeDescription"] + "\n" + s["codeList"][0]["code"] for s in payload["codeSnippets"])
-                            body += "\n\n".join(s["description"] + "\n" + s["content"] for s in payload["infoSnippets"])
+                            rendered = [s["codeDescription"] + "\n" + s["codeList"][0]["code"] for s in payload["codeSnippets"]]
+                            rendered.extend(s["description"] + "\n" + s["content"] for s in payload["infoSnippets"])
+                            body = "\n\n".join(rendered)
                             if not body:
                                 body = "No matching indexed evidence"
                             self.respond(200, body.encode(), "text/plain; charset=utf-8")

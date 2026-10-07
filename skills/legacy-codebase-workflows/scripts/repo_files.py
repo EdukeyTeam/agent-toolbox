@@ -13,6 +13,9 @@ DEFAULT_MAX_FILES = 10_000
 DEFAULT_MAX_FILE_BYTES = 2_000_000
 HARD_MAX_FILES = 100_000
 HARD_MAX_FILE_BYTES = 20_000_000
+MAX_DISCOVERY_ENTRIES = 100_000
+MAX_IGNORE_BYTES = 256_000
+MAX_IGNORE_TOTAL_BYTES = 2_000_000
 
 LANGUAGES = {
     ".py": "python", ".java": "java", ".js": "javascript", ".jsx": "javascript",
@@ -32,6 +35,8 @@ IGNORED_DIRS = {".git", ".aider.tags.cache", "node_modules", ".venv", "venv", "_
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
     env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
     env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GIT_LITERAL_PATHSPECS": "1"})
+    if args and args[0] == "check-ignore":
+        env.pop("GIT_LITERAL_PATHSPECS", None)  # This command accepts literal filenames, not pathspecs.
     command = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), *args]
     try:
         return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, check=False)
@@ -57,7 +62,26 @@ def _secret(path: PurePosixPath) -> bool:
     return path.suffix.lower() in SECRET_SUFFIXES or bool(SECRET_PATTERN.search(lower))
 
 
-def _read_gitignore(root: Path, directory: Path) -> list[tuple[str, bool, bool]]:
+def git_context(root: Path) -> bool:
+    """Recognize ordinary worktree subtrees, without adopting an explicitly ignored root."""
+    top = _git(root, "rev-parse", "--show-toplevel")
+    if top.returncode != 0:
+        return False
+    enclosing = Path(os.fsdecode(top.stdout.strip())).resolve()
+    if not root.is_relative_to(enclosing):
+        return False
+    # An explicitly supplied root excluded by its enclosing repository is an
+    # independent source tree (e.g. an exported fixture below another project).
+    if root == enclosing:
+        return True
+    ignored = _git(root, "check-ignore", "-q", ".").returncode
+    if ignored not in (0, 1):
+        raise ValueError("cannot safely inspect enclosing Git ignore policy")
+    return ignored == 1
+
+
+def _read_gitignore(root: Path, directory: Path, cache=None) -> list[tuple[str, bool, bool]]:
+    cache = cache if cache is not None else {"files": {}, "bytes": 0}
     rules = []
     current = root
     folders = [current]
@@ -65,24 +89,29 @@ def _read_gitignore(root: Path, directory: Path) -> list[tuple[str, bool, bool]]
         current = current / part
         folders.append(current)
     for folder in folders:
-        ignore = folder / ".gitignore"
-        if ignore.is_file() and not ignore.is_symlink():
-            try:
-                for raw in ignore.read_text(encoding="utf-8").splitlines():
+        if folder not in cache["files"]:
+            local = []
+            ignore = folder / ".gitignore"
+            if ignore.is_file() and not ignore.is_symlink():
+                text, _ = read_safe_text(root, ignore.relative_to(root).as_posix(), max_file_bytes=MAX_IGNORE_BYTES)
+                cache["bytes"] += len(text.encode("utf-8"))
+                if cache["bytes"] > MAX_IGNORE_TOTAL_BYTES:
+                    raise ValueError(f"ignore-file byte limit exceeded ({MAX_IGNORE_TOTAL_BYTES}); select a smaller source tree")
+                for raw in text.splitlines():
                     rule = raw.strip()
                     if not rule or rule.startswith("#"):
                         continue
                     negated = rule.startswith("!")
                     rule = rule[1:] if negated else rule
-                    rules.append((f"{folder.relative_to(root).as_posix()}/{rule}" if folder != root else rule, negated, rule.endswith("/")))
-            except (OSError, UnicodeError):
-                pass
+                    local.append((f"{folder.relative_to(root).as_posix()}/{rule}" if folder != root else rule, negated, rule.endswith("/")))
+            cache["files"][folder] = local
+        rules.extend(cache["files"][folder])
     return rules
 
 
-def _ignored_non_git(root: Path, relative: PurePosixPath) -> bool:
+def _ignored_non_git(root: Path, relative: PurePosixPath, *, ignore_cache=None) -> bool:
     ignored = False
-    for pattern, negated, directory_only in _read_gitignore(root, (root / str(relative)).parent):
+    for pattern, negated, directory_only in _read_gitignore(root, (root / str(relative)).parent, ignore_cache):
         pattern = pattern.removesuffix("/").removeprefix("./")
         segments = relative.parts
         candidates = [relative.as_posix()]
@@ -95,7 +124,7 @@ def _ignored_non_git(root: Path, relative: PurePosixPath) -> bool:
     return ignored
 
 
-def _candidates(root: Path, git_repo: bool, subtrees):
+def _candidates(root: Path, git_repo: bool, subtrees, *, max_discovery_entries=None):
     if git_repo:
         env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
         env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GIT_LITERAL_PATHSPECS": "1"})
@@ -120,15 +149,45 @@ def _candidates(root: Path, git_repo: bool, subtrees):
                 proc.wait()
             proc.stdout.close()
         return
-    def walk_error(error):
-        raise ValueError(f"cannot inventory directory: {error.filename}: {error.strerror}")
+    limit = MAX_DISCOVERY_ENTRIES if max_discovery_entries is None else max_discovery_entries
+    visited = 0
+    ignore_cache = {"files": {}, "bytes": 0}
+    scopes = [_safe_relative(s).as_posix() for s in subtrees if _safe_relative(s).as_posix() != "."]
 
-    for directory, dirs, files in os.walk(root, followlinks=False, onerror=walk_error):
-        dirs[:] = sorted(d for d in dirs if d not in IGNORED_DIRS and not (Path(directory) / d).is_symlink())
-        for name in sorted(files):
-            relative = (Path(directory) / name).relative_to(root).as_posix()
-            if not _ignored_non_git(root, PurePosixPath(relative)):
-                yield relative
+    def selected(relative):
+        return not scopes or any(relative == scope or relative.startswith(scope + "/") or scope.startswith(relative + "/") for scope in scopes)
+
+    pending = [(True, root)]
+    while pending:
+        is_directory, item = pending.pop()
+        if not is_directory:
+            yield item.relative_to(root).as_posix()
+            continue
+        entries = []
+        try:
+            with os.scandir(item) as iterator:
+                for entry in iterator:
+                    visited += 1
+                    if visited > limit:
+                        raise ValueError(f"filesystem discovery entry limit exceeded ({limit}); select a smaller source tree")
+                    entries.append(entry)
+        except OSError as error:
+            raise ValueError(f"cannot inventory directory: {error.filename}: {error.strerror}") from error
+        directories, leaves = [], []
+        for entry in sorted(entries, key=lambda e: e.name):
+            relative = Path(entry.path).relative_to(root).as_posix()
+            rel = PurePosixPath(relative)
+            if not selected(relative):
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                if entry.name not in IGNORED_DIRS and not _secret(rel) and not _ignored_non_git(root, rel, ignore_cache=ignore_cache):
+                    directories.append(Path(entry.path))
+            elif not _ignored_non_git(root, rel, ignore_cache=ignore_cache):
+                leaves.append(Path(entry.path))
+        # Match sorted os.walk order: current-directory files first, then
+        # depth-first traversal of sorted child directories. The stack is LIFO.
+        pending.extend((True, directory) for directory in reversed(directories))
+        pending.extend((False, leaf) for leaf in reversed(leaves))
 
 
 def read_safe_text(root: str | Path, relative_path: str, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES) -> tuple[str, str]:
@@ -176,10 +235,9 @@ def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: in
         raise ValueError("source is not a directory")
     if not 1 <= max_files <= HARD_MAX_FILES or not 1 <= max_file_bytes <= HARD_MAX_FILE_BYTES:
         raise ValueError(f"limits must be 1..{HARD_MAX_FILES} files and 1..{HARD_MAX_FILE_BYTES} bytes")
-    for subtree in subtrees:
-        _safe_relative(subtree)
-    top_result = _git(root, "rev-parse", "--show-toplevel")
-    git_repo = top_result.returncode == 0 and Path(os.fsdecode(top_result.stdout.strip())).resolve() == root
+    subtrees = tuple(_safe_relative(s).as_posix() for s in subtrees)
+    subtrees = tuple(s for s in subtrees if s != ".")
+    git_repo = git_context(root)
     head = _git(root, "rev-parse", "HEAD") if git_repo else None
     revision = head.stdout.decode("ascii", "replace").strip() if head is not None and head.returncode == 0 else None
     git_notes = []
@@ -191,7 +249,7 @@ def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: in
         elif filters.returncode == 0:
             git_notes.append("dirty state not checked: Git clean/process filters can execute repository commands")
         else:
-            state = _git(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=all")
+            state = _git(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=all", "--", ".")
             if state.returncode == 0:
                 dirty = bool(state.stdout)
             else:

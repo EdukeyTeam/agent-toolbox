@@ -12,11 +12,11 @@ For a large repository, start with inventory only. This needs only Python's stan
 python /path/to/skill/scripts/repo_map.py /path/to/repository --output-dir /path/to/inventory --inventory-only
 ```
 
-Read the bounded `inventory_summary` on stdout (language counts and up to 20 module groups), rather than loading the full inventory into the agent context. Then choose a module from `inventory.json` and generate its symbol map. Inventory respects the same source, ignore and file-size policy.
+Read the bounded `inventory_summary` on stdout (language counts and up to 20 module groups), rather than loading the full inventory into the agent context. Then choose a module from `inventory.json` and generate its symbol map. Inventory respects the same source, ignore and file-size policy. An ordinary Git module passed as the root retains its enclosing revision and ignore rules. A supplied root that its enclosing repository ignores entirely is treated as an independent source tree.
 
 `--subtree`, `--focus-file`, `--focus-symbol` and `--exclude` are repeatable. Paths are relative to the repository. Focus prioritizes definitions; it does not prove the symbol exists or resolve overloads. Use direct source search when the map does not contain the target.
 
-`--max-files` and `--max-file-bytes` bound inventory. Inspect truncation/skips and narrow the subtree when limits apply. For a monorepo, map relevant modules separately and investigate edges between them. Output and caches must be outside the source repository.
+`--max-files` and `--max-file-bytes` bound inventory. Non-Git discovery additionally caps visited filesystem entries, including directories and ignored entries, at 100,000. It prunes ignored, secret and nonselected directories and bounds ignore files at 256 KB each and 2 MB total. The fallback supports basic glob/negation rules rather than full Git ignore syntax. Exceeding these discovery limits fails with unknown coverage instead of publishing a partial complete scan. Inspect truncation/skips and narrow the subtree when limits apply. For a monorepo, map relevant modules separately and investigate edges between them. Output and caches must be outside the source repository.
 
 ## Read the three outputs
 
@@ -26,7 +26,7 @@ Read the bounded `inventory_summary` on stdout (language counts and up to 20 mod
 | `inventory.json` | Files, content hashes, language/kind, examined revision and working-copy fingerprint. |
 | `map.meta.json` | Selection, limits, coverage, skipped files, parse failures, descriptors, truncation and dependency versions. |
 
-Metadata `status` distinguishes `complete`, `inventory-only`, `in-progress` and `failed`. A failed inventory invalidates earlier artifacts and reports unknown coverage. A failed parse/rank retains the fresh inventory and records the failure stage, while replacing any old symbol map with a diagnostic. Do not use a map unless status is `complete`. A full graph is capped at 200,000 edges and 200,000 tags; map a subtree if either limit is reached.
+Metadata `status` distinguishes `complete`, `inventory-only`, `in-progress` and `failed`. A failed inventory invalidates earlier artifacts and reports unknown coverage. A failed parse/rank/render retains the fresh inventory and records the failure stage, while replacing any old symbol map with a diagnostic. Do not use a map unless status is `complete`. A full graph is capped at 200,000 edges and 200,000 tags; map a subtree if either limit is reached.
 
 Budget units are estimated tokens using `ceil(Unicode characters / 4)`. This enforces a text-size bound, not a model's tokenizer count or billing cost. Check the metadata's estimator. A short map deliberately omits definitions; it is not a complete repository index.
 

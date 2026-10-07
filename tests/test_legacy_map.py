@@ -130,6 +130,28 @@ class MapTests(unittest.TestCase):
         self.assertEqual(meta["coverage"]["selected_files"], 1)
         self.assertIn("desired", (self.out / "repo-map.md").read_text())
 
+    def test_subtree_dot_and_relative_prefix_preserve_selected_scope(self):
+        self.write("module/a.py", "def selected(): pass\n")
+        self.write("outside.py", "def outside(): pass\n")
+        for git in (False, True):
+            if git:
+                subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+            self.assertEqual(scan_repository(self.repo, subtrees=["."])["files"], scan_repository(self.repo)["files"])
+            selected = scan_repository(self.repo, subtrees=["./module/"])
+            self.assertEqual([entry["path"] for entry in selected["files"]], ["module/a.py"])
+
+    def test_non_git_walk_keeps_sorted_files_before_sorted_child_directories(self):
+        self.write("z.py", "def root_file(): pass\n")
+        self.write("m.py", "def earlier_root_file(): pass\n")
+        self.write("a/z.py", "def first_child(): pass\n")
+        self.write("a/a/deep.py", "def deeper_child(): pass\n")
+        self.write("b/a.py", "def second_child(): pass\n")
+        expected = ["m.py", "z.py", "a/z.py", "a/a/deep.py", "b/a.py"]
+        self.assertEqual([entry["path"] for entry in scan_repository(self.repo)["files"]], expected)
+        capped = scan_repository(self.repo, max_files=1)
+        self.assertEqual([entry["path"] for entry in capped["files"]], ["m.py"])
+        self.assertEqual(capped["totals"]["candidates_seen"], 2)
+
     def test_nested_ignored_directory_is_scanned_as_non_git(self):
         subprocess.run(["git", "init", "-q", str(self.base)], check=True)
         (self.base / ".gitignore").write_text("source with spaces/\n", encoding="utf-8")
@@ -137,6 +159,86 @@ class MapTests(unittest.TestCase):
         inventory = scan_repository(self.repo)
         self.assertFalse(inventory["git"])
         self.assertIn("a.py", {item["path"] for item in inventory["files"]})
+
+    def test_git_module_root_preserves_parent_ignore_revision_and_scoped_dirty(self):
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.write(".gitignore", "module/ignored.py\n")
+        self.write("module/ok.py", "def visible(): pass\n")
+        self.write("module/ignored.py", "def excluded(): pass\n")
+        self.write("outside.py", "def outside(): pass\n")
+        subprocess.run(["git", "-C", str(self.repo), "add", ".gitignore", "module/ok.py", "outside.py"], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial"], check=True)
+        expected_revision = subprocess.check_output(["git", "-C", str(self.repo), "rev-parse", "HEAD"], text=True).strip()
+        self.write("outside.py", "def changed_outside(): pass\n")
+        inventory = scan_repository(self.repo / "module")
+        self.assertTrue(inventory["git"])
+        self.assertEqual(inventory["revision"], expected_revision)
+        self.assertFalse(inventory["dirty"])
+        self.assertEqual([item["path"] for item in inventory["files"]], ["ok.py"])
+        self.write("module/ok.py", "def changed_inside(): pass\n")
+        self.assertTrue(scan_repository(self.repo / "module")["dirty"])
+
+    def test_non_git_walk_prunes_ignored_secret_and_nonselected_directories(self):
+        self.write(".gitignore", "ignored/\n")
+        self.write("ignored/deep/a.py", "def ignored(): pass\n")
+        self.write("secrets/deep/a.py", "def sensitive(): pass\n")
+        self.write("outside/deep/a.py", "def outside(): pass\n")
+        self.write("module/a.py", "def selected(): pass\n")
+        original = os.scandir
+        visited = []
+        def observe(directory):
+            visited.append(Path(directory))
+            return original(directory)
+        with patch("repo_files.os.scandir", side_effect=observe):
+            inventory = scan_repository(self.repo, subtrees=["module"])
+        self.assertEqual([item["path"] for item in inventory["files"]], ["module/a.py"])
+        self.assertEqual(visited, [self.repo, self.repo / "module"])
+
+    def test_non_git_discovery_and_ignore_bytes_fail_with_unknown_coverage(self):
+        for i in range(10):
+            self.write(f"files/{i}.py", "def example(): pass\n")
+        with patch("repo_files.MAX_DISCOVERY_ENTRIES", 5):
+            with self.assertRaisesRegex(ValueError, "discovery entry limit"):
+                self.map(inventory_only=True)
+        meta = json.loads((self.out / "map.meta.json").read_text())
+        self.assertEqual(meta["status"], "failed")
+        self.assertIsNone(meta["coverage"])
+        self.assertEqual(meta["failure"]["stage"], "inventory")
+        self.write(".gitignore", "x" * 257_000)
+        with self.assertRaisesRegex(ValueError, "exceeds max_file_bytes"):
+            scan_repository(self.repo)
+
+    def test_source_change_during_rendering_records_failed_stage(self):
+        self.write("a.py", "def initial(): pass\n")
+        import repo_map
+        original = repo_map.rank_tags
+        def change_source(tags, **options):
+            ranked = original(tags, **options)
+            self.write("a.py", "def changed_source(): pass\n")
+            return ranked
+        with patch("repo_map.rank_tags", side_effect=change_source):
+            with self.assertRaises(ValueError):
+                self.map()
+        meta = json.loads((self.out / "map.meta.json").read_text())
+        self.assertEqual(meta["status"], "failed")
+        self.assertEqual(meta["failure"]["stage"], "rendering")
+        self.assertEqual(meta["coverage"]["selected_files"], 1)
+        self.assertNotIn("# Repository map", (self.out / "repo-map.md").read_text())
+
+    def test_publication_failure_records_failed_stage(self):
+        self.write("a.py", "def initial(): pass\n")
+        import repo_map
+        original = repo_map._atomic_write
+        def fail_map(path, content):
+            if path.name == "repo-map.md" and content.startswith("# Repository map"):
+                raise OSError("synthetic publication failure")
+            original(path, content)
+        with patch("repo_map._atomic_write", side_effect=fail_map):
+            with self.assertRaisesRegex(OSError, "publication failure"):
+                self.map()
+        meta = json.loads((self.out / "map.meta.json").read_text())
+        self.assertEqual(meta["status"], "failed")
+        self.assertEqual(meta["failure"]["stage"], "publication")
 
     def test_focus_file_remains_visible_in_small_budget(self):
         self.write("a.py", "".join(f"def other_{n}(): pass\n" for n in range(30)))

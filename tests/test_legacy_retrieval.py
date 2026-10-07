@@ -120,6 +120,36 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(second["changed"], 0)
         self.assertNotEqual(first["corpusId"], second["corpusId"])
 
+    def test_module_root_keeps_git_revision_and_parent_ignores(self):
+        subprocess.run(["git", "-C", str(self.root), "init", "-q"], check=True)
+        (self.root / ".gitignore").write_text("src/ignored.py\n")
+        (self.root / "src/ignored.py").write_text("class ShouldRemainIgnored: pass\n")
+        subprocess.run(["git", "-C", str(self.root), "add", ".gitignore", "src/service.py"], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial"], check=True)
+        result = backend.index(self.root / "src", self.db, "/local/billing", None, None, None)
+        expected_revision = subprocess.check_output(["git", "-C", str(self.root), "rev-parse", "HEAD"], text=True).strip()
+        self.assertEqual(result["revision"], expected_revision)
+        self.assertEqual(result["files"], 1)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.query(con, "ShouldRemainIgnored")["results"], [])
+            found = backend.query(con, "InvoiceMaker")
+            self.assertEqual(found["results"][0]["source"]["path"], "service.py")
+            self.assertEqual(found["results"][0]["source"]["revision"], expected_revision)
+        (self.root / "src/ignored.py").write_text("class ChangedIgnored: pass\n")
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_non_git_discovery_failure_preserves_index(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            previous = backend.metadata(con)
+        with mock.patch("repo_files.MAX_DISCOVERY_ENTRIES", 1):
+            with self.assertRaisesRegex(backend.RetrievalError, "discovery entry limit"):
+                self.index()
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con), previous)
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
     def test_markdown_in_repo_has_doc_provenance(self):
         (self.root / "README.md").write_text("# Architecture\nThe billing operation runs from this entry point.\n")
         self.index()
@@ -520,6 +550,10 @@ class RetrievalTests(unittest.TestCase):
             payload = json.load(response)
             self.assertTrue(payload["codeSnippets"])
             self.assertIn("sha256:", payload["codeSnippets"][0]["codeDescription"])
+        with urlopen(base + "/api/v2/context?" + urlencode({"libraryId": "/local/billing", "query": "InvoiceMaker", "type": "txt"})) as response:
+            text = response.read().decode("utf-8")
+            self.assertIn("return 'invoice total'\n\ndocs:guide.md:L1", text)
+            self.assertNotIn("return 'invoice total'docs:", text)
         with self.assertRaises(HTTPError) as error:
             urlopen(base + "/api/v2/context?libraryId=/public/unknown&query=invoice")
         self.assertEqual(error.exception.code, 404)
