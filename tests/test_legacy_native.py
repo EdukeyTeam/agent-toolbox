@@ -1056,7 +1056,7 @@ class LicenseNoticeTests(unittest.TestCase):
 
     def test_pinned_notice_survives_a_crlf_checkout_but_not_an_edit(self):
         copy = self.base / "licenses"
-        shutil.copytree(CRATE / "licenses", copy)
+        shutil.copytree(CRATE / "licenses", copy, copy_function=shutil.copyfile)
         target = copy / "tree-sitter-unicode-LICENSE.txt"
         upstream = target.read_bytes().replace(b"\r\n", b"\n")
         target.write_bytes(upstream.replace(b"\n", b"\r\n"))
