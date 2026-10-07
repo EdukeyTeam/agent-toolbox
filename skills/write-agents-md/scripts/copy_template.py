@@ -24,7 +24,10 @@ def copy_template(workflow, project_root, scope=".", candidate=False):
     source = Path(__file__).resolve().parent.parent / "assets" / f"{workflow}-AGENTS.md"
     template = source.read_bytes()
     destination = directory / ("AGENTS.md.candidate" if candidate else "AGENTS.md")
-    # Exclusive creation also rejects existing and dangling destination symlinks.
+    # Windows exclusive creation can follow a dangling file symlink.
+    if destination.is_symlink() or destination.exists():
+        raise FileExistsError(str(destination))
+    # Exclusive creation also protects against an existing regular destination.
     with destination.open("xb") as output:
         output.write(template)
     copied = destination.read_bytes()
@@ -53,10 +56,14 @@ def main():
         print("Destination already exists; refusing overwrite. Use a fresh candidate location.",
               file=sys.stderr)
         return 1
+    except FileNotFoundError as error:
+        print(f"Required project, scope or template path does not exist: {error}",
+              file=sys.stderr)
+        return 1
     except (OSError, ValueError) as error:
         print(f"Cannot copy template: {error}", file=sys.stderr)
         return 1
-    print(json.dumps(receipt, ensure_ascii=False))
+    print(json.dumps(receipt))
     return 0
 
 
