@@ -127,6 +127,7 @@ impl Fixture {
             .arg(&self.source)
             .args(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid"])
             .args(["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"])
+            .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
             .args(arguments)
             .env("GIT_CONFIG_GLOBAL", null)
             .env("GIT_CONFIG_SYSTEM", null)
