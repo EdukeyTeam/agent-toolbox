@@ -10,6 +10,7 @@ Environment:
                        skipped without it.
   LEGACY_MAP_DEPS      optional directory holding the Python map dependencies
                        (pip --target layout) when they are not installed.
+  LEGACY_BUILD_TOOLS   pinned build tools for real onefile archive verification.
 """
 
 import ast
@@ -20,9 +21,12 @@ import os
 import shutil
 import subprocess
 import sys
+import struct
+import zlib
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO = Path(__file__).resolve().parents[1]
 SKILL = REPO / "skills" / "legacy-codebase-workflows"
@@ -67,6 +71,8 @@ CASES = {
     "focus symbol": ["--focus-symbol", "rarelyUsedHelper", "--budget", "128"],
     "focus file": ["--focus-file", "src/app/AuditLog.java", "--budget", "128"],
     "subtree": ["--subtree", "src"],
+    "root subtree": ["--subtree", "."],
+    "dot subtree": ["--subtree", "./src/"],
     "exclude": ["--exclude", "legacy/gen/*", "--exclude", "*.tsx"],
     "file cap": ["--max-files", "5"],
     "size cap": ["--max-file-bytes", "120"],
@@ -305,6 +311,47 @@ class RustGitParityTests(RustParityTests):
 
     git = True
 
+    def test_module_root_inherits_parent_git_policy_and_scopes_dirty_state(self):
+        module = self.source / "src"
+        self.write("src/temporary.log", b"ignored by parent policy\n")
+        self.write("src/new.py", b"def new_work():\n    pass\n")
+        self.write("outside.py", b"def outside_work():\n    pass\n")
+        results = {}
+        for tool, command in (("rust", [str(RUST_BINARY)]), ("python", [sys.executable, str(SCRIPTS / "repo_map.py")])):
+            out = self.base / f"module-{tool}"
+            env = python_environment() if tool == "python" else os.environ.copy()
+            run = subprocess.run([*command, str(module), "--output-dir", str(out)], env=env, capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            results[tool] = {
+                "map": (out / "repo-map.md").read_bytes(),
+                "inventory": json.loads((out / "inventory.json").read_text()),
+            }
+        self.assertEqual(results["rust"], results["python"])
+        inventory = results["rust"]["inventory"]
+        self.assertTrue(inventory["git"])
+        self.assertTrue(inventory["dirty"])
+        paths = {item["path"] for item in inventory["files"]}
+        self.assertIn("new.py", paths)
+        self.assertNotIn("temporary.log", paths)
+        self.assertNotIn("outside.py", paths)
+
+        (module / "new.py").unlink()
+        clean = subprocess.run([str(RUST_BINARY), str(module), "--output-dir", str(self.base / "module-clean")], capture_output=True, text=True)
+        self.assertEqual(clean.returncode, 0, clean.stderr)
+        self.assertFalse(self.load("module-clean", "inventory.json")["dirty"])
+
+    def test_explicit_parent_ignored_root_remains_independent(self):
+        ignored = self.source / "build"
+        for tool, command in (("rust", [str(RUST_BINARY)]), ("python", [sys.executable, str(SCRIPTS / "repo_map.py")])):
+            out = self.base / f"ignored-{tool}"
+            env = python_environment() if tool == "python" else os.environ.copy()
+            run = subprocess.run([*command, str(ignored), "--output-dir", str(out)], env=env, capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            inventory = json.loads((out / "inventory.json").read_text())
+            self.assertFalse(inventory["git"])
+            self.assertIsNone(inventory["revision"])
+            self.assertIn("Out.java", {item["path"] for item in inventory["files"]})
+
     def test_inherited_git_trace_cannot_write_into_source(self):
         trace = self.source / "trace.log"
         env = {**os.environ, "GIT_TRACE": str(trace), "GIT_DIR": str(self.base / "wrong-git-dir")}
@@ -321,7 +368,7 @@ class RustGitParityTests(RustParityTests):
         self.assertNotEqual(failed.returncode, 0)
         self.assertEqual(self.load("same-output", "map.meta.json")["failure"]["stage"], "inventory")
         self.assertEqual(self.load("same-output", "map.meta.json")["status"], "failed")
-        self.assertFalse((self.base / "same-output" / "inventory.json").exists())
+        self.assertEqual(self.load("same-output", "inventory.json")["status"], "failed")
         self.assertNotIn("openChannel", (self.base / "same-output" / "repo-map.md").read_text(encoding="utf-8"))
 
     def test_dirty_work_tree_and_deleted_tracked_file(self):
@@ -427,6 +474,23 @@ class DispatcherTests(FixtureCase):
                 self.assertTrue(license_path.is_file())
                 self.assertEqual(hashlib.sha256(license_path.read_bytes()).hexdigest(), record["license_sha256"])
                 self.assertTrue(record["license_source"])
+                self.assertTrue(record["version"])
+                self.assertRegex(record["source_sha256"], r"^[0-9a-f]{64}$")
+                if manifest["mode"] == "onedir":
+                    self.assertEqual(hashlib.sha256((artifact / "_internal" / record["name"]).read_bytes()).hexdigest(), record["sha256"])
+        if manifest["mode"] == "onefile":
+            helper = BuildHelperTests.helper()
+            tools = os.environ.get("LEGACY_BUILD_TOOLS")
+            search = [Path(tools)] if tools else []
+            toc = self.base / "Analysis-00.toc"
+            entries = [(record["name"], "unused Analysis path", record["kind"]) for record in records]
+            (self.base / "PKG-00.toc").write_text(repr((None, None, entries)), encoding="utf-8")
+            actual = helper.packaged_binary_hashes(toc, "onefile", artifact, search)
+            self.assertEqual(actual, {record["name"]: record["sha256"] for record in records})
+        for notice in manifest.get("additional_notices", []):
+            path = artifact / notice["license"]
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), notice["sha256"])
+            self.assertIn(notice["license"], self.call([str(TOOLS_BINARY)], os.environ.copy(), "notices").stdout)
         serialized = json.dumps(manifest)
         self.assertNotIn(str(REPO), serialized)
         self.assertNotIn(str(artifact.parent.parent), serialized)
@@ -472,7 +536,210 @@ class DispatcherTests(FixtureCase):
                 self.assertNotIn("native-test-secret", found.stdout)
 
 
+
+# Unmodified full notice fixture from https://raw.githubusercontent.com/libffi/libffi/v3.4.4/LICENSE
+LIBFFI_NOTICE = "libffi - Copyright (c) 1996-2022  Anthony Green, Red Hat, Inc and others.\nSee source files for details.\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n``Software''), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED ``AS IS'', WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\nIN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\nCLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,\nTORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\nSOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n"
+
+# Unmodified full notice fixture from https://raw.githubusercontent.com/python/cpython/v3.12.10/Modules/expat/COPYING
+EXPAT_NOTICE = 'Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper\nCopyright (c) 2001-2022 Expat maintainers\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n"Software"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be included\nin all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\nIN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\nCLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,\nTORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\nSOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n'
+
+
 class BuildHelperTests(unittest.TestCase):
+    @staticmethod
+    def helper():
+        spec = importlib.util.spec_from_file_location("legacy_build_helper", BUILD_HELPER)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_collected_cpython_extension_does_not_claim_adjacent_library(self):
+        helper = self.helper()
+        stdlib = Path(helper.sysconfig.get_path("stdlib"))
+        self.assertTrue(helper.is_cpython_binary(stdlib / "lib-dynload" / "_ssl.pyd", "EXTENSION"))
+        self.assertFalse(helper.is_cpython_binary(stdlib / "lib-dynload" / "libcrypto-3-x64.dll", "BINARY"))
+        self.assertFalse(helper.is_cpython_binary(stdlib / "lib-dynload" / "libsqlite3.so", "BINARY"))
+
+    def test_windows_spec_excludes_only_app_local_vc_runtime(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            spec = Path(temp) / "legacy-tools.spec"
+            spec.write_text("a = Analysis([])\npyz = PYZ(a.pure)\nexe = EXE(pyz, a.binaries)\n", encoding="utf-8")
+            helper.exclude_windows_redist(spec)
+            rewritten = spec.read_text(encoding="utf-8")
+            self.assertIn("a.binaries = [item for item in a.binaries", rewritten)
+            self.assertIn("vcruntime140", rewritten)
+            self.assertIn("msvcp140", rewritten)
+            self.assertIn("pyz = PYZ(a.pure)", rewritten)
+            spec.write_text("a = Analysis([])\n", encoding="utf-8")
+            with self.assertRaisesRegex(helper.BuildError, "cannot locate"):
+                helper.exclude_windows_redist(spec)
+
+    def test_supplied_binary_license_requires_provenance_version_and_matching_hash(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary = root / "libcrypto-test.dll"
+            binary.write_bytes(b"binary")
+            license_file = root / binary.name
+            license_file.write_text("Apache License 2.0\n", encoding="utf-8")
+            entry = {"component": "OpenSSL", "version": "3.0.16", "source": "https://www.openssl.org/source/", "sha256": helper.sha256(license_file)}
+            (root / "manifest.json").write_text(json.dumps({binary.name: entry}), encoding="utf-8")
+            self.assertEqual(helper.system_binary_license(binary, root)[:2], ("OpenSSL", "3.0.16"))
+            license_file.write_text("changed\n", encoding="utf-8")
+            with self.assertRaisesRegex(helper.BuildError, "hash mismatch"):
+                helper.system_binary_license(binary, root)
+
+    def test_host_preparation_uses_actual_binary_names_and_rejects_unknown(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary = root / "libcrypto-3-x64.dll"
+            binary.write_bytes(b"binary")
+
+            def fake_download(url, destination, *, marker):
+                destination.write_bytes(b"official upstream " + marker)
+                return destination
+
+            with mock.patch.object(helper.sys, "base_prefix", str(root)), mock.patch.object(helper, "collected_binaries", return_value=[(binary.name, binary, "BINARY")]), mock.patch.object(helper, "download_notice", side_effect=fake_download):
+                output = helper.prepare_host_binary_licenses(root / "toc", root / "prepared", {binary.name})
+                entry = json.loads((output / "manifest.json").read_text())[binary.name]
+                self.assertEqual(entry["component"], "OpenSSL")
+                self.assertEqual(entry["sha256"], helper.sha256(output / binary.name))
+                self.assertTrue((output / "CPython-THIRD-PARTY.rst").is_file())
+            unknown = root / "unknown.dll"
+            unknown.write_bytes(b"binary")
+            with mock.patch.object(helper.sys, "base_prefix", str(root)), mock.patch.object(helper, "collected_binaries", return_value=[(unknown.name, unknown, "BINARY")]):
+                with self.assertRaisesRegex(helper.BuildError, "unknown collected host binary"):
+                    helper.prepare_host_binary_licenses(root / "toc", root / "other", {unknown.name})
+
+    def test_windows_preparation_uses_cpython_pins_for_static_compression_notices(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary = root / "_bz2.pyd"
+            binary.write_bytes(b"extension")
+
+            def fake_download(url, destination, *, marker):
+                if url.endswith("python.props"):
+                    destination.write_text("<bz2Dir>bzip2-1.0.8\\</bz2Dir><lzmaDir>xz-5.2.5\\</lzmaDir><libffiDir>libffi-3.4.4\\</libffiDir>", encoding="utf-8")
+                else:
+                    destination.write_bytes(b"official upstream " + marker)
+                return destination
+
+            with mock.patch.object(helper.sys, "platform", "win32"), mock.patch.object(helper, "collected_binaries", return_value=[(binary.name, binary, "EXTENSION")]), mock.patch.object(helper, "download_notice", side_effect=fake_download):
+                out = helper.prepare_host_binary_licenses(root / "toc", root / "prepared", {"_bz2.pyd", "_lzma.pyd"})
+            notices = json.loads((out / "additional-notices.json").read_text())
+            self.assertEqual({item["component"]: item["version"] for item in notices}, {
+                "CPython bundled third-party components": helper.platform.python_version(),
+                "bzip2": "1.0.8",
+                "XZ Utils liblzma": "5.2.5",
+            })
+            self.assertEqual(helper.sha256(out / "bzip2-LICENSE.txt"), next(item["sha256"] for item in notices if item["component"] == "bzip2"))
+
+    def test_full_component_notices_preserve_pinned_attribution(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            ffi = root / "libffi-8.dll"
+            expat = root / "DLLs" / "pyexpat.pyd"
+            expat.parent.mkdir()
+            ffi.write_bytes(b"libffi image")
+            expat.write_bytes(b"CPython extension image")
+            urls = []
+            def download(url, destination, *, marker):
+                urls.append(url)
+                if url.endswith("PCbuild/python.props"):
+                    text = "<bz2Dir>bzip2-1.0.8</bz2Dir><lzmaDir>xz-5.2.5</lzmaDir><libffiDir>libffi-3.4.4</libffiDir>"
+                elif url == "https://raw.githubusercontent.com/libffi/libffi/v3.4.4/LICENSE":
+                    text = LIBFFI_NOTICE
+                elif url == "https://raw.githubusercontent.com/python/cpython/v3.12.10/Modules/expat/COPYING":
+                    text = EXPAT_NOTICE
+                elif url.endswith("Doc/license.rst"):
+                    text = "Summary for third-party software; includes historical libffi attribution."
+                else:
+                    raise AssertionError(f"Unverified notice URL: {url}")
+                self.assertIn(marker.lower(), text.encode().lower())
+                destination.write_text(text, encoding="utf-8", newline="\n")
+                return destination
+            binaries = [(ffi.name, ffi, "BINARY"), ("DLLs/pyexpat.pyd", expat, "EXTENSION")]
+            with mock.patch.object(helper.sys, "platform", "win32"), mock.patch.object(helper.sys, "base_prefix", str(root)), mock.patch.object(helper.platform, "python_version", return_value="3.12.10"), mock.patch.object(helper, "collected_binaries", return_value=binaries), mock.patch.object(helper, "download_notice", side_effect=download):
+                out = helper.prepare_host_binary_licenses(root / "toc", root / "prepared", {name for name, *_ in binaries})
+            manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+            notice = (out / ffi.name).read_text(encoding="utf-8")
+            self.assertEqual(notice, LIBFFI_NOTICE)
+            self.assertIn("1996-2022  Anthony Green", notice)
+            self.assertEqual(manifest[ffi.name]["version"], "3.4.4")
+            additional = json.loads((out / "additional-notices.json").read_text(encoding="utf-8"))
+            record = next(item for item in additional if item["component"] == "Expat (CPython bundled)")
+            notice = (out / record["filename"]).read_text(encoding="utf-8")
+            self.assertEqual(notice, EXPAT_NOTICE)
+            self.assertIn("2001-2022 Expat maintainers", notice)
+            for text in (LIBFFI_NOTICE, EXPAT_NOTICE):
+                self.assertIn("Permission is hereby granted", text)
+                self.assertIn("IN NO EVENT", text)
+            self.assertEqual(record["sha256"], helper.sha256(out / record["filename"]))
+            self.assertIsNone(helper.host_license_spec("libffi-unknown.dylib"))
+
+    def test_final_onedir_hash_uses_processed_image_and_rejects_missing_image(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            original = root / "original.dll"
+            original.write_bytes(b"original binary before relocation")
+            image = root / "dist/_internal/sub/image.dll"
+            image.parent.mkdir(parents=True)
+            image.write_bytes(b"relocated and signed final image")
+            toc = root / "Analysis-00.toc"
+            analysis = [None] * 16
+            analysis[15] = [("sub/image.dll", str(original), "BINARY")]
+            toc.write_text(repr(analysis), encoding="utf-8")
+            (root / "COLLECT-00.toc").write_text(repr(([("sub/image.dll", str(original), "BINARY")],)), encoding="utf-8")
+            hashes = helper.packaged_binary_hashes(toc, "onedir", root / "dist", [])
+            self.assertEqual(hashes["sub/image.dll"], helper.sha256(image))
+            self.assertNotEqual(hashes["sub/image.dll"], helper.sha256(original))
+            psf = root / "LICENSE.txt"
+            psf.write_text("CPython fixture license", encoding="utf-8")
+            with mock.patch.object(helper, "python_license", return_value=psf), mock.patch.object(helper, "is_cpython_binary", return_value=True), mock.patch.object(helper, "selected_distributions", return_value={}):
+                records = helper.license_collected_binaries(root / "stage", toc, [], None)
+            self.assertEqual(records[0]["source_sha256"], helper.sha256(original))
+            self.assertNotIn("sha256", records[0])
+            image.unlink()
+            with self.assertRaisesRegex(helper.BuildError, "missing or escaping"):
+                helper.packaged_binary_hashes(toc, "onedir", root / "dist", [])
+
+    def test_final_onefile_hash_reads_actual_compressed_carchive(self):
+        helper = self.helper()
+        tools = os.environ.get("LEGACY_BUILD_TOOLS")
+        search = [Path(tools)] if tools else []
+        if not helper.importable("PyInstaller.archive.readers", search):
+            self.skipTest("pinned PyInstaller archive reader unavailable; set LEGACY_BUILD_TOOLS")
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            built = root / "dist"
+            built.mkdir()
+            name = "sub/image.dll"
+            original = root / "original.dll"
+            original.write_bytes(b"preprocessed source")
+            final = b"relocated signed bytes in actual archive"
+            compressed = zlib.compress(final)
+            encoded = name.encode() + b"\0"
+            entry_length = struct.calcsize("!IIIIBc") + len(encoded)
+            entry_length += (-entry_length) % 16
+            entry = struct.pack("!IIIIBc", entry_length, 0, len(compressed), len(final), 1, b"b") + encoded
+            entry += b"\0" * (entry_length - len(entry))
+            cookie_format = "!8sIIII64s"
+            cookie_length = struct.calcsize(cookie_format)
+            cookie = struct.pack(cookie_format, b"MEI\014\013\012\013\016", len(compressed) + len(entry) + cookie_length, len(compressed), len(entry), 312, b"python312.dll")
+            (built / f"legacy-tools{EXE}").write_bytes(b"fake executable prefix" + compressed + entry + cookie)
+            toc = root / "Analysis-00.toc"
+            (root / "PKG-00.toc").write_text(repr((None, None, [(name, str(original), "BINARY")])), encoding="utf-8")
+            hashes = helper.packaged_binary_hashes(toc, "onefile", built, search)
+            self.assertEqual(hashes[name], hashlib.sha256(final).hexdigest())
+            self.assertNotEqual(hashes[name], helper.sha256(original))
+            (root / "PKG-00.toc").write_text(repr((None, None, [])), encoding="utf-8")
+            with self.assertRaisesRegex(helper.BuildError, "differ from licensed archive inventory"):
+                helper.packaged_binary_hashes(toc, "onefile", built, search)
+
     def test_rejects_wrong_selected_tool_version(self):
         with tempfile.TemporaryDirectory() as temp:
             tools = Path(temp) / "tools"

@@ -19,9 +19,12 @@ import importlib.metadata
 import json
 import os
 import platform
+import pyexpat
 import re
 import shutil
 import socket
+import sqlite3
+import ssl
 import subprocess
 import sys
 import sysconfig
@@ -30,6 +33,7 @@ import tempfile
 import time
 import urllib.request
 import zipfile
+import zlib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -44,7 +48,7 @@ RUNTIME_DISTRIBUTIONS = ["tree-sitter", "tree-sitter-language-pack", "tree-sitte
 PIN_IMPORTS = {"pyinstaller": "PyInstaller", "pyinstaller-hooks-contrib": "_pyinstaller_hooks_contrib"}
 METADATA_DISTRIBUTIONS = ["tree-sitter", "tree-sitter-language-pack", "networkx"]
 # Optional accelerators that networkx can import; the map does not use them.
-EXCLUDED_MODULES = ["numpy", "scipy", "pandas", "matplotlib", "tkinter", "IPython", "pytest", "setuptools", "pip", "lxml", "pygraphviz", "pydot", "sympy", "PIL", "yaml", "defusedxml"]
+EXCLUDED_MODULES = ["numpy", "scipy", "pandas", "matplotlib", "tkinter", "IPython", "pytest", "setuptools", "pip", "lxml", "pygraphviz", "pydot", "sympy", "PIL", "yaml", "defusedxml", "readline", "rlcompleter", "pdb", "decimal"]
 # Third-party import packages the bundle may contain. Anything else that the
 # build machine happens to have installed fails the build instead of shipping.
 ALLOWED_PACKAGES = {"networkx", "tree_sitter", "tree_sitter_c_sharp", "tree_sitter_embedded_template", "tree_sitter_language_pack", "tree_sitter_yaml"}
@@ -217,17 +221,55 @@ def collected_binaries(toc: Path) -> list[tuple[str, Path, str]]:
     return [(name.replace("\\", "/"), Path(source), kind) for name, source, kind in binaries]
 
 
-def verify_collected_archive(toc: Path, mode: str, records: list[dict]) -> None:
+def final_binary_names(toc: Path, mode: str) -> set[str]:
     filename = "COLLECT-00.toc" if mode == "onedir" else "PKG-00.toc"
     archive_toc = ast.literal_eval((toc.parent / filename).read_text(encoding="utf-8"))
     entries = archive_toc[0] if mode == "onedir" else archive_toc[2]
-    archived = {item[0].replace("\\", "/") for item in entries if len(item) == 3 and item[2] in ("BINARY", "EXTENSION")}
+    return {item[0].replace("\\", "/") for item in entries if len(item) == 3 and item[2] in ("BINARY", "EXTENSION")}
+
+
+def verify_collected_archive(toc: Path, mode: str, records: list[dict]) -> None:
+    archived = final_binary_names(toc, mode)
     licensed = {item["name"] for item in records}
     if archived != licensed:
         raise BuildError(f"PyInstaller {mode} binary inventory differs from licensed Analysis: unlicensed={sorted(archived - licensed)}, absent={sorted(licensed - archived)}")
 
 
-def system_binary_license(source: Path, supplied: Path | None) -> tuple[str, Path, str]:
+
+def packaged_binary_hashes(toc: Path, mode: str, built: Path, search: list[Path]) -> dict[str, str]:
+    """Hash final relocated/signed images, not preprocessed Analysis sources."""
+    names = final_binary_names(toc, mode)
+    if mode == "onedir":
+        root = (built / "_internal").resolve()
+        hashes = {}
+        for name in sorted(names):
+            image = root / name
+            if not image.resolve().is_relative_to(root) or not image.is_file():
+                raise BuildError(f"missing or escaping final binary image: {name}")
+            hashes[name] = sha256(image)
+        return hashes
+    # Use the selected pinned build-tool environment. Only hashes cross the
+    # subprocess boundary; decompress each final image once, without extraction.
+    code = """import hashlib, json, sys
+from PyInstaller.archive.readers import CArchiveReader
+archive = CArchiveReader(sys.argv[1])
+print(json.dumps({name.replace('\\\\', '/'): hashlib.sha256(archive.extract(name)).hexdigest()
+                  for name, entry in archive.toc.items() if entry[-1] == 'b'}))
+"""
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(str(path) for path in search)}
+    result = subprocess.run([sys.executable, "-c", code, str(built / f"legacy-tools{EXE}")], env=env, capture_output=True, text=True)
+    if result.returncode:
+        raise BuildError(f"cannot read final onefile binary images: {result.stderr.strip()[:500]}")
+    try:
+        hashes = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise BuildError("invalid final onefile binary hash report") from exc
+    if not isinstance(hashes, dict) or set(hashes) != names or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values()):
+        raise BuildError("final onefile binary images differ from licensed archive inventory")
+    return hashes
+
+
+def system_binary_license(source: Path, supplied: Path | None) -> tuple[str, str, Path, str]:
     if supplied:
         provided = supplied / source.name
         if provided.is_file():
@@ -236,9 +278,11 @@ def system_binary_license(source: Path, supplied: Path | None) -> tuple[str, Pat
                 raise BuildError(f"{manifest_path} must identify the component and source of supplied license texts")
             entries = json.loads(manifest_path.read_text(encoding="utf-8"))
             entry = entries.get(source.name)
-            if not isinstance(entry, dict) or not all(isinstance(entry.get(key), str) and entry[key].strip() for key in ("component", "source")):
-                raise BuildError(f"supplied license for {source.name} needs component and source in manifest.json")
-            return entry["component"], provided, entry["source"]
+            if not isinstance(entry, dict) or not all(isinstance(entry.get(key), str) and entry[key].strip() for key in ("component", "version", "source", "sha256")):
+                raise BuildError(f"supplied license for {source.name} needs component, version, source and sha256 in manifest.json")
+            if sha256(provided) != entry["sha256"]:
+                raise BuildError(f"supplied license hash mismatch for {source.name}")
+            return entry["component"], entry["version"], provided, entry["source"]
     if sys.platform == "linux" and shutil.which("dpkg-query"):
         for candidate in (source, source.resolve()):
             lookup = subprocess.run(["dpkg-query", "-S", str(candidate)], capture_output=True, text=True)
@@ -248,46 +292,171 @@ def system_binary_license(source: Path, supplied: Path | None) -> tuple[str, Pat
                 package = line.split(": ", 1)[0].split(":", 1)[0]
                 copyright_file = Path("/usr/share/doc") / package / "copyright"
                 if copyright_file.is_file():
-                    return f"debian:{package}", copyright_file, f"Debian package {package} copyright file"
+                    version = subprocess.run(["dpkg-query", "-W", "-f=${Version}", package], capture_output=True, text=True, check=True).stdout.strip()
+                    if not version:
+                        raise BuildError(f"cannot verify Debian package version for {package}")
+                    return f"debian:{package}", version, copyright_file, f"Debian package {package} {version} copyright file"
     raise BuildError(f"no local license text for collected binary {source.name}; supply --binary-license-dir with a file named {source.name}")
 
 
-def license_collected_binaries(stage: Path, toc: Path, search: list[Path], supplied: Path | None, runtime_root: Path | None = None) -> list[dict]:
+def is_cpython_binary(source: Path, kind: str) -> bool:
+    """CPython extensions and interpreter libraries, not adjacent third-party DLLs."""
+    name = source.name.lower()
+    if name.startswith(("libpython", "python3")) and source.suffix.lower() in (".dll", ".so", ".dylib"):
+        return True
+    if sys.platform == "darwin" and source.name == "Python" and source.resolve().is_relative_to(Path(sys.base_prefix).resolve()):
+        return True
+    if kind != "EXTENSION":
+        return False
+    stdlib = Path(sysconfig.get_path("stdlib")).resolve()
+    roots = (stdlib / "lib-dynload", Path(sys.base_prefix) / "DLLs")
+    return any(source.resolve().is_relative_to(root.resolve()) for root in roots)
+
+
+def download_notice(url: str, destination: Path, *, marker: bytes) -> Path:
+    request = urllib.request.Request(url, headers={"User-Agent": "agent-toolbox-license-preparation/1"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        data = response.read(512_001)
+    if not data or len(data) > 512_000 or marker.lower() not in data.lower():
+        raise BuildError(f"official license resource failed validation: {url}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(data)
+    return destination
+
+
+def cpython_windows_build_versions(output: Path) -> dict[str, str]:
+    """Read exact external source pins from this CPython release's build props."""
+    url = f"https://raw.githubusercontent.com/python/cpython/v{platform.python_version()}/PCbuild/python.props"
+    props = download_notice(url, output / "CPython-WINDOWS-BUILD-PROPS.xml", marker=b"<bz2Dir")
+    text = props.read_text(encoding="utf-8")
+    versions = {}
+    for component, property_name, folder in (
+        ("bzip2", "bz2Dir", "bzip2"),
+        ("xz", "lzmaDir", "xz"),
+        ("libffi", "libffiDir", "libffi"),
+    ):
+        match = re.search(rf"<{property_name}[^>]*>[^<]*{folder}-([0-9.]+)", text)
+        if not match:
+            raise BuildError(f"cannot verify {component} version in CPython Windows build props")
+        versions[component] = match[1]
+    return versions
+
+
+def host_license_spec(name: str, versions: dict[str, str] | None = None) -> tuple[str, str, str, bytes] | None:
+    """Known libraries from official CPython macOS/Windows distributions."""
+    lower = name.lower()
+    python_version = platform.python_version()
+    python_notice = f"https://raw.githubusercontent.com/python/cpython/v{python_version}/Doc/license.rst"
+    openssl_version = ".".join(str(part) for part in ssl.OPENSSL_VERSION_INFO[:3])
+    if lower.startswith(("libcrypto", "libssl")):
+        return "OpenSSL", openssl_version, f"https://raw.githubusercontent.com/openssl/openssl/openssl-{openssl_version}/LICENSE.txt", b"Apache License"
+    if lower.startswith(("sqlite3", "libsqlite3")):
+        return "SQLite", sqlite3.sqlite_version, "https://www.sqlite.org/copyright.html", b"public domain"
+    if lower.startswith(("libffi", "ffi.")):
+        if not versions or "libffi" not in versions:
+            return None  # Require explicit distribution provenance for unpinned hosts.
+        version = versions["libffi"]
+        return "libffi", version, f"https://raw.githubusercontent.com/libffi/libffi/v{version}/LICENSE", b"Permission is hereby granted"
+    if lower.startswith(("libbz2", "bz2.")) and versions and "bzip2" in versions:
+        version = versions["bzip2"]
+        return "bzip2", version, f"https://gitlab.com/bzip2/bzip2/-/raw/bzip2-{version}/LICENSE", b"libbzip2"
+    if lower.startswith(("liblzma", "lzma.")) and versions and "xz" in versions:
+        version = versions["xz"]
+        return "XZ Utils liblzma", version, f"https://raw.githubusercontent.com/tukaani-project/xz/v{version}/COPYING", b"liblzma"
+    if lower.startswith(("libexpat", "expat.")):
+        return "Expat (CPython bundled)", ".".join(map(str, pyexpat.version_info)), f"https://raw.githubusercontent.com/python/cpython/v{python_version}/Modules/expat/COPYING", b"Expat maintainers"
+    if lower.startswith(("libz.", "zlib", "zlib1")):
+        return "zlib", zlib.ZLIB_RUNTIME_VERSION, python_notice, b"zlib"
+    return None
+
+
+def prepare_host_binary_licenses(toc: Path, output: Path, included: set[str]) -> Path:
+    """Prepare verified notices for the actual collected non-CPython binaries."""
+    output.mkdir(parents=True, exist_ok=True)
+    manifest = {}
+    cache = {}
+    versions = cpython_windows_build_versions(output) if sys.platform == "win32" else {}
+    for name, source, kind in collected_binaries(toc):
+        if name not in included:
+            continue
+        package_name = name.split("/", 1)[0].lower().replace("_", "-")
+        if is_cpython_binary(source, kind) or kind == "EXTENSION" or package_name in RUNTIME_DISTRIBUTIONS:
+            continue
+        if not source.resolve().is_relative_to(Path(sys.base_prefix).resolve()):
+            raise BuildError(f"collected host binary {name} is outside the CPython distribution; supply its distribution notice explicitly")
+        spec = host_license_spec(source.name, versions)
+        if spec is None:
+            raise BuildError(f"unknown collected host binary {name}; add verified component-specific notice preparation")
+        component, version, url, marker = spec
+        if url not in cache:
+            cache[url] = download_notice(url, output / f"notice-{len(cache)}.txt", marker=marker)
+        notice = cache[url]
+        destination = output / source.name
+        shutil.copy2(notice, destination)
+        entry = {"component": component, "version": version, "source": url, "sha256": sha256(destination)}
+        if source.name in manifest and manifest[source.name] != entry:
+            raise BuildError(f"ambiguous collected binary filename {source.name}")
+        manifest[source.name] = entry
+    (output / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    python_version = platform.python_version()
+    url = f"https://raw.githubusercontent.com/python/cpython/v{python_version}/Doc/license.rst"
+    third_party = download_notice(url, output / "CPython-THIRD-PARTY.rst", marker=b"Third-party software")
+    additional = [{"component": "CPython bundled third-party components", "version": python_version, "source": url, "filename": third_party.name, "sha256": sha256(third_party)}]
+    if any(Path(name).name.lower().startswith("pyexpat") for name in included):
+        url = f"https://raw.githubusercontent.com/python/cpython/v{python_version}/Modules/expat/COPYING"
+        notice = download_notice(url, output / "expat-COPYING.txt", marker=b"Expat maintainers")
+        additional.append({"component": "Expat (CPython bundled)", "version": ".".join(map(str, pyexpat.version_info)), "source": url, "filename": notice.name, "sha256": sha256(notice)})
+    if sys.platform == "win32":
+        for prefix, component, version, url, marker, filename in (
+            ("_bz2", "bzip2", versions["bzip2"], f"https://gitlab.com/bzip2/bzip2/-/raw/bzip2-{versions['bzip2']}/LICENSE", b"libbzip2", "bzip2-LICENSE.txt"),
+            ("_lzma", "XZ Utils liblzma", versions["xz"], f"https://raw.githubusercontent.com/tukaani-project/xz/v{versions['xz']}/COPYING", b"liblzma", "xz-COPYING.txt"),
+        ):
+            if any(Path(name).name.lower().startswith(prefix) for name in included):
+                notice = download_notice(url, output / filename, marker=marker)
+                additional.append({"component": component, "version": version, "source": url, "filename": filename, "sha256": sha256(notice)})
+    (output / "additional-notices.json").write_text(json.dumps(additional, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return output
+
+
+def license_collected_binaries(stage: Path, toc: Path, search: list[Path], supplied: Path | None, runtime_root: Path | None = None, included: set[str] | None = None) -> list[dict]:
     license_root = stage / "skill" / "licenses"
     psf = copy_license(python_license(), license_root / "python" / f"cpython-{platform.python_version()}" / "LICENSE.txt")
     distributions = {**selected_distributions(None)}
     for directory in search:
         distributions.update(selected_distributions(directory))
-    stdlib = Path(sysconfig.get_path("stdlib")).resolve()
     records = []
     for name, source, kind in collected_binaries(toc):
+        if included is not None and name not in included:
+            continue
         if not source.is_file():
             raise BuildError(f"PyInstaller listed a binary that is missing: {name}")
         package_name = name.split("/", 1)[0].lower().replace("_", "-")
-        if source.resolve().is_relative_to(stdlib) or source.name.lower().startswith(("libpython", "python3", "python.exe")):
-            component, license_source = f"CPython {platform.python_version()}", psf
+        if is_cpython_binary(source, kind):
+            component, version, license_source = "CPython", platform.python_version(), psf
             origin = f"CPython {platform.python_version()} installed LICENSE.txt"
-        elif package_name in distributions:
+        elif package_name in RUNTIME_DISTRIBUTIONS and package_name in distributions:
             if runtime_root and package_name in RUNTIME_DISTRIBUTIONS and not source.resolve().is_relative_to(runtime_root):
                 raise BuildError(f"collected extension {name} came from outside the selected target directories")
             dist = distributions[package_name]
             files = distribution_license_files(dist)
             if not files:
                 raise BuildError(f"no license text for collected Python extension {name} ({package_name})")
-            component = f"{package_name} {dist.version}"
+            component, version = package_name, dist.version
             origin = f"{package_name} {dist.version} distribution license metadata"
             license_source = license_root / "python" / f"{package_name}-{dist.version}" / files[0].name
             if not license_source.is_file():
                 copy_license(files[0], license_source)
         else:
-            component, local_license, origin = system_binary_license(source, supplied)
-            license_source = copy_license(local_license, license_root / "system" / component.replace(":", "-") / local_license.name)
+            if kind == "EXTENSION":
+                raise BuildError(f"unknown collected Python extension {name}; refuse unaudited component")
+            component, version, local_license, origin = system_binary_license(source, supplied)
+            license_source = copy_license(local_license, license_root / "system" / re.sub(r"[^A-Za-z0-9._-]", "-", component) / local_license.name)
             # A copyright notice may refer to a separate common license text.
             for common in sorted(set(re.findall(r"/usr/share/common-licenses/([A-Za-z0-9.+-]+)", local_license.read_text(encoding="utf-8", errors="replace")))):
                 if not (Path("/usr/share/common-licenses") / common).is_file():
                     common = common.rstrip(".,;:)")
                 copy_license(Path("/usr/share/common-licenses") / common, license_root / "system" / "common" / common)
-        records.append({"name": name, "kind": kind, "sha256": sha256(source), "component": component, "license": license_source.relative_to(stage / "skill").as_posix(), "license_sha256": sha256(license_source), "license_source": origin})
+        records.append({"name": name, "kind": kind, "source_sha256": sha256(source), "component": component, "version": version, "license": license_source.relative_to(stage / "skill").as_posix(), "license_sha256": sha256(license_source), "license_source": origin})
     return records
 
 
@@ -337,7 +506,17 @@ def frozen_packages(table_of_contents: Path) -> set[str]:
     return {name for name in names if name not in sys.stdlib_module_names and not name.startswith(("_sysconfigdata", "pyi_", "_pyi"))}
 
 
-def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, tools: Path | None, install: bool, binary_licenses: Path | None = None) -> dict:
+def exclude_windows_redist(spec: Path) -> None:
+    """Keep Microsoft VC runtime DLLs as a system prerequisite, not an artifact."""
+    content = spec.read_text(encoding="utf-8")
+    marker = "pyz = PYZ(a.pure)"
+    if content.count(marker) != 1:
+        raise BuildError("cannot locate PyInstaller binary collection in generated spec")
+    content = content.replace(marker, "a.binaries = [item for item in a.binaries if not item[0].lower().startswith(('vcruntime140', 'msvcp140'))]\n" + marker)
+    spec.write_text(content, encoding="utf-8")
+
+
+def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, tools: Path | None, install: bool, binary_licenses: Path | None = None, prepare_host_licenses: bool = False) -> dict:
     ensure_python_packages("PyInstaller", "PyInstaller", tools, TOOL_REQUIREMENTS, pinned_versions(TOOL_REQUIREMENTS), install)
     ensure_python_packages("the map dependencies", "tree_sitter_language_pack", deps, ["-r", str(MAP_REQUIREMENTS)], pinned_versions(MAP_REQUIREMENTS.read_text(encoding="utf-8").splitlines()), install)
     search = [path for path in (tools, deps) if path]
@@ -352,9 +531,8 @@ def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, too
     hidden = {name for name in wanted if importable(name, search)}
     optional_missing = sorted(wanted - hidden)
     command = [
-        sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--log-level", "WARN",
-        "--name", "legacy-tools", f"--{mode}", "--console",
-        "--distpath", str(work / "dist"), "--workpath", str(work / "pyinstaller"), "--specpath", str(work),
+        sys.executable, "-m", "PyInstaller.utils.cliutils.makespec",
+        "--name", "legacy-tools", f"--{mode}", "--console", "--specpath", str(work),
         "--add-data", f"{stage / 'skill'}{os.pathsep}skill",
     ]
     for path in search:
@@ -368,16 +546,36 @@ def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, too
     command.append(str(SKILL / "scripts" / "legacy_tools.py"))
     env = {**os.environ, "PYTHONPATH": os.pathsep.join(str(path) for path in search), "PYTHONDONTWRITEBYTECODE": "1"}
     run(command, env=env, cwd=work)
+    spec = work / "legacy-tools.spec"
+    if os.name == "nt":
+        exclude_windows_redist(spec)
+    run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--log-level", "WARN", "--distpath", str(work / "dist"), "--workpath", str(work / "pyinstaller"), str(spec)], env=env, cwd=work)
     packages = frozen_packages(work / "pyinstaller" / "legacy-tools" / "PYZ-00.toc")
     unexpected = sorted(packages - ALLOWED_PACKAGES)
     if unexpected:
         raise BuildError(f"the bundle picked up unaudited packages from this machine: {', '.join(unexpected)}; add them to EXCLUDED_MODULES or build in a clean environment")
-    binaries = license_collected_binaries(stage, work / "pyinstaller" / "legacy-tools" / "Analysis-00.toc", search, binary_licenses, deps)
-    verify_collected_archive(work / "pyinstaller" / "legacy-tools" / "Analysis-00.toc", mode, binaries)
+    analysis_toc = work / "pyinstaller" / "legacy-tools" / "Analysis-00.toc"
+    included = final_binary_names(analysis_toc, mode)
+    additional_notices = []
+    if prepare_host_licenses and sys.platform in ("darwin", "win32"):
+        if binary_licenses is not None:
+            raise BuildError("choose either --prepare-host-licenses or --binary-license-dir")
+        binary_licenses = prepare_host_binary_licenses(analysis_toc, work / "host-binary-licenses", included)
+        for item in json.loads((binary_licenses / "additional-notices.json").read_text(encoding="utf-8")):
+            destination = stage / "skill" / "licenses" / "host" / item["filename"]
+            copy_license(binary_licenses / item["filename"], destination)
+            if sha256(destination) != item["sha256"]:
+                raise BuildError(f"prepared notice hash mismatch for {item['component']}")
+            additional_notices.append({key: value for key, value in item.items() if key != "filename"} | {"license": destination.relative_to(stage / "skill").as_posix()})
+    binaries = license_collected_binaries(stage, analysis_toc, search, binary_licenses, deps, included)
+    verify_collected_archive(analysis_toc, mode, binaries)
+    built = work / "dist" / "legacy-tools" if mode == "onedir" else work / "dist"
+    image_hashes = packaged_binary_hashes(analysis_toc, mode, built, search)
+    for record in binaries:
+        record["sha256"] = image_hashes[record["name"]]
 
     artifact = out / f"legacy-tools-{platform_tag()}"
     shutil.rmtree(artifact, ignore_errors=True)
-    built = work / "dist" / "legacy-tools" if mode == "onedir" else work / "dist"
     if mode == "onedir":
         shutil.copytree(built, artifact, symlinks=True)
     else:
@@ -399,6 +597,7 @@ def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, too
         "python": platform.python_version(), "distributions": dict(sorted(versions.items())),
         "bundled_scripts": {path.name: sha256(path) for path in sorted((stage / "skill" / "scripts").glob("*.py"))},
         "collected_binaries": binaries,
+        "additional_notices": additional_notices,
         "bundled_python_packages": sorted(packages),
         "optional_modules_not_bundled": optional_missing,
         "semantic_runtime_included": False,
@@ -597,6 +796,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--deps-dir", type=Path, help="directory holding the map dependencies (pip --target layout); default: this interpreter's environment")
     parser.add_argument("--tools-dir", type=Path, help="directory holding PyInstaller (pip --target layout); default: this interpreter's environment")
     parser.add_argument("--binary-license-dir", type=Path, help="optional directory of license texts named for collected system binaries when local package notices are unavailable")
+    parser.add_argument("--prepare-host-licenses", action="store_true", help="fetch verified upstream/distribution notices for collected macOS/Windows host libraries")
     parser.add_argument("--install", action="store_true", help="pip-install missing pinned packages into --deps-dir and --tools-dir; never into this interpreter's environment")
     parser.add_argument("--skip-smoke", action="store_true", help="do not run the built programs")
     parser.add_argument("--require-parity", action="store_true", help="fail when the Rust binary and the Python bundle disagree in the smoke test")
@@ -608,7 +808,7 @@ def main(argv: list[str] | None = None) -> int:
         binary_licenses = args.binary_license_dir.resolve() if args.binary_license_dir else None
         work = out / "work"
         work.mkdir(parents=True, exist_ok=True)
-        python_bundle = build_python_bundle(work, out, args.mode, deps, tools, args.install, binary_licenses) if args.target in ("python-bundle", "all") else None
+        python_bundle = build_python_bundle(work, out, args.mode, deps, tools, args.install, binary_licenses, args.prepare_host_licenses) if args.target in ("python-bundle", "all") else None
         rust = build_rust(work, out) if args.target in ("rust", "all") else None
         checks = [] if args.skip_smoke else smoke(python_bundle, rust)
         built = [item for item in (python_bundle, rust) if item]

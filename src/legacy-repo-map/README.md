@@ -12,7 +12,7 @@ legacy-repo-map /path/to/repository --output-dir /path/to/artifacts --budget 409
 
 The program writes `repo-map.md`, `inventory.json` and `map.meta.json` to the output directory, which must be outside the source directory. Use the map only when `map.meta.json` reports status `complete`. Run `legacy-repo-map --help` for every option, `--notices` for the embedded license texts and `--print-policy` for the selection tables as JSON.
 
-It reads the source directory and never writes to it. In a git work tree it asks `git` for the file list, with repository hooks, file-system monitors and user or system configuration disabled; without `git`, or outside a work tree, it walks the directory and applies the `.gitignore` files it finds. It never runs a build tool.
+It reads the source directory and never writes to it. A module root inside a git work tree inherits the enclosing revision and ignore rules, while returned paths remain relative to that module. A supplied root that its enclosing repository ignores is treated as an independent directory. Git queries disable hooks, file-system monitors and inherited `GIT_*` configuration; dirty state is scoped to the supplied root. Outside a git work tree, the program walks files first, then sorted subdirectories, prunes ignored and secret directories, and applies local `.gitignore` files. Discovery stops with failed metadata after 100,000 entries or 2,000,000 bytes of ignore files; each ignore file is capped at 256,000 bytes. It never runs a build tool.
 
 ## Build and test
 
@@ -20,10 +20,13 @@ Rust 1.82 or newer and a C compiler are required; the grammar crates compile gen
 
 ```bash
 CARGO_TARGET_DIR=/path/outside/the/repository cargo build --release --locked --manifest-path src/legacy-repo-map/Cargo.toml
+```
+
+```bash
 CARGO_TARGET_DIR=/path/outside/the/repository cargo test --release --locked --manifest-path src/legacy-repo-map/Cargo.toml
 ```
 
-`cargo test` runs unit tests and `tests/cli.rs`, which executes the built binary on throwaway repositories. `tests/test_legacy_native.py` in the repository root compares the binary with the Python tool. `scripts/build-legacy-tools.py` builds a release artifact with license files and runs smoke tests.
+`cargo test` runs unit tests and `tests/cli.rs`, which executes the built binary on throwaway repositories. `tests/test_legacy_native.py` in the repository root compares the binary with the Python tool. `scripts/build-legacy-tools.py` builds a release artifact with license files and runs smoke tests. For the combined Python/Rust build, use `--prepare-host-licenses` for macOS and Windows (inert on Linux). Windows artifacts require the matching-architecture [Microsoft Visual C++ v14 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170); these DLLs are not included in the archive.
 
 ## Sources and versions
 
@@ -57,4 +60,4 @@ The tag queries are not copied into this crate. `src/tags.rs` embeds the files u
 - Ten languages have queries: Java, Python, JavaScript, TypeScript, TSX, C, C++, C#, Go and Rust. Other files are listed in the inventory only.
 - No cache: every run reads, hashes and parses the selected files.
 - The grammar builds differ from the ones in the Python tool's parser package, so tag sets can differ; the documented case is Python module-level constants.
-- No parse timeout. Input is bounded by `--max-files`, `--max-file-bytes`, 20,000 tags per file, 200,000 tags and 200,000 graph edges in total.
+- No parse timeout. Input is bounded by `--max-files`, `--max-file-bytes`, 100,000 discovered filesystem entries outside Git, 256,000 bytes per ignore file, 2,000,000 aggregate ignore bytes, 20,000 tags per file, 200,000 tags and 200,000 graph edges in total. Cap and read failures leave `map.meta.json` at `failed` with an explicit stage.
