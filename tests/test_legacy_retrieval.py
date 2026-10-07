@@ -222,6 +222,74 @@ class RetrievalTests(unittest.TestCase):
         self.assertRegex(payload["error"], pattern)
         self.assertNotIn("codeSnippets", payload)
 
+    def test_http_sqlite_busy_timeout_is_explicit_and_cli_default_is_retained(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("PRAGMA busy_timeout").fetchone()[0], 5000)
+        with backend.connect(self.db, timeout=backend.HTTP_SQLITE_TIMEOUT) as con:
+            self.assertEqual(con.execute("PRAGMA busy_timeout").fetchone()[0], 1000)
+
+    def test_http_empty_or_incomplete_replacement_metadata_returns_json_and_recovers(self):
+        base = "http://" + self.start_error_test_server()
+        with backend.connect(self.db) as con:
+            original = backend.metadata(con)
+            con.execute("DELETE FROM meta")
+        endpoints = ("/api/v2/libs/search?libraryName=billing", "/api/v2/context?libraryId=/local/billing&query=invoice")
+        for endpoint in endpoints:
+            self.assert_json_http_error(base + endpoint, 409, "Database is not indexed")
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "index_version", "7")
+        for endpoint in endpoints:
+            self.assert_json_http_error(base + endpoint, 409, "metadata is incomplete")
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "index_version", "5")
+        self.assert_json_http_error(base + endpoints[1], 409, "Index format changed; reindex")
+        for missing in ("model_cache", "model_revision", "embedding_runtime", "reranker_revision"):
+            with self.subTest(missing=missing):
+                with backend.connect(self.db) as con:
+                    for key, value in original.items():
+                        backend.put_meta(con, key, value)
+                    backend.put_meta(con, "embed_model", backend.DEFAULT_MODEL)
+                    backend.put_meta(con, "reranker_model", backend.DEFAULT_RERANKER)
+                    con.execute("DELETE FROM meta WHERE key=?", (missing,))
+                for mode in ("&mode=semantic", "&rerank=cross-encoder"):
+                    self.assert_json_http_error(base + endpoints[1] + mode, 409, "metadata is incomplete")
+        with backend.connect(self.db) as con:
+            for key, value in original.items():
+                backend.put_meta(con, key, value)
+        with urlopen(base + endpoints[1], timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+
+    def test_exact_bracket_exclusions_and_reset_scope_on_next_invocation(self):
+        (self.root / "web/[id]").mkdir(parents=True)
+        (self.root / "web/[id]/page.ts").write_text("const bracketPage = 'excluded';", encoding="utf-8")
+        (self.docs / "web/[id]").mkdir(parents=True)
+        (self.docs / "web/[id]/page.md").write_text("excluded bracket docs", encoding="utf-8")
+        (self.root / "web/i").mkdir()
+        (self.root / "web/i/page.ts").write_text("const ordinaryPage = 'included';", encoding="utf-8")
+        scoped = backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=["web/[id]"])
+        self.assertEqual(scoped["files"], 3)
+        with backend.connect(self.db) as con:
+            paths = {row[0] for row in con.execute("SELECT path FROM files")}
+            self.assertIn("web/i/page.ts", paths)
+            self.assertNotIn("web/[id]/page.ts", paths)
+            self.assertNotIn("web/[id]/page.md", paths)
+            self.assertEqual(backend.stored_excludes(backend.metadata(con)), ("web/[id]",))
+        restored = self.index()
+        self.assertEqual(restored["changed"], 2)
+        self.assertEqual(restored["files"], 5)
+        self.assertEqual(restored["excludes"], [])
+
+    def test_bad_exclusion_metadata_message_describes_repair_and_preserves_index(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "excludes", "invalid JSON")
+        before = self.db.read_bytes()
+        with self.assertRaisesRegex(backend.RetrievalError, "Invalid exclusion metadata; repair metadata or use a fresh database") as error:
+            self.index()
+        self.assertNotIn("reindex before querying", str(error.exception))
+        self.assertEqual(self.db.read_bytes(), before)
+
     def test_http_locked_database_returns_json_and_recovers(self):
         base = "http://" + self.start_error_test_server()
         with sqlite3.connect(self.db, factory=backend.ClosingConnection) as locked:

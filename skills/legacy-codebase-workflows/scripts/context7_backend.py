@@ -39,6 +39,7 @@ MAX_CHUNKS = 30_000
 MAX_QUERY = 500
 MAX_RESULTS = 10
 MAX_REQUEST = 2048
+HTTP_SQLITE_TIMEOUT = 1.0
 WINDOW = 48
 OVERLAP = 8
 DEFAULT_CHUNK_CHARS = 1200
@@ -112,7 +113,7 @@ def normalize_excludes(excludes) -> tuple[str, ...]:
         try:
             value.encode("utf-8")
             path = _safe_relative(value).as_posix()
-            if path == "." or re.match(r"^[A-Za-z]:", path) or any(c in path for c in "*?[]\x00"):
+            if path == "." or re.match(r"^[A-Za-z]:", path) or any(c in path for c in "*?\x00"):
                 raise ValueError("expected a relative file or directory path without glob patterns")
         except (ValueError, UnicodeError) as exc:
             raise RetrievalError(f"Invalid exclusion {value!r}: {exc}") from exc
@@ -123,9 +124,9 @@ def normalize_excludes(excludes) -> tuple[str, ...]:
 def stored_excludes(meta: dict[str, str]) -> tuple[str, ...]:
     try:
         value = json.loads(meta.get("excludes", "[]"))
-    except (TypeError, ValueError) as exc:
-        raise RetrievalError("Invalid exclusion metadata; reindex before querying") from exc
-    return normalize_excludes(value)
+        return normalize_excludes(value)
+    except (TypeError, ValueError, RetrievalError) as exc:
+        raise RetrievalError(f"Invalid exclusion metadata; repair metadata or use a fresh database: {exc}") from exc
 
 
 def enumerate_files(root: Path, kind: str, excludes: tuple[str, ...] = (), skipped: list[dict[str, str]] | None = None) -> list[Path]:
@@ -171,10 +172,10 @@ def corpus_files(root: Path, docs_root: Path | None, excludes: tuple[str, ...] =
     return sorted(result, key=lambda row: (row[0], row[1]))
 
 
-def connect(path: Path) -> sqlite3.Connection:
+def connect(path: Path, *, timeout: float = 5.0) -> sqlite3.Connection:
     if not path.is_file():
         raise RetrievalError(f"Database does not exist: {path}")
-    con = sqlite3.connect(path, factory=ClosingConnection)
+    con = sqlite3.connect(path, timeout=timeout, factory=ClosingConnection)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys=ON")
     return con
@@ -235,6 +236,19 @@ def setup(con: sqlite3.Connection) -> None:
 
 def metadata(con: sqlite3.Connection) -> dict[str, str]:
     return {row[0]: row[1] for row in con.execute("SELECT key,value FROM meta")}
+
+
+def indexed_metadata(con: sqlite3.Connection) -> dict[str, str]:
+    result = metadata(con)
+    if not result:
+        raise RetrievalError("Database is not indexed; restore a valid index or use a fresh database")
+    if isinstance(result.get("index_version"), str) and result["index_version"] != INDEX_VERSION:
+        raise RetrievalError("Index format changed; reindex before querying")
+    required = {"root", "docs_root", "library_id", "revision", "index_version", "corpus_id", "chunk_chars", "oversized_chunks", "embed_model", "model_revision", "reranker_model", "reranker_revision", "vector_engine", "model_cache", "embedding_runtime"}
+    if not required <= result.keys() or any(not isinstance(value, str) for value in result.values()) or not result["root"] or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", result["library_id"]):
+        raise RetrievalError("Index metadata is incomplete or malformed; restore a valid index or use a fresh database")
+    stored_excludes(result)
+    return result
 
 
 def existing_index_metadata(con: sqlite3.Connection) -> dict[str, str]:
@@ -616,11 +630,7 @@ def semantic(con: sqlite3.Connection, query: str, model: str, model_revision: st
 
 
 def query(con: sqlite3.Connection, question: str, mode: str = "lexical", rerank: str | None = None, limit: int = 5, vector_engine: str | None = None) -> dict:
-    meta = metadata(con)
-    if not meta:
-        raise RetrievalError("Database is not indexed")
-    if meta.get("index_version") != INDEX_VERSION:
-        raise RetrievalError("Index format changed; reindex before querying")
+    meta = indexed_metadata(con)
     if not question.strip() or len(question) > MAX_QUERY:
         raise RetrievalError(f"Query must contain 1-{MAX_QUERY} characters")
     if mode not in ("lexical", "semantic", "hybrid") or rerank not in (None, "lexical-symbol", "cross-encoder"):
@@ -724,8 +734,8 @@ def serve(database: Path, host: str, port: int, default_mode: str = "lexical", d
         raise RetrievalError("Unknown default mode or reranker")
     if default_vector_engine not in (None, "stdlib", "sqlite-vec", "auto"):
         raise RetrievalError("Unknown default vector engine")
-    with connect(database) as con:
-        meta = metadata(con)
+    with connect(database, timeout=HTTP_SQLITE_TIMEOUT) as con:
+        meta = indexed_metadata(con)
         if default_mode != "lexical" and not meta.get("embed_model"):
             raise RetrievalError("Semantic default requires an index created with --embed-model")
         if default_rerank == "cross-encoder" and not meta.get("reranker_model"):
@@ -747,8 +757,8 @@ def serve(database: Path, host: str, port: int, default_mode: str = "lexical", d
                 authority.port
                 parsed = urlsplit(self.path)
                 args = parse_qs(parsed.query)
-                with connect(database) as con:
-                    meta = metadata(con)
+                with connect(database, timeout=HTTP_SQLITE_TIMEOUT) as con:
+                    meta = indexed_metadata(con)
                     if parsed.path == "/api/v2/libs/search":
                         name = args.get("libraryName", [""])[0].lower()
                         match = name and (name in meta["library_id"].lower())

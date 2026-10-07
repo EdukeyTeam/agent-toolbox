@@ -52,6 +52,14 @@ Secret filtering checks filenames, not content. Credentials in ordinary properti
 
 Before this correction, scope could not omit an overlong asset, unknown SQLite files could be overwritten, invalid-byte filenames could abort indexing, and database/file errors could close an HTTP connection.
 
+### Follow-up correction: predictable HTTP lock errors and exact scope (2026-10-07)
+
+HTTP request connections explicitly use a one-second SQLite busy timeout; CLI connections retain Python's five-second default. This bounds each SQLite lock wait and preserves JSON 409 plus recovery after the writer releases its lock. It is a per-connection SQLite contention setting, not an overall request deadline. Validate the complete metadata fields written by the current index, including model configuration, before either HTTP route accesses them so an empty or incomplete replacement database produces an owned retrieval error rather than a KeyError.
+
+Exact exclusions permit literal brackets such as `web/[id]`. Repeat every desired `--exclude` on every indexing invocation: omission intentionally resets the scope to an empty list, while saved metadata describes the last successful scope for freshness. Malformed exclusion metadata requires repair or a fresh database; its diagnostic must not recommend an index operation that the database guard refuses.
+
+The macOS CI request exceeded its ten-second client timeout; Linux reproduces the old five-second SQLite wait. The exact macOS delay remains unconfirmed pending platform QA. These corrections follow the actual independent review and approved workflow, without changing SQLite format or adding a service architecture.
+
 ## 2. Technology Documentation References
 
 The statements in this ADR were checked on 2026-10-06 against the official repositories, documentation and PyPI metadata at the versions below.
