@@ -456,6 +456,8 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
         docs_root = docs_root.resolve(strict=True)
         if not docs_root.is_dir():
             raise RetrievalError("Docs root must be a directory")
+        if root.is_relative_to(docs_root):
+            raise RetrievalError("Docs root must not equal or contain the source root; use separate or nested docs")
     database = database.resolve()
     if database.is_relative_to(root) or (docs_root and database.is_relative_to(docs_root)):
         raise RetrievalError("Database must be outside indexed roots")

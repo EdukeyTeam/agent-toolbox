@@ -353,6 +353,38 @@ class RetrievalTests(unittest.TestCase):
             self.assertTrue(any(row["source"]["path"] == "Tracked.java" for row in result["results"]))
 
 
+    def test_ancestor_or_equal_docs_root_is_refused_before_database_or_model_processing(self):
+        source = self.root / "src"
+        backend.index(source, self.db, "/local/billing", None, None, None)
+        before = self.db.read_bytes()
+        for docs in (source, self.root, self.root.parent):
+            with self.subTest(docs=docs):
+                with mock.patch.object(backend, "embedding_batches") as inference, mock.patch.object(backend, "reranker_scores") as reranker:
+                    with self.assertRaisesRegex(backend.RetrievalError, "Docs root must not equal or contain the source root"):
+                        backend.index(source, self.db, "/local/billing", docs, backend.DEFAULT_MODEL, None, self.root / "missing-runtime", reranker_model=backend.DEFAULT_RERANKER)
+                    inference.assert_not_called()
+                    reranker.assert_not_called()
+                self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+
+    def test_nested_docs_root_keeps_code_and_indexes_markdown_once(self):
+        docs = self.root / "manual"
+        docs.mkdir()
+        (docs / "guide.md").write_text("InvoiceMaker manual for invoice creation\n", encoding="utf-8")
+        (self.root / "README.md").write_text("InvoiceMaker repository overview\n", encoding="utf-8")
+        result = backend.index(self.root, self.db, "/local/billing", docs, None, None)
+        self.assertEqual(result["files"], 3)
+        with backend.connect(self.db) as con:
+            files = {(row["kind"], row["path"]) for row in con.execute("SELECT kind,path FROM files")}
+            self.assertEqual(files, {("code", "src/service.py"), ("repo-docs", "README.md"), ("docs", "guide.md")})
+            paths = {(row["source"]["kind"], row["source"]["path"]) for row in backend.query(con, "InvoiceMaker")["results"]}
+            self.assertIn(("code", "src/service.py"), paths)
+            self.assertIn(("docs", "guide.md"), paths)
+        self.assertEqual(backend.index(self.root, self.db, "/local/billing", docs, None, None)["changed"], 0)
+
+
     def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
         cache = Path(self.tmp.name).resolve() / "cache"
         supplied = {"PATH": "local-toolchain", "SystemRoot": "C:\\Windows", "WINDIR": "C:\\Windows", "TEMP": str(cache), "TMP": str(cache), "NODE_OPTIONS": "--inspect", "HF_TOKEN": "dummy-test-value", "OPENAI_API_KEY": "dummy-test-value", "ANTHROPIC_API_KEY": "dummy-test-value"}
