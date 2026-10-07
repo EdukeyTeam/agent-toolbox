@@ -102,7 +102,33 @@ def allowed(path: Path, root: Path, kind: str) -> bool:
     return path.suffix.lower() in EXTENSIONS
 
 
-def enumerate_files(root: Path, kind: str) -> list[Path]:
+def normalize_excludes(excludes) -> tuple[str, ...]:
+    if not isinstance(excludes, (tuple, list)):
+        raise RetrievalError("Exclusions must be a list of relative paths")
+    normalized = []
+    for value in excludes:
+        if not isinstance(value, str):
+            raise RetrievalError("Exclusions must contain relative path strings")
+        try:
+            value.encode("utf-8")
+            path = _safe_relative(value).as_posix()
+            if path == "." or re.match(r"^[A-Za-z]:", path) or any(c in path for c in "*?[]\x00"):
+                raise ValueError("expected a relative file or directory path without glob patterns")
+        except (ValueError, UnicodeError) as exc:
+            raise RetrievalError(f"Invalid exclusion {value!r}: {exc}") from exc
+        normalized.append(path)
+    return tuple(sorted(set(normalized)))
+
+
+def stored_excludes(meta: dict[str, str]) -> tuple[str, ...]:
+    try:
+        value = json.loads(meta.get("excludes", "[]"))
+    except (TypeError, ValueError) as exc:
+        raise RetrievalError("Invalid exclusion metadata; reindex before querying") from exc
+    return normalize_excludes(value)
+
+
+def enumerate_files(root: Path, kind: str, excludes: tuple[str, ...] = (), skipped: list[dict[str, str]] | None = None) -> list[Path]:
     paths = []
     seen = 0
     iterator = _candidates(root, revision(root) != "non-git", ())
@@ -112,8 +138,16 @@ def enumerate_files(root: Path, kind: str) -> list[Path]:
             if seen > MAX_SOURCE_CANDIDATES:
                 raise RetrievalError(f"Candidate limit {MAX_SOURCE_CANDIDATES} exceeded; index a smaller subtree")
             try:
+                relative.encode("utf-8")
+            except UnicodeEncodeError:
+                if skipped is not None:
+                    skipped.append({"kind": "docs" if kind == "docs" else "code", "path": relative.encode("utf-8", "replace").decode("utf-8"), "reason": "non-UTF-8 filename"})
+                continue
+            try:
                 rel = _safe_relative(relative)
             except ValueError:
+                continue
+            if any(rel.as_posix() == item or rel.as_posix().startswith(item + "/") for item in excludes):
                 continue
             path = root.joinpath(*rel.parts)
             if allowed(path, root, kind):
@@ -127,11 +161,11 @@ def enumerate_files(root: Path, kind: str) -> list[Path]:
     return sorted(paths, key=lambda p: p.as_posix())
 
 
-def corpus_files(root: Path, docs_root: Path | None) -> list[tuple[str, str, Path]]:
-    result = [("repo-docs" if p.suffix.lower() == ".md" else "code", p.relative_to(root).as_posix(), p) for p in enumerate_files(root, "code")]
+def corpus_files(root: Path, docs_root: Path | None, excludes: tuple[str, ...] = (), skipped: list[dict[str, str]] | None = None) -> list[tuple[str, str, Path]]:
+    result = [("repo-docs" if p.suffix.lower() == ".md" else "code", p.relative_to(root).as_posix(), p) for p in enumerate_files(root, "code", excludes, skipped)]
     if docs_root:
         result = [entry for entry in result if not entry[2].is_relative_to(docs_root)]
-        result += [("docs", p.relative_to(docs_root).as_posix(), p) for p in enumerate_files(docs_root, "docs")]
+        result += [("docs", p.relative_to(docs_root).as_posix(), p) for p in enumerate_files(docs_root, "docs", excludes, skipped)]
     if len(result) > MAX_FILES:
         raise RetrievalError(f"File limit {MAX_FILES} exceeded; index a smaller subtree")
     return sorted(result, key=lambda row: (row[0], row[1]))
@@ -201,6 +235,26 @@ def setup(con: sqlite3.Connection) -> None:
 
 def metadata(con: sqlite3.Connection) -> dict[str, str]:
     return {row[0]: row[1] for row in con.execute("SELECT key,value FROM meta")}
+
+
+def existing_index_metadata(con: sqlite3.Connection) -> dict[str, str]:
+    objects = {row[0] for row in con.execute("SELECT name FROM sqlite_master WHERE name NOT GLOB 'sqlite_*'")}
+    if not objects:
+        return {}
+    message = "Database is not a recognized retrieval index; use a new database"
+    if "meta" not in objects:
+        raise RetrievalError(message)
+    try:
+        rows = con.execute("SELECT key,value FROM meta").fetchall()
+    except sqlite3.Error as exc:
+        raise RetrievalError(message + " (malformed metadata)") from exc
+    if not rows or any(not isinstance(row[0], str) or not isinstance(row[1], str) for row in rows) or len({row[0] for row in rows}) != len(rows):
+        raise RetrievalError(message + " (empty or malformed metadata)")
+    result = dict(rows)
+    if result.get("index_version") not in {str(v) for v in range(1, int(INDEX_VERSION) + 1)} or not result.get("root") or "docs_root" not in result or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", result.get("library_id", "")):
+        raise RetrievalError(message + " (unknown or incomplete metadata)")
+    stored_excludes(result)
+    return result
 
 
 def put_meta(con: sqlite3.Connection, key: str, value: str) -> None:
@@ -378,8 +432,9 @@ def reranker_scores(question: str, passages: list[str], model: str, model_revisi
             reader.join(timeout=1)
 
 
-def index(root: Path, database: Path, library_id: str, docs_root: Path | None, embed_model: str | None, model_cache: Path | None, embedding_runtime: Path | None = None, *, model_revision: str | None = None, vector_engine: str = "stdlib", reranker_model: str | None = None, reranker_revision: str | None = None, chunk_chars: int = DEFAULT_CHUNK_CHARS) -> dict:
+def index(root: Path, database: Path, library_id: str, docs_root: Path | None, embed_model: str | None, model_cache: Path | None, embedding_runtime: Path | None = None, *, model_revision: str | None = None, vector_engine: str = "stdlib", reranker_model: str | None = None, reranker_revision: str | None = None, chunk_chars: int = DEFAULT_CHUNK_CHARS, excludes: tuple[str, ...] | list[str] = ()) -> dict:
     validate_chunk_chars(chunk_chars)
+    excludes = normalize_excludes(excludes)
     root = root.resolve(strict=True)
     if not root.is_dir() or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", library_id):
         raise RetrievalError("ROOT must be a directory and library ID must be /owner/name")
@@ -420,14 +475,15 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
             raise RetrievalError("Embedding runtime does not contain @huggingface/transformers")
         if embedding_runtime.is_relative_to(root) or (docs_root and embedding_runtime.is_relative_to(docs_root)):
             raise RetrievalError("Embedding runtime must be outside indexed roots")
-    files = corpus_files(root, docs_root)
+    skipped: list[dict[str, str]] = []
+    files = corpus_files(root, docs_root, excludes, skipped)
     database.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(database)
     con.row_factory = sqlite3.Row
     try:
         con.execute("PRAGMA foreign_keys=ON")
         tables = {row[0] for row in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        old = metadata(con) if "meta" in tables else {}
+        old = existing_index_metadata(con)
         if old and (old.get("root") != str(root) or old.get("docs_root", "") != str(docs_root or "") or old.get("library_id") != library_id):
             raise RetrievalError("Database belongs to another corpus; use a new database")
         if vector_engine == "sqlite-vec" or "chunks_vec" in tables:
@@ -446,7 +502,6 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
         setup(con)
         existing = {(r["kind"], r["path"]): r["hash"] for r in con.execute("SELECT * FROM files")}
         current: dict[tuple[str, str], tuple[str, int, str]] = {}
-        skipped: list[dict[str, str]] = []
         for kind, rel, path in files:
             try:
                 source_root = docs_root if kind == "docs" else root
@@ -469,7 +524,7 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
             con.execute("INSERT INTO files VALUES(?,?,?,?)", (kind, rel, file_hash, size))
             for start, end, body, symbols in chunks_for(content, chunk_chars):
                 if embed_model and len(body.encode("utf-16-le")) // 2 > MAX_EMBEDDING_UNITS:
-                    raise RetrievalError(f"Embedding input exceeds {MAX_EMBEDDING_UNITS} UTF-16 characters at {kind}:{rel}:L{start}-L{end}; use lexical indexing or provide smaller verified documentation chunks")
+                    raise RetrievalError(f"Embedding input exceeds {MAX_EMBEDDING_UNITS} UTF-16 characters at {kind}:{rel}:L{start}-L{end}; use lexical indexing, --exclude this asset, or provide smaller verified documentation chunks")
                 cur = con.execute("INSERT INTO chunks(kind,path,start,end,body,symbols) VALUES(?,?,?,?,?,?)", (kind, rel, start, end, body, symbols))
                 con.execute("INSERT INTO chunks_fts(rowid,body,symbols,path) VALUES(?,?,?,?)", (cur.lastrowid, body, symbols, rel))
                 pending.append((cur.lastrowid, body))
@@ -500,10 +555,10 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
             raise RetrievalError("Embedding row count mismatch; reindex")
         rev = revision(root)
         signature = digest(json.dumps([rev, sorted((kind, rel, row[0]) for (kind, rel), row in current.items())], separators=(",", ":")).encode())
-        for key, value in {"root": str(root), "docs_root": str(docs_root or ""), "library_id": library_id, "embed_model": embed_model or "", "model_revision": model_revision or "", "reranker_model": reranker_model or "", "reranker_revision": reranker_revision or "", "vector_engine": vector_engine, "model_cache": str(model_cache or ""), "embedding_runtime": str(embedding_runtime or ""), "revision": rev, "corpus_id": signature, "index_version": INDEX_VERSION, "chunk_chars": str(chunk_chars), "oversized_chunks": str(oversized)}.items():
+        for key, value in {"root": str(root), "docs_root": str(docs_root or ""), "library_id": library_id, "embed_model": embed_model or "", "model_revision": model_revision or "", "reranker_model": reranker_model or "", "reranker_revision": reranker_revision or "", "vector_engine": vector_engine, "model_cache": str(model_cache or ""), "embedding_runtime": str(embedding_runtime or ""), "revision": rev, "corpus_id": signature, "index_version": INDEX_VERSION, "chunk_chars": str(chunk_chars), "oversized_chunks": str(oversized), "excludes": json.dumps(excludes)}.items():
             put_meta(con, key, value)
         con.commit()
-        return {"libraryId": library_id, "revision": rev, "corpusId": signature, "files": len(current), "chunks": count, "chunkChars": chunk_chars, "oversizedChunks": oversized, "changed": len(changed), "deleted": len(stale), "skippedCount": len(skipped), "skipped": skipped[:20], "embeddingModel": embed_model, "modelRevision": model_revision, "rerankerModel": reranker_model, "rerankerRevision": reranker_revision, "vectorEngine": vector_engine}
+        return {"libraryId": library_id, "revision": rev, "corpusId": signature, "files": len(current), "chunks": count, "chunkChars": chunk_chars, "oversizedChunks": oversized, "changed": len(changed), "deleted": len(stale), "skippedCount": len(skipped), "skipped": skipped[:20], "embeddingModel": embed_model, "modelRevision": model_revision, "rerankerModel": reranker_model, "rerankerRevision": reranker_revision, "vectorEngine": vector_engine, "excludes": list(excludes)}
     finally:
         con.close()
 
@@ -513,7 +568,7 @@ def assert_fresh(con: sqlite3.Connection, meta: dict[str, str]) -> None:
     docs = Path(meta["docs_root"]) if meta["docs_root"] else None
     if revision(root) != meta["revision"]:
         raise RetrievalError("Repository revision changed; reindex before querying")
-    current = corpus_files(root, docs)
+    current = corpus_files(root, docs, stored_excludes(meta))
     indexed = {(r["kind"], r["path"]): r["hash"] for r in con.execute("SELECT kind,path,hash FROM files")}
     eligible: dict[tuple[str, str], str] = {}
     for kind, rel, path in current:
@@ -683,9 +738,15 @@ def serve(database: Path, host: str, port: int, default_mode: str = "lexical", d
             if len(self.path) > MAX_REQUEST:
                 self.send_error(413, "Request too large")
                 return
-            parsed = urlsplit(self.path)
-            args = parse_qs(parsed.query)
             try:
+                authority = urlsplit("//" + self.headers.get("Host", ""))
+                if authority.hostname not in ("127.0.0.1", "::1", "localhost") or authority.username is not None or authority.password is not None or authority.path or authority.query or authority.fragment:
+                    self.respond(403, json.dumps({"error": "Only loopback Host authorities are supported"}).encode(), "application/json")
+                    return
+                # Validate a supplied port too, without changing client compatibility.
+                authority.port
+                parsed = urlsplit(self.path)
+                args = parse_qs(parsed.query)
                 with connect(database) as con:
                     meta = metadata(con)
                     if parsed.path == "/api/v2/libs/search":
@@ -714,7 +775,7 @@ def serve(database: Path, host: str, port: int, default_mode: str = "lexical", d
                         self.send_error(404, "Unknown endpoint")
                         return
                 self.respond(200, json.dumps(payload).encode(), "application/json")
-            except RetrievalError as exc:
+            except (RetrievalError, sqlite3.Error, OSError, ValueError) as exc:
                 self.respond(409, json.dumps({"error": str(exc)}).encode(), "application/json")
 
         def respond(self, code, body, content_type):
@@ -743,6 +804,7 @@ def main(argv: list[str] | None = None) -> int:
     idx.add_argument("--database", type=Path, required=True)
     idx.add_argument("--library-id", required=True)
     idx.add_argument("--docs-root", type=Path)
+    idx.add_argument("--exclude", action="append", default=[], help="Relative file/directory path in source and docs roots; repeatable, no globs")
     idx.add_argument("--chunk-chars", type=int, default=DEFAULT_CHUNK_CHARS, help="Whole-line chunk character target, 128..12000; not a token budget")
     idx.add_argument("--embed-model")
     idx.add_argument("--model-revision", help="Immutable 40-character model commit SHA")
@@ -768,7 +830,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "index":
-            result = index(args.root, args.database, args.library_id, args.docs_root, args.embed_model, args.model_cache, args.embedding_runtime, model_revision=args.model_revision, vector_engine=args.vector_engine, reranker_model=args.reranker_model, reranker_revision=args.reranker_revision, chunk_chars=args.chunk_chars)
+            result = index(args.root, args.database, args.library_id, args.docs_root, args.embed_model, args.model_cache, args.embedding_runtime, model_revision=args.model_revision, vector_engine=args.vector_engine, reranker_model=args.reranker_model, reranker_revision=args.reranker_revision, chunk_chars=args.chunk_chars, excludes=args.exclude)
             print(json.dumps(result, indent=2))
         elif args.command == "query":
             with connect(args.database) as con:

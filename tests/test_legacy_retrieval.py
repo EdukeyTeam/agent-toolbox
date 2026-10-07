@@ -1,5 +1,6 @@
 """Focused retrieval tests, runnable with python -m unittest discover -s tests."""
 
+import errno
 import importlib.util
 import json
 import math
@@ -17,7 +18,7 @@ import unittest
 from unittest import mock
 from urllib.error import HTTPError
 from urllib.parse import urlencode
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "skills/legacy-codebase-workflows/scripts/context7_backend.py"
@@ -57,6 +58,215 @@ class RetrievalTests(unittest.TestCase):
                 if os.environ.get("LEGACY_REQUIRE_SQLITE_VEC") == "1":
                     self.fail(f"Required actual sqlite-vec acceptance unavailable: {error}")
                 self.skipTest(str(error))
+
+    @unittest.skipIf(os.name == "nt", "Windows cannot create invalid UTF-8 byte filenames")
+    def test_invalid_byte_filenames_are_reported_before_read_or_binding(self):
+        for root, suffix in ((self.root, b".java"), (self.docs, b".md")):
+            name = os.fsencode(root) + b"/Bad\xff" + suffix
+            try:
+                with open(name, "wb") as handle:
+                    handle.write(b"class Bad: pass\n")
+            except OSError as error:
+                if error.errno == errno.EILSEQ:
+                    self.skipTest("filesystem does not support invalid UTF-8 filenames (EILSEQ)")
+                raise
+        result = self.index()
+        self.assertEqual(result["files"], 2)
+        self.assertEqual(result["skippedCount"], 2)
+        self.assertEqual({row["reason"] for row in result["skipped"]}, {"non-UTF-8 filename"})
+        json.dumps(result, ensure_ascii=False).encode("utf-8")
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "core.hooksPath=" + os.devnull, "commit", "--allow-empty", "-qm", "fixture"], check=True)
+        git_result = self.index()
+        self.assertEqual(git_result["skippedCount"], 2)
+        self.assertEqual(git_result["files"], 2)
+        with mock.patch.object(backend, "MAX_SOURCE_CANDIDATES", 1):
+            with self.assertRaisesRegex(backend.RetrievalError, "Candidate limit"):
+                self.index()
+
+    def test_unknown_database_and_invalid_metadata_are_preserved(self):
+        cases = (
+            ["CREATE TABLE files(name TEXT,payload TEXT)", "INSERT INTO files VALUES('keep','original')"],
+            ["CREATE TABLE meta(name TEXT,payload TEXT)", "INSERT INTO meta VALUES('keep','original')"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)", "INSERT INTO meta VALUES('index_version','999')"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)", "INSERT INTO meta VALUES('index_version','7')"],
+            ["CREATE VIEW source AS SELECT 'keep'"],
+            ["CREATE TABLE sqliteUnrelated(name TEXT)", "INSERT INTO sqliteUnrelated VALUES('keep')"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)", "INSERT INTO meta VALUES('index_version',NULL)"],
+        )
+        for number, statements in enumerate(cases):
+            with self.subTest(case=number):
+                database = self.db.with_name(f"unknown-{number}.sqlite")
+                with sqlite3.connect(database, factory=backend.ClosingConnection) as con:
+                    for statement in statements:
+                        con.execute(statement)
+                before = database.read_bytes()
+                with self.assertRaisesRegex(backend.RetrievalError, "not a recognized retrieval index"):
+                    backend.index(self.root, database, "/local/billing", self.docs, None, None)
+                self.assertEqual(database.read_bytes(), before)
+
+    def test_exclusions_are_saved_reapplied_and_scope_changes_incremental(self):
+        (self.root / "generated").mkdir()
+        (self.root / "generated/asset.js").write_text("obsolete generated content", encoding="utf-8")
+        (self.docs / "private.md").write_text("excluded documentation", encoding="utf-8")
+        initial = self.index()
+        scoped = backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=["generated", "private.md", "generated/"])
+        self.assertEqual(scoped["deleted"], 2)
+        self.assertEqual(scoped["changed"], 0)
+        self.assertEqual(scoped["excludes"], ["generated", "private.md"])
+        (self.root / "generated/asset.js").write_text("changed excluded content", encoding="utf-8")
+        (self.docs / "private.md").unlink()
+        with backend.connect(self.db) as con:
+            self.assertEqual(json.loads(backend.metadata(con)["excludes"]), scoped["excludes"])
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        restored = self.index()
+        self.assertEqual(restored["changed"], 1)
+        self.assertEqual(restored["files"], initial["files"] - 1)
+        (self.root / "src/service.py").write_text("changed included source", encoding="utf-8")
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "Indexed files changed"):
+                backend.query(con, "InvoiceMaker")
+
+    def test_invalid_scope_rolls_back_and_existing_format7_defaults_to_no_exclusions(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            con.execute("DELETE FROM meta WHERE key='excludes'")
+        before = self.db.read_bytes()
+        with self.assertRaisesRegex(backend.RetrievalError, "belongs to another corpus"):
+            backend.index(self.root, self.db, "/local/other", self.docs, None, None)
+        self.assertEqual(self.db.read_bytes(), before)
+        for excludes in (["../outside"], ["/absolute"], ["."], ["C:\\outside"], ["*.js"], [1], "src"):
+            with self.subTest(excludes=excludes):
+                with self.assertRaisesRegex(backend.RetrievalError, "[Ee]xclusion"):
+                    backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=excludes)
+                self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        self.assertEqual(self.index()["changed"], 0)
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "excludes", '{"bad":"scope"}')
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "Exclusions"):
+                backend.query(con, "InvoiceMaker")
+
+    def test_excluded_candidates_still_count_but_selected_files_remain_bounded(self):
+        for number in range(3):
+            (self.root / f"asset-{number}.js").write_text("generated", encoding="utf-8")
+        exclusions = [f"asset-{number}.js" for number in range(3)]
+        with mock.patch.object(backend, "MAX_FILES", 2):
+            self.assertEqual(backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=exclusions)["files"], 2)
+            with self.assertRaisesRegex(backend.RetrievalError, "File limit"):
+                self.index()
+        with mock.patch.object(backend, "MAX_SOURCE_CANDIDATES", 2):
+            with self.assertRaisesRegex(backend.RetrievalError, "Candidate limit"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=exclusions)
+
+    def test_cli_accepts_repeatable_exclusions(self):
+        (self.root / "bundle.js").write_text("generated", encoding="utf-8")
+        result = subprocess.run([sys.executable, str(SCRIPT), "index", str(self.root), "--database", str(self.db), "--library-id", "/local/billing", "--docs-root", str(self.docs), "--exclude", "bundle.js", "--exclude", "guide.md"], text=True, capture_output=True, timeout=10, check=True)
+        self.assertEqual(json.loads(result.stdout)["excludes"], ["bundle.js", "guide.md"])
+        self.assertEqual(json.loads(result.stdout)["files"], 1)
+
+    def test_long_asset_exclusion_keeps_source_vectors_and_failure_rolls_back(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        (self.root / "App.java").write_text("class App { void invoice() {} }\n", encoding="utf-8")
+        asset = self.root / "bundle.js"
+        asset.write_text("x" * 22000, encoding="utf-8")
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                self.assertTrue(all(len(body) < 22000 for body in group))
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches) as inference:
+            result = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, excludes=["bundle.js"])
+            self.assertEqual(result["files"], 2)
+            self.assertEqual(inference.call_count, 1)
+            asset.write_text("y" * 22000, encoding="utf-8")
+            self.assertEqual(backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, excludes=["bundle.js"])["changed"], 0)
+            self.assertEqual(inference.call_count, 1)
+            before = self.db.read_bytes()
+            with self.assertRaisesRegex(backend.RetrievalError, "--exclude"):
+                backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime)
+            self.assertEqual(inference.call_count, 1)
+            self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 2)
+            self.assertTrue(backend.query(con, "App")["results"])
+            self.assertFalse(con.execute("SELECT 1 FROM files WHERE path='bundle.js'").fetchone())
+
+    def start_error_test_server(self):
+        self.index()
+        proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", "0"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        def cleanup():
+            if proc.poll() is None:
+                proc.terminate()
+            proc.wait(timeout=5)
+            proc.stdout.close()
+            proc.stderr.close()
+        self.addCleanup(cleanup)
+        startup = proc.stdout.readline()
+        self.assertIn("Local Context7", startup)
+        return startup.split("http://", 1)[1].split(" ", 1)[0]
+
+    def assert_json_http_error(self, request, status, pattern):
+        with self.assertRaises(HTTPError) as error:
+            urlopen(request, timeout=10)
+        with error.exception as response:
+            self.assertEqual(response.code, status)
+            self.assertEqual(response.headers.get_content_type(), "application/json")
+            payload = json.load(response)
+        self.assertRegex(payload["error"], pattern)
+        self.assertNotIn("codeSnippets", payload)
+
+    def test_http_locked_database_returns_json_and_recovers(self):
+        base = "http://" + self.start_error_test_server()
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as locked:
+            locked.execute("BEGIN EXCLUSIVE")
+            self.assert_json_http_error(base + "/api/v2/context?libraryId=/local/billing&query=invoice", 409, "database is locked")
+            locked.rollback()
+        with urlopen(base + "/api/v2/context?libraryId=/local/billing&query=invoice") as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+
+    def test_http_file_and_value_errors_return_json(self):
+        base = "http://" + self.start_error_test_server()
+        endpoint = base + "/api/v2/context?libraryId=/local/billing&query=invoice"
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "chunk_chars", "invalid")
+        self.assert_json_http_error(endpoint, 409, "invalid literal")
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "chunk_chars", "1200")
+        moved = self.root.with_name("moved")
+        self.root.rename(moved)
+        self.assert_json_http_error(endpoint, 409, "No such file|does not exist")
+        moved.rename(self.root)
+        self.db.unlink()
+        self.assert_json_http_error(endpoint, 409, "Database does not exist")
+
+    def test_http_nonloopback_host_is_refused_and_local_hosts_work(self):
+        base = "http://" + self.start_error_test_server()
+        endpoint = base + "/api/v2/context?libraryId=/local/billing&query=invoice"
+        self.assert_json_http_error(Request(endpoint, headers={"Host": "hostile.example"}), 403, "loopback Host")
+        for authority in ("127.0.0.1", "localhost", "[::1]"):
+            with urlopen(Request(endpoint, headers={"Host": authority})) as response:
+                self.assertTrue(json.load(response)["codeSnippets"])
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_model_indexes_long_asset_with_exclusion_and_no_docs(self):
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        (self.root / "App.java").write_text("class App { void createInvoice() {} }\n", encoding="utf-8")
+        asset = self.root / "bundle.js"
+        asset.write_text("x" * 22000, encoding="utf-8")
+        result = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, excludes=["bundle.js"])
+        self.assertEqual(result["files"], 2)
+        asset.write_text("y" * 22000, encoding="utf-8")
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "createInvoice", mode="hybrid")["results"])
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
 
     def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
         cache = Path(self.tmp.name).resolve() / "cache"

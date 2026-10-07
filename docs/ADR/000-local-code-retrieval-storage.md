@@ -42,6 +42,16 @@ Swapping the storage engine changes latency, disk use, install size and failure 
 
 ---
 
+### Review correction: corpus scope and local protections (2026-10-07)
+
+The index accepts repeatable `--exclude` relative file or directory paths. Each path applies independently to the source and optional docs root, without glob expansion; it removes the named path and descendants. Validated, normalized exclusions are saved as JSON metadata and reapplied during freshness checks. Missing metadata means an empty list for existing format-7 indexes. Scope changes update files/chunks/vectors in the existing transaction without changing the storage schema; invalid scope cannot alter the committed index. Discovery caps remain enforced before exclusions, and selection caps apply to included files. Excluding a minified long-line asset permits semantic indexing of the remaining source without editing that source.
+
+An existing nonempty database requires recognizable index metadata and a supported legacy index version before destructive migration. Unknown, empty or malformed metadata is refused. Non-UTF-8 paths are skipped with safe display text before reading or SQLite binding. HTTP database, file and validation failures return the existing JSON error contract, and nonloopback Host authorities are rejected as a basic DNS-rebinding boundary. The unauthenticated endpoint remains a single-user local tool.
+
+Secret filtering checks filenames, not content. Credentials in ordinary properties/XML/source files may be indexed. Use public or sanitized fixtures for demonstrations and follow normal protected-data handling for real corpora; this workflow does not provide a content secret scanner.
+
+Before this correction, scope could not omit an overlong asset, unknown SQLite files could be overwritten, invalid-byte filenames could abort indexing, and database/file errors could close an HTTP connection.
+
 ## 2. Technology Documentation References
 
 The statements in this ADR were checked on 2026-10-06 against the official repositories, documentation and PyPI metadata at the versions below.
@@ -383,7 +393,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  A[Source and docs files] --> B[Enumerate eligible files, skip secrets, symlinks, binaries]
+  A[Source and docs files] --> B[Enumerate eligible files, skip secret filenames, exclusions, symlinks, binaries]
   B --> C[Hash each file]
   C --> D{Hash differs from stored file row?}
   D -- unchanged --> K[Keep existing chunks and vectors]
