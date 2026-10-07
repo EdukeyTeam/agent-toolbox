@@ -265,6 +265,20 @@ def metadata(con: sqlite3.Connection) -> dict[str, str]:
     return {row[0]: row[1] for row in con.execute("SELECT key,value FROM meta")}
 
 
+def _validate_numeric_metadata(meta: dict[str, str]) -> None:
+    bounds = {"chunk_chars": (128, 12000), "oversized_chunks": (0, MAX_CHUNKS), "vector_dim": (1, None)}
+    for field, (minimum, maximum) in bounds.items():
+        if field == "vector_dim" and field not in meta:
+            continue
+        message = f"Index numeric metadata {field} is invalid; restore a valid index or use a fresh database"
+        try:
+            value = int(meta[field])
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise RetrievalError(message) from exc
+        if value < minimum or (maximum is not None and value > maximum):
+            raise RetrievalError(message)
+
+
 def indexed_metadata(con: sqlite3.Connection) -> dict[str, str]:
     result = metadata(con)
     if not result:
@@ -274,6 +288,7 @@ def indexed_metadata(con: sqlite3.Connection) -> dict[str, str]:
     required = {"root", "docs_root", "library_id", "revision", "index_version", "corpus_id", "chunk_chars", "oversized_chunks", "embed_model", "model_revision", "reranker_model", "reranker_revision", "vector_engine", "model_cache", "embedding_runtime"}
     if not required <= result.keys() or any(not isinstance(value, str) for value in result.values()) or not result["root"] or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", result["library_id"]):
         raise RetrievalError("Index metadata is incomplete or malformed; restore a valid index or use a fresh database")
+    _validate_numeric_metadata(result)
     stored_excludes(result)
     return result
 
@@ -294,6 +309,8 @@ def existing_index_metadata(con: sqlite3.Connection) -> dict[str, str]:
     result = dict(rows)
     if result.get("index_version") not in {str(v) for v in range(1, int(INDEX_VERSION) + 1)} or not result.get("root") or "docs_root" not in result or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", result.get("library_id", "")):
         raise RetrievalError(message + " (unknown or incomplete metadata)")
+    if result["index_version"] == INDEX_VERSION:
+        _validate_numeric_metadata(result)
     stored_excludes(result)
     return result
 

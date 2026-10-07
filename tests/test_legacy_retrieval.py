@@ -265,6 +265,123 @@ class RetrievalTests(unittest.TestCase):
         with urlopen(base + endpoints[1], timeout=10) as response:
             self.assertTrue(json.load(response)["codeSnippets"])
 
+    def test_numeric_metadata_rejects_invalid_current_query_and_index_before_processing(self):
+        base = Path(self.tmp.name).resolve()
+        cache, runtime = base / "cache", base / "runtime"
+        cache.mkdir()
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            original = backend.metadata(con)
+        common = ("", "abc", "1.5", "true", "9" * 5000)
+        cases = {
+            "chunk_chars": common + ("127", "12001", "-128"),
+            "oversized_chunks": common + ("-1", str(backend.MAX_CHUNKS + 1)),
+            "vector_dim": common + ("0", "-1"),
+        }
+        for field, values in cases.items():
+            for value in values:
+                with self.subTest(field=field, value=value if len(value) < 100 else "5000 digits"):
+                    with backend.connect(self.db) as con:
+                        for key, item in original.items():
+                            backend.put_meta(con, key, item)
+                        backend.put_meta(con, field, value)
+                    before = self.db.read_bytes()
+                    with mock.patch.object(backend, "assert_fresh", side_effect=AssertionError("freshness must not run")) as freshness, mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("model must not run")) as embedding, mock.patch.object(backend, "reranker_scores", side_effect=AssertionError("reranker must not run")) as reranker:
+                        with backend.connect(self.db) as con:
+                            with self.assertRaisesRegex(backend.RetrievalError, "numeric metadata " + field + " is invalid; restore a valid index or use a fresh database"):
+                                backend.query(con, "InvoiceMaker", mode="semantic")
+                        with self.assertRaisesRegex(backend.RetrievalError, "numeric metadata " + field):
+                            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+                        freshness.assert_not_called()
+                        embedding.assert_not_called()
+                        reranker.assert_not_called()
+                    self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            for key, value in original.items():
+                backend.put_meta(con, key, value)
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_numeric_metadata_boundaries_optional_dimensions_and_older_migration(self):
+        self.index()
+        for chunk_chars in (128, 12000):
+            for oversized in (0, backend.MAX_CHUNKS):
+                with self.subTest(chunk_chars=chunk_chars, oversized=oversized):
+                    with backend.connect(self.db) as con:
+                        backend.put_meta(con, "chunk_chars", str(chunk_chars))
+                        backend.put_meta(con, "oversized_chunks", str(oversized))
+                    before = self.db.read_bytes()
+                    with backend.connect(self.db) as con:
+                        result = backend.query(con, "InvoiceMaker")
+                    self.assertEqual(result["chunkChars"], chunk_chars)
+                    self.assertEqual(result["oversizedChunks"], oversized)
+                    self.assertTrue(result["results"])
+                    self.assertEqual(self.db.read_bytes(), before)
+        for dimension in ("1", str(2 ** 64), " +0002 "):
+            with backend.connect(self.db) as con:
+                backend.put_meta(con, "vector_dim", dimension)
+                backend.put_meta(con, "chunk_chars", " +00128 ")
+                backend.put_meta(con, "oversized_chunks", "0")
+            with backend.connect(self.db) as con:
+                self.assertEqual(backend.query(con, "InvoiceMaker")["chunkChars"], 128)
+        with backend.connect(self.db) as con:
+            con.execute("DELETE FROM meta WHERE key='vector_dim'")
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        for chunk_chars in (128, 12000):
+            backend.index(self.root, self.db, "/local/billing", self.docs, None, None, chunk_chars=chunk_chars)
+            self.assertEqual(backend.index(self.root, self.db, "/local/billing", self.docs, None, None, chunk_chars=chunk_chars)["changed"], 0)
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "index_version", "6")
+            con.execute("DELETE FROM meta WHERE key IN ('chunk_chars','oversized_chunks')")
+            backend.put_meta(con, "vector_dim", "9" * 5000)
+        migrated = self.index()
+        self.assertEqual(migrated["changed"], 2)
+        with backend.connect(self.db) as con:
+            meta = backend.metadata(con)
+            self.assertEqual(meta["index_version"], backend.INDEX_VERSION)
+            self.assertEqual(meta["chunk_chars"], str(backend.DEFAULT_CHUNK_CHARS))
+            self.assertEqual(meta["oversized_chunks"], "0")
+            self.assertNotIn("vector_dim", meta)
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_numeric_metadata_real_cli_and_http_errors_are_controlled_immutable_and_recover(self):
+        base = "http://" + self.start_error_test_server()
+        with backend.connect(self.db) as con:
+            original = backend.metadata(con)
+        endpoints = ("/api/v2/libs/search?libraryName=billing", "/api/v2/context?libraryId=/local/billing&query=invoice")
+        commands = (
+            [sys.executable, str(SCRIPT), "query", "--database", str(self.db), "--query", "InvoiceMaker"],
+            [sys.executable, str(SCRIPT), "index", str(self.root), "--database", str(self.db), "--library-id", "/local/billing", "--docs-root", str(self.docs)],
+        )
+        for field, value in (("chunk_chars", "invalid"), ("oversized_chunks", "false"), ("vector_dim", "-1"), ("chunk_chars", "9" * 5000)):
+            with self.subTest(field=field, huge=len(value) > 100):
+                with backend.connect(self.db) as con:
+                    for key, item in original.items():
+                        backend.put_meta(con, key, item)
+                    con.execute("DELETE FROM meta WHERE key='vector_dim'")
+                    backend.put_meta(con, field, value)
+                before = self.db.read_bytes()
+                for command in commands:
+                    result = subprocess.run(command, text=True, capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn("retrieval error: Index numeric metadata " + field, result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+                    self.assertEqual(result.stdout, "")
+                for endpoint in endpoints:
+                    self.assert_json_http_error(base + endpoint, 409, "numeric metadata " + field)
+                self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            for key, value in original.items():
+                backend.put_meta(con, key, value)
+            con.execute("DELETE FROM meta WHERE key='vector_dim'")
+        with urlopen(base + endpoints[1], timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+        self.assertEqual(self.index()["changed"], 0)
+
     def test_exact_bracket_exclusions_and_reset_scope_on_next_invocation(self):
         (self.root / "web/[id]").mkdir(parents=True)
         (self.root / "web/[id]/page.ts").write_text("const bracketPage = 'excluded';", encoding="utf-8")
@@ -309,7 +426,7 @@ class RetrievalTests(unittest.TestCase):
         endpoint = base + "/api/v2/context?libraryId=/local/billing&query=invoice"
         with backend.connect(self.db) as con:
             backend.put_meta(con, "chunk_chars", "invalid")
-        self.assert_json_http_error(endpoint, 409, "invalid literal")
+        self.assert_json_http_error(endpoint, 409, "numeric metadata chunk_chars is invalid; restore a valid index or use a fresh database")
         with backend.connect(self.db) as con:
             backend.put_meta(con, "chunk_chars", "1200")
         moved = self.root.with_name("moved")
