@@ -5,6 +5,7 @@
 mod inventory;
 mod policy;
 mod rank;
+mod render;
 mod tags;
 
 use std::collections::BTreeMap;
@@ -22,7 +23,7 @@ use tags::{ExtractError, Extractor, Kind, Tag};
 const TOOL: &str = "legacy-codebase-workflows legacy-repo-map";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// `VERSION` of the Python `repo_map.py` whose behavior this build mirrors.
-const BASELINE_CONTRACT: &str = "repo_map.py 1.0.0";
+const BASELINE_CONTRACT: &str = "repo_map.py 1.1.0";
 const ESTIMATOR: &str = "ceil(Unicode characters / 4); a size estimate, not a model tokenizer";
 const FINGERPRINT_SCOPE: &str =
     "selected readable files and skip reasons, from current bytes; ignored files and secret contents are excluded";
@@ -58,7 +59,10 @@ Options:
   --output-dir <dir>       artifact directory outside the source (required)
   --inventory-only         write the file inventory without parsing or ranking
   --budget <n>             estimated tokens, ceil(Unicode characters / 4),
-                           64..1000000 (default 4096)
+                           64..1000000 (default 16384)
+  --format <name>          grouped headers/signatures (default) or legacy lines
+  --all-definitions        include every query definition in the selected scope;
+                           fail if the budget or scan/parser limits prevent it
   --subtree <path>         relative module or subtree; repeatable
   --focus-file <path>      relative file to prioritize; repeatable
   --focus-symbol <name>    identifier to prioritize; repeatable
@@ -157,6 +161,8 @@ struct Arguments {
     timings: bool,
     debug_tags: bool,
     inventory_only: bool,
+    map_format: Option<String>,
+    all_definitions: bool,
 }
 
 enum Invocation {
@@ -195,6 +201,8 @@ fn parse_arguments(raw: Vec<String>) -> Result<Invocation, String> {
             "--version" => return Ok(Invocation::Print(format!("legacy-repo-map {VERSION} (experimental)\n"))),
             "--notices" => return Ok(Invocation::Print(notices())),
             "--print-policy" => return Ok(Invocation::Print(format!("{}\n", policy_json()))),
+            "--format" => arguments.map_format = Some(value(&name)?),
+            "--all-definitions" => arguments.all_definitions = true,
             "--timings" => arguments.timings = true,
             "--inventory-only" => arguments.inventory_only = true,
             "--debug-tags" => arguments.debug_tags = true,
@@ -359,6 +367,7 @@ struct ParsedFile {
     tags: Vec<Tag>,
     /// Definition line number to stripped, bounded source line.
     snippets: BTreeMap<usize, String>,
+    declarations: BTreeMap<(usize, String), render::Declaration>,
 }
 
 fn run(arguments: Arguments) -> Result<String, String> {
@@ -368,6 +377,14 @@ fn run(arguments: Arguments) -> Result<String, String> {
         .ok_or("a repository path is required; see --help")?;
     let output_dir = arguments.output_dir.ok_or("--output-dir is required")?;
     let budget = arguments.budget.unwrap_or(policy::DEFAULT_BUDGET);
+    let map_format = arguments.map_format.as_deref().unwrap_or("grouped");
+    if !matches!(map_format, "grouped" | "lines") {
+        return Err("--format must be grouped or lines".to_string());
+    }
+    let all_definitions = arguments.all_definitions;
+    if all_definitions && arguments.inventory_only {
+        return Err("--all-definitions cannot be combined with --inventory-only".to_string());
+    }
     let max_files = arguments.max_files.unwrap_or(policy::DEFAULT_MAX_FILES);
     let max_file_bytes = arguments.max_file_bytes.unwrap_or(policy::DEFAULT_MAX_FILE_BYTES);
 
@@ -417,6 +434,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
     }
 
     let selection = json!({
+        "mode": if all_definitions { "all-definitions" } else { "ranked" },
         "subtrees": selected_subtrees,
         "focus_files": focus_files,
         "focus_symbols": focus_symbols,
@@ -433,6 +451,12 @@ fn run(arguments: Arguments) -> Result<String, String> {
             "status": status,
             "source_root": display(&root),
             "selection": selection,
+            "rendering": {
+                "format": map_format,
+                "declaration_line_limit": render::DECLARATION_LINE_LIMIT,
+                "declaration_character_limit": render::DECLARATION_CHARACTER_LIMIT,
+                "clipped_declarations": [],
+            },
             "estimated_tokens": 0,
             "map_sha256": Value::Null,
         });
@@ -481,12 +505,19 @@ fn run(arguments: Arguments) -> Result<String, String> {
             return;
         }
         let parse_started = Instant::now();
-        let outcome = extractor.extract(language, &entry.path, data);
+        let outcome =
+            extractor.extract_with_declarations(language, &entry.path, data, map_format == "grouped", all_definitions);
         parse_time += parse_started.elapsed();
         match outcome {
             Ok(file_tags) => {
                 if file_tags.has_syntax_errors {
                     syntax_error_files.push(entry.path.clone());
+                    if all_definitions {
+                        parse_failures.push(
+                            json!({"path": entry.path, "reason": "syntax errors prevent a complete definition map"}),
+                        );
+                        return;
+                    }
                 }
                 total_tags += file_tags.tags.len();
                 // Bytes were validated as UTF-8 when the file was read.
@@ -504,6 +535,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
                 parsed.push(ParsedFile {
                     path: entry.path.clone(),
                     tags: file_tags.tags,
+                    declarations: file_tags.declarations,
                     snippets,
                 });
                 if total_tags > policy::MAX_TOTAL_TAGS {
@@ -610,6 +642,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         "fingerprint_scope": FINGERPRINT_SCOPE,
         "skipped": skipped,
     });
+    syntax_error_files.sort_unstable();
     let summarize = |status: &str, coverage: &Value, estimated_tokens: usize, truncated: bool| -> Value {
         json!({
             "status": status,
@@ -630,6 +663,8 @@ fn run(arguments: Arguments) -> Result<String, String> {
         });
         let mut extra = provenance.clone();
         extra["coverage"] = coverage.clone();
+        extra["parse_failures"] = json!(parse_failures);
+        extra["syntax_error_files"] = json!(syntax_error_files);
         extra["truncated"] = json!(limit_hit);
         if let Some((stage, message)) = failure {
             extra["failure"] = json!({"stage": stage, "message": message});
@@ -647,6 +682,12 @@ fn run(arguments: Arguments) -> Result<String, String> {
     if let Some(failed) = &failure {
         unfinished("failed", Some(failed))?;
         return Err(failed.1.clone());
+    }
+
+    if all_definitions && (limit_hit || !parse_failures.is_empty()) {
+        let message = "--all-definitions requires a complete parse-clean selected scope; narrow --subtree or fix the reported scan/parser limits".to_string();
+        unfinished("failed", Some(&("selection", message.clone())))?;
+        return Err(message);
     }
 
     let rank_started = Instant::now();
@@ -667,15 +708,14 @@ fn run(arguments: Arguments) -> Result<String, String> {
     };
     let rank_elapsed = rank_started.elapsed();
 
-    // One output line per source line: definitions sharing a line count as
-    // included once that line is in the map.
     let mut map_text = String::from(HEADER);
     let mut remaining = (budget * 4).saturating_sub(HEADER.chars().count());
     let mut included = 0usize;
     let mut included_lines: std::collections::HashSet<(usize, usize)> = Default::default();
     let mut verified_sources = std::collections::HashSet::new();
+    let mut grouped = render::Grouped::new();
     for definition in &ranked {
-        if included_lines.contains(&(definition.file, definition.line)) {
+        if map_format == "lines" && included_lines.contains(&(definition.file, definition.line)) {
             included += 1;
             continue;
         }
@@ -701,19 +741,76 @@ fn run(arguments: Arguments) -> Result<String, String> {
                 return Err(message);
             }
         }
-        let Some(snippet) = file.snippets.get(&definition.line) else {
-            let message = format!("source line vanished while rendering: {}", file.path);
-            unfinished("failed", Some(&("rendering", message.clone())))?;
-            return Err(message);
-        };
-        let line = format!("{}:L{}: {}\n", file.path, definition.line, snippet);
-        let length = line.chars().count();
-        if length <= remaining {
-            map_text.push_str(&line);
-            remaining -= length;
-            included += 1;
-            included_lines.insert((definition.file, definition.line));
+        if map_format == "grouped" {
+            let key = (definition.line, definition.name.to_string());
+            let Some(declaration) = file.declarations.get(&key) else {
+                let message = format!(
+                    "declaration span vanished while rendering: {}:L{}",
+                    file.path, definition.line
+                );
+                unfinished("failed", Some(&("rendering", message.clone())))?;
+                return Err(message);
+            };
+            let limit = if all_definitions { usize::MAX } else { budget * 4 };
+            if grouped.add(definition.file, &file.path, declaration, limit) {
+                included += 1;
+            }
+        } else {
+            let Some(snippet) = file.snippets.get(&definition.line) else {
+                let message = format!("source line vanished while rendering: {}", file.path);
+                unfinished("failed", Some(&("rendering", message.clone())))?;
+                return Err(message);
+            };
+            let line = format!("{}:L{}: {}\n", file.path, definition.line, snippet);
+            let length = line.chars().count();
+            if all_definitions || length <= remaining {
+                map_text.push_str(&line);
+                remaining = remaining.saturating_sub(length);
+                included += 1;
+                included_lines.insert((definition.file, definition.line));
+            }
         }
+    }
+    let clipped_declarations: Vec<Value> = if map_format == "grouped" {
+        grouped
+            .clips()
+            .map(|(file, clip)| {
+                json!({
+                    "path": parsed[file].path, "line": clip.line, "start_line": clip.start_line,
+                    "end_line": clip.end_line, "reason": clip.reason,
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    if map_format == "grouped" {
+        let paths: Vec<&str> = parsed.iter().map(|file| file.path.as_str()).collect();
+        map_text = grouped.render(&paths);
+        remaining = (budget * 4).saturating_sub(map_text.chars().count());
+    }
+    let required_tokens = if map_format == "grouped" {
+        grouped.tokens()
+    } else {
+        map_text.chars().count().div_ceil(4)
+    };
+    if all_definitions && required_tokens > budget {
+        let message = format!("--all-definitions requires {required_tokens} estimated tokens; requested --budget {budget}. Increase --budget to {required_tokens} (maximum {}) or narrow --subtree.", policy::MAX_BUDGET);
+        let mut extra = provenance.clone();
+        extra["failure"] = json!({"stage": "rendering", "message": message});
+        extra["required_tokens"] = json!(required_tokens);
+        extra["rendering"] = json!({
+            "format": map_format,
+            "declaration_line_limit": render::DECLARATION_LINE_LIMIT,
+            "declaration_character_limit": render::DECLARATION_CHARACTER_LIMIT,
+            "clipped_declarations": clipped_declarations,
+        });
+        write_atomic(
+            &output,
+            "map.meta.json",
+            &format!("{}\n", pretty(&partial("failed", extra))),
+        )?;
+        return Err(message);
     }
     if included == 0 && EMPTY_MESSAGE.chars().count() <= remaining {
         map_text.push_str(EMPTY_MESSAGE);
@@ -725,7 +822,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         files.dedup();
         files.len()
     };
-    let truncated = included < ranked.len() || limit_hit;
+    let truncated = included < ranked.len() || limit_hit || !clipped_declarations.is_empty();
     let defined: std::collections::HashSet<&str> = ranked.iter().map(|definition| definition.name).collect();
     let parsed_paths: std::collections::HashSet<&str> = parsed.iter().map(|file| file.path.as_str()).collect();
     let mut unsupported: Vec<&str> = inventory
@@ -747,7 +844,6 @@ fn run(arguments: Arguments) -> Result<String, String> {
         .map(|entry| entry.path.as_str())
         .collect();
     descriptors.sort_unstable();
-    syntax_error_files.sort_unstable();
     let coverage = json!({
         "candidates_seen": inventory.candidates_seen,
         "selected_files": inventory.files.len(),
@@ -755,6 +851,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         "files_with_definitions": files_with_definitions,
         "definitions_found": ranked.len(),
         "definitions_in_map": included,
+        "definitions_omitted": ranked.len().saturating_sub(included),
     });
     let estimated_tokens = map_text.chars().count().div_ceil(4);
     let queries: BTreeMap<&str, Value> = tags::LANGUAGE_SPECS
@@ -790,6 +887,12 @@ fn run(arguments: Arguments) -> Result<String, String> {
         "estimator": ESTIMATOR,
         "map_sha256": inventory::sha256_hex(map_text.as_bytes()),
         "ranking": RANKING,
+        "rendering": {
+            "format": map_format,
+            "declaration_line_limit": render::DECLARATION_LINE_LIMIT,
+            "declaration_character_limit": render::DECLARATION_CHARACTER_LIMIT,
+            "clipped_declarations": clipped_declarations,
+        },
         "cache": "none; every run reads and parses the selected files",
         "dependencies": DEPENDENCIES.iter().copied().collect::<BTreeMap<_, _>>(),
         "queries": queries,

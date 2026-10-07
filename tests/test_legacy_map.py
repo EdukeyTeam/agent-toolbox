@@ -37,6 +37,8 @@ class MapTests(unittest.TestCase):
         return path
 
     def map(self, **options):
+        # Retain byte-level legacy-format coverage; grouped behavior has its own suite.
+        options.setdefault("map_format", "lines")
         return generate(self.repo, self.out, **options)
 
     def test_java_python_typescript_definitions_focus_and_budget(self):

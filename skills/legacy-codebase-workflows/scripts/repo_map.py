@@ -11,17 +11,17 @@ import math
 import os
 import sys
 import tempfile
-from functools import lru_cache
-from collections import Counter
+from collections import Counter, OrderedDict
 from pathlib import Path
 
+from repo_render import extract_declarations, render_grouped, render_lines, rendering_metadata
 from repo_files import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_FILES, _safe_relative, contains_control_characters, read_safe_text, scan_repository, split_source_lines
 
 VENDOR = Path(__file__).resolve().parents[1] / "vendor"
 sys.path.insert(0, str(VENDOR))
 from aider_rank import rank_tags  # noqa: E402
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 QUERY_DIR = VENDOR / "queries"
 QUERY_PATHS = {
     "java": "tree-sitter-language-pack/java-tags.scm",
@@ -39,10 +39,52 @@ PARSER_NAMES = {"c_sharp": "csharp"}
 MAX_TAGS_PER_FILE = 20_000
 MAX_TOTAL_TAGS = 200_000
 MAX_BUDGET = 1_000_000
+SOURCE_LINE_CACHE_BYTES = 32 * 1024 * 1024
 
 
 class LimitExceeded(ValueError):
     """A map-wide safety limit that must stop generation."""
+
+
+class _SourceLineCache:
+    """Per-run LRU bounded by retained Python storage, not file count.
+
+    The loader verifies current source bytes once on each cache miss. Lines
+    larger than the budget are returned without caching; rendering never
+    retains an unbounded collection of source files.
+    """
+
+    def __init__(self, loader, max_bytes=SOURCE_LINE_CACHE_BYTES):
+        self.loader = loader
+        self.max_bytes = max_bytes
+        self.entries = OrderedDict()
+        self.entry_bytes = 0
+
+    @property
+    def retained_bytes(self):
+        return self.entry_bytes + sys.getsizeof(self.entries)
+
+    def __call__(self, path):
+        cached = self.entries.get(path)
+        if cached is not None:
+            self.entries.move_to_end(path)
+            return cached[0]
+        lines = self.loader(path)
+        # Include line/list, path, entry tuple and accounting-integer storage;
+        # OrderedDict's hash table and LRU nodes are measured separately.
+        cost = (sys.getsizeof(lines) + sum(sys.getsizeof(line) for line in lines)
+                + sys.getsizeof(path) + sys.getsizeof((lines, 0)) + sys.getsizeof(0))
+        if cost + sys.getsizeof(OrderedDict()) > self.max_bytes:
+            return lines
+        self.entries[path] = (lines, cost)
+        self.entry_bytes += cost
+        while self.entries and self.retained_bytes > self.max_bytes:
+            _path, (_lines, evicted_cost) = self.entries.popitem(last=False)
+            self.entry_bytes -= evicted_cost
+        if not self.entries:
+            # Release the dictionary's high-water hash-table allocation too.
+            self.entries.clear()
+        return lines
 
 
 def _packages():
@@ -105,7 +147,7 @@ def _extract(text: str, parser, query, path: str):
     return sorted(result, key=lambda t: (t["line"], t["kind"], t["name"]))
 
 
-def _tags(root: Path, output: Path, inventory: dict):
+def _tags(root: Path, output: Path, inventory: dict, *, map_format="lines", all_definitions=False):
     tags_by_file = {}
     parse_failures = []
     cache_dir = output / "cache"
@@ -149,6 +191,8 @@ def _tags(root: Path, output: Path, inventory: dict):
                 tags = _extract(text, parser, query, path)
                 payload = {"version": VERSION, "sha256": current_digest, "query_sha256": query_digest, "parser_version": parser_version, "tags": [{key: tag[key] for key in ("kind", "name", "line")} for tag in tags]}
                 _atomic_write(cache_path, json.dumps(payload, ensure_ascii=False, sort_keys=True))
+            if map_format == "grouped" or all_definitions:
+                tags = extract_declarations(text, parser, query, path, tags, strict_syntax=all_definitions)
             tags_by_file[path] = tags
             parsed_files += 1
             total += len(tags)
@@ -169,7 +213,7 @@ def _line(tag: dict, line_cache):
     return f"{tag['path']}:L{tag['line']}: {snippet[:240]}\n"
 
 
-def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, subtrees=(), focus_files=(), focus_symbols=(), excludes=(), max_files=DEFAULT_MAX_FILES, max_file_bytes=DEFAULT_MAX_FILE_BYTES, inventory_only=False):
+def generate(root: str | Path, output_dir: str | Path, *, budget: int = 16_384, subtrees=(), focus_files=(), focus_symbols=(), excludes=(), max_files=DEFAULT_MAX_FILES, max_file_bytes=DEFAULT_MAX_FILE_BYTES, inventory_only=False, map_format="grouped", all_definitions=False):
     root = Path(root).resolve(strict=True)
     output = Path(output_dir).resolve()
     if not root.is_dir():
@@ -178,6 +222,8 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
         raise ValueError("output directory must be outside the source repository")
     if not 64 <= budget <= MAX_BUDGET:
         raise ValueError(f"budget must be 64..{MAX_BUDGET} estimated tokens")
+    if map_format not in ("grouped", "lines"):
+        raise ValueError("format must be grouped or lines")
     for path in [*subtrees, *focus_files]:
         if Path(path).is_absolute() or ".." in Path(path).parts:
             raise ValueError(f"focus/subtree path must be relative: {path}")
@@ -204,11 +250,12 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
         "status": "inventory-only" if inventory_only else "in-progress",
         "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"], "git_notes": inventory["git_notes"],
         "working_copy_fingerprint": inventory["fingerprint"], "inventory_summary": summary,
-        "selection": {"subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},
+        "selection": {"mode": "all-definitions" if all_definitions else "ranked", "subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},
         "coverage": {"candidates_seen": inventory["totals"]["candidates_seen"], "selected_files": len(inventory["files"]), "parsed_files": None, "definitions_found": None},
         "skipped": inventory["skipped"],
         "truncated": any(item["path"] == "*" for item in inventory["skipped"]),
         "estimated_tokens": 0, "map_sha256": None,
+        "rendering": rendering_metadata(map_format),
     }
     diagnostic = "# Repository inventory\n\nNo symbol map generated. Inspect inventory.json and choose a subtree.\n"
     _atomic_write(output / "repo-map.md", diagnostic)
@@ -217,48 +264,34 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
         return preliminary
     stage = "parsing"
     try:
-        tags_by_file, parsed_count, parse_failures = _tags(root, output, inventory)
+        tags_by_file, parsed_count, parse_failures = _tags(root, output, inventory, map_format=map_format, all_definitions=all_definitions)
+        preliminary["parse_failures"] = parse_failures
+        preliminary["coverage"]["parsed_files"] = parsed_count
+        if all_definitions and (parse_failures or any(item["path"] == "*" for item in inventory["skipped"] )):
+            diagnostic_reason = f"; first parser failure: {parse_failures[0]['path']}: {parse_failures[0]['reason']}" if parse_failures else ""
+            raise ValueError("all-definitions requires an untruncated selected scope without parse failures; inspect skips/parse failures and narrow the scope" + diagnostic_reason)
         stage = "ranking"
         ranked = rank_tags(tags_by_file, focus_files=focus_files, focus_symbols=focus_symbols)
         stage = "rendering"
         by_path = {entry["path"]: entry for entry in inventory["files"]}
 
-        @lru_cache(maxsize=32)
-        def source_lines(path):
+        def read_source_lines(path):
             text, digest = read_safe_text(root, path, max_file_bytes=max(by_path[path]["size"], 1))
             if digest != by_path[path]["sha256"]:
                 raise ValueError(f"source changed while rendering: {path}")
             return split_source_lines(text)
 
-        header = "# Repository map\n\n"
-        chunks = [header]
-        remaining = budget * 4 - len(header)
-        included = []
-        included_lines = set()
-        for tag in ranked:
-            line_key = (tag["path"], tag["line"])
-            if line_key in included_lines:
-                included.append(tag)
-                continue
-            line = _line(tag, source_lines)
-            if len(line) <= remaining:
-                chunks.append(line)
-                remaining -= len(line)
-                included.append(tag)
-                included_lines.add(line_key)
-        if not included:
-            message = "No supported definitions found in selected files. See inventory.json for descriptors, unsupported files and skips.\n"
-            if len(message) <= remaining:
-                chunks.append(message)
-        map_text = "".join(chunks)
+        source_lines = _SourceLineCache(read_source_lines)
+        renderer = render_grouped if map_format == "grouped" else render_lines
+        map_text, included, clipping = renderer(ranked, source_lines, budget, all_definitions=all_definitions)
         metadata = {
             "tool": "legacy-codebase-workflows repo_map", "version": VERSION, "status": "complete",
             "source_root": str(root), "revision": inventory["revision"], "dirty": inventory["dirty"], "git_notes": inventory["git_notes"],
             "working_copy_fingerprint": inventory["fingerprint"], "inventory_summary": summary,
             "fingerprint_scope": "selected readable files and skip reasons, from current bytes; ignored files and secret contents are excluded",
-            "selection": {"subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},
+            "selection": {"mode": "all-definitions" if all_definitions else "ranked", "subtrees": list(subtrees), "focus_files": list(focus_files), "focus_symbols": list(focus_symbols), "excludes": list(excludes)},
             "limits": {"budget": budget, "max_files": max_files, "max_file_bytes": max_file_bytes, "max_tags_per_file": MAX_TAGS_PER_FILE, "max_total_tags": MAX_TOTAL_TAGS},
-            "coverage": {"candidates_seen": inventory["totals"]["candidates_seen"], "selected_files": len(inventory["files"]), "parsed_files": parsed_count, "files_with_definitions": len({tag["path"] for tag in ranked}), "definitions_found": len(ranked), "definitions_in_map": len(included)},
+            "coverage": {"candidates_seen": inventory["totals"]["candidates_seen"], "selected_files": len(inventory["files"]), "parsed_files": parsed_count, "files_with_definitions": len({tag["path"] for tag in ranked}), "definitions_found": len(ranked), "definitions_in_map": len(included), "definitions_omitted": len(ranked) - len(included)},
             "skipped": inventory["skipped"], "parse_failures": parse_failures,
             "focus_not_found": {
                 "files_not_parsed": [path for path in focus_files if path not in tags_by_file],
@@ -266,10 +299,11 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
             },
             "unsupported_languages": sorted({entry["path"] for entry in inventory["files"] if entry["language"] is None and entry["kind"] == "other" and Path(entry["path"]).suffix}),
             "descriptors": sorted(entry["path"] for entry in inventory["files"] if entry["kind"] == "descriptor"),
-            "truncated": len(included) < len(ranked) or any(item["path"] == "*" for item in inventory["skipped"]),
+            "truncated": bool(clipping) or len(included) < len(ranked) or any(item["path"] == "*" for item in inventory["skipped"]),
             "estimated_tokens": math.ceil(len(map_text) / 4), "estimator": "ceil(Unicode characters / 4); a size estimate, not a model tokenizer",
             "map_sha256": hashlib.sha256(map_text.encode("utf-8")).hexdigest(),
             "dependencies": _packages(),
+            "rendering": rendering_metadata(map_format, clipping),
         }
         stage = "publication"
         _atomic_write(output / "inventory.json", json.dumps(inventory, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
@@ -278,6 +312,8 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
         return metadata
     except (OSError, ValueError, ImportError, KeyError) as exc:
         preliminary.update(status="failed", failure={"stage": stage, "message": str(exc)})
+        if hasattr(exc, "required_estimated_tokens"):
+            preliminary["failure"]["required_estimated_tokens"] = exc.required_estimated_tokens
         _atomic_write(output / "map.meta.json", json.dumps(preliminary, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
         raise
 
@@ -286,8 +322,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repository", help="source directory; never modified")
     parser.add_argument("--output-dir", required=True, help="artifact directory outside source")
+    parser.add_argument("--format", choices=("grouped", "lines"), default="grouped", dest="map_format", help="grouped declaration headers (default), or legacy ranked one-line snippets")
+    parser.add_argument("--all-definitions", action="store_true", help="require every query definition in the selected scope; fail if budget or parsing prevents it")
     parser.add_argument("--inventory-only", action="store_true", help="write inventory without installing parsers or ranking symbols")
-    parser.add_argument("--budget", type=int, default=4096, help="estimated tokens; ceil(Unicode characters / 4), 64..1000000")
+    parser.add_argument("--budget", type=int, default=16_384, help="estimated tokens; ceil(Unicode characters / 4), 64..1000000")
     parser.add_argument("--subtree", action="append", default=[], help="relative module/subtree; repeatable")
     parser.add_argument("--focus-file", action="append", default=[], help="relative file to prioritize; repeatable")
     parser.add_argument("--focus-symbol", action="append", default=[], help="identifier to prioritize; repeatable")
@@ -296,7 +334,7 @@ def main(argv=None):
     parser.add_argument("--max-file-bytes", type=int, default=DEFAULT_MAX_FILE_BYTES, help="maximum bytes per file, 1..20000000")
     args = parser.parse_args(argv)
     try:
-        metadata = generate(args.repository, args.output_dir, budget=args.budget, subtrees=args.subtree, focus_files=args.focus_file, focus_symbols=args.focus_symbol, excludes=args.exclude, max_files=args.max_files, max_file_bytes=args.max_file_bytes, inventory_only=args.inventory_only)
+        metadata = generate(args.repository, args.output_dir, budget=args.budget, subtrees=args.subtree, focus_files=args.focus_file, focus_symbols=args.focus_symbol, excludes=args.exclude, max_files=args.max_files, max_file_bytes=args.max_file_bytes, inventory_only=args.inventory_only, map_format=args.map_format, all_definitions=args.all_definitions)
     except (OSError, ValueError, ImportError, KeyError) as exc:
         print(f"repo_map: {exc}", file=sys.stderr)
         return 2

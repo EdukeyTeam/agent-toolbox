@@ -59,6 +59,7 @@ impl Fixture {
             .arg(&self.source)
             .arg("--output-dir")
             .arg(&self.output)
+            .args(["--format", "lines"])
             .args(extra);
         command.stdin(Stdio::null()).output().unwrap()
     }
@@ -1203,6 +1204,7 @@ fn a_directory_ignored_by_an_enclosing_repository_is_still_mapped() {
         .arg(&inner)
         .arg("--output-dir")
         .arg(&fixture.output)
+        .args(["--format", "lines"])
         .output()
         .unwrap();
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
@@ -1248,4 +1250,329 @@ fn usage_errors_and_informational_flags() {
     assert_eq!(policy["languages"][".java"], "java");
     assert_eq!(policy["queries"].as_object().unwrap().len(), 10);
     assert!(strings(&policy["secret_names"]).contains(&".env".to_string()));
+}
+
+// New grouped format behavior. Existing tests above explicitly use the
+// retained line format to keep its byte, budget and focus contract intact.
+
+fn grouped(fixture: &Fixture, extra: &[&str]) -> Output {
+    Command::new(BINARY)
+        .arg(&fixture.source)
+        .arg("--output-dir")
+        .arg(&fixture.output)
+        .args(extra)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap()
+}
+
+fn grouped_ok(fixture: &Fixture, extra: &[&str]) -> Value {
+    let result = grouped(fixture, extra);
+    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    serde_json::from_slice(&result.stdout).unwrap()
+}
+
+#[test]
+fn grouped_default_keeps_complete_java_signatures_and_enclosing_classes() {
+    let fixture = Fixture::new();
+    fixture.write("Both.java", "class First {\n    @Deprecated\n    public String convert(\n        String value,\n        int flags\n    ) throws Exception {\n        return \"body should be omitted\";\n    }\n}\nclass Second {\n    public String convert(String value) {\n        return \"another body\";\n    }\n}\n");
+    grouped_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert_eq!(map.matches("## Both.java").count(), 1, "{map}");
+    assert!(map.contains("L1: class First {\n"), "{map}");
+    assert!(
+        map.contains("L2:     @Deprecated\nL3:     public String convert(\n"),
+        "{map}"
+    );
+    assert!(
+        map.contains("L5:         int flags\nL6:     ) throws Exception {\n"),
+        "{map}"
+    );
+    assert!(
+        map.contains("L10: class Second {\nL11:     public String convert(String value) {\n"),
+        "{map}"
+    );
+    assert!(!map.contains("body should be omitted"), "{map}");
+    assert!(!map.contains("another body"), "{map}");
+    let metadata = fixture.json("map.meta.json");
+    assert_eq!(metadata["rendering"]["format"], "grouped");
+    assert_eq!(metadata["selection"]["mode"], "all-definitions");
+    assert_eq!(metadata["coverage"]["definitions_omitted"], 0);
+}
+
+#[test]
+fn grouped_python_distinguishes_same_method_by_class_and_keeps_decorators() {
+    let fixture = Fixture::new();
+    fixture.write("tags.py", "class TagA:\n    @staticmethod\n    def to_python(\n        value: object,\n        strict: bool = False,\n    ) -> object:\n        return value\n\nclass TagB:\n    def to_python(self, value: object) -> object:\n        return value\n");
+    grouped_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert!(
+        map.contains("L1: class TagA:\nL2:     @staticmethod\nL3:     def to_python(\n"),
+        "{map}"
+    );
+    assert!(
+        map.contains("L5:         strict: bool = False,\nL6:     ) -> object:\n"),
+        "{map}"
+    );
+    assert!(
+        map.contains("L9: class TagB:\nL10:     def to_python(self, value: object) -> object:\n"),
+        "{map}"
+    );
+    assert_eq!(map.matches("to_python").count(), 2, "{map}");
+    assert!(!map.contains("return value"), "{map}");
+}
+
+#[test]
+fn grouped_rust_keeps_impl_context_and_multiline_where_clause() {
+    let fixture = Fixture::new();
+    fixture.write("pool.rs", "struct Pool<T>(T);\nimpl<T> Pool<T> {\n    #[inline]\n    fn acquire<'a>(\n        &'a self,\n        count: usize,\n    ) -> &'a T\n    where\n        T: Clone,\n    {\n        &self.0\n    }\n}\n");
+    grouped_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert!(
+        map.contains("L2: impl<T> Pool<T> {\nL3:     #[inline]\nL4:     fn acquire<'a>(\n"),
+        "{map}"
+    );
+    assert!(
+        map.contains("L7:     ) -> &'a T\nL8:     where\nL9:         T: Clone,\nL10:     {\n"),
+        "{map}"
+    );
+    assert!(!map.contains("&self.0"), "{map}");
+}
+
+#[test]
+fn grouped_budget_measures_headers_fences_and_shared_context() {
+    let fixture = Fixture::new();
+    let mut source = "class Many {\n".to_string();
+    for i in 0..30 {
+        source.push_str(&format!(
+            "    public void call{i}(\n        String value,\n        int flags\n    ) {{}}\n"
+        ));
+    }
+    source.push_str("}\n");
+    fixture.write("Many.java", &source);
+    let summary = grouped_ok(&fixture, &["--budget", "64"]);
+    let map = fixture.map_text();
+    assert!(map.chars().count().div_ceil(4) <= 64, "{map}");
+    assert_eq!(summary["estimated_tokens"], map.chars().count().div_ceil(4));
+    let coverage = &summary["coverage"];
+    assert!(coverage["definitions_in_map"].as_u64().unwrap() < 31);
+    assert!(coverage["definitions_in_map"].as_u64().unwrap() >= 1);
+    assert_eq!(map.matches("L1: class Many {").count(), 1, "{map}");
+}
+
+#[test]
+fn all_definitions_fails_instead_of_silently_using_a_partial_budget() {
+    let fixture = Fixture::new();
+    let source = format!(
+        "class Big {{\n{}}}\n",
+        (0..20)
+            .map(|i| format!("    void operation{i}(String value) {{}}\n"))
+            .collect::<String>()
+    );
+    fixture.write("Big.java", &source);
+    let result = grouped(&fixture, &["--all-definitions", "--budget", "64"]);
+    assert!(!result.status.success());
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(error.contains("requires") && error.contains("--budget"), "{error}");
+    let failed = fixture.json("map.meta.json");
+    assert_eq!(failed["status"], "failed");
+    assert_eq!(failed["selection"]["mode"], "all-definitions");
+    grouped_ok(&fixture, &["--all-definitions", "--budget", "2048"]);
+    let complete = fixture.json("map.meta.json");
+    assert_eq!(complete["coverage"]["definitions_found"], 21);
+    assert_eq!(complete["coverage"]["definitions_in_map"], 21);
+    assert_eq!(complete["coverage"]["definitions_omitted"], 0);
+}
+
+#[test]
+fn grouped_signature_clipping_is_explicit_in_map_and_metadata() {
+    let fixture = Fixture::new();
+    let mut source = "class Long {\n    void huge(\n".to_string();
+    for i in 0..120 {
+        source.push_str(&format!("        int argument{i},\n"));
+    }
+    source.push_str("        int last\n    ) {}\n}\n");
+    fixture.write("Long.java", &source);
+    grouped_ok(&fixture, &["--all-definitions", "--budget", "4096"]);
+    let map = fixture.map_text();
+    assert!(map.contains("declaration clipped"), "{map}");
+    let metadata = fixture.json("map.meta.json");
+    assert!(!metadata["rendering"]["clipped_declarations"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert_eq!(metadata["coverage"]["definitions_in_map"], 2);
+    assert_eq!(metadata["truncated"], true);
+}
+
+#[test]
+fn line_format_preserves_original_one_line_output_bytes() {
+    let fixture = Fixture::new();
+    fixture.write("Tiny.java", "class Tiny {\n    void work() {}\n}\n");
+    fixture.map_ok(&["--format", "lines", "--all-definitions"]);
+    assert_eq!(
+        fixture.map_text(),
+        "# Repository map\n\nTiny.java:L1: class Tiny {\nTiny.java:L2: void work() {}\n"
+    );
+    let metadata = fixture.json("map.meta.json");
+    assert_eq!(metadata["rendering"]["format"], "lines");
+}
+
+#[test]
+fn all_definitions_rejects_parse_failures_or_truncated_scan() {
+    let fixture = Fixture::new();
+    fixture.write("First.java", "class First {}\n");
+    fixture.write("Second.java", "class Second {}\n");
+    let result = grouped(&fixture, &["--all-definitions", "--max-files", "1"]);
+    assert!(!result.status.success(), "all mode accepted a limited scan");
+    assert_eq!(fixture.json("map.meta.json")["status"], "failed");
+}
+
+#[test]
+fn grouped_language_headers_omit_bodies_and_keep_struct_interface_keywords() {
+    let fixture = Fixture::new();
+    fixture.write("demo.ts", "export interface Port {\n    send(\n        value: string,\n    ): number;\n}\nexport function makePort(\n    label: string,\n): number {\n    return 123456789;\n};\n");
+    fixture.write("demo.js", "export class Service {\n    run(value) {\n        return 123456789;\n    }\n}\nexport const acquire = (\n    value,\n) => {\n    return 123456789;\n};\n");
+    fixture.write("demo.go", "package demo\n\ntype Holder struct {\n    PayloadField int\n}\ntype Gateway interface {\n    Connect(value string) int\n}\nfunc Serve(\n    value string,\n) int {\n    return 123456789\n}\n");
+    fixture.write("demo.c", "struct Holder {\n    int PayloadField;\n};\nint serve(\n    const char *value,\n    int flags\n) {\n    return 123456789;\n}\n");
+    fixture.write("demo.cpp", "namespace Demo {\nclass Engine {\npublic:\n    int serve(\n        const char *value\n    );\n};\n}\nint standalone(int value) {\n    return 123456789;\n}\n");
+    fixture.write("demo.cs", "namespace Demo {\nclass Service {\n    public int Run(\n        string value,\n        int flags\n    ) {\n        return 123456789;\n    }\n}\n}\n");
+    grouped_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    for expected in [
+        "L1: export interface Port {",
+        "L6: export function makePort(",
+        "L8: ): number {",
+        "L6: export const acquire = (",
+        "L8: ) => {",
+        "L3: type Holder struct {",
+        "L6: type Gateway interface {",
+        "L1: struct Holder {",
+        "L4: int serve(",
+        "L1: namespace Demo {",
+        "L2: class Engine {",
+        "L1: namespace Demo {",
+        "L3:     public int Run(",
+    ] {
+        assert!(map.contains(expected), "missing {expected:?} in {map}");
+    }
+    assert!(!map.contains("123456789"), "{map}");
+    assert!(!map.contains("PayloadField"), "{map}");
+}
+
+#[test]
+fn grouped_long_decorators_retain_the_definition_identity() {
+    let fixture = Fixture::new();
+    let decorators = (0..100).map(|_| "@decorate()\n").collect::<String>();
+    fixture.write(
+        "decorated.py",
+        &format!("{decorators}def visible_name(value):\n    return value\n"),
+    );
+    grouped_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert!(map.contains("L101: def visible_name(value):"), "{map}");
+    assert!(map.contains("declaration clipped"), "{map}");
+    assert_eq!(fixture.json("map.meta.json")["coverage"]["definitions_in_map"], 1);
+}
+
+#[test]
+fn all_definitions_rejects_syntax_error_source() {
+    let fixture = Fixture::new();
+    fixture.write("Bad.java", "class Bad { void valid() {} }\nclass {{{\n");
+    let result = grouped(&fixture, &["--all-definitions"]);
+    assert!(!result.status.success());
+    let metadata = fixture.json("map.meta.json");
+    assert_eq!(metadata["status"], "failed");
+    assert!(String::from_utf8_lossy(&result.stderr).contains("parse-clean"));
+}
+
+#[test]
+fn grouped_never_counts_a_character_clipped_hidden_identifier() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "Hidden.java",
+        &format!("class Hidden {{\n{}void visible_name() {{}}\n}}\n", " ".repeat(8000)),
+    );
+    let result = grouped(&fixture, &["--all-definitions"]);
+    assert!(!result.status.success());
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(error.contains("identifier") && error.contains("8000"), "{error}");
+    assert_eq!(fixture.json("map.meta.json")["status"], "failed");
+}
+
+#[test]
+fn grouped_inline_sibling_bodies_are_never_rendered() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "Inline.java",
+        "class C { void alpha() { secret(); } void beta() { other(); } }\n",
+    );
+    grouped_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert!(map.contains("void alpha() {") && map.contains("void beta() {"), "{map}");
+    assert!(map.contains(" … "), "{map}");
+    assert!(!map.contains("secret()") && !map.contains("other()"), "{map}");
+    assert_eq!(fixture.json("map.meta.json")["coverage"]["definitions_in_map"], 3);
+}
+#[test]
+fn grouped_keeps_both_inline_arrow_declarations_without_their_bodies() {
+    let fixture = Fixture::new();
+    fixture.write("arrows.js", "const alpha = () => secret(), beta = () => other();\n");
+    grouped_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert!(
+        map.contains("const alpha = () =>") && map.contains("beta = () =>"),
+        "{map}"
+    );
+    assert!(!map.contains("secret()") && !map.contains("other()"), "{map}");
+    assert_eq!(fixture.json("map.meta.json")["coverage"]["definitions_found"], 2);
+    assert_eq!(fixture.json("map.meta.json")["coverage"]["definitions_in_map"], 2);
+}
+#[test]
+fn all_definitions_rejects_names_filtered_by_safety_limits() {
+    let fixture = Fixture::new();
+    fixture.write("Long.java", &format!("class {} {{}}\n", "X".repeat(513)));
+    for format in ["grouped", "lines"] {
+        let result = grouped(&fixture, &["--format", format, "--all-definitions"]);
+        assert!(
+            !result.status.success(),
+            "{format} silently ignored a captured definition"
+        );
+        let error = String::from_utf8_lossy(&result.stderr);
+        assert!(error.contains("name") && error.contains("512"), "{error}");
+        assert_eq!(fixture.json("map.meta.json")["status"], "failed");
+    }
+}
+#[test]
+fn all_definitions_rejects_same_line_names_at_distinct_capture_positions() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "Both.java",
+        "class A { void same() { one(); } } class B { void same() { two(); } }\n",
+    );
+    for format in ["grouped", "lines"] {
+        let result = grouped(&fixture, &["--format", format, "--all-definitions"]);
+        assert!(
+            !result.status.success(),
+            "{format} silently collapsed distinct definitions"
+        );
+        let error = String::from_utf8_lossy(&result.stderr);
+        assert!(error.contains("ambiguous") && error.contains("same"), "{error}");
+        assert_eq!(fixture.json("map.meta.json")["status"], "failed");
+    }
+}
+
+#[test]
+fn all_legacy_lines_rejects_identifiers_hidden_by_snippet_character_clipping() {
+    let fixture = Fixture::new();
+    let name = "X".repeat(250);
+    fixture.write("Wide.java", &format!("class {name} {{}}\n"));
+    let result = grouped(&fixture, &["--format", "lines", "--all-definitions"]);
+    assert!(!result.status.success(), "legacy lines counted a clipped identifier");
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(error.contains("240") && error.contains("grouped"), "{error}");
+    assert_eq!(fixture.json("map.meta.json")["status"], "failed");
+    grouped_ok(&fixture, &["--all-definitions"]);
+    assert!(fixture.map_text().contains(&name));
+    assert_eq!(fixture.json("map.meta.json")["coverage"]["definitions_in_map"], 1);
 }
