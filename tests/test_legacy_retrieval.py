@@ -7,6 +7,7 @@ import math
 import os
 from pathlib import Path
 import random
+import shutil
 import socket
 import sqlite3
 import struct
@@ -187,11 +188,12 @@ class RetrievalTests(unittest.TestCase):
             self.assertEqual(inference.call_count, 1)
             asset.write_text("y" * 22000, encoding="utf-8")
             self.assertEqual(backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, excludes=["bundle.js"])["changed"], 0)
-            self.assertEqual(inference.call_count, 1)
+            self.assertEqual(inference.call_count, 2)
+            self.assertEqual(inference.call_args.args[0], [["local retrieval warmup"]])
             before = self.db.read_bytes()
             with self.assertRaisesRegex(backend.RetrievalError, "--exclude"):
                 backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime)
-            self.assertEqual(inference.call_count, 1)
+            self.assertEqual(inference.call_count, 2)
             self.assertEqual(self.db.read_bytes(), before)
         with backend.connect(self.db) as con:
             self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 2)
@@ -424,6 +426,138 @@ class RetrievalTests(unittest.TestCase):
                     self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
                     self.assertFalse(con.execute("SELECT 1 FROM chunks WHERE body LIKE '%CitationConfusion%'").fetchone())
 
+    def test_unchanged_embedded_reindex_warms_new_or_cleared_cache_without_vector_writes(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            initial = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            before = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+            for event in ("INSERT", "UPDATE", "DELETE"):
+                con.execute(f"CREATE TRIGGER no_vector_{event.lower()} BEFORE {event} ON chunk_vectors BEGIN SELECT RAISE(ABORT, 'unchanged vector rewrite'); END")
+        replacement = Path(self.tmp.name).resolve() / "new-empty-cache"
+        replacement.mkdir()
+        for target in (replacement, cache):
+            with self.subTest(cache=target):
+                with mock.patch.object(backend, "embedding_batches", side_effect=batches) as inference:
+                    result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, target, runtime)
+                    self.assertEqual(inference.call_count, 1)
+                    self.assertEqual(inference.call_args.args[0], [["local retrieval warmup"]])
+                    self.assertEqual(inference.call_args.args[3], target)
+                    self.assertTrue(inference.call_args.kwargs["download"])
+                self.assertEqual(result["changed"], 0)
+                self.assertEqual(result["corpusId"], initial["corpusId"])
+                with backend.connect(self.db) as con:
+                    self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), before)
+                    self.assertEqual(backend.metadata(con)["model_cache"], str(target))
+
+    def test_unchanged_model_warmup_failure_or_wrong_dimension_rolls_back(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        before = self.db.read_bytes()
+        with backend.connect(self.db) as con:
+            original_meta = backend.metadata(con)
+            original_vectors = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        failures = (backend.RetrievalError("new cache warmup failed"), [[1.0, 0.0, 0.0]], [[0.0, 0.0]], [[float("nan"), 1.0]])
+        for failure in failures:
+            with self.subTest(failure=failure):
+                options = {"side_effect": failure} if isinstance(failure, Exception) else {"return_value": failure}
+                with mock.patch.object(backend, "embeddings", **options):
+                    with self.assertRaises(backend.RetrievalError):
+                        backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, Path(self.tmp.name) / "bad-cache", runtime)
+                self.assertEqual(self.db.read_bytes(), before)
+                with backend.connect(self.db) as con:
+                    self.assertEqual(backend.metadata(con), original_meta)
+                    self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), original_vectors)
+
+    def test_empty_embedded_corpus_still_validates_model_without_storing_warmup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        empty = Path(self.tmp.name).resolve() / "empty-source"
+        empty.mkdir()
+        with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]) as warm:
+            result = backend.index(empty, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime)
+            self.assertEqual(warm.call_count, 1)
+            self.assertTrue(warm.call_args.kwargs["download"])
+        self.assertEqual(result["chunks"], 0)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 0)
+            self.assertEqual(backend.metadata(con)["vector_dim"], "2")
+        before = self.db.read_bytes()
+        with mock.patch.object(backend, "embeddings", side_effect=backend.RetrievalError("empty corpus model unavailable")):
+            with self.assertRaisesRegex(backend.RetrievalError, "model unavailable"):
+                backend.index(empty, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime)
+        self.assertEqual(self.db.read_bytes(), before)
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_unchanged_index_populates_new_cache_from_local_snapshot_and_queries_offline(self):
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            before = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        replacement = Path(self.tmp.name).resolve() / "new-cache"
+        replacement.mkdir()
+        original_embeddings = backend.embeddings
+        def warm_from_local_snapshot(texts, model, target, local_runtime, **kwargs):
+            self.assertEqual(texts, ["local retrieval warmup"])
+            self.assertEqual(target, replacement)
+            self.assertTrue(kwargs["download"])
+            self.assertEqual(list(replacement.iterdir()), [])
+            # Supply an existing public model snapshot, avoiding a remote download.
+            shutil.copytree(cache / model, replacement / model)
+            return original_embeddings(texts, model, target, local_runtime, **kwargs)
+        with mock.patch.object(backend, "embeddings", side_effect=warm_from_local_snapshot) as warm:
+            result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, replacement, runtime)
+            self.assertEqual(warm.call_count, 1)
+            self.assertEqual(result["changed"], 0)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), before)
+            self.assertEqual(backend.metadata(con)["model_cache"], str(replacement))
+            self.assertTrue(backend.query(con, "InvoiceMaker", mode="semantic")["results"])
+        committed = self.db.read_bytes()
+        with mock.patch.object(backend, "embeddings", side_effect=backend.RetrievalError("controlled actual-index warmup failure")):
+            with self.assertRaisesRegex(backend.RetrievalError, "warmup failure"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, Path(self.tmp.name) / "unavailable-cache", runtime)
+        self.assertEqual(self.db.read_bytes(), committed)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con)["model_cache"], str(replacement))
+            self.assertTrue(backend.query(con, "InvoiceMaker", mode="semantic")["results"])
+
+    @unittest.skipIf(os.name == "nt", "Windows cannot create literal-backslash filenames")
+    def test_literal_backslash_filename_keeps_exact_index_and_citation_identity(self):
+        from repo_files import read_safe_text
+        (self.root / "part").mkdir()
+        nested = self.root / "part/file.py"
+        literal = self.root / "part\\file.py"
+        nested.write_text("class NestedInvoice: pass\n", encoding="utf-8")
+        literal.write_text("class LiteralInvoice: pass\n", encoding="utf-8")
+        for git in (False, True):
+            with self.subTest(git=git):
+                if git:
+                    subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+                    subprocess.run(["git", "-C", str(self.root), "add", "--", "part/file.py", "part\\file.py"], check=True)
+                self.assertEqual(self.index()["files"], 4)
+                with backend.connect(self.db) as con:
+                    paths = {row[0] for row in con.execute("SELECT path FROM files")}
+                    self.assertIn("part/file.py", paths)
+                    self.assertIn("part\\file.py", paths)
+                    for name, expected, path in (("LiteralInvoice", "part\\file.py", literal), ("NestedInvoice", "part/file.py", nested)):
+                        result = backend.query(con, name)
+                        source = next(row["source"] for row in result["results"] if row["source"]["path"] == expected)
+                        text, file_hash = read_safe_text(self.root, source["path"])
+                        self.assertEqual(text, path.read_text(encoding="utf-8"))
+                        self.assertEqual(file_hash, source["fileSha256"])
+                        self.assertIn(name, text)
+
     def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
         cache = Path(self.tmp.name).resolve() / "cache"
         supplied = {"PATH": "local-toolchain", "SystemRoot": "C:\\Windows", "WINDIR": "C:\\Windows", "TEMP": str(cache), "TMP": str(cache), "NODE_OPTIONS": "--inspect", "HF_TOKEN": "dummy-test-value", "OPENAI_API_KEY": "dummy-test-value", "ANTHROPIC_API_KEY": "dummy-test-value"}
@@ -559,7 +693,8 @@ class RetrievalTests(unittest.TestCase):
             calls.clear()
             unchanged = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=1200)
             self.assertEqual(unchanged["changed"], 0)
-            self.assertEqual(calls, [])
+            self.assertEqual(calls, ["local retrieval warmup"])
+            calls.clear()
             updated = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=400)
             self.assertEqual(updated["changed"], 1)
             self.assertGreater(updated["chunks"], initial["chunks"])
@@ -906,8 +1041,10 @@ class RetrievalTests(unittest.TestCase):
             self.assertEqual(len(before), 2)
             self.assertNotIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
         with mock.patch.object(backend, "load_sqlite_vec"):
-            with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("unexpected re-embedding")):
+            with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("unexpected re-embedding")), mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]) as warm:
                 result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine="sqlite-vec")
+                self.assertEqual(warm.call_args.args[0], ["local retrieval warmup"])
+                self.assertTrue(warm.call_args.kwargs["download"])
         self.assertEqual(result["changed"], 0)
         with backend.connect(self.db) as con:
             self.assertEqual(before, con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall())
@@ -1250,33 +1387,6 @@ class RetrievalTests(unittest.TestCase):
                 result = backend.query(con, "Who computes compensation deductions?", mode="semantic", limit=3, vector_engine=engine)
                 ranked.append([(item["source"]["kind"], item["source"]["path"]) for item in result["results"]])
         self.assertEqual(ranked[0], ranked[1])
-
-    @unittest.skipIf(os.name == "nt", "Windows cannot create literal-backslash filenames")
-    def test_literal_backslash_filename_keeps_exact_index_and_citation_identity(self):
-        from repo_files import read_safe_text
-        (self.root / "part").mkdir()
-        nested = self.root / "part/file.py"
-        literal = self.root / "part\\file.py"
-        nested.write_text("class NestedInvoice: pass\n", encoding="utf-8")
-        literal.write_text("class LiteralInvoice: pass\n", encoding="utf-8")
-        for git in (False, True):
-            with self.subTest(git=git):
-                if git:
-                    subprocess.run(["git", "init", "-q", str(self.root)], check=True)
-                    subprocess.run(["git", "-C", str(self.root), "add", "--", "part/file.py", "part\\file.py"], check=True)
-                self.assertEqual(self.index()["files"], 4)
-                with backend.connect(self.db) as con:
-                    paths = {row[0] for row in con.execute("SELECT path FROM files")}
-                    self.assertIn("part/file.py", paths)
-                    self.assertIn("part\\file.py", paths)
-                    for name, expected, path in (("LiteralInvoice", "part\\file.py", literal), ("NestedInvoice", "part/file.py", nested)):
-                        result = backend.query(con, name)
-                        source = next(row["source"] for row in result["results"] if row["source"]["path"] == expected)
-                        text, file_hash = read_safe_text(self.root, source["path"])
-                        self.assertEqual(text, path.read_text(encoding="utf-8"))
-                        self.assertEqual(file_hash, source["fileSha256"])
-                        self.assertIn(name, text)
-
 
 
 if __name__ == "__main__":

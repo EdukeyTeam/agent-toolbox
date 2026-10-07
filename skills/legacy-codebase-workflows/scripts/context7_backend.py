@@ -576,6 +576,13 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
                     raise RetrievalError("Embedding dimension changed within an indexing run")
                 con.executemany("INSERT INTO chunk_vectors(chunk_id,embedding) VALUES(?,?)", [(cid, blob) for (cid, _), blob in zip(batch, packed)])
             put_meta(con, "vector_dim", str(dimension))
+        elif embed_model:
+            assert model_cache is not None and embedding_runtime is not None
+            warmup = embeddings(["local retrieval warmup"], embed_model, model_cache, embedding_runtime, download=True, model_revision=model_revision)
+            dimension = len(pack_vector(warmup[0])) // 4
+            if count and old.get("vector_dim") != str(dimension):
+                raise RetrievalError("Embedding dimension changed or is missing; reindex with a new model revision")
+            put_meta(con, "vector_dim", str(dimension))
         if not embed_model:
             con.execute("DELETE FROM meta WHERE key='vector_dim'")
         if embed_model and con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0] != count:
