@@ -41,7 +41,7 @@ MAX_REQUEST = 2048
 WINDOW = 48
 STEP = 40
 MODEL_BATCH = 32
-INDEX_VERSION = "5"
+INDEX_VERSION = "6"
 DEFAULT_MODEL = "Xenova/all-MiniLM-L6-v2"
 DEFAULT_MODEL_REVISION = "751bff37182d3f1213fa05d7196b954e230abad9"
 DEFAULT_RERANKER = "Xenova/ms-marco-MiniLM-L-6-v2"
@@ -58,6 +58,10 @@ RERANK_HELPER = Path(__file__).resolve().parent / "retrieval" / "rerank.mjs"
 
 
 class RetrievalError(Exception):
+    pass
+
+
+class VectorAdapterUnavailable(RetrievalError):
     pass
 
 
@@ -136,12 +140,7 @@ def connect(path: Path) -> sqlite3.Connection:
         raise RetrievalError(f"Database does not exist: {path}")
     con = sqlite3.connect(path, factory=ClosingConnection)
     con.row_factory = sqlite3.Row
-    try:
-        if metadata(con).get("vector_engine") == "sqlite-vec":
-            load_sqlite_vec(con)
-    except Exception:
-        con.close()
-        raise
+    con.execute("PRAGMA foreign_keys=ON")
     return con
 
 
@@ -157,7 +156,7 @@ def load_sqlite_vec(con: sqlite3.Connection) -> None:
         if version != "v0.1.9" and version != "0.1.9":
             raise RetrievalError(f"sqlite-vec 0.1.9 required; found {version}")
     except (ImportError, AttributeError, sqlite3.Error) as exc:
-        raise RetrievalError("sqlite-vec 0.1.9 is required for this index; install the optional pinned package") from exc
+        raise VectorAdapterUnavailable("sqlite-vec 0.1.9 is required; install the optional pinned package") from exc
 
 
 def pack_vector(vector: list[float]) -> bytes:
@@ -176,14 +175,15 @@ def unpack_vector(data: bytes) -> tuple[float, ...]:
 
 
 def setup(con: sqlite3.Connection) -> None:
-    con.executescript("""
-    PRAGMA foreign_keys=ON;
-    CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS files(kind TEXT NOT NULL, path TEXT NOT NULL, hash TEXT NOT NULL, size INTEGER NOT NULL, PRIMARY KEY(kind,path));
-    CREATE TABLE IF NOT EXISTS chunks(id INTEGER PRIMARY KEY, kind TEXT NOT NULL, path TEXT NOT NULL, start INTEGER NOT NULL, end INTEGER NOT NULL, body TEXT NOT NULL, symbols TEXT NOT NULL, vector BLOB);
-    CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(body, symbols, path);
-    CREATE INDEX IF NOT EXISTS chunks_file ON chunks(kind,path);
-    """)
+    for statement in (
+        "CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+        "CREATE TABLE IF NOT EXISTS files(kind TEXT NOT NULL, path TEXT NOT NULL, hash TEXT NOT NULL, size INTEGER NOT NULL, PRIMARY KEY(kind,path))",
+        "CREATE TABLE IF NOT EXISTS chunks(id INTEGER PRIMARY KEY, kind TEXT NOT NULL, path TEXT NOT NULL, start INTEGER NOT NULL, end INTEGER NOT NULL, body TEXT NOT NULL, symbols TEXT NOT NULL)",
+        "CREATE TABLE IF NOT EXISTS chunk_vectors(chunk_id INTEGER PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE, embedding BLOB NOT NULL)",
+        "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(body, symbols, path)",
+        "CREATE INDEX IF NOT EXISTS chunks_file ON chunks(kind,path)",
+    ):
+        con.execute(statement)
 
 
 def metadata(con: sqlite3.Connection) -> dict[str, str]:
@@ -393,21 +393,26 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
     con = sqlite3.connect(database)
     con.row_factory = sqlite3.Row
     try:
-        setup(con)
-        old = metadata(con)
+        con.execute("PRAGMA foreign_keys=ON")
+        tables = {row[0] for row in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        old = metadata(con) if "meta" in tables else {}
         if old and (old.get("root") != str(root) or old.get("docs_root", "") != str(docs_root or "") or old.get("library_id") != library_id):
             raise RetrievalError("Database belongs to another corpus; use a new database")
-        if vector_engine == "sqlite-vec" or old.get("vector_engine") == "sqlite-vec":
-            load_sqlite_vec(con)
+        if vector_engine == "sqlite-vec" or "chunks_vec" in tables:
+            try:
+                load_sqlite_vec(con)
+            except VectorAdapterUnavailable as exc:
+                if "chunks_vec" in tables:
+                    raise RetrievalError("Legacy sqlite-vec index needs sqlite-vec 0.1.9 once to reindex; install it or use a fresh database path") from exc
+                raise
         con.execute("BEGIN")
+        rebuild = old.get("index_version") != INDEX_VERSION or old.get("embed_model", "") != (embed_model or "") or old.get("model_revision", "") != (model_revision or "")
+        if rebuild and tables:
+            for table in ("chunks_vec", "chunk_vectors", "chunks_fts", "chunks", "files", "meta"):
+                if table in tables:
+                    con.execute(f"DROP TABLE {table}")
+        setup(con)
         existing = {(r["kind"], r["path"]): r["hash"] for r in con.execute("SELECT * FROM files")}
-        if old.get("index_version") != INDEX_VERSION or old.get("embed_model", "") != (embed_model or "") or old.get("model_revision", "") != (model_revision or "") or old.get("vector_engine", "stdlib") != vector_engine:
-            if old.get("vector_engine") == "sqlite-vec":
-                con.execute("DROP TABLE IF EXISTS chunks_vec")
-            con.execute("DELETE FROM chunks_fts")
-            con.execute("DELETE FROM chunks")
-            con.execute("DELETE FROM files")
-            existing = {}
         current: dict[tuple[str, str], tuple[str, int, str]] = {}
         skipped: list[dict[str, str]] = []
         for kind, rel, path in files:
@@ -424,8 +429,6 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
             ids = [r[0] for r in con.execute("SELECT id FROM chunks WHERE kind=? AND path=?", (kind, rel))]
             for chunk_id in ids:
                 con.execute("DELETE FROM chunks_fts WHERE rowid=?", (chunk_id,))
-                if vector_engine == "sqlite-vec" and old.get("index_version") == INDEX_VERSION:
-                    con.execute("DELETE FROM chunks_vec WHERE chunk_id=?", (chunk_id,))
             con.execute("DELETE FROM chunks WHERE kind=? AND path=?", (kind, rel))
             con.execute("DELETE FROM files WHERE kind=? AND path=?", (kind, rel))
         pending: list[tuple[int, str]] = []
@@ -447,14 +450,16 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
                 packed = [pack_vector(vec) for vec in vectors]
                 if dimension is None:
                     dimension = len(packed[0]) // 4
-                    if vector_engine == "sqlite-vec":
-                        con.execute(f"CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vec USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[{dimension}] distance_metric=cosine)")
+                    if not rebuild and old.get("vector_dim") and int(old["vector_dim"]) != dimension:
+                        raise RetrievalError("Embedding dimension changed; reindex with a new model revision")
                 if any(len(blob) != dimension * 4 for blob in packed):
                     raise RetrievalError("Embedding dimension changed within an indexing run")
-                con.executemany("UPDATE chunks SET vector=? WHERE id=?", [(blob, cid) for (cid, _), blob in zip(batch, packed)])
-                if vector_engine == "sqlite-vec":
-                    con.executemany("INSERT INTO chunks_vec(chunk_id,embedding) VALUES(?,?)", [(cid, blob) for (cid, _), blob in zip(batch, packed)])
+                con.executemany("INSERT INTO chunk_vectors(chunk_id,embedding) VALUES(?,?)", [(cid, blob) for (cid, _), blob in zip(batch, packed)])
             put_meta(con, "vector_dim", str(dimension))
+        if not embed_model:
+            con.execute("DELETE FROM meta WHERE key='vector_dim'")
+        if embed_model and con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0] != count:
+            raise RetrievalError("Embedding row count mismatch; reindex")
         rev = revision(root)
         signature = digest(json.dumps([rev, sorted((kind, rel, row[0]) for (kind, rel), row in current.items())], separators=(",", ":")).encode())
         for key, value in {"root": str(root), "docs_root": str(docs_root or ""), "library_id": library_id, "embed_model": embed_model or "", "model_revision": model_revision or "", "reranker_model": reranker_model or "", "reranker_revision": reranker_revision or "", "vector_engine": vector_engine, "model_cache": str(model_cache or ""), "embedding_runtime": str(embedding_runtime or ""), "revision": rev, "corpus_id": signature, "index_version": INDEX_VERSION}.items():
@@ -505,19 +510,19 @@ def semantic(con: sqlite3.Connection, query: str, model: str, model_revision: st
     vector = unpack_vector(pack_vector(embeddings([query], model, cache, runtime, download=False, model_revision=model_revision)[0]))
     results = []
     if vector_engine == "sqlite-vec":
-        rows = con.execute("SELECT chunk_id,distance FROM chunks_vec WHERE embedding MATCH ? AND k = ? ORDER BY distance", (pack_vector(list(vector)), limit))
+        rows = con.execute("SELECT chunk_id,vec_distance_cosine(embedding,?) AS distance FROM chunk_vectors ORDER BY distance,chunk_id LIMIT ?", (pack_vector(list(vector)), limit))
         results = [(row["chunk_id"], 1 - row["distance"]) for row in rows]
     else:
-        for row in con.execute("SELECT id,vector FROM chunks WHERE vector IS NOT NULL"):
-            vec = unpack_vector(row["vector"])
+        for row in con.execute("SELECT chunk_id,embedding FROM chunk_vectors"):
+            vec = unpack_vector(row["embedding"])
             if len(vec) != len(vector):
                 raise RetrievalError("Stored embedding dimension mismatch; reindex")
-            results.append((row["id"], math.sumprod(vec, vector)))
+            results.append((row["chunk_id"], math.sumprod(vec, vector)))
     results.sort(key=lambda x: (-x[1], x[0]))
     return [item for item in results if item[1] >= MIN_SEMANTIC_SCORE][:limit]
 
 
-def query(con: sqlite3.Connection, question: str, mode: str = "lexical", rerank: str | None = None, limit: int = 5) -> dict:
+def query(con: sqlite3.Connection, question: str, mode: str = "lexical", rerank: str | None = None, limit: int = 5, vector_engine: str | None = None) -> dict:
     meta = metadata(con)
     if not meta:
         raise RetrievalError("Database is not indexed")
@@ -527,6 +532,8 @@ def query(con: sqlite3.Connection, question: str, mode: str = "lexical", rerank:
         raise RetrievalError(f"Query must contain 1-{MAX_QUERY} characters")
     if mode not in ("lexical", "semantic", "hybrid") or rerank not in (None, "lexical-symbol", "cross-encoder"):
         raise RetrievalError("Unknown mode or reranker")
+    if vector_engine not in (None, "stdlib", "sqlite-vec", "auto"):
+        raise RetrievalError("Unknown vector engine")
     if not 1 <= limit <= MAX_RESULTS:
         raise RetrievalError(f"Limit must be 1-{MAX_RESULTS}")
     if rerank == "cross-encoder" and not meta.get("reranker_model"):
@@ -540,10 +547,21 @@ def query(con: sqlite3.Connection, question: str, mode: str = "lexical", rerank:
     candidates = min(MAX_CANDIDATES, max(30, limit * 6))
     lex = lexical(con, question, candidates) if mode != "semantic" else []
     sem = []
+    selected_engine = None
     if mode != "lexical":
         if not meta["embed_model"]:
             raise RetrievalError("Semantic search requires an index created with --embed-model")
-        sem = semantic(con, question, meta["embed_model"], meta["model_revision"], Path(meta["model_cache"]), Path(meta["embedding_runtime"]), candidates, meta["vector_engine"])
+        requested_engine = vector_engine or meta.get("vector_engine", "stdlib")
+        selected_engine = requested_engine
+        if requested_engine in ("sqlite-vec", "auto"):
+            try:
+                load_sqlite_vec(con)
+                selected_engine = "sqlite-vec"
+            except VectorAdapterUnavailable:
+                if requested_engine != "auto":
+                    raise
+                selected_engine = "stdlib"
+        sem = semantic(con, question, meta["embed_model"], meta["model_revision"], Path(meta["model_cache"]), Path(meta["embedding_runtime"]), candidates, selected_engine)
         # Identifier lookups need an exact lexical anchor; embeddings alone can
         # pull unrelated source for a symbol that does not exist.
         identifier = question.strip()
@@ -591,7 +609,7 @@ def query(con: sqlite3.Connection, question: str, mode: str = "lexical", rerank:
         if rerank == "cross-encoder":
             item["rerankScore"] = rerank_scores_by_id[cid]
         snippets.append(item)
-    return {"libraryId": meta["library_id"], "mode": mode, "reranker": rerank, "corpusId": meta["corpus_id"], "results": snippets, "message": None if snippets else "No matching indexed evidence"}
+    return {"libraryId": meta["library_id"], "mode": mode, "reranker": rerank, "vectorEngine": selected_engine, "corpusId": meta["corpus_id"], "results": snippets, "message": None if snippets else "No matching indexed evidence"}
 
 
 def context_payload(result: dict) -> dict:
@@ -606,11 +624,13 @@ def context_payload(result: dict) -> dict:
     return {"codeSnippets": code, "infoSnippets": info}
 
 
-def serve(database: Path, host: str, port: int, default_mode: str = "lexical", default_rerank: str | None = None) -> None:
+def serve(database: Path, host: str, port: int, default_mode: str = "lexical", default_rerank: str | None = None, default_vector_engine: str | None = None) -> None:
     if host not in ("127.0.0.1", "::1", "localhost"):
         raise RetrievalError("Only loopback binds are supported")
     if default_mode not in ("lexical", "semantic", "hybrid") or default_rerank not in (None, "lexical-symbol", "cross-encoder"):
         raise RetrievalError("Unknown default mode or reranker")
+    if default_vector_engine not in (None, "stdlib", "sqlite-vec", "auto"):
+        raise RetrievalError("Unknown default vector engine")
     with connect(database) as con:
         meta = metadata(con)
         if default_mode != "lexical" and not meta.get("embed_model"):
@@ -642,7 +662,7 @@ def serve(database: Path, host: str, port: int, default_mode: str = "lexical", d
                             requested_limit = int(args.get("limit", ["5"])[0])
                         except ValueError as exc:
                             raise RetrievalError("Invalid result limit") from exc
-                        result = query(con, args.get("query", [""])[0], args.get("mode", [default_mode])[0], args.get("rerank", [default_rerank])[0], requested_limit)
+                        result = query(con, args.get("query", [""])[0], args.get("mode", [default_mode])[0], args.get("rerank", [default_rerank])[0], requested_limit, args.get("vectorEngine", [default_vector_engine])[0])
                         payload = context_payload(result)
                         if args.get("type", [""])[0] == "txt":
                             body = "\n\n".join(s["codeDescription"] + "\n" + s["codeList"][0]["code"] for s in payload["codeSnippets"])
@@ -697,12 +717,14 @@ def main(argv: list[str] | None = None) -> int:
     qry.add_argument("--mode", choices=("lexical", "semantic", "hybrid"), default="lexical")
     qry.add_argument("--rerank", choices=("lexical-symbol", "cross-encoder"))
     qry.add_argument("--limit", type=int, default=5)
+    qry.add_argument("--vector-engine", choices=("stdlib", "sqlite-vec", "auto"))
     srv = commands.add_parser("serve")
     srv.add_argument("--database", type=Path, required=True)
     srv.add_argument("--host", default="127.0.0.1")
     srv.add_argument("--port", type=int, default=8765)
     srv.add_argument("--default-mode", choices=("lexical", "semantic", "hybrid"), default="lexical")
     srv.add_argument("--default-rerank", choices=("lexical-symbol", "cross-encoder"))
+    srv.add_argument("--default-vector-engine", choices=("stdlib", "sqlite-vec", "auto"))
     args = parser.parse_args(argv)
     try:
         if args.command == "index":
@@ -710,9 +732,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, indent=2))
         elif args.command == "query":
             with connect(args.database) as con:
-                print(json.dumps(query(con, args.query, args.mode, args.rerank, args.limit), indent=2))
+                print(json.dumps(query(con, args.query, args.mode, args.rerank, args.limit, args.vector_engine), indent=2))
         else:
-            serve(args.database, args.host, args.port, args.default_mode, args.default_rerank)
+            serve(args.database, args.host, args.port, args.default_mode, args.default_rerank, args.default_vector_engine)
         return 0
     except (RetrievalError, OSError, sqlite3.Error) as exc:
         print(f"retrieval error: {exc}", file=sys.stderr)

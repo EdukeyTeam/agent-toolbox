@@ -2,9 +2,13 @@
 
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
+import random
 import socket
+import sqlite3
+import struct
 import subprocess
 import sys
 import tempfile
@@ -276,7 +280,8 @@ class RetrievalTests(unittest.TestCase):
                 backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
             with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
                 with backend.connect(db) as con:
-                    result = backend.query(con, "InvoiceMaker", mode="semantic")
+                    result = backend.query(con, "InvoiceMaker", mode="semantic", vector_engine=engine)
+                    self.assertEqual(result["vectorEngine"], engine)
                     results.append([(item["source"]["kind"], item["source"]["path"]) for item in result["results"]])
             (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def updated(self): pass\n")
             def fail_batches(*_args, **_kwargs):
@@ -287,6 +292,7 @@ class RetrievalTests(unittest.TestCase):
                     backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
             with backend.connect(db) as con:
                 self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 2)
+                self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 2)
             (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def create_invoice(self):\n        return 'invoice total'\n")
             guide = self.docs / "guide.md"
             guide_text = guide.read_text()
@@ -295,8 +301,7 @@ class RetrievalTests(unittest.TestCase):
                 self.assertEqual(backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)["deleted"], 1)
             with backend.connect(db) as con:
                 self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 1)
-                if engine == "sqlite-vec":
-                    self.assertEqual(con.execute("SELECT count(*) FROM chunks_vec").fetchone()[0], 1)
+                self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 1)
             guide.write_text(guide_text)
             with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
                 rebuilt = backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, model_revision="a" * 40, vector_engine=engine)
@@ -312,6 +317,191 @@ class RetrievalTests(unittest.TestCase):
         with mock.patch.dict(sys.modules, {"sqlite_vec": None}):
             with self.assertRaisesRegex(backend.RetrievalError, "sqlite-vec 0.1.9 is required"):
                 backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine="sqlite-vec")
+
+    def test_vector_preference_changes_without_reembedding_or_schema_copy(self):
+        cache = Path(self.tmp.name) / "cache"
+        runtime = Path(self.tmp.name) / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            before = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+            self.assertEqual(len(before), 2)
+            self.assertNotIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
+        with mock.patch.object(backend, "load_sqlite_vec"):
+            with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("unexpected re-embedding")):
+                result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine="sqlite-vec")
+        self.assertEqual(result["changed"], 0)
+        with backend.connect(self.db) as con:
+            self.assertEqual(before, con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall())
+            self.assertEqual(backend.metadata(con)["vector_engine"], "sqlite-vec")
+            self.assertFalse(con.execute("SELECT 1 FROM sqlite_master WHERE name='chunks_vec'").fetchone())
+            with mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+                self.assertEqual(backend.query(con, "invoice")["vectorEngine"], None)
+                with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
+                    self.assertEqual(backend.query(con, "invoice", mode="semantic", vector_engine="stdlib")["vectorEngine"], "stdlib")
+                    self.assertEqual(backend.query(con, "invoice", mode="semantic", vector_engine="auto")["vectorEngine"], "stdlib")
+                    with self.assertRaisesRegex(backend.RetrievalError, "sqlite-vec 0.1.9 is required"):
+                        backend.query(con, "invoice", mode="semantic")
+                    with self.assertRaisesRegex(backend.RetrievalError, "sqlite-vec 0.1.9 is required"):
+                        backend.query(con, "invoice", mode="semantic", vector_engine="sqlite-vec")
+            with mock.patch.object(backend, "load_sqlite_vec", side_effect=backend.RetrievalError("sqlite-vec 0.1.9 required; found v0.2.0")):
+                with self.assertRaisesRegex(backend.RetrievalError, "found v0.2.0"):
+                    backend.query(con, "invoice", mode="semantic", vector_engine="auto")
+
+    def test_vector_rows_cascade_and_failed_update_preserves_metadata(self):
+        cache = Path(self.tmp.name) / "cache"
+        runtime = Path(self.tmp.name) / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(batch_groups, *_args, **_kwargs):
+            for batch in batch_groups:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            old_meta = backend.metadata(con)
+            old_rows = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        (self.root / "src/service.py").write_text("class ChangedInvoiceMaker: pass\n", encoding="utf-8")
+        def fail_after_write(batch_groups, *_args, **_kwargs):
+            yield [[1.0, 0.0] for _ in batch_groups[0]]
+            raise backend.RetrievalError("second batch failed")
+        (self.docs / "extra.md").write_text("Extra source\n", encoding="utf-8")
+        with mock.patch.object(backend, "MODEL_BATCH", 1), mock.patch.object(backend, "embedding_batches", side_effect=fail_after_write):
+            with self.assertRaisesRegex(backend.RetrievalError, "second batch failed"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con), old_meta)
+            self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), old_rows)
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors v LEFT JOIN chunks c ON c.id=v.chunk_id WHERE c.id IS NULL").fetchone()[0], 0)
+        (self.docs / "guide.md").unlink()
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+
+    def test_model_removal_clears_vector_metadata(self):
+        cache = Path(self.tmp.name) / "cache"
+        runtime = Path(self.tmp.name) / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertNotIn("vector_dim", backend.metadata(con))
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 0)
+
+    def test_old_index_reindexes_and_failed_migration_rolls_back_schema(self):
+        cache = Path(self.tmp.name) / "cache"
+        runtime = Path(self.tmp.name) / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
+            con.execute("CREATE TABLE chunks(id INTEGER PRIMARY KEY,kind TEXT,path TEXT,start INTEGER,end INTEGER,body TEXT,symbols TEXT,vector BLOB)")
+            con.execute("INSERT INTO meta VALUES('index_version','5')")
+            for key, value in (("root", str(self.root)), ("docs_root", str(self.docs)), ("library_id", "/local/billing")):
+                con.execute("INSERT INTO meta VALUES(?,?)", (key, value))
+            con.execute("INSERT INTO chunks VALUES(1,'code','obsolete.py',1,1,'obsolete','',?)", (backend.pack_vector([1.0, 0.0]),))
+        def fail_batches(*_args, **_kwargs):
+            raise backend.RetrievalError("migration failed")
+            yield []
+        with mock.patch.object(backend, "embedding_batches", side_effect=fail_batches):
+            with self.assertRaisesRegex(backend.RetrievalError, "migration failed"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            self.assertEqual(con.execute("SELECT value FROM meta WHERE key='index_version'").fetchone()[0], "5")
+            self.assertIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
+            self.assertFalse(con.execute("SELECT 1 FROM sqlite_master WHERE name='chunk_vectors'").fetchone())
+        def batches(batch_groups, *_args, **_kwargs):
+            for batch in batch_groups:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con)["index_version"], "6")
+            self.assertNotIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+
+    def test_old_vec0_index_requires_package_once_for_reindex(self):
+        try:
+            import sqlite_vec  # noqa: F401
+        except ImportError:
+            self.skipTest("optional sqlite-vec is not installed")
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            backend.load_sqlite_vec(con)
+            con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
+            con.execute("INSERT INTO meta VALUES('index_version','5')")
+            for key, value in (("root", str(self.root)), ("docs_root", str(self.docs)), ("library_id", "/local/billing")):
+                con.execute("INSERT INTO meta VALUES(?,?)", (key, value))
+            con.execute("CREATE VIRTUAL TABLE chunks_vec USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[2] distance_metric=cosine)")
+            con.execute("INSERT INTO chunks_vec(chunk_id,embedding) VALUES(1,?)", (backend.pack_vector([1.0, 0.0]),))
+        with mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+            with self.assertRaisesRegex(backend.RetrievalError, "use a fresh database path"):
+                self.index()
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            backend.load_sqlite_vec(con)
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks_vec").fetchone()[0], 1)
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertFalse(con.execute("SELECT 1 FROM sqlite_master WHERE name='chunks_vec'").fetchone())
+            self.assertEqual(backend.metadata(con)["index_version"], "6")
+
+    def test_empty_and_single_chunk_semantic_scan(self):
+        try:
+            import sqlite_vec  # noqa: F401
+        except ImportError:
+            self.skipTest("optional sqlite-vec is not installed")
+        with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
+            con.row_factory = sqlite3.Row
+            backend.setup(con)
+            backend.load_sqlite_vec(con)
+            with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
+                self.assertEqual(backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "sqlite-vec"), [])
+                con.execute("INSERT INTO chunks(kind,path,start,end,body,symbols) VALUES('code','x.py',1,1,'x','')")
+                con.execute("INSERT INTO chunk_vectors VALUES(1,?)", (backend.pack_vector([1.0, 0.0]),))
+                self.assertEqual(backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "sqlite-vec"), [(1, 1.0)])
+                con.execute("INSERT INTO chunks(kind,path,start,end,body,symbols) VALUES('code','y.py',1,1,'y','')")
+                con.execute("INSERT INTO chunk_vectors VALUES(2,?)", (backend.pack_vector([1.0, 0.0]),))
+                for engine in ("stdlib", "sqlite-vec"):
+                    self.assertEqual([cid for cid, _ in backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, engine)], [1, 2])
+
+    def test_fixed_seed_float64_oracle_matches_both_engines(self):
+        try:
+            import sqlite_vec  # noqa: F401
+        except ImportError:
+            self.skipTest("optional sqlite-vec is not installed")
+        rng = random.Random(20261007)
+        with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
+            con.row_factory = sqlite3.Row
+            backend.setup(con)
+            backend.load_sqlite_vec(con)
+            vectors = []
+            for cid in range(1, 1001):
+                source = [rng.gauss(0, 1) for _ in range(384)]
+                blob = backend.pack_vector(source)
+                self.assertEqual(len(blob), 384 * 4)
+                vector = struct.unpack("<384f", blob)
+                self.assertAlmostEqual(math.sumprod(vector, vector), 1.0, delta=1e-3)
+                vectors.append(vector)
+                con.execute("INSERT INTO chunks(id,kind,path,start,end,body,symbols) VALUES(?,'code','x.py',1,1,'x','')", (cid,))
+                con.execute("INSERT INTO chunk_vectors VALUES(?,?)", (cid, blob))
+            with mock.patch.object(backend, "MIN_SEMANTIC_SCORE", -1.0):
+                for query_number in range(30):
+                    source = [rng.gauss(0, 1) for _ in range(384)]
+                    # Blend with one stored vector so the top result is unambiguous.
+                    source = [x + 2 * y for x, y in zip(source, vectors[query_number], strict=True)]
+                    q = struct.unpack("<384f", backend.pack_vector(source))
+                    oracle = sorted(range(1, 1001), key=lambda cid: (-math.sumprod(vectors[cid - 1], q), cid))[:10]
+                    with mock.patch.object(backend, "embeddings", return_value=[source]):
+                        stdlib = backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "stdlib")
+                        native = backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "sqlite-vec")
+                    self.assertEqual([cid for cid, _ in stdlib], oracle)
+                    self.assertEqual([cid for cid, _ in native], oracle)
+                    for (_, exact), (_, accelerated) in zip(stdlib, native, strict=True):
+                        self.assertAlmostEqual(exact, accelerated, delta=1e-5)
 
     def test_http_contract_and_stale_error(self):
         self.index()
@@ -462,7 +652,7 @@ class RetrievalTests(unittest.TestCase):
             backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
         self.assertEqual(len(launched), 1)
         with backend.connect(self.db) as con:
-            vectors = [row[0] for row in con.execute("SELECT vector FROM chunks WHERE vector IS NOT NULL ORDER BY id")]
+            vectors = [row[0] for row in con.execute("SELECT embedding FROM chunk_vectors ORDER BY chunk_id")]
             self.assertEqual(len(vectors), 37)
             self.assertTrue(all(len(vector) == 384 * 4 for vector in vectors))
             self.assertEqual(backend.metadata(con)["model_revision"], backend.DEFAULT_MODEL_REVISION)
@@ -470,7 +660,7 @@ class RetrievalTests(unittest.TestCase):
             self.assertTrue(result["results"])
         self.assertEqual(backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)["changed"], 0)
         with backend.connect(self.db) as con:
-            self.assertEqual(vectors, [row[0] for row in con.execute("SELECT vector FROM chunks WHERE vector IS NOT NULL ORDER BY id")])
+            self.assertEqual(vectors, [row[0] for row in con.execute("SELECT embedding FROM chunk_vectors ORDER BY chunk_id")])
 
     @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
     def test_actual_sqlite_vec_matches_stdlib_top_k(self):
@@ -486,7 +676,7 @@ class RetrievalTests(unittest.TestCase):
             db = Path(self.tmp.name) / f"actual-{engine}.sqlite"
             backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
             with backend.connect(db) as con:
-                result = backend.query(con, "Who computes compensation deductions?", mode="semantic", limit=3)
+                result = backend.query(con, "Who computes compensation deductions?", mode="semantic", limit=3, vector_engine=engine)
                 ranked.append([(item["source"]["kind"], item["source"]["path"]) for item in result["results"]])
         self.assertEqual(ranked[0], ranked[1])
 
