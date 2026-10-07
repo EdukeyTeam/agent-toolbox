@@ -14,6 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ['3.12', '3.13', '3.14']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -23,10 +24,116 @@ jobs:
           cache: npm
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
       - run: npm ci
       - run: npm test
+      - name: Install local map dependencies
+        run: python -m pip install -r skills/legacy-codebase-workflows/requirements-map.txt
+      - name: Install optional vector adapter on each platform
+        if: matrix.python == '3.12'
+        run: python -m pip install -r skills/legacy-codebase-workflows/scripts/requirements-retrieval.txt
+      - name: Test local mapping and retrieval
+        env:
+          LEGACY_NATIVE_BUILD: '0'
+          LEGACY_REQUIRE_SQLITE_VEC: ${{ matrix.python == '3.12' && runner.os != 'macOS' && '1' || '0' }}
+        run: python -m unittest discover -s tests -p "test_legacy_*.py" -v
+      - name: Require native vector adapter with compatible macOS SQLite
+        if: runner.os == 'macOS' && matrix.python == '3.12'
+        shell: bash
+        env:
+          LEGACY_REQUIRE_SQLITE_VEC: '1'
+        run: |
+          brew install python@3.12
+          "$(brew --prefix python@3.12)/bin/python3.12" -m venv "$RUNNER_TEMP/legacy-vector-venv"
+          "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m pip install -r skills/legacy-codebase-workflows/requirements-map.txt -r skills/legacy-codebase-workflows/scripts/requirements-retrieval.txt
+          "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m unittest discover -s tests -p test_legacy_retrieval.py -v
       - name: Build and verify Claude plugin ZIP
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.python == '3.12'
         shell: pwsh
         run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation
+
+  semantic-retrieval:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '12.4.1'
+      - name: Prepare optional inference runtime
+        shell: bash
+        run: |
+          legacy_temp="${RUNNER_TEMP//\\//}"
+          mkdir -p "$legacy_temp/legacy-inference"
+          cp skills/legacy-codebase-workflows/scripts/retrieval/package.json skills/legacy-codebase-workflows/scripts/retrieval/pnpm-lock.yaml skills/legacy-codebase-workflows/scripts/retrieval/pnpm-workspace.yaml "$legacy_temp/legacy-inference/"
+          pnpm install --dir "$legacy_temp/legacy-inference" --frozen-lockfile
+      - name: Install optional vector adapter and pinned Context7 client
+        shell: bash
+        run: |
+          legacy_temp="${RUNNER_TEMP//\\//}"
+          python -m pip install -r skills/legacy-codebase-workflows/scripts/requirements-retrieval.txt
+          mkdir -p "$legacy_temp/ctx7-cli"
+          printf '{"private":true,"dependencies":{"ctx7":"0.5.13"}}\n' > "$legacy_temp/ctx7-cli/package.json"
+          pnpm install --dir "$legacy_temp/ctx7-cli" --ignore-scripts
+      - name: Test actual local embeddings and hybrid retrieval
+        env:
+          LEGACY_REQUIRE_SQLITE_VEC: '1'
+          LEGACY_RETRIEVAL_TEST_RUNTIME: ${{ runner.temp }}/legacy-inference
+          LEGACY_RETRIEVAL_TEST_CACHE: ${{ runner.temp }}/legacy-model-cache
+          LEGACY_CTX7_CLI: ${{ runner.temp }}/ctx7-cli/node_modules/ctx7/dist/index.js
+        run: python -m unittest discover -s tests -p test_legacy_retrieval.py -v
+
+  native-artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/../legacy-cargo-target
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test native repository mapper
+        run: cargo test --locked --manifest-path src/legacy-repo-map/Cargo.toml
+      - name: Build standalone tools with licenses and smoke checks
+        run: python scripts/build-legacy-tools.py --output-dir "${{ runner.temp }}/legacy-artifacts" --deps-dir "${{ runner.temp }}/legacy-map-deps" --tools-dir "${{ runner.temp }}/legacy-build-deps" --install --prepare-host-licenses --require-parity
+      - name: Locate host-specific binaries
+        shell: python
+        run: |
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "legacy-artifacts"
+          manifest = json.loads((root / "build-manifest.json").read_text())
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+              for artifact in manifest["artifacts"]:
+                  key = "LEGACY_TOOLS_BIN" if artifact["artifact"].startswith("legacy-tools-") else "LEGACY_REPO_MAP_BIN"
+                  output.write(f"{key}={root / artifact['artifact'] / artifact['program']}\n")
+      - name: Test actual binaries against the Python source
+        env:
+          LEGACY_MAP_DEPS: ${{ runner.temp }}/legacy-map-deps
+          LEGACY_BUILD_TOOLS: ${{ runner.temp }}/legacy-build-deps
+        run: python -m unittest discover -s tests -p test_legacy_native.py -v
+      - name: Retain reviewable native artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: legacy-tools-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/legacy-artifacts/*.tar.gz
+            ${{ runner.temp }}/legacy-artifacts/*.zip
+            ${{ runner.temp }}/legacy-artifacts/SHA256SUMS
+            ${{ runner.temp }}/legacy-artifacts/build-manifest.json
+          if-no-files-found: error
+          retention-days: 14
