@@ -154,6 +154,13 @@ try {
         $requiredEntries = @("$PluginName/.claude-plugin/plugin.json") + @(
             $skillNames | ForEach-Object { "$PluginName/skills/$_/SKILL.md" }
         )
+        $legacySkill = Join-Path $SkillsRoot 'legacy-codebase-workflows'
+        if (Test-Path -LiteralPath $legacySkill -PathType Container) {
+            foreach ($sourceFile in (Get-PackagedSourceFiles -SourceDirectory $legacySkill)) {
+                $portablePath = $sourceFile.RelativePath -replace '\\', '/'
+                $requiredEntries += "$PluginName/skills/legacy-codebase-workflows/$portablePath"
+            }
+        }
         foreach ($requiredEntry in $requiredEntries) {
             if ($entries -notcontains $requiredEntry) {
                 throw "ZIP verification failed. Missing entry: $requiredEntry"
