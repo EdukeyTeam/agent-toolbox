@@ -66,6 +66,8 @@ Its commands are `map`, `check-citations`, `index`, `query`, `serve`, `info` and
 /path/to/legacy-tools-<platform>/legacy-tools info
 ```
 
+Keep the adjacent license and notice files with the program when copying or redistributing either bundle layout, including the single-file executable.
+
 `info` prints the bundled Python and package versions and the SHA-256 of every bundled script, so you can check a bundle against the skill source it was built from. `notices` prints the attribution and lists the license files.
 
 Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. Take a bundle from the build artifacts of the toolbox repository when its maintainers publish them, or build one from the toolbox source as described below. Check the archive against the `SHA256SUMS` file that is produced with it.

@@ -65,7 +65,7 @@ None of these changes the output on the Java and TypeScript sources measured abo
 
 Ship the Python source as the default and the `legacy-tools` bundle where Python packages cannot be installed. The bundle runs the reference code, so it needs no separate validation of results, at the cost of a 15 MB archive and slower start-up.
 
-Keep `legacy-repo-map` experimental. It is faster on the inputs measured and avoids installing Python, but its Python-language output differs from the reference and three of its ten languages have not been compared on real code. [Native CI](https://github.com/EdukeyTeam/agent-toolbox/actions/runs/37559880186) builds and tests both programs on Linux x86-64, macOS arm64 and Windows x86-64, including map parity, unchanged sources, license inventory and archive checks. Platform-specific fixtures report unsupported POSIX permissions or invalid-byte filenames explicitly. Promote the Rust mapper after resolving the grammar difference and comparing the remaining languages on real sources.
+Keep `legacy-repo-map` experimental. It is faster on the inputs measured and avoids installing Python, but its Python-language output differs from the reference and three of its ten languages have not been compared on real code. [Native CI](https://github.com/EdukeyTeam/agent-toolbox/actions/runs/37575414253) builds and tests both programs on Linux x86-64, macOS arm64 and Windows x86-64, including map parity, unchanged sources, license inventory and archive checks. Platform-specific fixtures report unsupported POSIX permissions or invalid-byte filenames explicitly. Promote the Rust mapper after resolving the grammar difference and comparing the remaining languages on real sources.
 
 ## Retrieval is not ported
 
