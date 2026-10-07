@@ -80,11 +80,13 @@ python /path/to/skill/scripts/context7_backend.py serve --database /path/to/arti
 
 Without these flags, the stock client uses lexical retrieval. Invalid semantic/reranker defaults fail before binding. Pin and retest the client contract before changing versions. Client compatibility does not establish retrieval quality. No cloud fallback is part of this workflow.
 
-## Raw-code quality observed on jFTP
+## Quality observed on jFTP
 
-On unchanged jFTP, six positive source-range questions and two absent-API questions were tested with top-five results. Lexical, semantic and hybrid retrieval found one of six expected positive ranges; hybrid with the learned reranker found two. All modes handled the two absent exact API names. This small test measures returned source ranges, not complete answer correctness. The generic embedding model missed natural-language questions about several FTP settings and transfer paths.
+On unchanged jFTP, six positive source-range questions and two absent-API questions were rerun with top-five results after refining whole-line chunks. Raw code returned the expected location in 1/6 positive questions for lexical, semantic and hybrid retrieval; the learned reranker returned 0/6. Adding one verified API card alongside the same source gave lexical 3/6, semantic/hybrid 2/6, symbol/path reranking 3/6 and learned reranking 1/6. All modes handled the two absent exact API names.
 
-Start with exact identifiers and original definitions/callers. For repeated framework questions, index verified API cards alongside code: purpose, signature, lifecycle, configuration, a real caller, and original source references. Evaluate these cards and any code-specific embedding model on separate held-out questions before relying on semantic answers. Changing the database alone cannot repair an unsuitable representation or missing candidates.
+This is a development comparison on the same questions after observing failures, not held-out validation or answer correctness. A match is an original source range or a verified documentation pointer to it. The card was produced by a scoped worker without the question list, then its 27 source references were checked. Its 11 chunks fit the pinned tokenizer without truncation; that corrected one input-window problem but did not make the generic prose models reliable for raw code.
+
+Start with exact identifiers and original definitions/callers. For repeated framework questions, index verified API cards alongside code: purpose, signature, lifecycle, configuration, a real caller, and original source references. Evaluate cards and code-specific models on separate held-out questions. Keep learned reranking disabled unless it improves your measured ordering; changing the database cannot repair unsuitable representations or missing candidates.
 
 ## Evaluate on your repository
 
