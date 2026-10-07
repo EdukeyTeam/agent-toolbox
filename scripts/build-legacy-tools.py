@@ -728,7 +728,7 @@ def build_rust(work: Path, out: Path) -> dict:
 def archive(directory: Path) -> Path:
     if os.name == "nt":
         target = directory.with_suffix(".zip")
-        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as bundle:
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as bundle:
             for path in sorted(directory.rglob("*")):
                 bundle.write(path, Path(directory.name) / path.relative_to(directory))
         return target

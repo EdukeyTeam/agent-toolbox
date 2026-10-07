@@ -24,6 +24,7 @@ import subprocess
 import sys
 import struct
 import zlib
+import zipfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -597,6 +598,25 @@ class BuildHelperTests(unittest.TestCase):
                         with self.assertRaises(OSError) as raised:
                             function(case)
                         self.assertIs(raised.exception, error)
+
+    def test_windows_archive_clamps_old_timestamp_without_changing_source(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "artifact"
+            root.mkdir()
+            source = root / "LICENSE.txt"
+            original = b"License contents remain exact.\n"
+            source.write_bytes(original)
+            os.utime(source, (1, 1))
+            before = source.stat().st_mtime_ns
+            windows_os = type("WindowsArchiveOS", (), {"name": "nt"})()
+            with mock.patch.object(helper, "os", windows_os):
+                archive = helper.archive(root)
+            with zipfile.ZipFile(archive) as bundle:
+                self.assertEqual(bundle.read("artifact/LICENSE.txt"), original)
+                self.assertEqual(bundle.getinfo("artifact/LICENSE.txt").date_time, (1980, 1, 1, 0, 0, 0))
+            self.assertEqual(source.read_bytes(), original)
+            self.assertEqual(source.stat().st_mtime_ns, before)
 
     def test_windows_spec_excludes_only_known_system_runtimes(self):
         helper = self.helper()
