@@ -438,25 +438,6 @@ class RustGitParityTests(RustParityTests):
         self.assertTrue(self.load("trace-map", "inventory.json")["git"])
         self.assertFalse(trace.exists())
 
-    def test_corrupt_git_index_records_inventory_failure_and_invalidates_old_outputs(self):
-        good = self.rust("same-output")
-        self.assertEqual(good.returncode, 0, good.stderr)
-        (self.source / ".git" / "index").write_bytes(b"invalid git index")
-        failed = self.rust("same-output")
-        self.assertNotEqual(failed.returncode, 0)
-        self.assertEqual(self.load("same-output", "map.meta.json")["failure"]["stage"], "inventory")
-        self.assertEqual(self.load("same-output", "map.meta.json")["status"], "failed")
-        self.assertEqual(self.load("same-output", "inventory.json")["status"], "failed")
-        self.assertNotIn("openChannel", (self.base / "same-output" / "repo-map.md").read_text(encoding="utf-8"))
-
-    def test_dirty_work_tree_and_deleted_tracked_file(self):
-        (self.source / "src/app/Channel.java").unlink()
-        self.write("src/app/Fresh.java", b"class FreshUntracked {}\n")
-        meta, text = self.assert_same("dirty", [])
-        self.assertIn("FreshUntracked", text)
-        self.assertIn({"path": "src/app/Channel.java", "reason": "missing or outside source"}, meta["skipped"])
-        self.assertTrue(self.load("rust-dirty", "inventory.json")["dirty"])
-
     @unittest.skipUnless(os.name == "posix", "requires POSIX byte index paths")
     def test_unmerged_non_utf8_paths_match_python_before_file_cap(self):
         source = self.base / "raw-index"
@@ -484,6 +465,24 @@ class RustGitParityTests(RustParityTests):
             outputs.append((inventory, (out / "repo-map.md").read_bytes()))
         self.assertEqual(outputs[0], outputs[1])
 
+    def test_corrupt_git_index_records_inventory_failure_and_invalidates_old_outputs(self):
+        good = self.rust("same-output")
+        self.assertEqual(good.returncode, 0, good.stderr)
+        (self.source / ".git" / "index").write_bytes(b"invalid git index")
+        failed = self.rust("same-output")
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertEqual(self.load("same-output", "map.meta.json")["failure"]["stage"], "inventory")
+        self.assertEqual(self.load("same-output", "map.meta.json")["status"], "failed")
+        self.assertEqual(self.load("same-output", "inventory.json")["status"], "failed")
+        self.assertNotIn("openChannel", (self.base / "same-output" / "repo-map.md").read_text(encoding="utf-8"))
+
+    def test_dirty_work_tree_and_deleted_tracked_file(self):
+        (self.source / "src/app/Channel.java").unlink()
+        self.write("src/app/Fresh.java", b"class FreshUntracked {}\n")
+        meta, text = self.assert_same("dirty", [])
+        self.assertIn("FreshUntracked", text)
+        self.assertIn({"path": "src/app/Channel.java", "reason": "missing or outside source"}, meta["skipped"])
+        self.assertTrue(self.load("rust-dirty", "inventory.json")["dirty"])
 
 
 class RustWithoutPythonTests(FixtureCase):
@@ -503,6 +502,25 @@ class RustWithoutPythonTests(FixtureCase):
         self.assertFalse(meta["git"])
         self.assertEqual(meta["implementation"], "rust (experimental)")
         self.assertIn("openChannel", (self.base / "out" / "repo-map.md").read_text(encoding="utf-8"))
+
+    def test_debug_tags_are_invalidated_when_the_flag_is_not_requested(self):
+        result = self.rust("debug-reuse", "--debug-tags")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        debug = self.base / "debug-reuse/tags.debug.json"
+        self.assertTrue(debug.is_file())
+        self.write("src/app/Channel.java", CHANNEL.replace("openChannel", "updatedChannel").encode())
+        result = self.rust("debug-reuse")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(debug.exists())
+        result = self.rust("debug-reuse", "--debug-tags")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        tags = json.loads(debug.read_text())
+        names = {tag["name"] for tag in tags["src/app/Channel.java"]}
+        self.assertIn("updatedChannel", names)
+        self.assertNotIn("openChannel", names)
+        result = self.rust("debug-reuse", "--inventory-only")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(debug.exists())
 
     @unittest.skipIf(os.name != "posix", "requires POSIX byte paths")
     def test_invalid_utf8_filenames_respect_max_files(self):

@@ -410,6 +410,55 @@ fn unmerged_non_utf8_paths_are_deduplicated_before_decoding() {
 }
 
 #[test]
+fn optional_debug_tags_are_current_or_absent_on_every_run() {
+    let fixture = Fixture::java();
+    fixture.map_ok(&["--debug-tags"]);
+    let debug = fixture.output.join("tags.debug.json");
+    assert!(fs::read_to_string(&debug).unwrap().contains("openChannel"));
+    fixture.write(
+        "src/app/Channel.java",
+        &CHANNEL.replace("openChannel", "updatedChannel"),
+    );
+    fixture.map_ok(&[]);
+    assert!(!debug.exists());
+    assert!(fixture.map_text().contains("updatedChannel"));
+    fixture.map_ok(&["--debug-tags"]);
+    let tags = fixture.json("tags.debug.json");
+    let names: Vec<&str> = tags["src/app/Channel.java"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|tag| tag["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"updatedChannel") && !names.contains(&"openChannel"));
+    fixture.map_ok(&["--inventory-only"]);
+    assert!(!debug.exists());
+    fixture.map_ok(&["--debug-tags"]);
+    assert!(fixture.git(&["init", "-q"]));
+    fs::write(fixture.source.join(".git/index"), b"invalid fixture index").unwrap();
+    let before = snapshot(&fixture.source);
+    let failed = fixture.map(&[]);
+    assert_eq!(failed.status.code(), Some(2));
+    assert!(!debug.exists());
+    assert_ne!(fixture.json("map.meta.json")["status"], "complete");
+    assert_eq!(snapshot(&fixture.source), before);
+}
+
+#[test]
+fn unremovable_old_debug_tags_prevent_complete_publication() {
+    let fixture = Fixture::java();
+    fixture.map_ok(&[]);
+    fs::create_dir(fixture.output.join("tags.debug.json")).unwrap();
+    let before = snapshot(&fixture.source);
+    let failed = fixture.map(&[]);
+    assert_eq!(failed.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("cannot invalidate old debug tags"));
+    assert_ne!(fixture.json("map.meta.json")["status"], "complete");
+    assert!(!fixture.map_text().contains("openChannel"));
+    assert_eq!(snapshot(&fixture.source), before);
+}
+
+#[test]
 fn budget_is_enforced_with_the_declared_estimator() {
     let fixture = Fixture::java();
     let summary = fixture.map_ok(&["--budget", "64"]);

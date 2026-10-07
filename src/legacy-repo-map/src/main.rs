@@ -450,6 +450,13 @@ fn run(arguments: Arguments) -> Result<String, String> {
         &format!("{}\n", pretty(&partial("in-progress", json!({})))),
     )?;
 
+    // Optional diagnostic output belongs only to the current run.
+    if let Err(error) = fs::remove_file(output.join("tags.debug.json")) {
+        if error.kind() != std::io::ErrorKind::NotFound {
+            return Err(format!("cannot invalidate old debug tags: {error}"));
+        }
+    }
+
     let mut extractor = Extractor::new();
     let mut parsed: Vec<ParsedFile> = Vec::new();
     let mut parse_failures: Vec<Value> = Vec::new();
