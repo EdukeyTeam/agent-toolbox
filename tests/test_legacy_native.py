@@ -590,6 +590,24 @@ class DispatcherTests(FixtureCase):
                 self.assertIn("AuditLog.java", found.stdout)
                 self.assertNotIn("native-test-secret", found.stdout)
 
+    def test_csharp_cache_identity_is_available_without_external_python_packages(self):
+        folder = self.source / "csharp"
+        folder.mkdir()
+        (folder / "Example.cs").write_text("class Example { public void Run() {} }\n", encoding="utf-8", newline="\n")
+        for label, program, env in self.programs():
+            with self.subTest(program=label):
+                output = self.base / ("csharp-map-" + label)
+                result = self.call(program, env, "map", str(self.source), "--subtree", "csharp", "--output-dir", str(output))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                metadata = json.loads((output / "map.meta.json").read_text(encoding="utf-8"))
+                self.assertEqual(metadata["dependencies"]["tree-sitter-c-sharp"], "0.23.5")
+                self.assertEqual(metadata["coverage"]["parsed_files"], 1)
+                self.assertIn("Example.cs:L1", (output / "repo-map.md").read_text(encoding="utf-8"))
+                caches = [json.loads(path.read_text(encoding="utf-8")) for path in (output / "cache").glob("*.json")]
+                self.assertEqual(len(caches), 1)
+                self.assertTrue(caches[0]["parser_version"].endswith(":0.23.5"))
+
+
 
 
 # Unmodified full notice fixture from https://raw.githubusercontent.com/libffi/libffi/v3.4.4/LICENSE

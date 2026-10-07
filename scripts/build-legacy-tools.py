@@ -46,7 +46,7 @@ MAP_REQUIREMENTS = SKILL / "requirements-map.txt"
 SEPARATE_PARSERS = {"csharp": "tree_sitter_c_sharp", "yaml": "tree_sitter_yaml", "embeddedtemplate": "tree_sitter_embedded_template"}
 RUNTIME_DISTRIBUTIONS = ["tree-sitter", "tree-sitter-language-pack", "tree-sitter-c-sharp", "tree-sitter-yaml", "tree-sitter-embedded-template", "networkx"]
 PIN_IMPORTS = {"pyinstaller": "PyInstaller", "pyinstaller-hooks-contrib": "_pyinstaller_hooks_contrib"}
-METADATA_DISTRIBUTIONS = ["tree-sitter", "tree-sitter-language-pack", "networkx"]
+METADATA_DISTRIBUTIONS = ["tree-sitter", "tree-sitter-language-pack", "tree-sitter-c-sharp", "networkx"]
 # Optional accelerators that networkx can import; the map does not use them.
 EXCLUDED_MODULES = ["numpy", "scipy", "pandas", "matplotlib", "tkinter", "IPython", "pytest", "setuptools", "pip", "lxml", "pygraphviz", "pydot", "sympy", "PIL", "yaml", "defusedxml", "readline", "rlcompleter", "pdb", "decimal"]
 # Third-party import packages the bundle may contain. Anything else that the
