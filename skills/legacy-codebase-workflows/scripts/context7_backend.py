@@ -132,7 +132,7 @@ def stored_excludes(meta: dict[str, str]) -> tuple[str, ...]:
 def enumerate_files(root: Path, kind: str, excludes: tuple[str, ...] = (), skipped: list[dict[str, str]] | None = None) -> list[Path]:
     paths = []
     seen = 0
-    iterator = _candidates(root, revision(root) != "non-git", ())
+    iterator = _candidates(root, git_context(root), ())
     try:
         for relative in iterator:
             seen += 1

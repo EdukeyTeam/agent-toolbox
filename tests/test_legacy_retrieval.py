@@ -336,6 +336,23 @@ class RetrievalTests(unittest.TestCase):
             self.assertTrue(backend.query(con, "createInvoice", mode="hybrid")["results"])
             self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
 
+    def test_unborn_git_worktree_keeps_force_tracked_ignored_source(self):
+        from repo_files import scan_repository
+        (self.root / ".gitignore").write_text("Tracked.java\n", encoding="utf-8")
+        (self.root / "Tracked.java").write_text("class TrackedInvoice {}\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        subprocess.run(["git", "-C", str(self.root), "add", "-f", "--", "Tracked.java"], check=True)
+        self.assertTrue(backend.git_context(self.root))
+        self.assertEqual(backend.revision(self.root), "non-git")
+        self.assertNotEqual(subprocess.run(["git", "-C", str(self.root), "rev-parse", "--verify", "HEAD"], capture_output=True).returncode, 0)
+        self.assertIn("Tracked.java", {row["path"] for row in scan_repository(self.root)["files"]})
+        self.assertIn("Tracked.java", {row[1] for row in backend.corpus_files(self.root, self.docs)})
+        self.assertEqual(self.index()["files"], 3)
+        with backend.connect(self.db) as con:
+            result = backend.query(con, "TrackedInvoice")
+            self.assertTrue(any(row["source"]["path"] == "Tracked.java" for row in result["results"]))
+
+
     def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
         cache = Path(self.tmp.name).resolve() / "cache"
         supplied = {"PATH": "local-toolchain", "SystemRoot": "C:\\Windows", "WINDIR": "C:\\Windows", "TEMP": str(cache), "TMP": str(cache), "NODE_OPTIONS": "--inspect", "HF_TOKEN": "dummy-test-value", "OPENAI_API_KEY": "dummy-test-value", "ANTHROPIC_API_KEY": "dummy-test-value"}
