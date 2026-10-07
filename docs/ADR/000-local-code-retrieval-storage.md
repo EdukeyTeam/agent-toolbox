@@ -1,7 +1,7 @@
 # ADR: Local code retrieval storage - Main Architecture
 
 **Date:** 2026-10-07
-**Status:** Accepted pending PR review for decisions 2 and 3. Their format-6 storage layout and focused tests are in the source branch; index format 7 adds configurable source-faithful chunking without changing that layout; platform CI and review remain pending. The comparison measurements below predate this implementation.
+**Status:** Accepted pending PR review for decisions 2 and 3. Their format-6 storage layout is implemented and passes platform CI; index format 7 adds configurable source-faithful chunking without changing that layout. The comparison measurements below predate this implementation.
 **PRD:** None. This ADR belongs to the optional private-retrieval workflow of the `legacy-codebase-workflows` skill: [skill entrypoint](../../skills/legacy-codebase-workflows/SKILL.md), [private retrieval reference](../../skills/legacy-codebase-workflows/references/private-retrieval.md), [backend script](../../skills/legacy-codebase-workflows/scripts/context7_backend.py).
 
 ---
@@ -15,7 +15,7 @@ Requirements that drive the decision:
 - Nothing leaves the machine. No cloud index, no remote embedding call, no telemetry. A model download is an explicit indexing step; querying and serving work offline.
 - Every returned snippet carries its file, line range, file hash, repository revision and corpus ID, and a snippet whose source changed or disappeared is never returned.
 - Lexical search (FTS5/BM25) always works with no install beyond Python. Semantic search, hybrid fusion and reranking are optional.
-- The backend runs on Linux, macOS and Windows with Python 3.12 to 3.14, and can later be shipped as a standalone executable.
+- The backend runs on Linux, macOS and Windows with Python 3.12 to 3.14. Its standalone bundle includes lexical retrieval; optional inference remains a separate installation.
 - It is a single-user local tool. It has no authentication and binds only to loopback; nothing here makes it a shared or production service.
 
 Three things are often bundled under "vector database" and are separate here:
@@ -44,7 +44,7 @@ Swapping the storage engine changes latency, disk use, install size and failure 
 
 ## 2. Technology Documentation References
 
-The three Context7 IDs were supplied as verified by the coordinating brief. The statements in this ADR were checked on 2026-10-06 against the official repositories, documentation and PyPI metadata at the versions below.
+The statements in this ADR were checked on 2026-10-06 against the official repositories, documentation and PyPI metadata at the versions below.
 
 | Library | Context7 ID or official docs | Used for |
 |---|---|---|
@@ -539,4 +539,4 @@ Because every accepted engine is exact, the main oracle is equality: both engine
 - TAC-11: On the storage probe's 30,000-chunk corpus on comparable hardware, the proposed layout measures at or below 700 ms median for the stdlib scan, at or below 100 ms median for the sqlite-vec scan, and at or below 2.2 KB of embedding storage per chunk.
 - TAC-12: The skill installs and answers lexical queries with zero third-party Python packages, and the only optional Python package for retrieval is `sqlite-vec` pinned to 0.1.9.
 
-**Verification at acceptance.** Local focused tests exercised format-6 migration and rollback, unchanged vector bytes after a preference switch, foreign-key deletion, a fixed-seed 1,000-by-384 vector oracle with 30 queries against the actual sqlite-vec 0.1.9 extension, ties, empty and single-row scans, no-package override and `auto` fallback. The storage probe measured the proposed narrow side-table layouts before this implementation; its version-4 backend comparison remains labeled as such. The coordinator subsequently ran all 38 format-7 retrieval tests with real local embeddings, cross-encoder scoring, sqlite-vec and the stock Context7 0.5.13 client; none were skipped. Another 24 mapper checks passed separately with their parser dependencies. Runtime-capability tests distinguish missing SQLite extension support from a broken installed adapter and verify explicit stdlib/auto fallback; Windows inference retains only essential OS startup paths. This covers the local HTTP and model checks for TAC-05 and TAC-09. TAC-10 still requires platform CI. The local sandbox disallowed socket creation during the first HTTP test attempt, which is an environment restriction rather than a passing contract result.
+**Verification at acceptance.** Local focused tests exercised format-6 migration and rollback, unchanged vector bytes after a preference switch, foreign-key deletion, a fixed-seed 1,000-by-384 vector oracle with 30 queries against the actual sqlite-vec 0.1.9 extension, ties, empty and single-row scans, no-package override and `auto` fallback. The storage probe measured the proposed narrow side-table layouts before this implementation; its version-4 backend comparison remains labeled as such. All 38 format-7 retrieval tests then passed with real local embeddings, cross-encoder scoring, sqlite-vec and the stock Context7 0.5.13 client; none were skipped. Another 24 mapper checks passed separately with their parser dependencies. Runtime-capability tests distinguish missing SQLite extension support from a broken installed adapter and verify explicit stdlib/auto fallback; Windows inference retains only essential OS startup paths. This covers the local HTTP and model checks for TAC-05 and TAC-09. [Platform CI](https://github.com/EdukeyTeam/agent-toolbox/actions/runs/37559880186) passes all nine OS/Python combinations for TAC-10 and requires actual sqlite-vec on a compatible runtime for each OS, using Homebrew Python on macOS. Separate Linux and Windows inference lanes pass all 38 retrieval tests with real models and the stock client, without skips. Native bundles pass on Linux x86-64, macOS arm64 and Windows x86-64. POSIX-only permissions and invalid-byte filenames are skipped only where the host cannot represent those fixtures; this does not establish fresh-machine Windows runtime provisioning or macOS model inference.
