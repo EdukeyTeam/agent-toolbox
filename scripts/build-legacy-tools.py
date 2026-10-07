@@ -302,7 +302,7 @@ def system_binary_license(source: Path, supplied: Path | None) -> tuple[str, str
 def is_cpython_binary(source: Path, kind: str) -> bool:
     """CPython extensions and interpreter libraries, not adjacent third-party DLLs."""
     name = source.name.lower()
-    if name.startswith(("libpython", "python3")) and source.suffix.lower() in (".dll", ".so", ".dylib"):
+    if re.fullmatch(r"libpython3\.\d+[dt]?\.(?:so(?:\.\d+)*|dylib)", name) or re.fullmatch(r"python3\d*(?:_d)?\.dll", name):
         return True
     if sys.platform == "darwin" and source.name == "Python" and source.resolve().is_relative_to(Path(sys.base_prefix).resolve()):
         return True

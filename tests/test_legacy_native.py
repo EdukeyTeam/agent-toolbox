@@ -15,6 +15,7 @@ Environment:
 
 import ast
 import hashlib
+import errno
 import importlib.util
 import json
 import os
@@ -403,7 +404,13 @@ class RustWithoutPythonTests(FixtureCase):
         source = self.base / "byte-paths"
         source.mkdir()
         for index in range(4):
-            with open(os.fsencode(source) + b"/file-" + bytes([0xff, 48 + index]), "wb") as handle:
+            try:
+                handle = open(os.fsencode(source) + b"/file-" + bytes([0xff, 48 + index]), "wb")
+            except OSError as error:
+                if error.errno == errno.EILSEQ:
+                    self.skipTest("Filesystem rejects invalid UTF-8 filenames (EILSEQ)")
+                raise
+            with handle:
                 handle.write(b"class Example {}\n")
         result = subprocess.run([str(RUST_BINARY), str(source), "--output-dir", str(self.base / "byte-out"), "--max-files", "1"], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -559,6 +566,34 @@ class BuildHelperTests(unittest.TestCase):
         self.assertFalse(helper.is_cpython_binary(stdlib / "lib-dynload" / "libcrypto-3-x64.dll", "BINARY"))
         self.assertFalse(helper.is_cpython_binary(stdlib / "lib-dynload" / "libsqlite3.so", "BINARY"))
 
+    def test_cpython_interpreter_filename_recognition_is_narrow(self):
+        helper = self.helper()
+        for name in ("libpython3.12.so", "libpython3.12.so.1.0", "libpython3.14t.so.1.0", "libpython3.12.dylib", "python3.dll", "python312.dll", "python312_d.dll"):
+            with self.subTest(name=name):
+                self.assertTrue(helper.is_cpython_binary(Path(name), "BINARY"))
+        for name in ("libcrypto.so.3", "libsqlite3.so.0", "libpython-helper.so", "libpython3.12.so.backup", "python3-helper.dll"):
+            with self.subTest(name=name):
+                self.assertFalse(helper.is_cpython_binary(Path(name), "BINARY"))
+
+    def test_invalid_filename_fixture_skips_only_encoding_capability_error(self):
+        case = RustWithoutPythonTests("test_invalid_utf8_filenames_respect_max_files")
+        function = RustWithoutPythonTests.test_invalid_utf8_filenames_respect_max_files
+        # Exercise the fixture itself even on platforms where byte paths are
+        # unavailable; the production test's POSIX guard remains unchanged.
+        function = getattr(function, "__wrapped__", function)
+        for code in (errno.EILSEQ, errno.EACCES):
+            with tempfile.TemporaryDirectory() as temp, self.subTest(errno=code):
+                case.base = Path(temp).resolve()
+                error = OSError(code, "controlled fixture creation failure")
+                with mock.patch("builtins.open", side_effect=error):
+                    if code == errno.EILSEQ:
+                        with self.assertRaisesRegex(unittest.SkipTest, "EILSEQ"):
+                            function(case)
+                    else:
+                        with self.assertRaises(OSError) as raised:
+                            function(case)
+                        self.assertIs(raised.exception, error)
+
     def test_windows_spec_excludes_only_app_local_vc_runtime(self):
         helper = self.helper()
         with tempfile.TemporaryDirectory() as temp:
@@ -600,12 +635,13 @@ class BuildHelperTests(unittest.TestCase):
                 destination.write_bytes(b"official upstream " + marker)
                 return destination
 
-            with mock.patch.object(helper.sys, "base_prefix", str(root)), mock.patch.object(helper, "collected_binaries", return_value=[(binary.name, binary, "BINARY")]), mock.patch.object(helper, "download_notice", side_effect=fake_download):
+            with mock.patch.object(helper.sys, "platform", "win32"), mock.patch.object(helper.sys, "base_prefix", str(root)), mock.patch.object(helper, "collected_binaries", return_value=[(binary.name, binary, "BINARY")]), mock.patch.object(helper, "cpython_windows_build_versions", return_value={"bzip2": "1.0.8", "xz": "5.2.5", "libffi": "3.4.4"}) as build_versions, mock.patch.object(helper, "download_notice", side_effect=fake_download):
                 output = helper.prepare_host_binary_licenses(root / "toc", root / "prepared", {binary.name})
                 entry = json.loads((output / "manifest.json").read_text())[binary.name]
                 self.assertEqual(entry["component"], "OpenSSL")
                 self.assertEqual(entry["sha256"], helper.sha256(output / binary.name))
                 self.assertTrue((output / "CPython-THIRD-PARTY.rst").is_file())
+                build_versions.assert_called_once()
             unknown = root / "unknown.dll"
             unknown.write_bytes(b"binary")
             with mock.patch.object(helper.sys, "base_prefix", str(root)), mock.patch.object(helper, "collected_binaries", return_value=[(unknown.name, unknown, "BINARY")]):

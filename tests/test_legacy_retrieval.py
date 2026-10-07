@@ -68,8 +68,16 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(offline["HOME"], str(cache))
         self.assertEqual(offline["HF_HUB_OFFLINE"], "1")
         self.assertEqual(online["HF_HUB_OFFLINE"], "0")
+        # Windows os.environ normalizes keys to uppercase; OS equivalence
+        # should not depend on the spelling retained by a plain mapping.
+        normalized = {key.upper(): value for key, value in offline.items()}
         for key in ("SystemRoot", "WINDIR", "TEMP", "TMP"):
-            self.assertEqual(offline[key], supplied[key])
+            self.assertEqual(normalized[key.upper()], supplied[key])
+        with mock.patch.object(os, "environ", supplied):
+            normal_mapping = backend.inference_environment(cache, download=False)
+        self.assertIn("SystemRoot", normal_mapping)
+        self.assertNotIn("SYSTEMROOT", normal_mapping)
+        self.assertEqual(normal_mapping["SystemRoot"], supplied["SystemRoot"])
 
     def test_runtime_without_sqlite_extension_api_falls_back_only_when_requested(self):
         cache = Path(self.tmp.name).resolve() / "cache"

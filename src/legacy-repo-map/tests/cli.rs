@@ -219,8 +219,8 @@ fn maps_definitions_with_original_paths_and_lines() {
         .contains("not a resolved call graph"));
     // The summary points at the files that were written.
     assert_eq!(
-        Path::new(summary["map"].as_str().unwrap()),
-        fixture.output.join("repo-map.md")
+        fs::canonicalize(Path::new(summary["map"].as_str().unwrap())).unwrap(),
+        fs::canonicalize(fixture.output.join("repo-map.md")).unwrap()
     );
 }
 
