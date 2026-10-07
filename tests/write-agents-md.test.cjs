@@ -32,7 +32,7 @@ for (const workflow of ['web', 'desktop']) {
     const receipt = JSON.parse(result.stdout);
     assert.deepEqual(fs.readFileSync(path.join(project, 'AGENTS.md')), source);
     assert.equal(receipt.sha256, crypto.createHash('sha256').update(source).digest('hex'));
-    assert.equal(fs.realpathSync(receipt.destination), fs.realpathSync(path.join(project, 'AGENTS.md')));
+    assert.equal(fs.realpathSync.native(receipt.destination), fs.realpathSync.native(path.join(project, 'AGENTS.md')));
     assert.deepEqual(fs.readFileSync(path.join(skillRoot, 'assets', `${workflow}-AGENTS.md`)), source);
   });
 }
@@ -138,7 +138,7 @@ test('receipt works with a non-UTF8 output encoding and Unicode paths', t => {
     { encoding: 'utf8', timeout: 10000, env: { ...process.env, PYTHONIOENCODING: 'cp1252' } });
   assert.equal(result.status, 0, result.stderr);
   const receipt = JSON.parse(result.stdout);
-  assert.equal(fs.realpathSync(receipt.destination), fs.realpathSync(path.join(project, 'AGENTS.md')));
+  assert.equal(fs.realpathSync.native(receipt.destination), fs.realpathSync.native(path.join(project, 'AGENTS.md')));
   assert.deepEqual(fs.readFileSync(receipt.destination),
     fs.readFileSync(path.join(skillRoot, 'assets/web-AGENTS.md')));
 });
