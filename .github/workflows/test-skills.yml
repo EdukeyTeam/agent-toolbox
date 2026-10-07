@@ -35,7 +35,18 @@ jobs:
       - name: Test local mapping and retrieval
         env:
           LEGACY_NATIVE_BUILD: '0'
+          LEGACY_REQUIRE_SQLITE_VEC: ${{ matrix.python == '3.12' && runner.os != 'macOS' && '1' || '0' }}
         run: python -m unittest discover -s tests -p "test_legacy_*.py" -v
+      - name: Require native vector adapter with compatible macOS SQLite
+        if: runner.os == 'macOS' && matrix.python == '3.12'
+        shell: bash
+        env:
+          LEGACY_REQUIRE_SQLITE_VEC: '1'
+        run: |
+          brew install python@3.12
+          "$(brew --prefix python@3.12)/bin/python3.12" -m venv "$RUNNER_TEMP/legacy-vector-venv"
+          "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m pip install -r skills/legacy-codebase-workflows/requirements-map.txt -r skills/legacy-codebase-workflows/scripts/requirements-retrieval.txt
+          "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m unittest discover -s tests -p test_legacy_retrieval.py -v
       - name: Build and verify Claude plugin ZIP
         if: runner.os == 'Linux' && matrix.python == '3.12'
         shell: pwsh
@@ -69,6 +80,7 @@ jobs:
           pnpm install --dir "$RUNNER_TEMP/ctx7-cli" --ignore-scripts
       - name: Test actual local embeddings and hybrid retrieval
         env:
+          LEGACY_REQUIRE_SQLITE_VEC: '1'
           LEGACY_RETRIEVAL_TEST_RUNTIME: ${{ runner.temp }}/legacy-inference
           LEGACY_RETRIEVAL_TEST_CACHE: ${{ runner.temp }}/legacy-model-cache
           LEGACY_CTX7_CLI: ${{ runner.temp }}/ctx7-cli/node_modules/ctx7/dist/index.js
@@ -91,7 +103,7 @@ jobs:
       - name: Test native repository mapper
         run: cargo test --locked --manifest-path src/legacy-repo-map/Cargo.toml
       - name: Build standalone tools with licenses and smoke checks
-        run: python scripts/build-legacy-tools.py --output-dir "${{ runner.temp }}/legacy-artifacts" --deps-dir "${{ runner.temp }}/legacy-map-deps" --tools-dir "${{ runner.temp }}/legacy-build-deps" --install --require-parity
+        run: python scripts/build-legacy-tools.py --output-dir "${{ runner.temp }}/legacy-artifacts" --deps-dir "${{ runner.temp }}/legacy-map-deps" --tools-dir "${{ runner.temp }}/legacy-build-deps" --install --prepare-host-licenses --require-parity
       - name: Locate host-specific binaries
         shell: python
         run: |
@@ -106,6 +118,7 @@ jobs:
       - name: Test actual binaries against the Python source
         env:
           LEGACY_MAP_DEPS: ${{ runner.temp }}/legacy-map-deps
+          LEGACY_BUILD_TOOLS: ${{ runner.temp }}/legacy-build-deps
         run: python -m unittest discover -s tests -p test_legacy_native.py -v
       - name: Retain reviewable native artifacts
         uses: actions/upload-artifact@v7
