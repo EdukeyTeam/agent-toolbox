@@ -1,0 +1,81 @@
+{
+  "description": "Notice texts for third-party code compiled into legacy-repo-map and into the tree-sitter extension of the legacy-tools bundle, where the published package omits the text or keeps it below the package root, and for upstream source that the crate adapts without linking it. Each file is an unmodified copy; sha256 is of the upstream bytes with LF line endings. A record names its use: \"cargo\" for a linked crate, \"pypi\" for a Python distribution of the bundle, \"adaptation\" for source rewritten in this crate, which is not a Cargo dependency. scripts/build-legacy-tools.py refuses to build when a file, a linked crate, an adapted source file or the selected Python distribution differs from these records.",
+  "notices": [
+    {
+      "file": "tree-sitter-LICENSE.txt",
+      "title": "tree-sitter (MIT)",
+      "component": "Tree-sitter runtime library",
+      "sha256": "5f9cf9fb6acb1972b35ae29119ce563bb60ec097656bc4b69b9bac2d04c7a147",
+      "origin": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/LICENSE",
+      "cargo": {
+        "name": "tree-sitter",
+        "version": "0.25.10",
+        "checksum": "78f873475d258561b06f1c595d93308a7ed124d9977cb26b148c2084a4a3cc87",
+        "path": null,
+        "basis": "The crate package records commit da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 (path lib) in .cargo_vcs_info.json and ships no license file of its own."
+      },
+      "pypi": {
+        "name": "tree-sitter",
+        "version": "0.25.2",
+        "sdist": "https://files.pythonhosted.org/packages/66/7c/0350cfc47faadc0d3cf7d8237a4e34032b3014ddf4a12ded9933e1648b55/tree-sitter-0.25.2.tar.gz",
+        "sdist_sha256": "fe43c158555da46723b28b52e058ad444195afd1db3ca7720c59a254544e9c20",
+        "sdist_path": null,
+        "bundle_path": "tree_sitter/core/LICENSE",
+        "basis": "py-tree-sitter v0.25.2 pins its tree_sitter/core submodule to tree-sitter commit da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 and compiles tree_sitter/core/lib/src/lib.c into the extension. The wheel and the sdist carry only the binding's own license, whose copyright line differs from this one."
+      }
+    },
+    {
+      "file": "tree-sitter-unicode-LICENSE.txt",
+      "title": "ICU Unicode headers in tree-sitter (ICU license, ICU 58 and later)",
+      "component": "ICU UTF-8 and UTF-16 headers used by the Tree-sitter lexer",
+      "sha256": "6a18c5fac70d7860b57f5b72b4e2c9a1ba6b3d2741eef7ff9767c5379364f10d",
+      "origin": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/lib/src/unicode/LICENSE",
+      "cargo": {
+        "name": "tree-sitter",
+        "version": "0.25.10",
+        "checksum": "78f873475d258561b06f1c595d93308a7ed124d9977cb26b148c2084a4a3cc87",
+        "path": "src/unicode/LICENSE",
+        "basis": "src/unicode.h includes unicode/utf8.h and unicode/utf16.h; src/unicode/ICU_SHA names ICU commit 552b01f61127d30d6589aa4bf99468224979b661."
+      },
+      "pypi": {
+        "name": "tree-sitter",
+        "version": "0.25.2",
+        "sdist": "https://files.pythonhosted.org/packages/66/7c/0350cfc47faadc0d3cf7d8237a4e34032b3014ddf4a12ded9933e1648b55/tree-sitter-0.25.2.tar.gz",
+        "sdist_sha256": "fe43c158555da46723b28b52e058ad444195afd1db3ca7720c59a254544e9c20",
+        "sdist_path": "tree_sitter/core/lib/src/unicode/LICENSE",
+        "bundle_path": "tree_sitter/core/lib/src/unicode/LICENSE",
+        "basis": "The sdist file has this sha256 and sits beside the same ICU_SHA; setup.py compiles tree_sitter/core/lib/src/lib.c with tree_sitter/core/lib/src on the include path. The wheel omits the file."
+      }
+    },
+    {
+      "file": "regex-syntax-LICENSE-UNICODE.txt",
+      "title": "Unicode data tables in regex-syntax (Unicode license agreement)",
+      "component": "Unicode Character Database tables generated into regex-syntax",
+      "sha256": "74db5baf44a41b1000312c673544b3374e4198af5605c7f9080a402cec42cfa3",
+      "origin": "https://raw.githubusercontent.com/rust-lang/regex/140167995737fa11dfe11b8af8b9aa143b790b4e/regex-syntax/src/unicode_tables/LICENSE-UNICODE",
+      "cargo": {
+        "name": "regex-syntax",
+        "version": "0.8.11",
+        "checksum": "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4",
+        "path": "src/unicode_tables/LICENSE-UNICODE",
+        "basis": "The crate package records commit 140167995737fa11dfe11b8af8b9aa143b790b4e (path regex-syntax) in .cargo_vcs_info.json. Cargo.lock resolves regex-syntax with its unicode-* features, which compile the tables in src/unicode_tables/."
+      }
+    },
+    {
+      "file": "networkx-LICENSE.txt",
+      "title": "NetworkX (BSD 3-Clause)",
+      "component": "NetworkX pure-Python PageRank adapted in src/rank.rs",
+      "sha256": "5b433b90f755eb9bbd06feff1d1a4f5f232c5208a185694199e45fa95d762792",
+      "origin": "https://raw.githubusercontent.com/networkx/networkx/2acf1590f82757c01a57b81b8c5dfb79e60aa416/LICENSE.txt",
+      "adaptation": {
+        "name": "networkx",
+        "version": "3.4.2",
+        "commit": "2acf1590f82757c01a57b81b8c5dfb79e60aa416",
+        "upstream_path": "networkx/algorithms/link_analysis/pagerank_alg.py",
+        "upstream_sha256": "06526be9db037d435d534987f019aa58bb7c1f3adafb00705a64051c0ad325cf",
+        "source": "src/rank.rs",
+        "basis": "Tag networkx-3.4.2 peels to commit 2acf1590f82757c01a57b81b8c5dfb79e60aa416. The pagerank function in src/rank.rs follows _pagerank_python of the upstream file step by step in Rust; no NetworkX code is linked and networkx is not a Cargo dependency. The networkx 3.4.2 wheel carries the same LICENSE.txt bytes in its dist-info directory, which the Python bundle ships."
+      }
+    }
+  ]
+}

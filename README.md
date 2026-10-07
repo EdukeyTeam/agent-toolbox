@@ -10,6 +10,7 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 | [write-adr](skills/write-adr/SKILL.md) | Write Architecture Decision Records (ADRs) covering system design, data models, API contracts, diagrams, and testing strategy. |
 | [create-design-system](skills/create-design-system/SKILL.md) | Extract design tokens, a screenshot, and available brand assets from a website. |
 | [respond-to-code-review](skills/respond-to-code-review/SKILL.md) | Address and answer review comments on GitHub, GitLab, or Bitbucket pull and merge requests. |
+| [legacy-codebase-workflows](skills/legacy-codebase-workflows/SKILL.md) | Investigate and change unfamiliar legacy repositories with local maps, verified source context, optional workers and private retrieval. |
 | [cloudflare-safe](skills/cloudflare-safe/SKILL.md) | Let an agent inspect a Cloudflare account through a read-only token it never sees, and propose changes for you to approve. |
 
 ## Install a skill
@@ -20,7 +21,7 @@ The recommended installer is the [skills CLI](https://skills.sh/). You need Node
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system -g
 ```
 
-Replace `create-design-system` with `write-prd`, `write-adr`, `respond-to-code-review`, or `cloudflare-safe` to install another skill. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
+Replace `create-design-system` with `write-prd`, `write-adr`, `respond-to-code-review`, `legacy-codebase-workflows`, or `cloudflare-safe` to install another skill. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
 
 ```bash
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system --project

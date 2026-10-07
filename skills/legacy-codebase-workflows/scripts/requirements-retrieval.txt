@@ -1,0 +1,13 @@
+# The lexical/index/server core uses only Python 3.12+ stdlib with SQLite FTS5.
+# Optional semantic runtime: copy scripts/retrieval/package.json,
+# pnpm-workspace.yaml, and pnpm-lock.yaml into an isolated directory.
+# Run pnpm install --dir THAT_DIRECTORY --frozen-lockfile, then pass that
+# directory with --embedding-runtime. Tested with Transformers.js 3.8.1.
+# Default model: Xenova/all-MiniLM-L6-v2 at immutable revision
+# 751bff37182d3f1213fa05d7196b954e230abad9 (Apache-2.0).
+# Custom models require --model-revision with an immutable commit SHA.
+# Model files are downloaded only by the explicit index --embed-model command.
+# Optional native vector engine: install this file only in an isolated Python environment.
+sqlite-vec==0.1.9
+# Use --vector-engine sqlite-vec at index time; queries load the same pinned
+# extension automatically. The default stdlib engine needs no Python package.

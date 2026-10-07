@@ -1,0 +1,1864 @@
+"""Focused retrieval tests, runnable with python -m unittest discover -s tests."""
+
+from contextlib import contextmanager
+import errno
+import importlib.util
+import json
+import math
+import os
+from pathlib import Path
+import random
+import shutil
+import socket
+import sqlite3
+import struct
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import unittest
+from unittest import mock
+from urllib.error import HTTPError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+
+SCRIPT = Path(__file__).resolve().parents[1] / "skills/legacy-codebase-workflows/scripts/context7_backend.py"
+spec = importlib.util.spec_from_file_location("local_retrieval", SCRIPT)
+backend = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(backend)
+
+
+class RetrievalTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        git_environment = mock.patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"})
+        git_environment.start()
+        self.addCleanup(git_environment.stop)
+        base = Path(self.tmp.name).resolve()
+        self.root = base / "source"
+        self.docs = base / "docs"
+        self.root.mkdir()
+        self.docs.mkdir()
+        (self.root / "src").mkdir()
+        (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def create_invoice(self):\n        return 'invoice total'\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("# Billing guide\nCall InvoiceMaker to create a customer invoice.\n", encoding="utf-8", newline="\n")
+        (self.root / ".env").write_text("SECRET_SHOULD_NEVER_APPEAR=xyz\n", encoding="utf-8", newline="\n")
+        (self.root / "outside.py").symlink_to(self.docs / "guide.md")
+        (self.root / "linked-docs").symlink_to(self.docs, target_is_directory=True)
+        self.db = base / "index.sqlite"
+
+    def index(self):
+        return backend.index(self.root, self.db, "/local/billing", self.docs, None, None)
+
+    def require_sqlite_vec(self):
+        with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
+            try:
+                backend.load_sqlite_vec(con)
+            except backend.VectorAdapterUnavailable as error:
+                if os.environ.get("LEGACY_REQUIRE_SQLITE_VEC") == "1":
+                    self.fail(f"Required actual sqlite-vec acceptance unavailable: {error}")
+                self.skipTest(str(error))
+
+    @unittest.skipIf(os.name == "nt", "Windows cannot create invalid UTF-8 byte filenames")
+    def test_invalid_byte_filenames_are_reported_before_read_or_binding(self):
+        for root, suffix in ((self.root, b".java"), (self.docs, b".md")):
+            name = os.fsencode(root) + b"/Bad\xff" + suffix
+            try:
+                with open(name, "wb") as handle:
+                    handle.write(b"class Bad: pass\n")
+            except OSError as error:
+                if error.errno == errno.EILSEQ:
+                    self.skipTest("filesystem does not support invalid UTF-8 filenames (EILSEQ)")
+                raise
+        result = self.index()
+        self.assertEqual(result["files"], 2)
+        self.assertEqual(result["skippedCount"], 2)
+        self.assertEqual({row["reason"] for row in result["skipped"]}, {"non-UTF-8 filename"})
+        json.dumps(result, ensure_ascii=False).encode("utf-8")
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "core.hooksPath=" + os.devnull, "commit", "--allow-empty", "-qm", "fixture"], check=True)
+        git_result = self.index()
+        self.assertEqual(git_result["skippedCount"], 2)
+        self.assertEqual(git_result["files"], 2)
+        with mock.patch.object(backend, "MAX_SOURCE_CANDIDATES", 1):
+            with self.assertRaisesRegex(backend.RetrievalError, "Candidate limit"):
+                self.index()
+
+    def test_unknown_database_and_invalid_metadata_are_preserved(self):
+        cases = (
+            ["CREATE TABLE files(name TEXT,payload TEXT)", "INSERT INTO files VALUES('keep','original')"],
+            ["CREATE TABLE meta(name TEXT,payload TEXT)", "INSERT INTO meta VALUES('keep','original')"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)", "INSERT INTO meta VALUES('index_version','999')"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)", "INSERT INTO meta VALUES('index_version','7')"],
+            ["CREATE VIEW source AS SELECT 'keep'"],
+            ["CREATE TABLE sqliteUnrelated(name TEXT)", "INSERT INTO sqliteUnrelated VALUES('keep')"],
+            ["CREATE TABLE meta(key TEXT,value TEXT)", "INSERT INTO meta VALUES('index_version',NULL)"],
+        )
+        for number, statements in enumerate(cases):
+            with self.subTest(case=number):
+                database = self.db.with_name(f"unknown-{number}.sqlite")
+                with sqlite3.connect(database, factory=backend.ClosingConnection) as con:
+                    for statement in statements:
+                        con.execute(statement)
+                before = database.read_bytes()
+                with self.assertRaisesRegex(backend.RetrievalError, "not a recognized retrieval index"):
+                    backend.index(self.root, database, "/local/billing", self.docs, None, None)
+                self.assertEqual(database.read_bytes(), before)
+
+    def test_exclusions_are_saved_reapplied_and_scope_changes_incremental(self):
+        (self.root / "generated").mkdir()
+        (self.root / "generated/asset.js").write_text("obsolete generated content", encoding="utf-8")
+        (self.docs / "private.md").write_text("excluded documentation", encoding="utf-8")
+        initial = self.index()
+        scoped = backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=["generated", "private.md", "generated/"])
+        self.assertEqual(scoped["deleted"], 2)
+        self.assertEqual(scoped["changed"], 0)
+        self.assertEqual(scoped["excludes"], ["generated", "private.md"])
+        (self.root / "generated/asset.js").write_text("changed excluded content", encoding="utf-8")
+        (self.docs / "private.md").unlink()
+        with backend.connect(self.db) as con:
+            self.assertEqual(json.loads(backend.metadata(con)["excludes"]), scoped["excludes"])
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        restored = self.index()
+        self.assertEqual(restored["changed"], 1)
+        self.assertEqual(restored["files"], initial["files"] - 1)
+        (self.root / "src/service.py").write_text("changed included source", encoding="utf-8")
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "Indexed files changed"):
+                backend.query(con, "InvoiceMaker")
+
+    def test_invalid_scope_rolls_back_and_existing_format7_defaults_to_no_exclusions(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            con.execute("DELETE FROM meta WHERE key='excludes'")
+        before = self.db.read_bytes()
+        with self.assertRaisesRegex(backend.RetrievalError, "belongs to another corpus"):
+            backend.index(self.root, self.db, "/local/other", self.docs, None, None)
+        self.assertEqual(self.db.read_bytes(), before)
+        for excludes in (["../outside"], ["/absolute"], ["."], ["C:\\outside"], ["*.js"], [1], "src"):
+            with self.subTest(excludes=excludes):
+                with self.assertRaisesRegex(backend.RetrievalError, "[Ee]xclusion"):
+                    backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=excludes)
+                self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        self.assertEqual(self.index()["changed"], 0)
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "excludes", '{"bad":"scope"}')
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "Exclusions"):
+                backend.query(con, "InvoiceMaker")
+
+    def test_excluded_candidates_still_count_but_selected_files_remain_bounded(self):
+        for number in range(3):
+            (self.root / f"asset-{number}.js").write_text("generated", encoding="utf-8")
+        exclusions = [f"asset-{number}.js" for number in range(3)]
+        with mock.patch.object(backend, "MAX_FILES", 2):
+            self.assertEqual(backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=exclusions)["files"], 2)
+            with self.assertRaisesRegex(backend.RetrievalError, "File limit"):
+                self.index()
+        with mock.patch.object(backend, "MAX_SOURCE_CANDIDATES", 2):
+            with self.assertRaisesRegex(backend.RetrievalError, "Candidate limit"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=exclusions)
+
+    def test_cli_accepts_repeatable_exclusions(self):
+        (self.root / "bundle.js").write_text("generated", encoding="utf-8")
+        result = subprocess.run([sys.executable, str(SCRIPT), "index", str(self.root), "--database", str(self.db), "--library-id", "/local/billing", "--docs-root", str(self.docs), "--exclude", "bundle.js", "--exclude", "guide.md"], text=True, capture_output=True, timeout=10, check=True)
+        self.assertEqual(json.loads(result.stdout)["excludes"], ["bundle.js", "guide.md"])
+        self.assertEqual(json.loads(result.stdout)["files"], 1)
+
+    def test_long_asset_exclusion_keeps_source_vectors_and_failure_rolls_back(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        (self.root / "App.java").write_text("class App { void invoice() {} }\n", encoding="utf-8")
+        asset = self.root / "bundle.js"
+        asset.write_text("x" * 22000, encoding="utf-8")
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                self.assertTrue(all(len(body) < 22000 for body in group))
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches) as inference:
+            result = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, excludes=["bundle.js"])
+            self.assertEqual(result["files"], 2)
+            self.assertEqual(inference.call_count, 1)
+            asset.write_text("y" * 22000, encoding="utf-8")
+            self.assertEqual(backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, excludes=["bundle.js"])["changed"], 0)
+            self.assertEqual(inference.call_count, 2)
+            self.assertEqual(inference.call_args.args[0], [["local retrieval warmup"]])
+            before = self.db.read_bytes()
+            with self.assertRaisesRegex(backend.RetrievalError, "--exclude"):
+                backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime)
+            self.assertEqual(inference.call_count, 2)
+            self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 2)
+            self.assertTrue(backend.query(con, "App")["results"])
+            self.assertFalse(con.execute("SELECT 1 FROM files WHERE path='bundle.js'").fetchone())
+
+    def start_error_test_server(self, *, index_first=True):
+        if index_first:
+            self.index()
+        proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", "0"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        def cleanup():
+            if proc.poll() is None:
+                proc.terminate()
+            proc.wait(timeout=5)
+            proc.stdout.close()
+            proc.stderr.close()
+        self.addCleanup(cleanup)
+        startup = proc.stdout.readline()
+        self.assertIn("Local Context7", startup)
+        return startup.split("http://", 1)[1].split(" ", 1)[0]
+
+    def assert_json_http_error(self, request, status, pattern):
+        with self.assertRaises(HTTPError) as error:
+            urlopen(request, timeout=10)
+        with error.exception as response:
+            self.assertEqual(response.code, status)
+            self.assertEqual(response.headers.get_content_type(), "application/json")
+            payload = json.load(response)
+        self.assertRegex(payload["error"], pattern)
+        self.assertNotIn("codeSnippets", payload)
+
+    def test_http_sqlite_busy_timeout_is_explicit_and_cli_default_is_retained(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("PRAGMA busy_timeout").fetchone()[0], 5000)
+        with backend.connect(self.db, timeout=backend.HTTP_SQLITE_TIMEOUT) as con:
+            self.assertEqual(con.execute("PRAGMA busy_timeout").fetchone()[0], 1000)
+
+    def test_http_empty_or_incomplete_replacement_metadata_returns_json_and_recovers(self):
+        base = "http://" + self.start_error_test_server()
+        with backend.connect(self.db) as con:
+            original = backend.metadata(con)
+            con.execute("DELETE FROM meta")
+        endpoints = ("/api/v2/libs/search?libraryName=billing", "/api/v2/context?libraryId=/local/billing&query=invoice")
+        for endpoint in endpoints:
+            self.assert_json_http_error(base + endpoint, 409, "Database is not indexed")
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "index_version", "7")
+        for endpoint in endpoints:
+            self.assert_json_http_error(base + endpoint, 409, "metadata is incomplete")
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "index_version", "5")
+        self.assert_json_http_error(base + endpoints[1], 409, "Index format changed; reindex")
+        for missing in ("model_cache", "model_revision", "embedding_runtime", "reranker_revision"):
+            with self.subTest(missing=missing):
+                with backend.connect(self.db) as con:
+                    for key, value in original.items():
+                        backend.put_meta(con, key, value)
+                    backend.put_meta(con, "embed_model", backend.DEFAULT_MODEL)
+                    backend.put_meta(con, "reranker_model", backend.DEFAULT_RERANKER)
+                    con.execute("DELETE FROM meta WHERE key=?", (missing,))
+                for mode in ("&mode=semantic", "&rerank=cross-encoder"):
+                    self.assert_json_http_error(base + endpoints[1] + mode, 409, "metadata is incomplete")
+        with backend.connect(self.db) as con:
+            for key, value in original.items():
+                backend.put_meta(con, key, value)
+        with urlopen(base + endpoints[1], timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+
+    def test_numeric_metadata_rejects_invalid_current_query_and_index_before_processing(self):
+        base = Path(self.tmp.name).resolve()
+        cache, runtime = base / "cache", base / "runtime"
+        cache.mkdir()
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            original = backend.metadata(con)
+        common = ("", "abc", "1.5", "true", "9" * 5000)
+        cases = {
+            "chunk_chars": common + ("127", "12001", "-128"),
+            "oversized_chunks": common + ("-1", str(backend.MAX_CHUNKS + 1)),
+            "vector_dim": common + ("0", "-1"),
+        }
+        for field, values in cases.items():
+            for value in values:
+                with self.subTest(field=field, value=value if len(value) < 100 else "5000 digits"):
+                    with backend.connect(self.db) as con:
+                        for key, item in original.items():
+                            backend.put_meta(con, key, item)
+                        backend.put_meta(con, field, value)
+                    before = self.db.read_bytes()
+                    with mock.patch.object(backend, "assert_fresh", side_effect=AssertionError("freshness must not run")) as freshness, mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("model must not run")) as embedding, mock.patch.object(backend, "reranker_scores", side_effect=AssertionError("reranker must not run")) as reranker:
+                        with backend.connect(self.db) as con:
+                            with self.assertRaisesRegex(backend.RetrievalError, "numeric metadata " + field + " is invalid; restore a valid index or use a fresh database"):
+                                backend.query(con, "InvoiceMaker", mode="semantic")
+                        with self.assertRaisesRegex(backend.RetrievalError, "numeric metadata " + field):
+                            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+                        freshness.assert_not_called()
+                        embedding.assert_not_called()
+                        reranker.assert_not_called()
+                    self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            for key, value in original.items():
+                backend.put_meta(con, key, value)
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_numeric_metadata_boundaries_optional_dimensions_and_older_migration(self):
+        self.index()
+        for chunk_chars in (128, 12000):
+            for oversized in (0, backend.MAX_CHUNKS):
+                with self.subTest(chunk_chars=chunk_chars, oversized=oversized):
+                    with backend.connect(self.db) as con:
+                        backend.put_meta(con, "chunk_chars", str(chunk_chars))
+                        backend.put_meta(con, "oversized_chunks", str(oversized))
+                    before = self.db.read_bytes()
+                    with backend.connect(self.db) as con:
+                        result = backend.query(con, "InvoiceMaker")
+                    self.assertEqual(result["chunkChars"], chunk_chars)
+                    self.assertEqual(result["oversizedChunks"], oversized)
+                    self.assertTrue(result["results"])
+                    self.assertEqual(self.db.read_bytes(), before)
+        for dimension in ("1", str(2 ** 64), " +0002 "):
+            with backend.connect(self.db) as con:
+                backend.put_meta(con, "vector_dim", dimension)
+                backend.put_meta(con, "chunk_chars", " +00128 ")
+                backend.put_meta(con, "oversized_chunks", "0")
+            with backend.connect(self.db) as con:
+                self.assertEqual(backend.query(con, "InvoiceMaker")["chunkChars"], 128)
+        with backend.connect(self.db) as con:
+            con.execute("DELETE FROM meta WHERE key='vector_dim'")
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+        for chunk_chars in (128, 12000):
+            backend.index(self.root, self.db, "/local/billing", self.docs, None, None, chunk_chars=chunk_chars)
+            self.assertEqual(backend.index(self.root, self.db, "/local/billing", self.docs, None, None, chunk_chars=chunk_chars)["changed"], 0)
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "index_version", "6")
+            con.execute("DELETE FROM meta WHERE key IN ('chunk_chars','oversized_chunks')")
+            backend.put_meta(con, "vector_dim", "9" * 5000)
+        migrated = self.index()
+        self.assertEqual(migrated["changed"], 2)
+        with backend.connect(self.db) as con:
+            meta = backend.metadata(con)
+            self.assertEqual(meta["index_version"], backend.INDEX_VERSION)
+            self.assertEqual(meta["chunk_chars"], str(backend.DEFAULT_CHUNK_CHARS))
+            self.assertEqual(meta["oversized_chunks"], "0")
+            self.assertNotIn("vector_dim", meta)
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_numeric_metadata_real_cli_and_http_errors_are_controlled_immutable_and_recover(self):
+        base = "http://" + self.start_error_test_server()
+        with backend.connect(self.db) as con:
+            original = backend.metadata(con)
+        endpoints = ("/api/v2/libs/search?libraryName=billing", "/api/v2/context?libraryId=/local/billing&query=invoice")
+        commands = (
+            [sys.executable, str(SCRIPT), "query", "--database", str(self.db), "--query", "InvoiceMaker"],
+            [sys.executable, str(SCRIPT), "index", str(self.root), "--database", str(self.db), "--library-id", "/local/billing", "--docs-root", str(self.docs)],
+        )
+        for field, value in (("chunk_chars", "invalid"), ("oversized_chunks", "false"), ("vector_dim", "-1"), ("chunk_chars", "9" * 5000)):
+            with self.subTest(field=field, huge=len(value) > 100):
+                with backend.connect(self.db) as con:
+                    for key, item in original.items():
+                        backend.put_meta(con, key, item)
+                    con.execute("DELETE FROM meta WHERE key='vector_dim'")
+                    backend.put_meta(con, field, value)
+                before = self.db.read_bytes()
+                for command in commands:
+                    result = subprocess.run(command, text=True, capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn("retrieval error: Index numeric metadata " + field, result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+                    self.assertEqual(result.stdout, "")
+                for endpoint in endpoints:
+                    self.assert_json_http_error(base + endpoint, 409, "numeric metadata " + field)
+                self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            for key, value in original.items():
+                backend.put_meta(con, key, value)
+            con.execute("DELETE FROM meta WHERE key='vector_dim'")
+        with urlopen(base + endpoints[1], timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+        self.assertEqual(self.index()["changed"], 0)
+
+    def test_exact_bracket_exclusions_and_reset_scope_on_next_invocation(self):
+        (self.root / "web/[id]").mkdir(parents=True)
+        (self.root / "web/[id]/page.ts").write_text("const bracketPage = 'excluded';", encoding="utf-8")
+        (self.docs / "web/[id]").mkdir(parents=True)
+        (self.docs / "web/[id]/page.md").write_text("excluded bracket docs", encoding="utf-8")
+        (self.root / "web/i").mkdir()
+        (self.root / "web/i/page.ts").write_text("const ordinaryPage = 'included';", encoding="utf-8")
+        scoped = backend.index(self.root, self.db, "/local/billing", self.docs, None, None, excludes=["web/[id]"])
+        self.assertEqual(scoped["files"], 3)
+        with backend.connect(self.db) as con:
+            paths = {row[0] for row in con.execute("SELECT path FROM files")}
+            self.assertIn("web/i/page.ts", paths)
+            self.assertNotIn("web/[id]/page.ts", paths)
+            self.assertNotIn("web/[id]/page.md", paths)
+            self.assertEqual(backend.stored_excludes(backend.metadata(con)), ("web/[id]",))
+        restored = self.index()
+        self.assertEqual(restored["changed"], 2)
+        self.assertEqual(restored["files"], 5)
+        self.assertEqual(restored["excludes"], [])
+
+    def test_bad_exclusion_metadata_message_describes_repair_and_preserves_index(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "excludes", "invalid JSON")
+        before = self.db.read_bytes()
+        with self.assertRaisesRegex(backend.RetrievalError, "Invalid exclusion metadata; repair metadata or use a fresh database") as error:
+            self.index()
+        self.assertNotIn("reindex before querying", str(error.exception))
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_http_locked_database_returns_json_and_recovers(self):
+        base = "http://" + self.start_error_test_server()
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as locked:
+            locked.execute("BEGIN EXCLUSIVE")
+            self.assert_json_http_error(base + "/api/v2/context?libraryId=/local/billing&query=invoice", 409, "database is locked")
+            locked.rollback()
+        with urlopen(base + "/api/v2/context?libraryId=/local/billing&query=invoice") as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+
+    def test_http_file_and_value_errors_return_json(self):
+        base = "http://" + self.start_error_test_server()
+        endpoint = base + "/api/v2/context?libraryId=/local/billing&query=invoice"
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "chunk_chars", "invalid")
+        self.assert_json_http_error(endpoint, 409, "numeric metadata chunk_chars is invalid; restore a valid index or use a fresh database")
+        with backend.connect(self.db) as con:
+            backend.put_meta(con, "chunk_chars", "1200")
+        moved = self.root.with_name("moved")
+        self.root.rename(moved)
+        self.assert_json_http_error(endpoint, 409, "^Cannot inventory source:")
+        moved.rename(self.root)
+        self.db.unlink()
+        self.assert_json_http_error(endpoint, 409, "Database does not exist")
+
+    def test_http_nonloopback_host_is_refused_and_local_hosts_work(self):
+        base = "http://" + self.start_error_test_server()
+        endpoint = base + "/api/v2/context?libraryId=/local/billing&query=invoice"
+        self.assert_json_http_error(Request(endpoint, headers={"Host": "hostile.example"}), 403, "loopback Host")
+        for authority in ("127.0.0.1", "localhost", "[::1]"):
+            with urlopen(Request(endpoint, headers={"Host": authority})) as response:
+                self.assertTrue(json.load(response)["codeSnippets"])
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_model_indexes_long_asset_with_exclusion_and_no_docs(self):
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        (self.root / "App.java").write_text("class App { void createInvoice() {} }\n", encoding="utf-8")
+        asset = self.root / "bundle.js"
+        asset.write_text("x" * 22000, encoding="utf-8")
+        result = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, excludes=["bundle.js"])
+        self.assertEqual(result["files"], 2)
+        asset.write_text("y" * 22000, encoding="utf-8")
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "createInvoice", mode="hybrid")["results"])
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+
+    def test_unborn_git_worktree_keeps_force_tracked_ignored_source(self):
+        from repo_files import scan_repository
+        (self.root / ".gitignore").write_text("Tracked.java\n", encoding="utf-8")
+        (self.root / "Tracked.java").write_text("class TrackedInvoice {}\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        subprocess.run(["git", "-C", str(self.root), "add", "-f", "--", "Tracked.java"], check=True)
+        self.assertTrue(backend.git_context(self.root))
+        self.assertEqual(backend.revision(self.root), "non-git")
+        self.assertNotEqual(subprocess.run(["git", "-C", str(self.root), "rev-parse", "--verify", "HEAD"], capture_output=True).returncode, 0)
+        self.assertIn("Tracked.java", {row["path"] for row in scan_repository(self.root)["files"]})
+        self.assertIn("Tracked.java", {row[1] for row in backend.corpus_files(self.root, self.docs)})
+        self.assertEqual(self.index()["files"], 3)
+        with backend.connect(self.db) as con:
+            result = backend.query(con, "TrackedInvoice")
+            self.assertTrue(any(row["source"]["path"] == "Tracked.java" for row in result["results"]))
+
+    def test_ancestor_or_equal_docs_root_is_refused_before_database_or_model_processing(self):
+        source = self.root / "src"
+        backend.index(source, self.db, "/local/billing", None, None, None)
+        before = self.db.read_bytes()
+        for docs in (source, self.root, self.root.parent):
+            with self.subTest(docs=docs):
+                with mock.patch.object(backend, "embedding_batches") as inference, mock.patch.object(backend, "reranker_scores") as reranker:
+                    with self.assertRaisesRegex(backend.RetrievalError, "Docs root must not equal or contain the source root"):
+                        backend.index(source, self.db, "/local/billing", docs, backend.DEFAULT_MODEL, None, self.root / "missing-runtime", reranker_model=backend.DEFAULT_RERANKER)
+                    inference.assert_not_called()
+                    reranker.assert_not_called()
+                self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_nested_docs_root_keeps_code_and_indexes_markdown_once(self):
+        docs = self.root / "manual"
+        docs.mkdir()
+        (docs / "guide.md").write_text("InvoiceMaker manual for invoice creation\n", encoding="utf-8")
+        (self.root / "README.md").write_text("InvoiceMaker repository overview\n", encoding="utf-8")
+        result = backend.index(self.root, self.db, "/local/billing", docs, None, None)
+        self.assertEqual(result["files"], 3)
+        with backend.connect(self.db) as con:
+            files = {(row["kind"], row["path"]) for row in con.execute("SELECT kind,path FROM files")}
+            self.assertEqual(files, {("code", "src/service.py"), ("repo-docs", "README.md"), ("docs", "guide.md")})
+            paths = {(row["source"]["kind"], row["source"]["path"]) for row in backend.query(con, "InvoiceMaker")["results"]}
+            self.assertIn(("code", "src/service.py"), paths)
+            self.assertIn(("docs", "guide.md"), paths)
+        self.assertEqual(backend.index(self.root, self.db, "/local/billing", docs, None, None)["changed"], 0)
+
+    def test_all_control_candidates_are_counted_skipped_and_safely_displayed(self):
+        controls = [chr(value) for value in (*range(32), *range(127, 160), 0x2028, 0x2029)]
+        candidates = [f"Bad{character}.java" for character in controls] + ["src/service.py"]
+        def inventory(*_args, **_kwargs):
+            yield from candidates
+        with mock.patch.object(backend, "_candidates", side_effect=inventory), mock.patch.object(backend, "allowed", wraps=backend.allowed) as allowed:
+            skipped = []
+            files = backend.corpus_files(self.root, None, skipped=skipped)
+            self.assertEqual([row[1] for row in files], ["src/service.py"])
+            self.assertEqual(allowed.call_count, 1)
+            self.assertEqual(len(skipped), 67)
+            self.assertTrue(all(row["reason"] == "control character in path" for row in skipped))
+            self.assertTrue(all(not any(ord(character) < 32 or 127 <= ord(character) < 160 or character in "\u2028\u2029" for character in row["path"]) for row in skipped))
+            self.assertEqual(skipped[-1]["path"], "Bad\\u2029.java")
+            self.assertEqual(backend.safe_skipped_path("Zażółć.java"), "Zażółć.java")
+            self.assertEqual([json.loads('"' + row["path"] + '"') for row in skipped], candidates[:-1])
+            result = backend.index(self.root, self.db, "/local/billing", None, None, None)
+            self.assertEqual(result["skippedCount"], 67)
+            self.assertEqual(result["files"], 1)
+            json.dumps(result, ensure_ascii=False).encode("utf-8")
+            with backend.connect(self.db) as con:
+                self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+            with mock.patch.object(backend, "MAX_SOURCE_CANDIDATES", 66):
+                with self.assertRaisesRegex(backend.RetrievalError, "Candidate limit"):
+                    backend.index(self.root, self.db, "/local/billing", None, None, None)
+
+    @unittest.skipIf(os.name == "nt", "Windows cannot create ASCII control filenames")
+    def test_real_control_filenames_are_skipped_in_git_and_non_git_roots(self):
+        for name in ("Bad\n.java", "Bad\t.java", "Bad\x7f.java", "Bad\x85.java", "Bad\u2028.java", "Bad\u2029.java"):
+            (self.root / name).write_text("class CitationConfusion {}\n", encoding="utf-8")
+        for git in (False, True):
+            with self.subTest(git=git):
+                if git:
+                    subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+                result = self.index()
+                self.assertEqual(result["skippedCount"], 6)
+                self.assertEqual(result["files"], 2)
+                self.assertEqual({row["path"] for row in result["skipped"]}, {"Bad\\n.java", "Bad\\t.java", "Bad\\u007f.java", "Bad\\u0085.java", "Bad\\u2028.java", "Bad\\u2029.java"})
+                with backend.connect(self.db) as con:
+                    self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+                    self.assertFalse(con.execute("SELECT 1 FROM chunks WHERE body LIKE '%CitationConfusion%'").fetchone())
+
+    def test_unchanged_embedded_reindex_warms_new_or_cleared_cache_without_vector_writes(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            initial = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            before = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+            for event in ("INSERT", "UPDATE", "DELETE"):
+                con.execute(f"CREATE TRIGGER no_vector_{event.lower()} BEFORE {event} ON chunk_vectors BEGIN SELECT RAISE(ABORT, 'unchanged vector rewrite'); END")
+        replacement = Path(self.tmp.name).resolve() / "new-empty-cache"
+        replacement.mkdir()
+        for target in (replacement, cache):
+            with self.subTest(cache=target):
+                with mock.patch.object(backend, "embedding_batches", side_effect=batches) as inference:
+                    result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, target, runtime)
+                    self.assertEqual(inference.call_count, 1)
+                    self.assertEqual(inference.call_args.args[0], [["local retrieval warmup"]])
+                    self.assertEqual(inference.call_args.args[3], target)
+                    self.assertTrue(inference.call_args.kwargs["download"])
+                self.assertEqual(result["changed"], 0)
+                self.assertEqual(result["corpusId"], initial["corpusId"])
+                with backend.connect(self.db) as con:
+                    self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), before)
+                    self.assertEqual(backend.metadata(con)["model_cache"], str(target))
+
+    def test_unchanged_model_warmup_failure_or_wrong_dimension_rolls_back(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        before = self.db.read_bytes()
+        with backend.connect(self.db) as con:
+            original_meta = backend.metadata(con)
+            original_vectors = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        failures = (backend.RetrievalError("new cache warmup failed"), [[1.0, 0.0, 0.0]], [[0.0, 0.0]], [[float("nan"), 1.0]])
+        for failure in failures:
+            with self.subTest(failure=failure):
+                options = {"side_effect": failure} if isinstance(failure, Exception) else {"return_value": failure}
+                with mock.patch.object(backend, "embeddings", **options):
+                    with self.assertRaises(backend.RetrievalError):
+                        backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, Path(self.tmp.name) / "bad-cache", runtime)
+                self.assertEqual(self.db.read_bytes(), before)
+                with backend.connect(self.db) as con:
+                    self.assertEqual(backend.metadata(con), original_meta)
+                    self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), original_vectors)
+
+    def test_empty_embedded_corpus_still_validates_model_without_storing_warmup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        empty = Path(self.tmp.name).resolve() / "empty-source"
+        empty.mkdir()
+        with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]) as warm:
+            result = backend.index(empty, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime)
+            self.assertEqual(warm.call_count, 1)
+            self.assertTrue(warm.call_args.kwargs["download"])
+        self.assertEqual(result["chunks"], 0)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 0)
+            self.assertEqual(backend.metadata(con)["vector_dim"], "2")
+        before = self.db.read_bytes()
+        with mock.patch.object(backend, "embeddings", side_effect=backend.RetrievalError("empty corpus model unavailable")):
+            with self.assertRaisesRegex(backend.RetrievalError, "model unavailable"):
+                backend.index(empty, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime)
+        self.assertEqual(self.db.read_bytes(), before)
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_unchanged_index_populates_new_cache_from_local_snapshot_and_queries_offline(self):
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            before = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        replacement = Path(self.tmp.name).resolve() / "new-cache"
+        replacement.mkdir()
+        original_embeddings = backend.embeddings
+        def warm_from_local_snapshot(texts, model, target, local_runtime, **kwargs):
+            self.assertEqual(texts, ["local retrieval warmup"])
+            self.assertEqual(target, replacement)
+            self.assertTrue(kwargs["download"])
+            self.assertEqual(list(replacement.iterdir()), [])
+            # Supply an existing public model snapshot, avoiding a remote download.
+            shutil.copytree(cache / model, replacement / model)
+            return original_embeddings(texts, model, target, local_runtime, **kwargs)
+        with mock.patch.object(backend, "embeddings", side_effect=warm_from_local_snapshot) as warm:
+            result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, replacement, runtime)
+            self.assertEqual(warm.call_count, 1)
+            self.assertEqual(result["changed"], 0)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), before)
+            self.assertEqual(backend.metadata(con)["model_cache"], str(replacement))
+            self.assertTrue(backend.query(con, "InvoiceMaker", mode="semantic")["results"])
+        committed = self.db.read_bytes()
+        with mock.patch.object(backend, "embeddings", side_effect=backend.RetrievalError("controlled actual-index warmup failure")):
+            with self.assertRaisesRegex(backend.RetrievalError, "warmup failure"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, Path(self.tmp.name) / "unavailable-cache", runtime)
+        self.assertEqual(self.db.read_bytes(), committed)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con)["model_cache"], str(replacement))
+            self.assertTrue(backend.query(con, "InvoiceMaker", mode="semantic")["results"])
+
+    @unittest.skipIf(os.name == "nt", "Windows cannot create literal-backslash filenames")
+    def test_literal_backslash_filename_keeps_exact_index_and_citation_identity(self):
+        from repo_files import read_safe_text
+        (self.root / "part").mkdir()
+        nested = self.root / "part/file.py"
+        literal = self.root / "part\\file.py"
+        nested.write_text("class NestedInvoice: pass\n", encoding="utf-8")
+        literal.write_text("class LiteralInvoice: pass\n", encoding="utf-8")
+        for git in (False, True):
+            with self.subTest(git=git):
+                if git:
+                    subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+                    subprocess.run(["git", "-C", str(self.root), "add", "--", "part/file.py", "part\\file.py"], check=True)
+                self.assertEqual(self.index()["files"], 4)
+                with backend.connect(self.db) as con:
+                    paths = {row[0] for row in con.execute("SELECT path FROM files")}
+                    self.assertIn("part/file.py", paths)
+                    self.assertIn("part\\file.py", paths)
+                    for name, expected, path in (("LiteralInvoice", "part\\file.py", literal), ("NestedInvoice", "part/file.py", nested)):
+                        result = backend.query(con, name)
+                        source = next(row["source"] for row in result["results"] if row["source"]["path"] == expected)
+                        text, file_hash = read_safe_text(self.root, source["path"])
+                        self.assertEqual(text, path.read_text(encoding="utf-8"))
+                        self.assertEqual(file_hash, source["fileSha256"])
+                        self.assertIn(name, text)
+
+    @contextmanager
+    def embedding_process_fixture(self, program, *, helper_path=None, wait_for_backpressure=False):
+        target = backend.RETRIEVAL if helper_path is None else helper_path
+        helper = Path(self.tmp.name).resolve() / "embedding-helper.py"
+        helper.write_text(program, encoding="utf-8", newline="\n")
+        self.assertEqual(helper.read_bytes(), program.encode("utf-8"))
+        processes, readers, responses = [], [], []
+        original_popen = subprocess.Popen
+        original_thread = threading.Thread
+        original_queue = backend.queue.Queue
+        class ObservedQueue(original_queue):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.full_attempted = threading.Event()
+            def put(self, item, *args, **kwargs):
+                if self.full():
+                    self.full_attempted.set()
+                return super().put(item, *args, **kwargs)
+            def get(self, *args, **kwargs):
+                if wait_for_backpressure and not self.full_attempted.wait(timeout=2):
+                    raise AssertionError("reader did not encounter backpressure")
+                return super().get(*args, **kwargs)
+        def launch(command, **kwargs):
+            if len(command) < 2 or command[1] != str(target):
+                return original_popen(command, **kwargs)
+            proc = original_popen([sys.executable, "-u", str(helper)], **kwargs)
+            processes.append(proc)
+            return proc
+        def reader(*args, **kwargs):
+            thread = original_thread(*args, **kwargs)
+            readers.append(thread)
+            return thread
+        def response_queue(*args, **kwargs):
+            queue = ObservedQueue(*args, **kwargs)
+            responses.append(queue)
+            return queue
+        try:
+            with mock.patch.object(subprocess, "Popen", side_effect=launch), mock.patch.object(backend.threading, "Thread", side_effect=reader), mock.patch.object(backend.queue, "Queue", side_effect=response_queue):
+                yield processes, readers, responses
+        finally:
+            # A failed assertion must not leave the controlled child running.
+            for proc in processes:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait(timeout=5)
+
+    def assert_embedding_process_closed(self, processes, readers):
+        self.assertTrue(processes)
+        for proc in processes:
+            self.assertIsNotNone(proc.poll())
+            self.assertTrue(proc.stdin.closed)
+            self.assertTrue(proc.stdout.closed)
+        self.assertTrue(readers)
+        self.assertTrue(all(not reader.is_alive() for reader in readers))
+
+    def test_embedding_response_rejects_wide_continuous_and_unterminated_real_output(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        cases = (
+            "import sys,json\nsys.stdin.readline()\nprint(json.dumps([[1.0]*128]),flush=True)\n",
+            "import sys,os\nsys.stdin.readline()\nwhile True: os.write(1,b'9'*64)\n",
+            "import sys\nsys.stdin.readline()\nsys.stdout.write('[[1.0]]')\nsys.stdout.flush()\n",
+        )
+        for program in cases:
+            with self.subTest(program=program), self.embedding_process_fixture(program) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 128):
+                start = time.monotonic()
+                with self.assertRaisesRegex(backend.RetrievalError, "response exceeds limit or is unterminated"):
+                    list(backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+                self.assertLess(time.monotonic() - start, 5)
+                self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_exact_response_ceiling_and_normal_real_multibatch(self):
+        self.assertEqual(backend.MAX_EMBEDDING_RESPONSE_CHARS, 8 * 1024 * 1024)
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys,json\nfor line in sys.stdin:\n    vectors=[[1.0,0.0] for _ in json.loads(line)]\n    payload=json.dumps(vectors)\n    sys.stdout.write(payload+' '*(256-len(payload)-1)+'\\n')\n    sys.stdout.flush()\n"
+        with self.embedding_process_fixture(program) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 256):
+            result = list(backend.embedding_batches([["one", "two"], ["three"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+            self.assertEqual(result, [[[1.0, 0.0], [1.0, 0.0]], [[1.0, 0.0]]])
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_unsolicited_real_flood_has_bounded_queue_and_early_close_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys,os\nsys.stdin.readline()\nwhile True: os.write(1,b'[[1.0]]\\n'*128)\n"
+        with self.embedding_process_fixture(program) as (processes, readers, responses):
+            stream = backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False)
+            self.addCleanup(stream.close)
+            self.assertEqual(next(stream), [[1.0]])
+            self.assertTrue(responses[0].full_attempted.wait(timeout=2), "reader did not encounter backpressure")
+            self.assertEqual(responses[0].maxsize, 1)
+            self.assertLessEqual(responses[0].qsize(), 1)
+            start = time.monotonic()
+            stream.close()
+            self.assertLess(time.monotonic() - start, 2)
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_malformed_real_helper_shapes_raise_owned_errors_and_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        for output in ("null", "3", "{}", "[[]]", "[[1.0]] trailing"):
+            program = "import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\n"
+            with self.subTest(output=output), self.embedding_process_fixture(program) as (processes, readers, _):
+                with self.assertRaisesRegex(backend.RetrievalError, "Invalid embedding output"):
+                    list(backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+                self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_rejected_real_update_rolls_back_existing_index_bytes(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        normal = "import sys,json\nfor line in sys.stdin: print(json.dumps([[1.0,0.0] for _ in json.loads(line)]),flush=True)\n"
+        with self.embedding_process_fixture(normal) as (processes, readers, _):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+            self.assert_embedding_process_closed(processes, readers)
+        with backend.connect(self.db) as con:
+            old_metadata = backend.metadata(con)
+            old_vectors = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        before = self.db.read_bytes()
+        for path, body in ((self.root / "src/service.py", "class ChangedInvoice: pass\n"), (self.docs / "guide.md", "Changed billing guidance.\n")):
+            path.write_text(body, encoding="utf-8", newline="\n")
+            self.assertEqual(path.read_bytes(), body.encode("utf-8"))
+        for output, pattern in (("9" * 129, "response exceeds limit"), ('[["invalid"]]', "expected finite nonboolean numbers")):
+            fail_second = "import sys,json\nfor number,line in enumerate(sys.stdin):\n    print(json.dumps([[1.0,0.0]]) if number==0 else " + repr(output) + ",flush=True)\n"
+            with self.subTest(output=output), self.embedding_process_fixture(fail_second) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 128), mock.patch.object(backend, "MODEL_BATCH", 1):
+                with self.assertRaisesRegex(backend.RetrievalError, pattern):
+                    backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+                self.assert_embedding_process_closed(processes, readers)
+            self.assertEqual(self.db.read_bytes(), before)
+            with backend.connect(self.db) as con:
+                self.assertEqual(backend.metadata(con), old_metadata)
+                self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), old_vectors)
+
+    def test_embedding_values_reject_real_malformed_numbers_before_yield_and_keep_normal_bits(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        for value in ("invalid", None, [1], True, False, math.nan, math.inf, -math.inf, 10 ** 400):
+            output = json.dumps([[value]])
+            program = "import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\nsys.stdin.read()\n"
+            with self.subTest(value=value), self.embedding_process_fixture(program) as (processes, readers, _):
+                stream = backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False)
+                self.addCleanup(stream.close)
+                start = time.monotonic()
+                with self.assertRaisesRegex(backend.RetrievalError, "Invalid embedding output: expected finite nonboolean numbers"):
+                    next(stream)
+                self.assertLess(time.monotonic() - start, 5)
+                self.assert_embedding_process_closed(processes, readers)
+        normal = "import sys\nfor line in sys.stdin: print('[[3,4.0]]',flush=True)\n"
+        with self.embedding_process_fixture(normal) as (processes, readers, _):
+            vectors = list(backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+            self.assertEqual(vectors, [[[3, 4.0]]])
+            self.assertEqual(backend.pack_vector(vectors[0][0]).hex(), "9a99193fcdcc4c3f")
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_values_direct_pack_has_owned_errors_and_preserves_normalization_bits(self):
+        for vector in (None, "invalid", True, 3, [], ["invalid"], [None], [[1]], [True], [False], [10 ** 400], [math.nan], [math.inf], [-math.inf]):
+            with self.subTest(vector=vector):
+                with self.assertRaisesRegex(backend.RetrievalError, "Embedding contains invalid values"):
+                    backend.pack_vector(vector)
+        for vector in ([0], [0.0, 0.0]):
+            with self.subTest(vector=vector):
+                with self.assertRaisesRegex(backend.RetrievalError, "zero length"):
+                    backend.pack_vector(vector)
+        for vector in ([1e308], [10 ** 200], [1e300, -1e300]):
+            with self.subTest(vector=vector):
+                with self.assertRaisesRegex(backend.RetrievalError, "normalization norm"):
+                    backend.pack_vector(vector)
+        self.assertEqual(backend.pack_vector([3, 4.0]).hex(), "9a99193fcdcc4c3f")
+        self.assertEqual(backend.pack_vector([1, 0.0]).hex(), "0000803f00000000")
+
+    def test_embedding_values_actual_cli_error_and_http_json_recovery_leave_index_unchanged(self):
+        base = Path(self.tmp.name).resolve()
+        cache, runtime, control = base / "cache", base / "runtime", base / "vector.json"
+        package = runtime / "node_modules/@huggingface/transformers"
+        (package / "src").mkdir(parents=True)
+        module = "import { readFileSync } from 'node:fs';\nexport const env={};\nexport async function pipeline(){return async texts=>({tolist:()=>texts.map(()=>JSON.parse(readFileSync(new URL(" + json.dumps(control.as_uri()) + "),'utf8')))}); }\n"
+        for path, text in ((package / "package.json", '{"type":"module"}\n'), (package / "src/transformers.js", module), (control, "[3,4.0]\n")):
+            path.write_text(text, encoding="utf-8", newline="\n")
+            self.assertEqual(path.read_bytes(), text.encode("utf-8"))
+        backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        before = self.db.read_bytes()
+        control.write_text('["invalid"]\n', encoding="utf-8", newline="\n")
+        self.assertEqual(control.read_bytes(), b'["invalid"]\n')
+        result = subprocess.run([sys.executable, str(SCRIPT), "query", "--database", str(self.db), "--query", "invoice", "--mode", "semantic"], text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("retrieval error: Invalid embedding output", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertEqual(result.stdout, "")
+        endpoint = "http://" + self.start_error_test_server(index_first=False) + "/api/v2/context?libraryId=/local/billing&query=invoice"
+        self.assert_json_http_error(endpoint + "&mode=semantic", 409, "Invalid embedding output")
+        with urlopen(endpoint, timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+        control.write_text("[3,4.0]\n", encoding="utf-8", newline="\n")
+        self.assertEqual(control.read_bytes(), b"[3,4.0]\n")
+        with urlopen(endpoint + "&mode=semantic", timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_reranker_real_unsolicited_flood_reaches_backpressure_and_cleans_up(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys\nsys.stdin.readline()\nsys.stdout.write('[1.0]\\n'*256)\nsys.stdout.flush()\nsys.stdin.read()\n"
+        with self.embedding_process_fixture(program, helper_path=backend.RERANK_HELPER, wait_for_backpressure=True) as (processes, readers, responses):
+            start = time.monotonic()
+            scores = backend.reranker_scores("query", ["passage"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, cache, download=False)
+            self.assertEqual(scores, [1.0])
+            self.assertTrue(responses[0].full_attempted.is_set())
+            self.assertEqual(responses[0].maxsize, 1)
+            self.assertLessEqual(responses[0].qsize(), 1)
+            self.assertLess(time.monotonic() - start, 5)
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_reranker_real_exact_boundary_multibatch_scores_and_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys,json\nfor line in sys.stdin:\n    request=json.loads(line)\n    assert len(request['passages'])<=8\n    payload=json.dumps([float(len(p)) for p in request['passages']])\n    sys.stdout.write(payload+' '*(4096-len(payload)-1)+'\\n')\n    sys.stdout.flush()\n"
+        passages = ["p" * size for size in range(1, 14)]
+        with self.embedding_process_fixture(program, helper_path=backend.RERANK_HELPER) as (processes, readers, _):
+            scores = backend.reranker_scores("query", passages, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, cache, download=False)
+            self.assertEqual(scores, [float(size) for size in range(1, 14)])
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_reranker_real_invalid_replies_and_reader_failures_have_owned_errors_and_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        cases = [
+            "import sys\nsys.stdin.readline()\nprint('9'*4096,flush=True)\n",
+            "import sys\nsys.stdin.readline()\nsys.stdout.write('[1.0]')\nsys.stdout.flush()\n",
+            "import sys,os\nsys.stdin.readline()\nos.write(1,b'\\xff\\n')\n",
+        ]
+        cases.extend("import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\n" for output in ("null", "3", "{}", "[[1.0]]", "[true]", "[NaN]", "[" + str(10 ** 400) + "]"))
+        for program in cases:
+            with self.subTest(program=program), self.embedding_process_fixture(program, helper_path=backend.RERANK_HELPER) as (processes, readers, _):
+                start = time.monotonic()
+                with self.assertRaisesRegex(backend.RetrievalError, "Invalid reranker output"):
+                    backend.reranker_scores("query", ["passage"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, cache, download=False)
+                self.assertLess(time.monotonic() - start, 5)
+                self.assert_embedding_process_closed(processes, readers)
+
+    def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        supplied = {"PATH": "local-toolchain", "SystemRoot": "C:\\Windows", "WINDIR": "C:\\Windows", "TEMP": str(cache), "TMP": str(cache), "NODE_OPTIONS": "--inspect", "HF_TOKEN": "dummy-test-value", "OPENAI_API_KEY": "dummy-test-value", "ANTHROPIC_API_KEY": "dummy-test-value"}
+        with mock.patch.dict(os.environ, supplied, clear=True):
+            offline = backend.inference_environment(cache, download=False)
+            online = backend.inference_environment(cache, download=True)
+        self.assertEqual({key.upper() for key in offline}, {"PATH", "HOME", "HF_HUB_OFFLINE", "SYSTEMROOT", "WINDIR", "TEMP", "TMP"})
+        self.assertEqual(offline["HOME"], str(cache))
+        self.assertEqual(offline["HF_HUB_OFFLINE"], "1")
+        self.assertEqual(online["HF_HUB_OFFLINE"], "0")
+        # Windows os.environ normalizes keys to uppercase; OS equivalence
+        # should not depend on the spelling retained by a plain mapping.
+        normalized = {key.upper(): value for key, value in offline.items()}
+        for key in ("SystemRoot", "WINDIR", "TEMP", "TMP"):
+            self.assertEqual(normalized[key.upper()], supplied[key])
+        with mock.patch.object(os, "environ", supplied):
+            normal_mapping = backend.inference_environment(cache, download=False)
+        self.assertIn("SystemRoot", normal_mapping)
+        self.assertNotIn("SYSTEMROOT", normal_mapping)
+        self.assertEqual(normal_mapping["SystemRoot"], supplied["SystemRoot"])
+
+    def test_runtime_without_sqlite_extension_api_falls_back_only_when_requested(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def fake_batches(batches, *_args, **_kwargs):
+            for batch in batches:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        class NoExtensionAPI:
+            def __init__(self, connection):
+                self.connection = connection
+            def __getattr__(self, name):
+                if name in ("enable_load_extension", "load_extension"):
+                    raise AttributeError(name)
+                return getattr(self.connection, name)
+        class InstalledPackage:
+            @staticmethod
+            def load(_connection):
+                raise AssertionError("An unavailable runtime must be rejected before loading")
+        with backend.connect(self.db) as con, mock.patch.dict(sys.modules, {"sqlite_vec": InstalledPackage}), mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
+            limited = NoExtensionAPI(con)
+            self.assertTrue(backend.query(limited, "invoice")["results"])
+            exact = backend.query(limited, "invoice", mode="semantic", vector_engine="stdlib")
+            automatic = backend.query(limited, "invoice", mode="semantic", vector_engine="auto")
+            self.assertEqual(automatic["vectorEngine"], "stdlib")
+            self.assertEqual(automatic["results"], exact["results"])
+            with self.assertRaisesRegex(backend.VectorAdapterUnavailable, "runtime cannot load extensions.*Homebrew"):
+                backend.query(limited, "invoice", mode="semantic", vector_engine="sqlite-vec")
+            def cannot_enable(_enabled):
+                raise sqlite3.OperationalError("extension loading disabled by build")
+            limited.enable_load_extension = cannot_enable
+            limited.load_extension = lambda _path: None
+            with self.assertRaisesRegex(backend.VectorAdapterUnavailable, "cannot enable extension loading"):
+                backend.load_sqlite_vec(limited)
+
+    def test_broken_installed_sqlite_adapter_is_not_an_auto_fallback(self):
+        class LoadableConnection:
+            enabled = False
+            def enable_load_extension(self, enabled):
+                self.enabled = enabled
+            def load_extension(self, _path):
+                pass
+        class BrokenPackage:
+            @staticmethod
+            def load(_connection):
+                raise sqlite3.OperationalError("incompatible extension architecture")
+        connection = LoadableConnection()
+        with mock.patch.dict(sys.modules, {"sqlite_vec": BrokenPackage}):
+            with self.assertRaisesRegex(backend.RetrievalError, "Installed sqlite-vec adapter failed to load") as raised:
+                backend.load_sqlite_vec(connection)
+            self.assertNotIsInstance(raised.exception, backend.VectorAdapterUnavailable)
+        self.assertFalse(connection.enabled)
+
+    def test_required_native_acceptance_fails_instead_of_skipping_missing_capability(self):
+        with mock.patch.dict(os.environ, {"LEGACY_REQUIRE_SQLITE_VEC": "1"}), mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+            with self.assertRaisesRegex(self.failureException, "Required actual sqlite-vec acceptance unavailable"):
+                self.require_sqlite_vec()
+        with mock.patch.dict(os.environ, {"LEGACY_REQUIRE_SQLITE_VEC": "1"}), mock.patch.object(backend, "load_sqlite_vec", side_effect=backend.VectorAdapterUnavailable("SQLite runtime cannot load extensions")):
+            with self.assertRaisesRegex(self.failureException, "runtime cannot load extensions"):
+                self.require_sqlite_vec()
+        with mock.patch.dict(os.environ, {"LEGACY_REQUIRE_SQLITE_VEC": "0"}), mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+            with self.assertRaisesRegex(unittest.SkipTest, "sqlite-vec 0.1.9 is required"):
+                self.require_sqlite_vec()
+
+    def test_whole_line_chunking_covers_source_without_gaps_or_duplicate_tail(self):
+        rng = random.Random(20261007)
+        for cap in (128, 400, 1200):
+            lines = [f"line_{i}_" + "x" * rng.choice((0, 12, 90, 800, 3000)) for i in range(80)]
+            text = "\r\n".join(lines) + "\r\n"
+            rows = list(backend.chunks_for(text, cap))
+            reconstructed = {}
+            previous_start, previous_end = 0, 0
+            for start, end, body, _ in rows:
+                self.assertGreater(start, previous_start)
+                self.assertGreater(end, previous_end)
+                self.assertLessEqual(start, previous_end + 1)
+                self.assertLessEqual(previous_end - start + 1, 8)
+                self.assertLessEqual(end - start + 1, 48)
+                self.assertEqual(body, "\n".join(lines[start - 1:end]))
+                if len(body) > cap:
+                    self.assertEqual(start, end)
+                    self.assertGreater(len(lines[start - 1]), cap)
+                for position in range(start, end + 1):
+                    reconstructed[position] = lines[position - 1]
+                previous_start, previous_end = start, end
+            self.assertEqual([reconstructed[i] for i in range(1, len(lines) + 1)], lines)
+            self.assertEqual(rows, list(backend.chunks_for(text, cap)))
+        self.assertEqual(list(backend.chunks_for("")), [])
+        self.assertEqual(len(list(backend.chunks_for("short\n" * 41))), 1)
+        special = "first\fform feed stays here\r\nsecond\r\n"
+        self.assertEqual(list(backend.chunks_for(special))[0][0:3], (1, 2, "first\fform feed stays here\nsecond"))
+
+    def test_chunking_invalid_bounds_and_config_rebuilds_vectors(self):
+        for invalid in (127, 12001, True, 128.0, "1200"):
+            with self.assertRaisesRegex(backend.RetrievalError, "--chunk-chars"):
+                list(backend.chunks_for("source", invalid))
+            with self.assertRaisesRegex(backend.RetrievalError, "--chunk-chars"):
+                backend.index(self.root, self.db, "/local/billing", None, None, None, chunk_chars=invalid)
+        (self.root / "src/service.py").write_text("\n".join(f"const source_{i} = '" + "x" * 60 + "';" for i in range(70)), encoding="utf-8", newline="\n")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        calls = []
+        def fake_batches(batches, *_args, **_kwargs):
+            calls.extend(body for batch in batches for body in batch)
+            for batch in batches:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
+            initial = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=1200)
+            self.assertTrue(calls)
+            calls.clear()
+            unchanged = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=1200)
+            self.assertEqual(unchanged["changed"], 0)
+            self.assertEqual(calls, ["local retrieval warmup"])
+            calls.clear()
+            updated = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=400)
+            self.assertEqual(updated["changed"], 1)
+            self.assertGreater(updated["chunks"], initial["chunks"])
+            self.assertTrue(calls)
+        with backend.connect(self.db) as con:
+            meta = backend.metadata(con)
+            self.assertEqual(meta["chunk_chars"], "400")
+            self.assertEqual(meta["index_version"], "7")
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+
+    def test_oversized_whole_lines_are_reported_and_embedding_preflight_rolls_back(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            old_meta = backend.metadata(con)
+            old_chunks = con.execute("SELECT * FROM chunks ORDER BY id").fetchall()
+        (self.root / "src/service.py").write_text("class HugeLine: " + "x" * 13000 + "\n", encoding="utf-8", newline="\n")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("inference must not run")), mock.patch.object(backend, "reranker_scores", side_effect=AssertionError("inference must not run")):
+            with self.assertRaisesRegex(backend.RetrievalError, "code:src/service.py:L1-L1.*lexical"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con), old_meta)
+            self.assertEqual(con.execute("SELECT * FROM chunks ORDER BY id").fetchall(), old_chunks)
+        lexical = self.index()
+        self.assertEqual(lexical["oversizedChunks"], 1)
+        self.assertEqual(lexical["chunkChars"], 1200)
+        with backend.connect(self.db) as con:
+            result = backend.query(con, "HugeLine")
+            self.assertEqual(result["oversizedChunks"], 1)
+            self.assertEqual(result["results"][0]["text"], "class HugeLine: " + "x" * 13000)
+        # JS text.length counts UTF-16 units. Preflight must match that helper
+        # limit even when a single line has fewer Python Unicode characters.
+        (self.root / "src/service.py").write_text("😀" * 6001 + "\n", encoding="utf-8", newline="\n")
+        with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("inference must not run")):
+            with self.assertRaisesRegex(backend.RetrievalError, "UTF-16"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+
+    def test_configuration_files_and_candidate_limits(self):
+        (self.root / "handler.properties").write_text("handler.class=InvoiceMaker\n", encoding="utf-8", newline="\n")
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertTrue(any(x["source"]["path"] == "handler.properties" for x in backend.query(con, "handler.class")["results"]))
+        with mock.patch.object(backend, "MAX_SOURCE_CANDIDATES", 1):
+            with self.assertRaisesRegex(backend.RetrievalError, "Candidate limit"):
+                self.index()
+
+    def test_invalid_server_default_fails_before_binding(self):
+        self.index()
+        with self.assertRaisesRegex(backend.RetrievalError, "Semantic default"):
+            backend.serve(self.db, "127.0.0.1", 0, "hybrid")
+        with self.assertRaisesRegex(backend.RetrievalError, "Cross-encoder default"):
+            backend.serve(self.db, "127.0.0.1", 0, default_rerank="cross-encoder")
+
+    def test_lexical_terms_use_fts_unicode_normalization_order_and_cap(self):
+        self.assertEqual(backend.lexical_terms("CAFÉ cafe cafe\u0301 你好 مرحبا ПРИВЕТ 404 \ue000"),
+                         ["cafe", "你好", "مرحبا", "привет", "404", "\ue000"])
+        self.assertEqual(backend.lexical_terms("the and OR café resume_upload café 404"),
+                         ["cafe", "resume_upload", "404"])
+        self.assertEqual(backend.lexical_terms(" ".join(str(i) for i in range(40))),
+                         [str(i) for i in range(32)])
+        for question in ("", " ", "?!:()[]\"*+-", "\u0301", "the AND OR"):
+            with self.subTest(question=question):
+                self.assertEqual(backend.lexical_terms(question), [])
+        (self.root / "numeric.py").write_text("404\n", encoding="utf-8")
+        self.index()
+        with backend.connect(self.db) as con:
+            capped = " ".join(f"absent{i}" for i in range(32)) + " 404"
+            self.assertEqual(backend.query(con, capped)["results"], [])
+            self.assertEqual([item["source"]["path"] for item in backend.query(con, "404 " + capped)["results"]], ["numeric.py"])
+
+    def test_unicode_and_numeric_lexical_results_keep_exact_source_and_readonly_index(self):
+        cases = (
+            ("latin", "café", ("café", "CAFÉ", "cafe", "cafe\u0301")),
+            ("cjk", "你好", ("你好",)),
+            ("arabic", "مرحبا", ("مرحبا",)),
+            ("cyrillic", "Привет", ("Привет", "ПРИВЕТ")),
+            ("number", "404", ("404",)),
+            ("combining", "na\u0308ive", ("naïve", "naive", "na\u0308ive")),
+            ("private", "\ue000", ("\ue000",)),
+        )
+        for name, body, _ in cases:
+            (self.root / (name + ".py")).write_text(body + "\n", encoding="utf-8", newline="\n")
+        self.index()
+        before = self.db.read_bytes()
+        with sqlite3.connect(self.db.as_uri() + "?mode=ro", uri=True, factory=backend.ClosingConnection) as con:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA query_only=ON")
+            for name, body, questions in cases:
+                for question in questions:
+                    for reranker in (None, "lexical-symbol"):
+                        with self.subTest(question=question, reranker=reranker):
+                            found = backend.query(con, question, rerank=reranker)["results"]
+                            self.assertEqual([item["source"]["path"] for item in found], [name + ".py"])
+                            item = found[0]
+                            self.assertEqual(item["text"], body)
+                            self.assertEqual((item["source"]["startLine"], item["source"]["endLine"]), (1, 1))
+                            self.assertEqual(item["source"]["fileSha256"], backend.digest((body + "\n").encode("utf-8")))
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_lexical_operators_and_punctuation_remain_data(self):
+        (self.root / "needle.py").write_text("needle\n", encoding="utf-8")
+        (self.root / "operators.py").write_text("near not blocker\n", encoding="utf-8")
+        self.index()
+        before = self.db.read_bytes()
+        with backend.connect(self.db) as con:
+            self.assertEqual([item["source"]["path"] for item in backend.query(con, '"needle" OR symbols:absent')["results"]], ["needle.py"])
+            self.assertEqual({item["source"]["path"] for item in backend.query(con, "needle NOT blocker")["results"]}, {"needle.py", "operators.py"})
+            self.assertEqual([item["source"]["path"] for item in backend.query(con, "NEAR")["results"]], ["operators.py"])
+            for question in ("?!:()[]\"*+-", "AND OR", '\"; DROP TABLE chunks; --'):
+                with self.subTest(question=question):
+                    self.assertEqual(backend.query(con, question)["results"], [])
+            for question in ("", " ", "x" * 501):
+                with self.assertRaises(backend.RetrievalError):
+                    backend.query(con, question)
+            self.assertGreater(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 0)
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_lexical_identifier_phrases_priority_and_hybrid_absent_anchor_are_preserved(self):
+        (self.root / "owner.py").write_text("def resume_upload():\n    pass\n", encoding="utf-8")
+        (self.root / "reference.py").write_text("class UploadReference:\n    # resume_upload\n", encoding="utf-8")
+        (self.root / "partial.py").write_text("resume broken elsewhere\n", encoding="utf-8")
+        (self.root / "dollar.py").write_text("const $InvoiceTotal = 3;\n", encoding="utf-8")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            semantic_rows = [(row[0], 0.99) for row in con.execute("SELECT id FROM chunks ORDER BY id")]
+            for reranker in (None, "lexical-symbol"):
+                found = backend.query(con, "resume_upload", rerank=reranker)["results"]
+                self.assertEqual([item["source"]["path"] for item in found], ["owner.py", "reference.py"])
+                self.assertGreater(found[0]["score"], 5)
+                self.assertEqual([item["source"]["path"] for item in backend.query(con, "$InvoiceTotal", rerank=reranker)["results"]], ["dollar.py"])
+            with mock.patch.object(backend, "semantic", return_value=semantic_rows):
+                for mode in ("lexical", "semantic", "hybrid"):
+                    with self.subTest(mode=mode):
+                        self.assertEqual(backend.query(con, "resume_broken_upload", mode=mode)["results"], [])
+                        paths = {item["source"]["path"] for item in backend.query(con, "resume_upload", mode=mode)["results"]}
+                        self.assertEqual(paths, {"owner.py", "reference.py"})
+
+    def test_hybrid_keeps_unicode_numeric_lexical_contribution_without_semantic_hits(self):
+        (self.root / "tokens.py").write_text("café 你好 404\n", encoding="utf-8")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        before = self.db.read_bytes()
+        with backend.connect(self.db) as con, mock.patch.object(backend, "semantic", return_value=[]) as semantic:
+            for question in ("café", "你好", "404"):
+                with self.subTest(question=question):
+                    result = backend.query(con, question, mode="hybrid")["results"]
+                    self.assertEqual([item["source"]["path"] for item in result], ["tokens.py"])
+                    self.assertAlmostEqual(result[0]["score"], 1 / 61)
+                    self.assertEqual(result[0]["text"], "café 你好 404")
+            self.assertEqual(semantic.call_count, 3)
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_provenance_and_separate_docs(self):
+        meta = self.index()
+        self.assertEqual(meta["files"], 2)
+        with backend.connect(self.db) as con:
+            code = backend.query(con, "InvoiceMaker")
+            self.assertTrue(code["results"])
+            first = code["results"][0]
+            self.assertEqual(first["source"]["kind"], "code")
+            self.assertEqual(first["source"]["path"], "src/service.py")
+            self.assertEqual(first["source"]["startLine"], 1)
+            self.assertEqual(first["source"]["fileSha256"], backend.digest((self.root / "src/service.py").read_bytes()))
+            self.assertEqual(first["source"]["corpusId"], meta["corpusId"])
+            result = backend.query(con, "Billing guide")
+            self.assertTrue(any(r["source"]["kind"] == "docs" for r in result["results"]))
+            self.assertFalse(any("SECRET_SHOULD" in r["text"] for r in result["results"]))
+
+    def test_incremental_change_delete_and_freshness(self):
+        first = self.index()
+        unchanged = self.index()
+        self.assertEqual(unchanged["changed"], 0)
+        self.assertEqual(first["corpusId"], unchanged["corpusId"])
+        source = self.root / "src/service.py"
+        source.write_text("class RevisedInvoiceMaker:\n    pass\n", encoding="utf-8", newline="\n")
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "changed"):
+                backend.query(con, "invoice")
+        self.assertEqual(self.index()["changed"], 1)
+        source.unlink()
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "disappeared"):
+                backend.query(con, "invoice")
+        self.assertEqual(self.index()["deleted"], 1)
+
+    def test_new_file_and_negative_query(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.query(con, "NeverExistingMagicType")["results"], [])
+        (self.root / "new.py").write_text("def new_function(): pass\n", encoding="utf-8", newline="\n")
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "appeared"):
+                backend.query(con, "invoice")
+
+    def test_gitignore_and_revision_change(self):
+        subprocess.run(["git", "-C", str(self.root), "init", "-q"], check=True)
+        (self.root / ".gitignore").write_text("ignored.py\n", encoding="utf-8", newline="\n")
+        (self.root / "ignored.py").write_text("SECRET_SHOULD_NOT_INDEX\n", encoding="utf-8", newline="\n")
+        subprocess.run(["git", "-C", str(self.root), "add", "src/service.py", ".gitignore"], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial"], check=True)
+        first = self.index()
+        self.assertEqual(first["files"], 2)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-qm", "revision"], check=True)
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "revision changed"):
+                backend.query(con, "invoice")
+        second = self.index()
+        self.assertEqual(second["changed"], 0)
+        self.assertNotEqual(first["corpusId"], second["corpusId"])
+
+    def test_module_root_keeps_git_revision_and_parent_ignores(self):
+        subprocess.run(["git", "-C", str(self.root), "init", "-q"], check=True)
+        (self.root / ".gitignore").write_text("src/ignored.py\n", encoding="utf-8", newline="\n")
+        (self.root / "src/ignored.py").write_text("class ShouldRemainIgnored: pass\n", encoding="utf-8", newline="\n")
+        subprocess.run(["git", "-C", str(self.root), "add", ".gitignore", "src/service.py"], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial"], check=True)
+        result = backend.index(self.root / "src", self.db, "/local/billing", None, None, None)
+        expected_revision = subprocess.check_output(["git", "-C", str(self.root), "rev-parse", "HEAD"], text=True).strip()
+        self.assertEqual(result["revision"], expected_revision)
+        self.assertEqual(result["files"], 1)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.query(con, "ShouldRemainIgnored")["results"], [])
+            found = backend.query(con, "InvoiceMaker")
+            self.assertEqual(found["results"][0]["source"]["path"], "service.py")
+            self.assertEqual(found["results"][0]["source"]["revision"], expected_revision)
+        (self.root / "src/ignored.py").write_text("class ChangedIgnored: pass\n", encoding="utf-8", newline="\n")
+        with backend.connect(self.db) as con:
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_non_git_discovery_failure_preserves_index(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            previous = backend.metadata(con)
+        with mock.patch("repo_files.MAX_DISCOVERY_ENTRIES", 1):
+            with self.assertRaisesRegex(backend.RetrievalError, "discovery entry limit"):
+                self.index()
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con), previous)
+            self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+
+    def test_markdown_in_repo_has_doc_provenance(self):
+        (self.root / "README.md").write_text("# Architecture\nThe billing operation runs from this entry point.\n", encoding="utf-8", newline="\n")
+        self.index()
+        with backend.connect(self.db) as con:
+            result = backend.query(con, "Architecture")
+            self.assertEqual(result["results"][0]["source"]["kind"], "repo-docs")
+            self.assertEqual(len(backend.context_payload(result)["infoSnippets"]), 1)
+
+    def test_caps_and_wrong_mode(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            for question in ("", "x" * 501):
+                with self.assertRaises(backend.RetrievalError):
+                    backend.query(con, question)
+            with self.assertRaisesRegex(backend.RetrievalError, "Limit"):
+                backend.query(con, "invoice", limit=11)
+            with self.assertRaisesRegex(backend.RetrievalError, "requires"):
+                backend.query(con, "invoice", mode="semantic")
+            with self.assertRaisesRegex(backend.RetrievalError, "requires an index"):
+                backend.query(con, "invoice", rerank="cross-encoder")
+        with self.assertRaisesRegex(backend.RetrievalError, "outside"):
+            backend.index(self.root, self.root / "bad.sqlite", "/local/billing", None, None, None)
+
+    def test_reranker_configuration_and_lexical_only_candidates(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with self.assertRaisesRegex(backend.RetrievalError, "--reranker-revision"):
+            backend.index(self.root, self.db, "/local/billing", self.docs, None, cache, runtime, reranker_model="custom/model")
+        with self.assertRaisesRegex(backend.RetrievalError, "requires --reranker-model"):
+            backend.index(self.root, self.db, "/local/billing", self.docs, None, cache, runtime, reranker_revision="a" * 40)
+        with self.assertRaisesRegex(backend.RetrievalError, "outside"):
+            backend.index(self.root, self.db, "/local/billing", self.docs, None, self.root / "cache", runtime, reranker_model=backend.DEFAULT_RERANKER)
+        (self.root / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with self.assertRaisesRegex(backend.RetrievalError, "outside"):
+            backend.index(self.root, self.db, "/local/billing", self.docs, None, cache, self.root, reranker_model=backend.DEFAULT_RERANKER)
+        with self.assertRaisesRegex(backend.RetrievalError, "--embedding-runtime"):
+            backend.index(self.root, self.db, "/local/billing", self.docs, None, cache, None, reranker_model=backend.DEFAULT_RERANKER)
+        calls = []
+        def fake_scores(question, passages, *_args, **kwargs):
+            calls.append((question, passages, kwargs["download"]))
+            return [float(len(text)) for text in passages]
+        model_files = cache / backend.DEFAULT_RERANKER / backend.DEFAULT_RERANKER_REVISION
+        (model_files / "onnx").mkdir(parents=True)
+        for name in ("config.json", "tokenizer.json", "onnx/model_quantized.onnx"):
+            (model_files / name).touch()
+        with mock.patch.object(backend, "reranker_scores", side_effect=fake_scores):
+            result = backend.index(self.root, self.db, "/local/billing", self.docs, None, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
+            self.assertEqual(result["rerankerRevision"], backend.DEFAULT_RERANKER_REVISION)
+            with backend.connect(self.db) as con:
+                self.assertEqual(backend.metadata(con)["reranker_model"], backend.DEFAULT_RERANKER)
+                found = backend.query(con, "InvoiceMaker", rerank="cross-encoder")
+                self.assertEqual(found["results"][0]["source"]["path"], "src/service.py")
+                self.assertIsInstance(found["results"][0]["rerankScore"], float)
+                self.assertEqual(backend.query(con, "ImaginaryGovernmentFramework", rerank="cross-encoder")["results"], [])
+        self.assertEqual([call[2] for call in calls], [True, False])
+        (self.root / "src/service.py").write_text("class Changed: pass\n", encoding="utf-8", newline="\n")
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "changed"):
+                backend.query(con, "InvoiceMaker", rerank="cross-encoder")
+        (self.root / "src/service.py").unlink()
+        with backend.connect(self.db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "disappeared"):
+                backend.query(con, "InvoiceMaker", rerank="cross-encoder")
+
+    def test_reranker_rejects_malformed_helper_output_and_cleans_up(self):
+        helper = Path(self.tmp.name).resolve() / "fake-reranker.mjs"
+        helper.write_text("import { createInterface } from 'node:readline';\nfor await (const line of createInterface({input: process.stdin})) console.log('{\"wrong\": 1}');\n", encoding="utf-8", newline="\n")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        launched = []
+        original = subprocess.Popen
+        def capture(*args, **kwargs):
+            proc = original(*args, **kwargs)
+            launched.append(proc)
+            return proc
+        with mock.patch.object(backend, "RERANK_HELPER", helper), mock.patch.object(subprocess, "Popen", side_effect=capture):
+            with self.assertRaisesRegex(backend.RetrievalError, "Invalid reranker output"):
+                backend.reranker_scores("query", ["passage"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name).resolve(), download=False)
+        self.assertEqual(len(launched), 1)
+        self.assertIsNotNone(launched[0].poll())
+        helper.write_text("import { createInterface } from 'node:readline';\nfor await (const line of createInterface({input: process.stdin})) { const request=JSON.parse(line); if(request.passages.length>8) process.exit(3); console.log(JSON.stringify(request.passages.map(()=>1))); }\n", encoding="utf-8", newline="\n")
+        with mock.patch.object(backend, "RERANK_HELPER", helper):
+            scores = backend.reranker_scores("query", ["passage"] * 9, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name).resolve(), download=False)
+            self.assertEqual(scores, [1.0] * 9)
+            with self.assertRaisesRegex(backend.RetrievalError, "candidate limit"):
+                backend.reranker_scores("query", ["passage"] * 61, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name).resolve(), download=False)
+
+    def test_reranker_rejects_wrong_classification_dimension(self):
+        runtime = Path(self.tmp.name).resolve() / "fake-runtime"
+        package = runtime / "node_modules/@huggingface/transformers"
+        (package / "src").mkdir(parents=True)
+        (package / "package.json").write_text('{"type":"module"}', encoding="utf-8", newline="\n")
+        (package / "src/transformers.js").write_text(
+            "export const env = {};\n"
+            "export const AutoTokenizer = { from_pretrained: async () => () => ({}) };\n"
+            "export const AutoModelForSequenceClassification = { from_pretrained: async () => "
+            "Object.assign(async () => ({ logits: { dims: [1, 2], data: [1, 2] } }), "
+            "{ config: { num_labels: 2 } }) };\n"
+        , encoding="utf-8", newline="\n")
+        result = subprocess.run(["node", str(backend.RERANK_HELPER), "custom/model", "a" * 40, str(Path(self.tmp.name).resolve() / "cache"), str(runtime), "offline"], input="", text=True, capture_output=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("single-logit", result.stderr)
+        module = package / "src/transformers.js"
+        module.write_text(module.read_text(encoding="utf-8").replace("num_labels: 2", "num_labels: 1"), encoding="utf-8", newline="\n")
+        result = subprocess.run(["node", str(backend.RERANK_HELPER), "custom/model", "a" * 40, str(Path(self.tmp.name).resolve() / "cache"), str(runtime), "offline"], input=json.dumps({"query": "q", "passages": ["p"]}) + "\n", text=True, capture_output=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("one scalar logit", result.stderr)
+
+    def test_large_and_non_utf8_files_are_reported(self):
+        (self.root / "large.py").write_bytes(b"x" * (backend.MAX_FILE_BYTES + 1))
+        (self.root / "binary.py").write_bytes(b"\xff\xfe")
+        result = self.index()
+        self.assertEqual(result["skippedCount"], 2)
+        self.assertEqual({entry["path"] for entry in result["skipped"]}, {"large.py", "binary.py"})
+
+    def test_parent_symlink_and_git_fsmonitor_are_not_used(self):
+        outside = Path(self.tmp.name).resolve() / "outside"
+        outside.mkdir()
+        (outside / "stolen.py").write_text("PRIVATE_SOURCE_MARKER\n", encoding="utf-8", newline="\n")
+        (self.root / "escape").symlink_to(outside, target_is_directory=True)
+        subprocess.run(["git", "-C", str(self.root), "init", "-q"], check=True)
+        marker = Path(self.tmp.name).resolve() / "fsmonitor-ran"
+        hook = Path(self.tmp.name).resolve() / "fsmonitor.sh"
+        hook.write_text(f"#!/bin/sh\ntouch '{marker}'\n", encoding="utf-8", newline="\n")
+        hook.chmod(0o755)
+        subprocess.run(["git", "-C", str(self.root), "config", "core.fsmonitor", str(hook)], check=True)
+        subprocess.run(["git", "-C", str(self.root), "add", "src/service.py"], check=True)
+        marker.unlink(missing_ok=True)
+        (self.root / "src/service.py").unlink()
+        (self.root / "src").rmdir()
+        (self.root / "src").symlink_to(outside, target_is_directory=True)
+        (outside / "service.py").write_text("PRIVATE_SOURCE_MARKER\n", encoding="utf-8", newline="\n")
+        result = self.index()
+        self.assertEqual(result["files"], 1)
+        self.assertFalse(marker.exists())
+        with backend.connect(self.db) as con:
+            self.assertFalse(any("PRIVATE_SOURCE_MARKER" in row[0] for row in con.execute("SELECT body FROM chunks")))
+
+    def test_vector_engines_agree_and_failed_update_rolls_back(self):
+        self.require_sqlite_vec()
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def fake_batches(batches, *_args, **_kwargs):
+            for batch in batches:
+                yield [[1.0, 0.0] if "InvoiceMaker" in text else [0.0, 1.0] for text in batch]
+        results = []
+        for engine in ("stdlib", "sqlite-vec"):
+            db = Path(self.tmp.name).resolve() / f"{engine}.sqlite"
+            with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
+                backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
+            with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
+                with backend.connect(db) as con:
+                    result = backend.query(con, "InvoiceMaker", mode="semantic", vector_engine=engine)
+                    self.assertEqual(result["vectorEngine"], engine)
+                    results.append([(item["source"]["kind"], item["source"]["path"]) for item in result["results"]])
+            (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def updated(self): pass\n", encoding="utf-8", newline="\n")
+            def fail_batches(*_args, **_kwargs):
+                raise backend.RetrievalError("model failed")
+                yield []
+            with mock.patch.object(backend, "embedding_batches", side_effect=fail_batches):
+                with self.assertRaisesRegex(backend.RetrievalError, "model failed"):
+                    backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
+            with backend.connect(db) as con:
+                self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 2)
+                self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 2)
+            (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def create_invoice(self):\n        return 'invoice total'\n", encoding="utf-8", newline="\n")
+            guide = self.docs / "guide.md"
+            guide_text = guide.read_text(encoding="utf-8")
+            guide.unlink()
+            with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
+                self.assertEqual(backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)["deleted"], 1)
+            with backend.connect(db) as con:
+                self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 1)
+                self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 1)
+            guide.write_text(guide_text, encoding="utf-8", newline="\n")
+            with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
+                rebuilt = backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, model_revision="a" * 40, vector_engine=engine)
+            self.assertEqual(rebuilt["changed"], 2)
+            with backend.connect(db) as con:
+                self.assertEqual(backend.metadata(con)["model_revision"], "a" * 40)
+        self.assertEqual(results[0], results[1])
+
+    def test_sqlite_vec_index_requires_optional_package(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+            with self.assertRaisesRegex(backend.RetrievalError, "sqlite-vec 0.1.9 is required"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine="sqlite-vec")
+
+    def test_vector_preference_changes_without_reembedding_or_schema_copy(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            before = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+            self.assertEqual(len(before), 2)
+            self.assertNotIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
+        with mock.patch.object(backend, "load_sqlite_vec"):
+            with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("unexpected re-embedding")), mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]) as warm:
+                result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine="sqlite-vec")
+                self.assertEqual(warm.call_args.args[0], ["local retrieval warmup"])
+                self.assertTrue(warm.call_args.kwargs["download"])
+        self.assertEqual(result["changed"], 0)
+        with backend.connect(self.db) as con:
+            self.assertEqual(before, con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall())
+            self.assertEqual(backend.metadata(con)["vector_engine"], "sqlite-vec")
+            self.assertFalse(con.execute("SELECT 1 FROM sqlite_master WHERE name='chunks_vec'").fetchone())
+            with mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+                self.assertEqual(backend.query(con, "invoice")["vectorEngine"], None)
+                with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
+                    self.assertEqual(backend.query(con, "invoice", mode="semantic", vector_engine="stdlib")["vectorEngine"], "stdlib")
+                    self.assertEqual(backend.query(con, "invoice", mode="semantic", vector_engine="auto")["vectorEngine"], "stdlib")
+                    with self.assertRaisesRegex(backend.RetrievalError, "sqlite-vec 0.1.9 is required"):
+                        backend.query(con, "invoice", mode="semantic")
+                    with self.assertRaisesRegex(backend.RetrievalError, "sqlite-vec 0.1.9 is required"):
+                        backend.query(con, "invoice", mode="semantic", vector_engine="sqlite-vec")
+            with mock.patch.object(backend, "load_sqlite_vec", side_effect=backend.RetrievalError("sqlite-vec 0.1.9 required; found v0.2.0")):
+                with self.assertRaisesRegex(backend.RetrievalError, "found v0.2.0"):
+                    backend.query(con, "invoice", mode="semantic", vector_engine="auto")
+
+    def test_vector_rows_cascade_and_failed_update_preserves_metadata(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(batch_groups, *_args, **_kwargs):
+            for batch in batch_groups:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            old_meta = backend.metadata(con)
+            old_rows = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        (self.root / "src/service.py").write_text("class ChangedInvoiceMaker: pass\n", encoding="utf-8", newline="\n")
+        def fail_after_write(batch_groups, *_args, **_kwargs):
+            yield [[1.0, 0.0] for _ in batch_groups[0]]
+            raise backend.RetrievalError("second batch failed")
+        (self.docs / "extra.md").write_text("Extra source\n", encoding="utf-8", newline="\n")
+        with mock.patch.object(backend, "MODEL_BATCH", 1), mock.patch.object(backend, "embedding_batches", side_effect=fail_after_write):
+            with self.assertRaisesRegex(backend.RetrievalError, "second batch failed"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con), old_meta)
+            self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), old_rows)
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors v LEFT JOIN chunks c ON c.id=v.chunk_id WHERE c.id IS NULL").fetchone()[0], 0)
+        (self.docs / "guide.md").unlink()
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+
+    def test_model_removal_clears_vector_metadata(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertNotIn("vector_dim", backend.metadata(con))
+            self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 0)
+
+    def test_old_index_reindexes_and_failed_migration_rolls_back_schema(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
+            con.execute("CREATE TABLE chunks(id INTEGER PRIMARY KEY,kind TEXT,path TEXT,start INTEGER,end INTEGER,body TEXT,symbols TEXT,vector BLOB)")
+            con.execute("INSERT INTO meta VALUES('index_version','5')")
+            for key, value in (("root", str(self.root)), ("docs_root", str(self.docs)), ("library_id", "/local/billing")):
+                con.execute("INSERT INTO meta VALUES(?,?)", (key, value))
+            con.execute("INSERT INTO chunks VALUES(1,'code','obsolete.py',1,1,'obsolete','',?)", (backend.pack_vector([1.0, 0.0]),))
+        def fail_batches(*_args, **_kwargs):
+            raise backend.RetrievalError("migration failed")
+            yield []
+        with mock.patch.object(backend, "embedding_batches", side_effect=fail_batches):
+            with self.assertRaisesRegex(backend.RetrievalError, "migration failed"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            self.assertEqual(con.execute("SELECT value FROM meta WHERE key='index_version'").fetchone()[0], "5")
+            self.assertIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
+            self.assertFalse(con.execute("SELECT 1 FROM sqlite_master WHERE name='chunk_vectors'").fetchone())
+        def batches(batch_groups, *_args, **_kwargs):
+            for batch in batch_groups:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con)["index_version"], "7")
+            self.assertNotIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+
+    def test_old_vec0_index_requires_package_once_for_reindex(self):
+        self.require_sqlite_vec()
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            backend.load_sqlite_vec(con)
+            con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
+            con.execute("INSERT INTO meta VALUES('index_version','5')")
+            for key, value in (("root", str(self.root)), ("docs_root", str(self.docs)), ("library_id", "/local/billing")):
+                con.execute("INSERT INTO meta VALUES(?,?)", (key, value))
+            con.execute("CREATE VIRTUAL TABLE chunks_vec USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[2] distance_metric=cosine)")
+            con.execute("INSERT INTO chunks_vec(chunk_id,embedding) VALUES(1,?)", (backend.pack_vector([1.0, 0.0]),))
+        with mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+            with self.assertRaisesRegex(backend.RetrievalError, "use a fresh database path"):
+                self.index()
+        with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
+            backend.load_sqlite_vec(con)
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks_vec").fetchone()[0], 1)
+        self.index()
+        with backend.connect(self.db) as con:
+            self.assertFalse(con.execute("SELECT 1 FROM sqlite_master WHERE name='chunks_vec'").fetchone())
+            self.assertEqual(backend.metadata(con)["index_version"], "7")
+
+    def test_empty_and_single_chunk_semantic_scan(self):
+        self.require_sqlite_vec()
+        with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
+            con.row_factory = sqlite3.Row
+            backend.setup(con)
+            backend.load_sqlite_vec(con)
+            with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
+                self.assertEqual(backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "sqlite-vec"), [])
+                con.execute("INSERT INTO chunks(kind,path,start,end,body,symbols) VALUES('code','x.py',1,1,'x','')")
+                con.execute("INSERT INTO chunk_vectors VALUES(1,?)", (backend.pack_vector([1.0, 0.0]),))
+                self.assertEqual(backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "sqlite-vec"), [(1, 1.0)])
+                con.execute("INSERT INTO chunks(kind,path,start,end,body,symbols) VALUES('code','y.py',1,1,'y','')")
+                con.execute("INSERT INTO chunk_vectors VALUES(2,?)", (backend.pack_vector([1.0, 0.0]),))
+                for engine in ("stdlib", "sqlite-vec"):
+                    self.assertEqual([cid for cid, _ in backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, engine)], [1, 2])
+
+    def test_fixed_seed_float64_oracle_matches_both_engines(self):
+        self.require_sqlite_vec()
+        rng = random.Random(20261007)
+        with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
+            con.row_factory = sqlite3.Row
+            backend.setup(con)
+            backend.load_sqlite_vec(con)
+            vectors = []
+            for cid in range(1, 1001):
+                source = [rng.gauss(0, 1) for _ in range(384)]
+                blob = backend.pack_vector(source)
+                self.assertEqual(len(blob), 384 * 4)
+                vector = struct.unpack("<384f", blob)
+                self.assertAlmostEqual(math.sumprod(vector, vector), 1.0, delta=1e-3)
+                vectors.append(vector)
+                con.execute("INSERT INTO chunks(id,kind,path,start,end,body,symbols) VALUES(?,'code','x.py',1,1,'x','')", (cid,))
+                con.execute("INSERT INTO chunk_vectors VALUES(?,?)", (cid, blob))
+            with mock.patch.object(backend, "MIN_SEMANTIC_SCORE", -1.0):
+                for query_number in range(30):
+                    source = [rng.gauss(0, 1) for _ in range(384)]
+                    # Blend with one stored vector so the top result is unambiguous.
+                    source = [x + 2 * y for x, y in zip(source, vectors[query_number], strict=True)]
+                    q = struct.unpack("<384f", backend.pack_vector(source))
+                    oracle = sorted(range(1, 1001), key=lambda cid: (-math.sumprod(vectors[cid - 1], q), cid))[:10]
+                    with mock.patch.object(backend, "embeddings", return_value=[source]):
+                        stdlib = backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "stdlib")
+                        native = backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, "sqlite-vec")
+                    self.assertEqual([cid for cid, _ in stdlib], oracle)
+                    self.assertEqual([cid for cid, _ in native], oracle)
+                    for (_, exact), (_, accelerated) in zip(stdlib, native, strict=True):
+                        self.assertAlmostEqual(exact, accelerated, delta=1e-5)
+
+    def test_http_contract_and_stale_error(self):
+        self.index()
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", str(port), "--default-rerank", "lexical-symbol"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(lambda: proc.kill() if proc.poll() is None else None)
+        self.assertIn("Local Context7", proc.stdout.readline())
+        base = f"http://127.0.0.1:{port}"
+        with urlopen(base + "/api/v2/libs/search?libraryName=billing") as response:
+            self.assertEqual(json.load(response)["results"][0]["id"], "/local/billing")
+        with urlopen(base + "/api/v2/libs/search?libraryName=other") as response:
+            self.assertEqual(json.load(response), {"results": []})
+        with urlopen(base + "/api/v2/context?" + urlencode({"libraryId": "/local/billing", "query": "InvoiceMaker", "type": "json"})) as response:
+            payload = json.load(response)
+            self.assertTrue(payload["codeSnippets"])
+            self.assertIn("sha256:", payload["codeSnippets"][0]["codeDescription"])
+        with urlopen(base + "/api/v2/context?" + urlencode({"libraryId": "/local/billing", "query": "InvoiceMaker", "type": "txt"})) as response:
+            text = response.read().decode("utf-8")
+            self.assertIn("return 'invoice total'\n\ndocs:guide.md:L1", text)
+            self.assertNotIn("return 'invoice total'docs:", text)
+        with self.assertRaises(HTTPError) as error:
+            urlopen(base + "/api/v2/context?libraryId=/public/unknown&query=invoice")
+        self.assertEqual(error.exception.code, 404)
+        error.exception.close()
+        (self.root / "src/service.py").write_text("changed\n", encoding="utf-8", newline="\n")
+        with self.assertRaises(HTTPError) as error:
+            urlopen(base + "/api/v2/context?libraryId=/local/billing&query=invoice")
+        self.assertEqual(error.exception.code, 409)
+        error.exception.close()
+        proc.terminate()
+        proc.wait(timeout=5)
+        proc.stdout.close()
+        proc.stderr.close()
+
+    @unittest.skipUnless(os.environ.get("LEGACY_CTX7_CLI"), "optional ctx7 CLI not installed")
+    def test_real_ctx7_cli_against_local_server(self):
+        self.index()
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", str(port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            self.assertIn("Local Context7", proc.stdout.readline())
+            config = Path(self.tmp.name).resolve() / "isolated-cli"
+            (config / "context7").mkdir(parents=True)
+            (config / "context7/credentials.json").write_text("null\n", encoding="utf-8", newline="\n")
+            env = backend.inference_environment(config, download=False)
+            env.update({"HOME": str(config), "XDG_CONFIG_HOME": str(config), "XDG_STATE_HOME": str(config / "state"), "XDG_CACHE_HOME": str(config / "cache"), "CTX7_TELEMETRY_DISABLED": "1", "CI": "1", "NO_UPDATE_NOTIFIER": "1"})
+            prefix = ["node", os.environ["LEGACY_CTX7_CLI"], "--base-url", f"http://127.0.0.1:{port}"]
+            found = subprocess.run(prefix + ["library", "billing", "local source", "--json"], env=env, text=True, capture_output=True, timeout=20, check=True)
+            self.assertEqual(json.loads(found.stdout)[0]["id"], "/local/billing")
+            positive = subprocess.run(prefix + ["docs", "/local/billing", "InvoiceMaker", "--json"], env=env, text=True, capture_output=True, timeout=20, check=True)
+            snippets = json.loads(positive.stdout)["codeSnippets"]
+            self.assertTrue(snippets)
+            self.assertIn("sha256:", snippets[0]["codeDescription"])
+            negative = subprocess.run(prefix + ["docs", "/local/billing", "ImaginaryGovernmentFramework", "--json"], env=env, text=True, capture_output=True, timeout=20, check=True)
+            self.assertIn("No documentation found", negative.stdout)
+        finally:
+            proc.terminate()
+            proc.wait(timeout=5)
+            proc.stdout.close()
+            proc.stderr.close()
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_cross_encoder_warmup_and_offline_query(self):
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("The PayrollEngine computes compensation and applies withholding before the pay statement.\n", encoding="utf-8", newline="\n")
+        (self.docs / "cleanup.md").write_text("A scheduled cleanup job purges obsolete files at midnight.\n", encoding="utf-8", newline="\n")
+        result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
+        self.assertEqual(result["rerankerRevision"], backend.DEFAULT_RERANKER_REVISION)
+        with backend.connect(self.db) as con:
+            ranked = backend.query(con, "Who computes compensation deductions?", mode="hybrid", rerank="cross-encoder")
+            self.assertTrue(ranked["results"])
+            self.assertTrue(all(isinstance(hit["rerankScore"], float) for hit in ranked["results"]))
+            self.assertEqual(backend.query(con, "ImaginaryGovernmentFramework", mode="hybrid", rerank="cross-encoder")["results"], [])
+            with mock.patch.object(backend, "reranker_scores", side_effect=backend.RetrievalError("offline reranker unavailable")):
+                with self.assertRaisesRegex(backend.RetrievalError, "offline reranker unavailable"):
+                    backend.query(con, "PayrollEngine", rerank="cross-encoder")
+        missing_cache = Path(self.tmp.name).resolve() / "empty-cache"
+        missing_cache.mkdir()
+        with self.assertRaisesRegex(backend.RetrievalError, "Local reranker helper failed"):
+            backend.reranker_scores("payroll", ["payroll document"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, missing_cache, runtime, download=False)
+        lexical_db = Path(self.tmp.name).resolve() / "lexical-only.sqlite"
+        backend.index(self.root, lexical_db, "/local/billing", self.docs, None, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
+        with backend.connect(lexical_db) as con:
+            self.assertFalse(backend.metadata(con)["embed_model"])
+            self.assertTrue(backend.query(con, "PayrollEngine", rerank="cross-encoder")["results"])
+            backend.put_meta(con, "model_cache", str(missing_cache))
+        with backend.connect(lexical_db) as con:
+            with self.assertRaisesRegex(backend.RetrievalError, "Local reranker model is unavailable"):
+                backend.query(con, "PayrollEngine", rerank="cross-encoder")
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME") and os.environ.get("LEGACY_CTX7_CLI"), "requires optional inference runtime and stock ctx7 client")
+    def test_stock_ctx7_uses_configured_hybrid_and_learned_reranker(self):
+        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("The PayrollEngine calculates salaries and applies withholding before the pay statement.\n", encoding="utf-8", newline="\n")
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", str(port), "--default-mode", "hybrid", "--default-rerank", "cross-encoder"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            self.assertIn("mode=hybrid rerank=cross-encoder", proc.stdout.readline())
+            config = Path(self.tmp.name).resolve() / "hybrid-client"
+            (config / "context7").mkdir(parents=True)
+            (config / "context7/credentials.json").write_text("null\n", encoding="utf-8", newline="\n")
+            env = backend.inference_environment(config, download=False)
+            env.update({"HOME": str(config), "XDG_CONFIG_HOME": str(config), "XDG_CACHE_HOME": str(config / "cache"), "XDG_STATE_HOME": str(config / "state"), "CTX7_TELEMETRY_DISABLED": "1", "CI": "1", "NO_UPDATE_NOTIFIER": "1"})
+            result = subprocess.run(["node", os.environ["LEGACY_CTX7_CLI"], "--base-url", f"http://127.0.0.1:{port}", "docs", "/local/billing", "Who computes compensation deductions?", "--json"], env=env, capture_output=True, text=True, timeout=30, check=True)
+            snippets = json.loads(result.stdout)["infoSnippets"]
+            self.assertTrue(any(x["pageTitle"] == "guide.md" for x in snippets))
+        finally:
+            proc.terminate()
+            proc.wait(timeout=5)
+            proc.stdout.close()
+            proc.stderr.close()
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_semantic_hybrid_and_reranking(self):
+        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("The PayrollEngine calculates salaries and applies withholding before the pay statement.\n", encoding="utf-8", newline="\n")
+        (self.docs / "cleanup.md").write_text("A scheduled cleanup job removes obsolete files at midnight.\n", encoding="utf-8", newline="\n")
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        backend.index(self.root, self.db, "/local/billing", self.docs, "Xenova/all-MiniLM-L6-v2", cache, runtime)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.query(con, "Who computes compensation deductions?")["results"], [])
+            result = backend.query(con, "Who computes compensation deductions?", mode="semantic")
+            self.assertIn("guide.md", result["results"][0]["source"]["path"])
+            result = backend.query(con, "Which process purges expired artifacts overnight?", mode="hybrid", rerank="lexical-symbol")
+            self.assertEqual(result["results"][0]["source"]["path"], "cleanup.md")
+            for mode in ("lexical", "semantic", "hybrid"):
+                self.assertEqual(backend.query(con, "ImaginaryGovernmentFramework", mode=mode)["results"], [])
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_model_loads_once_over_32_chunks_and_queries_offline(self):
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        for n in range(35):
+            (self.docs / f"topic-{n:02d}.md").write_text(f"A scheduled cleanup job removes obsolete file group {n} at midnight.\n", encoding="utf-8", newline="\n")
+        original = subprocess.Popen
+        launched = []
+        def count_process(*args, **kwargs):
+            if args[0][0] == "node":
+                launched.append(args[0])
+            return original(*args, **kwargs)
+        with mock.patch.object(subprocess, "Popen", side_effect=count_process):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        self.assertEqual(len(launched), 1)
+        with backend.connect(self.db) as con:
+            vectors = [row[0] for row in con.execute("SELECT embedding FROM chunk_vectors ORDER BY chunk_id")]
+            self.assertEqual(len(vectors), 37)
+            self.assertTrue(all(len(vector) == 384 * 4 for vector in vectors))
+            self.assertEqual(backend.metadata(con)["model_revision"], backend.DEFAULT_MODEL_REVISION)
+            result = backend.query(con, "Which process purges expired artifacts overnight?", mode="semantic")
+            self.assertTrue(result["results"])
+        self.assertEqual(backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)["changed"], 0)
+        with backend.connect(self.db) as con:
+            self.assertEqual(vectors, [row[0] for row in con.execute("SELECT embedding FROM chunk_vectors ORDER BY chunk_id")])
+
+    @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
+    def test_actual_sqlite_vec_matches_stdlib_top_k(self):
+        self.require_sqlite_vec()
+        cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
+        runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
+        (self.docs / "cleanup.md").write_text("A scheduled cleanup job removes obsolete files at midnight.\n", encoding="utf-8", newline="\n")
+        ranked = []
+        for engine in ("stdlib", "sqlite-vec"):
+            db = Path(self.tmp.name).resolve() / f"actual-{engine}.sqlite"
+            backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
+            with backend.connect(db) as con:
+                result = backend.query(con, "Who computes compensation deductions?", mode="semantic", limit=3, vector_engine=engine)
+                ranked.append([(item["source"]["kind"], item["source"]["path"]) for item in result["results"]])
+        self.assertEqual(ranked[0], ranked[1])
+
+
+if __name__ == "__main__":
+    unittest.main()

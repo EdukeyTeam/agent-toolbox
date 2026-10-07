@@ -1,0 +1,40 @@
+[package]
+name = "legacy-repo-map"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+description = "Experimental native repository map for the legacy-codebase-workflows skill"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "legacy-repo-map"
+path = "src/main.rs"
+
+[dependencies]
+tree-sitter = "=0.25.10"
+tree-sitter-java = "=0.23.5"
+tree-sitter-python = "=0.25.0"
+tree-sitter-javascript = "=0.25.0"
+tree-sitter-typescript = "=0.23.2"
+tree-sitter-c = "=0.24.2"
+tree-sitter-cpp = "=0.23.4"
+tree-sitter-c-sharp = "=0.23.5"
+tree-sitter-go = "=0.25.0"
+tree-sitter-rust = "=0.24.2"
+sha2 = "0.10"
+serde_json = "1"
+ignore = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+strip = true
+panic = "abort"

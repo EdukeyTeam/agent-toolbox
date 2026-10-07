@@ -1,0 +1,185 @@
+{
+  "adapted_rank_path": "aider_rank.py",
+  "aider_repomap_lastchanged": "94bd7abd17cdbcdab91b445b3ab165ecd2220938",
+  "aider_repomap_path": "aider/repomap.py",
+  "aider_repomap_sha256": "a5d4befe70445114b9f62da47b0eeb2a5384f9e84a0c083c77a4b339caf61ecd",
+  "aider_revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+  "entries": [
+    {
+      "changes": "none",
+      "original_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "upstream_git_blob_sha": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "upstream_path": "LICENSE.txt",
+      "vendored_path": "LICENSE.txt",
+      "vendored_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "changes": "adapted graph ranking and removed chat/model/cache/UI dependencies; enforce the edge cap before every insertion; see THIRD_PARTY.md",
+      "original_sha256": "a5d4befe70445114b9f62da47b0eeb2a5384f9e84a0c083c77a4b339caf61ecd",
+      "upstream_git_blob_sha": "541bba6ef4a5385b8cf032201ec6e3f3e32a6ea6",
+      "upstream_path": "aider/repomap.py",
+      "vendored_path": "aider_rank.py",
+      "vendored_sha256": "c1069217acd10cbb2fcc45bdaee8f9110832d0c237032053dd32bf3cb6deb2a0"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+      "upstream_git_blob_sha": "4b52d191cead337b11e274b79459a86f1b5a7779",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-c/blob/master/LICENSE",
+      "vendored_path": "licenses/c-LICENSE.txt",
+      "vendored_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+      "upstream_git_blob_sha": "4b52d191cead337b11e274b79459a86f1b5a7779",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-cpp/blob/master/LICENSE",
+      "vendored_path": "licenses/cpp-LICENSE.txt",
+      "vendored_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "778fb7d63b8c1844da315648c02f325c4713a6f4a5d19644fd413421422776d3",
+      "upstream_git_blob_sha": "c8921f694d834542874bd0403afe97adb8f5dab3",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-c-sharp/blob/master/LICENSE",
+      "vendored_path": "licenses/csharp-LICENSE.txt",
+      "vendored_sha256": "778fb7d63b8c1844da315648c02f325c4713a6f4a5d19644fd413421422776d3"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+      "upstream_git_blob_sha": "4b52d191cead337b11e274b79459a86f1b5a7779",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-go/blob/master/LICENSE",
+      "vendored_path": "licenses/go-LICENSE.txt",
+      "vendored_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "52ed137b039cd9c46409bc22e89938af911c95b157feae2d040b51e6084369a7",
+      "upstream_git_blob_sha": "4e0446f76ca7d380d615e31b5500711df66a9ea2",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-java/blob/master/LICENSE",
+      "vendored_path": "licenses/java-LICENSE.txt",
+      "vendored_sha256": "52ed137b039cd9c46409bc22e89938af911c95b157feae2d040b51e6084369a7"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+      "upstream_git_blob_sha": "4b52d191cead337b11e274b79459a86f1b5a7779",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-javascript/blob/master/LICENSE",
+      "vendored_path": "licenses/javascript-LICENSE.txt",
+      "vendored_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f",
+      "upstream_git_blob_sha": "ff8ed93cb0dd57d68feeefe4829dbc9083584b5e",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-python/blob/master/LICENSE",
+      "vendored_path": "licenses/python-LICENSE.txt",
+      "vendored_sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "31d5b6f4243d5c7c6e1c4ebbbb9f6407bd1457a08bcc4f706521710341acba36",
+      "upstream_git_blob_sha": "ceaf3c9adca54f7d3242593dd4db8065b1611699",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-rust/blob/master/LICENSE",
+      "vendored_path": "licenses/rust-LICENSE.txt",
+      "vendored_sha256": "31d5b6f4243d5c7c6e1c4ebbbb9f6407bd1457a08bcc4f706521710341acba36"
+    },
+    {
+      "changes": "none; copied upstream MIT license",
+      "original_sha256": "49bf33cf78ef5897e4e161ce1517df7de1ae5042a65b6bcfd44401e0fc606559",
+      "upstream_git_blob_sha": "aa9f858db5722d9576104726471b11cc0e31f131",
+      "upstream_path": "https://github.com/tree-sitter/tree-sitter-typescript/blob/master/LICENSE",
+      "vendored_path": "licenses/typescript-LICENSE.txt",
+      "vendored_sha256": "49bf33cf78ef5897e4e161ce1517df7de1ae5042a65b6bcfd44401e0fc606559"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "8af65212e5aa61f5152d99760196464659b46d0b1a1be55304a070002c8cd3b9",
+      "upstream_git_blob_sha": "4654865ef639553aedfcf7ac68802f0c487c9fee",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/README.md",
+      "vendored_path": "queries/tree-sitter-language-pack/README.md",
+      "vendored_sha256": "8af65212e5aa61f5152d99760196464659b46d0b1a1be55304a070002c8cd3b9"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "108cf8e68e61061f3212e724e5947fe08a5c1b259278daf3c459ad90a646b769",
+      "upstream_git_blob_sha": "1035aa2247be169fbdcc198a07d8f834019273fd",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/c-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/c-tags.scm",
+      "vendored_sha256": "108cf8e68e61061f3212e724e5947fe08a5c1b259278daf3c459ad90a646b769"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "d9f4aa4d471cd35001307900d09786f1ac443845d17c422e97c50a73dfed2862",
+      "upstream_git_blob_sha": "00cc966376cb53de08046174347b1297ab1db343",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/cpp-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/cpp-tags.scm",
+      "vendored_sha256": "d9f4aa4d471cd35001307900d09786f1ac443845d17c422e97c50a73dfed2862"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "28e45f2b77a12a8afa3dfe93e629e2ba842bd7a11c1ed51ed2add722c0a33c9b",
+      "upstream_git_blob_sha": "36ef49a29188665cb34291d46b22d33e9da651f7",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/csharp-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/csharp-tags.scm",
+      "vendored_sha256": "28e45f2b77a12a8afa3dfe93e629e2ba842bd7a11c1ed51ed2add722c0a33c9b"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "4c4e1f43b3ed42f1ca3deb6b847783aa3333d35285285b31163ca99c932ff292",
+      "upstream_git_blob_sha": "16ecc4de8d9181d0b5d40fe5eaf526f8b97d110a",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/go-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/go-tags.scm",
+      "vendored_sha256": "4c4e1f43b3ed42f1ca3deb6b847783aa3333d35285285b31163ca99c932ff292"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "5e277c72738f2f5bf948eb717eaf1d3a2f7c6d6ad43cbed778ef3f236a81adf1",
+      "upstream_git_blob_sha": "ae4481e9e794e29c19398a9f4a9bdd5f5460f757",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/java-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/java-tags.scm",
+      "vendored_sha256": "5e277c72738f2f5bf948eb717eaf1d3a2f7c6d6ad43cbed778ef3f236a81adf1"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "d2a9592300ddb2fa0418cd1c603decd9ecf6ec56d8bb3f1ea59028f9c2cfd6e2",
+      "upstream_git_blob_sha": "c143e3efd7119d69fec59db2947654707f8a870d",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/javascript-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/javascript-tags.scm",
+      "vendored_sha256": "d2a9592300ddb2fa0418cd1c603decd9ecf6ec56d8bb3f1ea59028f9c2cfd6e2"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "2830ab33b89a5305d9fe16f6c151eb136fc4542abf012a37f8199bcec2ed164d",
+      "upstream_git_blob_sha": "dab8b941deae3c3df61b8566bbe371f7157b2c72",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/python-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/python-tags.scm",
+      "vendored_sha256": "2830ab33b89a5305d9fe16f6c151eb136fc4542abf012a37f8199bcec2ed164d"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "debcf55ea29a38f28f59150d3d35b9397fd36040e3e6d4197ccc411f710c07a8",
+      "upstream_git_blob_sha": "0888cc0d84375be1e1db67e10d870e19df387130",
+      "upstream_path": "aider/queries/tree-sitter-language-pack/rust-tags.scm",
+      "vendored_path": "queries/tree-sitter-language-pack/rust-tags.scm",
+      "vendored_sha256": "debcf55ea29a38f28f59150d3d35b9397fd36040e3e6d4197ccc411f710c07a8"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "0af1ee868ab46d83ae21face42d07e0a213aaa13e11201cc4bf8f1efa09c419a",
+      "upstream_git_blob_sha": "59e7219cacb604d397480a4dac6884c577405a8f",
+      "upstream_path": "aider/queries/tree-sitter-languages/README.md",
+      "vendored_path": "queries/tree-sitter-languages/README.md",
+      "vendored_sha256": "0af1ee868ab46d83ae21face42d07e0a213aaa13e11201cc4bf8f1efa09c419a"
+    },
+    {
+      "changes": "none",
+      "original_sha256": "38c74279e74f880db8932f360e981330a5cafe5db2493b85db3ad0d9f2408bd1",
+      "upstream_git_blob_sha": "8a73dccc241348f6391c2e4636058dd7f4d06160",
+      "upstream_path": "aider/queries/tree-sitter-languages/typescript-tags.scm",
+      "vendored_path": "queries/tree-sitter-languages/typescript-tags.scm",
+      "vendored_sha256": "38c74279e74f880db8932f360e981330a5cafe5db2493b85db3ad0d9f2408bd1"
+    }
+  ]
+}

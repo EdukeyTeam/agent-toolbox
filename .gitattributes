@@ -1,0 +1,3 @@
+# Preserve exact bytes recorded by the third-party provenance manifests.
+skills/legacy-codebase-workflows/vendor/** -text
+src/legacy-repo-map/licenses/** -text

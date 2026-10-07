@@ -1,0 +1,10 @@
+Legacy codebase workflows
+Copyright 2026 Edukey Sp. z o.o.
+
+This contribution is licensed under the Apache License, Version 2.0.
+It includes an adapted Aider repository-map ranker and audited Tree-sitter
+queries. Their upstream copyrights, licenses, pinned source locations
+and adaptation details are preserved in THIRD_PARTY.md and vendor/.
+
+Aider: https://github.com/Aider-AI/aider
+Repository-map technique: https://aider.chat/2023/10/22/repomap.html
