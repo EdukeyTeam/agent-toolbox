@@ -71,6 +71,52 @@ class ExportTests(unittest.TestCase):
         self.assertIn("1.25 seconds", report)
         self.assertTrue(report.endswith(self.raw))
 
+    def test_default_keeps_evidence_out_of_agent_report_directory(self):
+        paths = self.export()
+        self.assertEqual(paths["raw"].parent, paths["report"].parent / "artifacts/repo-map.python")
+        self.assertEqual(sorted(p.name for p in paths["report"].parent.iterdir()),
+                         ["artifacts", "repo-map.python.md"])
+        self.assertIn("artifacts/repo-map.python/repo-map.python.meta.json",
+                      paths["report"].read_text(encoding="utf-8"))
+
+    def test_custom_evidence_directory_and_header_selection(self):
+        self.metadata["rendering"] = {"format": "grouped", "clipped_declarations": []}
+        self.metadata["selection"] = {"mode": "budget"}
+        self.write_artifacts()
+        evidence = self.base / "archived evidence"
+        paths = self.export(evidence_dir=evidence)
+        self.assertEqual(paths["metadata"].parent, evidence)
+        report = paths["report"].read_text(encoding="utf-8")
+        self.assertIn("budget / grouped", report)
+        self.assertIn("Captured definitions omitted: 6", report)
+        self.assertIn("Declaration snippets clipped: 0", report)
+        self.assertEqual(json.loads(paths["metadata"].read_text(encoding="utf-8"))["export"]["evidence_dir"], str(evidence))
+
+    def test_invalid_rendering_and_selection_fail_before_any_publication(self):
+        cases = [
+            {"selection": None}, {"selection": []},
+            {"selection": {"mode": "all-definitions"}},
+            {"rendering": None}, {"rendering": []},
+            {"rendering": {"format": "grouped", "clipped_declarations": "bad"}},
+            {"rendering": {"format": "grouped", "clipped_declarations": [None]}},
+            {"coverage": {**self.metadata["coverage"], "definitions_omitted": 999}},
+        ]
+        original = dict(self.metadata)
+        for changes in cases:
+            with self.subTest(changes=changes):
+                self.metadata = {**original, **changes}
+                self.write_artifacts()
+                with self.assertRaises(ValueError):
+                    self.export()
+                self.assertFalse((self.repo / "docs").exists())
+
+    def test_evidence_cannot_replace_generation_artifacts(self):
+        before = {p.name: p.read_bytes() for p in self.artifacts.iterdir()}
+        with self.assertRaisesRegex(ValueError, "artifact"):
+            self.export(evidence_dir=self.artifacts)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.artifacts.iterdir()})
+        self.assertFalse((self.repo / "docs").exists())
+
     def test_custom_filename_and_unmeasured_time(self):
         output = self.base / "custom/my named map.md"
         paths = self.export(output_file=output)
@@ -108,12 +154,14 @@ class ExportTests(unittest.TestCase):
     def test_collision_refusal_and_force_preserve_existing_without_force(self):
         destination = self.repo / "docs/repo-maps"
         destination.mkdir(parents=True)
-        collision = destination / "repo-map.python.inventory.json"
+        evidence = destination / "artifacts/repo-map.python"
+        evidence.mkdir(parents=True)
+        collision = evidence / "repo-map.python.inventory.json"
         collision.write_text("keep this")
         with self.assertRaisesRegex(ValueError, "exists"):
             self.export()
         self.assertEqual(collision.read_text(), "keep this")
-        self.assertEqual([p.name for p in destination.iterdir()], [collision.name])
+        self.assertEqual([p.name for p in evidence.iterdir()], [collision.name])
         paths = self.export(force=True)
         self.assertEqual(paths["inventory"].read_bytes(), (self.artifacts / "inventory.json").read_bytes())
 
@@ -183,7 +231,7 @@ class ExportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "exists"):
                 self.export()
         destination = self.repo / "docs/repo-maps"
-        self.assertEqual((destination / "repo-map.python.raw.md").read_bytes(), b"concurrent writer owns this")
+        self.assertEqual((destination / "artifacts/repo-map.python/repo-map.python.raw.md").read_bytes(), b"concurrent writer owns this")
         self.assertFalse((destination / "repo-map.python.md").exists())
         self.assertEqual(list(destination.glob(".repo-map-export-*")), [])
 
@@ -197,7 +245,8 @@ class ExportTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "injected copy"):
                 self.export()
         destination = self.repo / "docs/repo-maps"
-        self.assertEqual(list(destination.iterdir()), [])
+        self.assertEqual(list(destination.rglob("*.md")), [])
+        self.assertEqual(list(destination.rglob(".repo-map-export-*")), [])
 
     def test_fallback_failure_keeps_another_writers_replacement(self):
         real_open = Path.open
@@ -232,7 +281,7 @@ class ExportTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "injected copy"):
                 self.export()
         destination = self.repo / "docs/repo-maps"
-        self.assertEqual((destination / "repo-map.python.raw.md").read_bytes(), b"concurrent replacement")
+        self.assertEqual((destination / "artifacts/repo-map.python/repo-map.python.raw.md").read_bytes(), b"concurrent replacement")
         self.assertFalse((destination / "repo-map.python.md").exists())
 
     def test_force_staging_failure_preserves_prior_report(self):
@@ -280,7 +329,7 @@ class ExportTests(unittest.TestCase):
         output = self.base / "CLI report.md"
         result = subprocess.run([sys.executable, str(SCRIPTS / "export_repo_map.py"), str(self.repo),
                                  "--artifact-dir", str(self.artifacts), "--implementation", "bundle",
-                                 "--output-file", str(output), "--elapsed-seconds", "0.5"],
+                                 "--output-file", str(output), "--evidence-dir", str(self.base / "saved evidence"), "--elapsed-seconds", "0.5"],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["report"], str(output))
