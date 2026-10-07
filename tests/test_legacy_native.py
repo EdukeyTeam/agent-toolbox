@@ -350,6 +350,27 @@ class RustParityTests(FixtureCase):
         self.assertEqual([limits["max_tags_per_file"], limits["max_total_tags"], limits["max_budget"]], [constants["MAX_TAGS_PER_FILE"], constants["MAX_TOTAL_TAGS"], constants["MAX_BUDGET"]])
         self.assertEqual(policy["baseline_contract"], f"repo_map.py {constants['VERSION']}")
 
+    @unittest.skipUnless(os.name == "posix", "requires literal POSIX backslash filenames")
+    def test_literal_backslash_path_identities_agree(self):
+        files = {"a\\b.java": "class LiteralBackslash {}\n", "a/b.java": "class NestedIdentity {}\n", "..\\literal.java": "class LegitimateLiteral {}\n"}
+        for name, text in files.items():
+            self.write(name, text.encode())
+        for git in (False, "untracked", "tracked"):
+            if git:
+                subprocess.run(["git", "-C", str(self.source), "init", "-q"], check=True)
+                if git == "tracked":
+                    subprocess.run(["git", "-C", str(self.source), "add", "--", *files], check=True)
+            before = self.snapshot()
+            label = "literal-backslash-" + str(git)
+            meta, content = self.assert_same(label, [])
+            entries = {entry["path"]: entry for entry in self.load("rust-" + label, "inventory.json")["files"]}
+            for name, text in files.items():
+                self.assertEqual(entries[name]["sha256"], hashlib.sha256(text.encode()).hexdigest())
+                self.assertIn(name + ":L1: " + text.strip(), content)
+            self.assert_same(label + "-focused", ["--subtree", "a", "--focus-file", "a\\b.java"])
+            self.assertEqual(before, self.snapshot())
+
+
 
 class RustGitParityTests(RustParityTests):
     """The same comparisons on a git work tree with an untracked file."""

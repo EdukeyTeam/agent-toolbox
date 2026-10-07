@@ -179,11 +179,21 @@ pub fn secret_name_pattern() -> String {
     )
 }
 
-/// Validate a repository-relative path and return it with `/` separators.
+/// Normalize deliberate CLI focus/subtree input, independently of source identity.
+pub fn cli_relative(relative: &str) -> Result<String, String> {
+    safe_relative(&relative.replace('\\', "/"))
+}
+
+/// Validate a literal repository-relative identity with `/` separators.
+/// A backslash is an ordinary POSIX filename character, not traversal.
 pub fn safe_relative(relative: &str) -> Result<String, String> {
-    let normalized = relative.replace('\\', "/");
+    let normalized = relative;
     let unsafe_path = || format!("unsafe relative path: {relative:?}");
-    if normalized.is_empty() || normalized.starts_with('/') || normalized.contains('\0') {
+    if normalized.is_empty()
+        || normalized.starts_with('/')
+        || normalized.contains('\0')
+        || (cfg!(windows) && normalized.contains('\\'))
+    {
         return Err(unsafe_path());
     }
     let mut parts = Vec::new();
@@ -359,7 +369,13 @@ mod tests {
 
     #[test]
     fn relative_paths_are_bounded() {
-        assert_eq!(safe_relative("src\\main/A.java").unwrap(), "src/main/A.java");
+        assert_eq!(cli_relative("src\\main/A.java").unwrap(), "src/main/A.java");
+        #[cfg(unix)]
+        {
+            assert_eq!(safe_relative("src\\main/A.java").unwrap(), "src\\main/A.java");
+            assert_eq!(safe_relative("..\\literal.java").unwrap(), "..\\literal.java");
+        }
+        assert!(cli_relative("..\\outside.java").is_err());
         assert_eq!(safe_relative("src/").unwrap(), "src");
         assert_eq!(safe_relative("./a/./b/").unwrap(), "a/b");
         assert_eq!(safe_relative(".").unwrap(), ".");

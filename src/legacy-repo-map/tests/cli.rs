@@ -150,7 +150,8 @@ fn snapshot(root: &Path) -> BTreeMap<String, String> {
         for entry in fs::read_dir(&directory).unwrap() {
             let entry = entry.unwrap();
             let path = entry.path();
-            let key = path.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/");
+            let key = path.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+            let key = if cfg!(windows) { key.replace('\\', "/") } else { key };
             let file_type = entry.file_type().unwrap();
             if file_type.is_symlink() {
                 result.insert(key, format!("link:{}", fs::read_link(&path).unwrap().display()));
@@ -222,6 +223,43 @@ fn maps_definitions_with_original_paths_and_lines() {
         fs::canonicalize(Path::new(summary["map"].as_str().unwrap())).unwrap(),
         fs::canonicalize(fixture.output.join("repo-map.md")).unwrap()
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn literal_backslash_paths_keep_distinct_current_byte_identities() {
+    let fixture = Fixture::new();
+    let files = [
+        ("a\\b.java", "class LiteralBackslash {}\n"),
+        ("a/b.java", "class NestedIdentity {}\n"),
+        ("..\\literal.java", "class LegitimateLiteral {}\n"),
+    ];
+    for (path, contents) in files {
+        fixture.write(path, contents);
+    }
+    for state in 0..3 {
+        if state == 1 && !fixture.git(&["init", "-q"]) {
+            return;
+        }
+        if state == 2 {
+            assert!(fixture.git_commit());
+        }
+        let before = snapshot(&fixture.source);
+        fixture.map_ok(&[]);
+        let inventory = fixture.json("inventory.json");
+        let entries = inventory["files"].as_array().unwrap();
+        assert_eq!(entries.len(), files.len());
+        for (path, contents) in files {
+            let entry = entries.iter().find(|entry| entry["path"] == path).unwrap();
+            assert_eq!(entry["sha256"], sha256(contents.as_bytes()), "{path}");
+            assert!(fixture.map_text().contains(&format!("{path}:L1: {}", contents.trim())));
+        }
+        fixture.map_ok(&["--subtree", "a", "--focus-file", "a\\b.java"]);
+        let inventory = fixture.json("inventory.json");
+        assert_eq!(inventory["files"].as_array().unwrap().len(), 1);
+        assert_eq!(inventory["files"][0]["path"], "a/b.java");
+        assert_eq!(snapshot(&fixture.source), before, "source files changed");
+    }
 }
 
 #[test]

@@ -612,6 +612,46 @@ class MapTests(unittest.TestCase):
         self.write("src/a.py", "def alpha():\n    return 2\n")
         self.assertFalse(check_cards(self.repo, {"citations": [card]})["valid"])
 
+    @unittest.skipUnless(os.name == "posix", "requires literal POSIX backslash filenames")
+    def test_literal_backslash_paths_preserve_inventory_hashes_and_citations(self):
+        literal = self.write("a\\b.py", "def literal_backslash(): pass\n")
+        nested = self.write("a/b.py", "def nested_identity(): pass\n")
+        traversal_looking = self.write("..\\literal.py", "def legitimate_literal(): pass\n")
+        original = {path.relative_to(self.repo).as_posix(): path.read_bytes() for path in (literal, nested, traversal_looking)}
+        for git in (False, "untracked", "tracked"):
+            if git:
+                subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+                if git == "tracked":
+                    subprocess.run(["git", "-C", str(self.repo), "add", "--", *original], check=True)
+            with self.subTest(git=git):
+                meta = self.map()
+                inventory = json.loads((self.out / "inventory.json").read_text(encoding="utf-8"))
+                entries = {item["path"]: item for item in inventory["files"]}
+                self.assertEqual(set(entries), set(original))
+                for name, data in original.items():
+                    text, digest = read_safe_text(self.repo, name)
+                    self.assertEqual(text.encode(), data)
+                    self.assertEqual(entries[name]["sha256"], hashlib.sha256(data).hexdigest())
+                    card = {"path": name, "sha256": digest, "start_line": 1, "end_line": 1, "quote": text.strip()}
+                    self.assertTrue(check_cards(self.repo, {"citations": [card]})["valid"])
+                wrong = {"path": "a\\b.py", "sha256": entries["a/b.py"]["sha256"], "start_line": 1, "end_line": 1, "quote": "nested_identity"}
+                self.assertFalse(check_cards(self.repo, {"citations": [wrong]})["valid"])
+                content = (self.out / "repo-map.md").read_text(encoding="utf-8")
+                self.assertIn("a\\b.py:L1: def literal_backslash", content)
+                self.assertIn("a/b.py:L1: def nested_identity", content)
+                self.assertIn("..\\literal.py:L1: def legitimate_literal", content)
+                scoped = self.map(subtrees=["a"], focus_files=["a\\b.py"])
+                self.assertEqual(scoped["selection"]["focus_files"], ["a/b.py"])
+                self.assertEqual(scoped["coverage"]["selected_files"], 1)
+                filtered = scan_repository(self.repo, excludes=["a\\b.py"])
+                self.assertNotIn("a\\b.py", {item["path"] for item in filtered["files"]})
+                self.assertIn("a/b.py", {item["path"] for item in filtered["files"]})
+                for name, data in original.items():
+                    self.assertEqual((self.repo / name).read_bytes(), data)
+        with self.assertRaises(ValueError):
+            read_safe_text(self.repo, "a/../b.py")
+
+
 
 if __name__ == "__main__":
     unittest.main()

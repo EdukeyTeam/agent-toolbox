@@ -112,7 +112,7 @@ def normalize_excludes(excludes) -> tuple[str, ...]:
             raise RetrievalError("Exclusions must contain relative path strings")
         try:
             value.encode("utf-8")
-            path = _safe_relative(value).as_posix()
+            path = _safe_relative(value, cli_input=True).as_posix()
             if path == "." or re.match(r"^[A-Za-z]:", path) or any(c in path for c in "*?\x00"):
                 raise ValueError("expected a relative file or directory path without glob patterns")
         except (ValueError, UnicodeError) as exc:

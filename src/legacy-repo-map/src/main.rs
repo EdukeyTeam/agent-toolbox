@@ -401,7 +401,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         values
             .iter()
             .map(|value| {
-                policy::safe_relative(value).map_err(|_| format!("focus/subtree path must be relative: {value}"))
+                policy::cli_relative(value).map_err(|_| format!("focus/subtree path must be relative: {value}"))
             })
             .collect()
     };

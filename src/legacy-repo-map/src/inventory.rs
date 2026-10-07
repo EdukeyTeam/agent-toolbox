@@ -379,7 +379,7 @@ impl GitCandidates {
                     return Some(Candidate::Unusable {
                         display: String::from_utf8_lossy(error.as_bytes()).into_owned(),
                         reason: "non-UTF-8 path",
-                    })
+                    });
                 }
             }
         }

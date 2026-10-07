@@ -1251,6 +1251,33 @@ class RetrievalTests(unittest.TestCase):
                 ranked.append([(item["source"]["kind"], item["source"]["path"]) for item in result["results"]])
         self.assertEqual(ranked[0], ranked[1])
 
+    @unittest.skipIf(os.name == "nt", "Windows cannot create literal-backslash filenames")
+    def test_literal_backslash_filename_keeps_exact_index_and_citation_identity(self):
+        from repo_files import read_safe_text
+        (self.root / "part").mkdir()
+        nested = self.root / "part/file.py"
+        literal = self.root / "part\\file.py"
+        nested.write_text("class NestedInvoice: pass\n", encoding="utf-8")
+        literal.write_text("class LiteralInvoice: pass\n", encoding="utf-8")
+        for git in (False, True):
+            with self.subTest(git=git):
+                if git:
+                    subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+                    subprocess.run(["git", "-C", str(self.root), "add", "--", "part/file.py", "part\\file.py"], check=True)
+                self.assertEqual(self.index()["files"], 4)
+                with backend.connect(self.db) as con:
+                    paths = {row[0] for row in con.execute("SELECT path FROM files")}
+                    self.assertIn("part/file.py", paths)
+                    self.assertIn("part\\file.py", paths)
+                    for name, expected, path in (("LiteralInvoice", "part\\file.py", literal), ("NestedInvoice", "part/file.py", nested)):
+                        result = backend.query(con, name)
+                        source = next(row["source"] for row in result["results"] if row["source"]["path"] == expected)
+                        text, file_hash = read_safe_text(self.root, source["path"])
+                        self.assertEqual(text, path.read_text(encoding="utf-8"))
+                        self.assertEqual(file_hash, source["fileSha256"])
+                        self.assertIn(name, text)
+
+
 
 if __name__ == "__main__":
     unittest.main()

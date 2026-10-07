@@ -181,8 +181,8 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
     for path in [*subtrees, *focus_files]:
         if Path(path).is_absolute() or ".." in Path(path).parts:
             raise ValueError(f"focus/subtree path must be relative: {path}")
-    subtrees = tuple(_safe_relative(path).as_posix() for path in subtrees)
-    focus_files = tuple(_safe_relative(path).as_posix() for path in focus_files)
+    subtrees = tuple(_safe_relative(path, cli_input=True).as_posix() for path in subtrees)
+    focus_files = tuple(_safe_relative(path, cli_input=True).as_posix() for path in focus_files)
     output.mkdir(parents=True, exist_ok=True)
     initial = {"tool": "legacy-codebase-workflows repo_map", "version": VERSION, "status": "in-progress", "source_root": str(root), "coverage": None, "map_sha256": None}
     _atomic_write(output / "repo-map.md", "# Repository inventory\n\nNo current symbol map. Inspect map.meta.json for generation status.\n")

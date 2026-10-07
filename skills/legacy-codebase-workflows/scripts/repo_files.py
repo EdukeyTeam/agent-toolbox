@@ -45,9 +45,10 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
         return subprocess.CompletedProcess(command, 127, stdout=b"", stderr=b"")
 
 
-def _safe_relative(relative_path: str) -> PurePosixPath:
-    path = PurePosixPath(relative_path.replace("\\", "/"))
-    if not relative_path or path.is_absolute() or ".." in path.parts or "." in path.parts:
+def _safe_relative(relative_path: str, *, cli_input=False) -> PurePosixPath:
+    """Keep source/citation identities literal; normalize separators only for CLI scope."""
+    path = PurePosixPath(relative_path.replace("\\", "/") if cli_input else relative_path)
+    if not relative_path or path.is_absolute() or ".." in path.parts or "." in path.parts or (os.name == "nt" and not cli_input and "\\" in relative_path):
         raise ValueError(f"unsafe relative path: {relative_path!r}")
     return path
 
@@ -268,7 +269,7 @@ def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: in
         raise ValueError("source is not a directory")
     if not 1 <= max_files <= HARD_MAX_FILES or not 1 <= max_file_bytes <= HARD_MAX_FILE_BYTES:
         raise ValueError(f"limits must be 1..{HARD_MAX_FILES} files and 1..{HARD_MAX_FILE_BYTES} bytes")
-    subtrees = tuple(_safe_relative(s).as_posix() for s in subtrees)
+    subtrees = tuple(_safe_relative(s, cli_input=True).as_posix() for s in subtrees)
     subtrees = tuple(s for s in subtrees if s != ".")
     git_repo = git_context(root)
     head = _git(root, "rev-parse", "HEAD") if git_repo else None
