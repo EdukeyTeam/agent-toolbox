@@ -25,6 +25,7 @@ import shutil
 import socket
 import sqlite3
 import ssl
+import stat
 import subprocess
 import sys
 import sysconfig
@@ -864,6 +865,38 @@ def build_rust(work: Path, out: Path) -> dict:
     return {"directory": artifact, "program": program, "info": info}
 
 
+
+def remove_managed_output(path: Path) -> None:
+    """Remove one reserved output entry without following directory symlinks."""
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError:
+        return
+    if stat.S_ISDIR(mode):
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def cleanup_managed_outputs(out: Path, built: list[dict]) -> None:
+    """Own only this host's two artifact names and their ZIP/tar archives.
+
+    Build manifests are output metadata, never authority to delete paths.
+    Work directories, caches, other platform builds and unrelated files remain.
+    """
+    managed = {f"legacy-tools-{platform_tag()}", f"legacy-repo-map-{platform_tag()}"}
+    selected = {item["directory"].name for item in built}
+    if not selected <= managed:
+        raise BuildError("built artifact name differs from the current platform's managed names")
+    for name in sorted(managed - selected):
+        remove_managed_output(out / name)
+    # Remove both formats, including an obsolete archive for a selected target.
+    # Each selected archive is then recreated from this build's artifact bytes.
+    for name in sorted(managed):
+        for extension in (".zip", ".tar.gz"):
+            remove_managed_output(out / (name + extension))
+
+
 def archive(directory: Path) -> Path:
     if os.name == "nt":
         target = directory.with_suffix(".zip")
@@ -1006,6 +1039,7 @@ def main(argv: list[str] | None = None) -> int:
         rust = build_rust(work, out) if args.target in ("rust", "all") else None
         checks = [] if args.skip_smoke else smoke(python_bundle, rust)
         built = [item for item in (python_bundle, rust) if item]
+        cleanup_managed_outputs(out, built)
         archives = [archive(item["directory"]) for item in built]
         sums = [(sha256(path), path.name) for path in archives] + [(sha256(item["program"]), f"{item['directory'].name}/{item['program'].name}") for item in built]
         (out / "SHA256SUMS").write_text("".join(f"{digest}  {name}\n" for digest, name in sums), encoding="utf-8")

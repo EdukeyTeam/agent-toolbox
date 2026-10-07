@@ -74,3 +74,7 @@ The retrieval backend stays in Python. Its lexical search is SQLite FTS5, which 
 ## Limits that apply to both
 
 A map lists definitions ranked by how often their names are referenced elsewhere. Names are matched as text: overloads, same-named methods in unrelated classes, reflection, XML or properties wiring and dependency injection are not resolved. Ten languages have queries; everything else appears in the inventory only. Standalone programs are specific to an operating system and CPU architecture, are not code-signed, and contain system libraries from the machine that built them; `BUILD-INFO.json` beside each program records what went in.
+
+## Reusing a build output directory
+
+A successful build replaces the current platform's managed `legacy-tools-<platform>` and `legacy-repo-map-<platform>` outputs. Selecting one target removes the omitted target's artifact directory and both managed archive formats before publishing fresh checksums and manifest. Switching bundle layouts also replaces its archive. Work directories, caches, unrelated files and builds for other platforms remain; Use separate output directories for different platforms. Cleanup unlinks symlinks without deleting their targets and fails the build if a managed output cannot be removed.

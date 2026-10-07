@@ -17,6 +17,8 @@ Environment:
 """
 
 import ast
+import contextlib
+import io
 import hashlib
 import errno
 import importlib.util
@@ -764,6 +766,148 @@ class BuildHelperTests(unittest.TestCase):
                         with self.assertRaises(OSError) as raised:
                             function(case)
                         self.assertIs(raised.exception, error)
+
+    @staticmethod
+    def artifact_builder(helper, name):
+        """Replace compilation only; main, cleanup, archives and publication stay real."""
+        def build(work, out, *arguments):
+            mode = arguments[0] if name == "legacy-tools" else "rust"
+            directory = out / f"{name}-{helper.platform_tag()}"
+            if directory.is_symlink():
+                directory.unlink()
+            elif directory.exists():
+                shutil.rmtree(directory)
+            directory.mkdir(parents=True)
+            program = directory / (name + EXE)
+            program.write_bytes(f"built {name} {mode}\n".encode())
+            if mode == "onedir":
+                (directory / "_internal").mkdir()
+                (directory / "_internal/runtime.bin").write_bytes(b"actual onedir fixture bytes")
+            return {"directory": directory, "program": program, "info": {"artifact": directory.name, "program": program.name, "mode": mode}}
+        return build
+
+    def test_target_narrowing_removes_only_managed_outputs_before_real_publication(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            out = root / "artifacts"
+            out.mkdir()
+            unrelated = {
+                "manual/keep.txt": b"manual output stays",
+                "work/cache/keep.bin": b"build cache stays",
+                "legacy-tools-other-platform.tar.gz": b"other platform stays",
+                f"legacy-tools-{helper.platform_tag()}.zip.notes": b"unrelated suffix stays",
+                "readme.txt": b"unrelated file stays",
+            }
+            for name, contents in unrelated.items():
+                path = out / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(contents)
+            outside = root / "outside.txt"
+            outside.write_bytes(b"manifest must not authorize deleting this")
+            (out / "build-manifest.json").write_text(json.dumps({"archives": ["../outside.txt", "manual/keep.txt", "work/cache/keep.bin"]}), encoding="utf-8")
+            managed = {f"legacy-tools-{helper.platform_tag()}", f"legacy-repo-map-{helper.platform_tag()}"}
+            with mock.patch.object(helper, "build_python_bundle", side_effect=self.artifact_builder(helper, "legacy-tools")), mock.patch.object(helper, "build_rust", side_effect=self.artifact_builder(helper, "legacy-repo-map")):
+                for target, mode, archive_os in (("all", "onedir", "posix"), ("rust", "onedir", "nt"), ("python-bundle", "onefile", "posix"), ("python-bundle", "onedir", "nt")):
+                    with self.subTest(target=target, mode=mode, archive_os=archive_os):
+                        # Only select the actual archive format; pathlib and the
+                        # rest of the real host OS retain their native semantics.
+                        archive_host = type("ArchiveHost", (), {"name": archive_os})()
+                        with mock.patch.object(helper, "os", archive_host), contextlib.redirect_stdout(io.StringIO()):
+                            status = helper.main(["--output-dir", str(out), "--target", target, "--mode", mode, "--skip-smoke"])
+                        self.assertEqual(status, 0)
+                        manifest = json.loads((out / "build-manifest.json").read_text(encoding="utf-8"))
+                        selected = managed if target == "all" else {f"{'legacy-tools' if target == 'python-bundle' else 'legacy-repo-map'}-{helper.platform_tag()}"}
+                        suffix = ".zip" if archive_os == "nt" else ".tar.gz"
+                        expected_archives = {name + suffix for name in selected}
+                        actual_managed = {path.name for path in out.iterdir() if any(path.name == name + extension for name in managed for extension in (".zip", ".tar.gz"))}
+                        self.assertEqual(actual_managed, expected_archives)
+                        self.assertEqual(set(manifest["archives"]), expected_archives)
+                        self.assertEqual({item["artifact"] for item in manifest["artifacts"]}, selected)
+                        for name in managed - selected:
+                            self.assertFalse((out / name).exists())
+                            self.assertFalse((out / name).is_symlink())
+                        for item in manifest["artifacts"]:
+                            directory = out / item["artifact"]
+                            if item["artifact"].startswith("legacy-tools-"):
+                                self.assertEqual(item["mode"], mode)
+                                self.assertEqual((directory / "_internal").exists(), mode == "onedir")
+                            program_bytes = (directory / item["program"]).read_bytes()
+                            archive = out / (item["artifact"] + suffix)
+                            member = item["artifact"] + "/" + item["program"]
+                            if suffix == ".zip":
+                                with zipfile.ZipFile(archive) as bundle:
+                                    self.assertEqual(bundle.read(member), program_bytes)
+                            else:
+                                with tarfile.open(archive) as bundle:
+                                    self.assertEqual(bundle.extractfile(member).read(), program_bytes)
+                        sums = dict(line.split("  ", 1)[::-1] for line in (out / "SHA256SUMS").read_text(encoding="utf-8").splitlines())
+                        expected_sums = expected_archives | {item["artifact"] + "/" + item["program"] for item in manifest["artifacts"]}
+                        self.assertEqual(set(sums), expected_sums)
+                        for name, digest in sums.items():
+                            self.assertEqual(hashlib.sha256((out / name).read_bytes()).hexdigest(), digest)
+                        for name, contents in unrelated.items():
+                            self.assertEqual((out / name).read_bytes(), contents)
+                        self.assertEqual(outside.read_bytes(), b"manifest must not authorize deleting this")
+
+    def test_managed_cleanup_unlinks_symlinks_without_modifying_outside_targets(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            out = root / "artifacts"
+            out.mkdir()
+            outside = root / "outside"
+            outside.mkdir()
+            target = outside / "keep.txt"
+            target.write_bytes(b"outside source and archive target unchanged")
+            tools = out / f"legacy-tools-{helper.platform_tag()}"
+            rust = out / f"legacy-repo-map-{helper.platform_tag()}"
+            try:
+                tools.symlink_to(outside, target_is_directory=True)
+                (out / (tools.name + ".zip")).symlink_to(target)
+                (out / (rust.name + ".tar.gz")).symlink_to(target)
+            except OSError as error:
+                if error.errno in (errno.EPERM, errno.EACCES) or getattr(error, "winerror", None) == 1314:
+                    self.skipTest("filesystem permission does not allow symlink fixture")
+                raise
+            with mock.patch.object(helper, "build_rust", side_effect=self.artifact_builder(helper, "legacy-repo-map")), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(helper.main(["--output-dir", str(out), "--target", "rust", "--skip-smoke"]), 0)
+            self.assertFalse(tools.is_symlink())
+            self.assertFalse(tools.exists())
+            self.assertFalse((out / (rust.name + ".tar.gz")).is_symlink())
+            self.assertEqual(target.read_bytes(), b"outside source and archive target unchanged")
+            # A symlink nested in an omitted real artifact directory is also
+            # removed as a link rather than traversed by recursive cleanup.
+            tools.mkdir()
+            (tools / "linked").symlink_to(outside, target_is_directory=True)
+            with mock.patch.object(helper, "build_rust", side_effect=self.artifact_builder(helper, "legacy-repo-map")), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(helper.main(["--output-dir", str(out), "--target", "rust", "--skip-smoke"]), 0)
+            self.assertFalse(tools.exists())
+            self.assertEqual(target.read_bytes(), b"outside source and archive target unchanged")
+
+    def test_cleanup_permission_error_fails_before_fresh_manifest_and_checksums(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp).resolve() / "artifacts"
+            with mock.patch.object(helper, "build_python_bundle", side_effect=self.artifact_builder(helper, "legacy-tools")), mock.patch.object(helper, "build_rust", side_effect=self.artifact_builder(helper, "legacy-repo-map")), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(helper.main(["--output-dir", str(out), "--target", "all", "--skip-smoke"]), 0)
+                manifest = (out / "build-manifest.json").read_bytes()
+                sums = (out / "SHA256SUMS").read_bytes()
+                refused = out / f"legacy-tools-{helper.platform_tag()}{'.zip' if os.name == 'nt' else '.tar.gz'}"
+                original_unlink = Path.unlink
+                def permission_denied(path, *arguments, **options):
+                    if path == refused:
+                        raise PermissionError(errno.EACCES, "controlled cleanup permission failure", str(path))
+                    return original_unlink(path, *arguments, **options)
+                error = io.StringIO()
+                with mock.patch.object(Path, "unlink", permission_denied), contextlib.redirect_stderr(error):
+                    status = helper.main(["--output-dir", str(out), "--target", "rust", "--skip-smoke"])
+                self.assertEqual(status, 1)
+                self.assertIn("build-legacy-tools:", error.getvalue())
+                self.assertIn("controlled cleanup permission failure", error.getvalue())
+                self.assertEqual((out / "build-manifest.json").read_bytes(), manifest)
+                self.assertEqual((out / "SHA256SUMS").read_bytes(), sums)
+                self.assertTrue(refused.exists())
 
     def test_windows_archive_clamps_old_timestamp_without_changing_source(self):
         helper = self.helper()
