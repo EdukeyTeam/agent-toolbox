@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -49,6 +50,17 @@ def _safe_relative(relative_path: str) -> PurePosixPath:
     if not relative_path or path.is_absolute() or ".." in path.parts or "." in path.parts:
         raise ValueError(f"unsafe relative path: {relative_path!r}")
     return path
+
+
+def contains_control_characters(path: str) -> bool:
+    return any(ord(character) < 32 or 127 <= ord(character) < 160 or character in "\u2028\u2029" for character in path)
+
+
+def safe_path_display(path: str) -> str:
+    """JSON string content, reversible for UTF-8 paths and safe for display."""
+    display = os.fsencode(path).decode("utf-8", "replace")
+    escaped = json.dumps(display, ensure_ascii=False)[1:-1]
+    return "".join(f"\\u{ord(character):04x}" if 127 <= ord(character) < 160 or character in "\u2028\u2029" else character for character in escaped)
 
 
 def _secret(path: PurePosixPath) -> bool:
@@ -290,7 +302,10 @@ def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: in
             try:
                 relative.encode("utf-8")
             except UnicodeEncodeError:
-                skipped.append({"path": os.fsencode(relative).decode("utf-8", "replace"), "reason": "non-UTF-8 path"})
+                skipped.append({"path": safe_path_display(relative), "reason": "non-UTF-8 path"})
+                continue
+            if contains_control_characters(relative):
+                skipped.append({"path": safe_path_display(relative), "reason": "control character in path"})
                 continue
             if any(fnmatch.fnmatchcase(rel.as_posix(), pattern) or fnmatch.fnmatchcase(rel.name, pattern) for pattern in excludes):
                 skipped.append({"path": relative, "reason": "explicit exclusion"})

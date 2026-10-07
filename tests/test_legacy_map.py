@@ -14,7 +14,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1] / "skills/legacy-codebase-workflows/scripts"
 sys.path.insert(0, str(SCRIPTS))
 from check_citations import check_cards
-from repo_files import read_safe_text, scan_repository
+from repo_files import contains_control_characters, read_safe_text, safe_path_display, scan_repository
 from repo_map import generate
 
 
@@ -235,7 +235,6 @@ class MapTests(unittest.TestCase):
         self.assertIn("Example.cs:L1", (self.out / "repo-map.md").read_text(encoding="utf-8"))
         self.assertEqual(len(list((self.out / "cache").glob("*.json"))), 2)
 
-
     def test_rank_edge_caps_cover_referenced_and_unreferenced_definitions(self):
         from aider_rank import rank_tags
         def tag(name, kind, line):
@@ -248,6 +247,56 @@ class MapTests(unittest.TestCase):
                     with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "ranking edge limit exceeded"):
                         rank_tags(tags, max_edges=limit)
 
+    def test_control_path_display_escapes_controls_and_line_separators_reversibly(self):
+        for value in (*range(32), *range(127, 160), 0x2028, 0x2029):
+            name = "folder/żółć" + chr(value) + '"\\name.java'
+            with self.subTest(control=value):
+                self.assertTrue(contains_control_characters(name))
+                display = safe_path_display(name)
+                self.assertFalse(contains_control_characters(display))
+                self.assertEqual(json.loads('"' + display + '"'), name)
+        self.assertFalse(contains_control_characters("folder/żółć.java"))
+
+    @unittest.skipUnless(os.name == "posix", "requires POSIX control-character filenames")
+    def test_control_filenames_are_counted_without_reading_or_injecting_map_records(self):
+        names = ["A-żółć\nline.java", "B-tab\tname.java", "C-del\x7fname.java", "D-esc\x1bname.java", "E-c1\x80name.java", "F-nel\x85name.java", "G-line\u2028name.java", "H-paragraph\u2029name.java"]
+        for name in names:
+            self.write(name, "class InjectedDefinition {}\n")
+        good = self.write("Z-good.java", "class GoodDefinition {}\n")
+        originals = {name: (self.repo / name).read_bytes() for name in names + [good.name]}
+        for git in (False, "untracked", "tracked"):
+            if git:
+                subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+                if git == "tracked":
+                    subprocess.run(["git", "-C", str(self.repo), "add", "--", *names, good.name], check=True)
+            for excludes in ((), ("A-*",)):
+                with self.subTest(git=git, excludes=excludes), patch("repo_files.read_safe_text", wraps=read_safe_text) as reader:
+                    meta = self.map(excludes=excludes, budget=128)
+                    self.assertEqual(meta["status"], "complete")
+                    self.assertEqual(meta["coverage"]["candidates_seen"], len(names) + 1)
+                    self.assertEqual(meta["coverage"]["selected_files"], 1)
+                    self.assertLessEqual(meta["estimated_tokens"], 128)
+                    skipped = {item["path"]: item["reason"] for item in meta["skipped"]}
+                    self.assertEqual(skipped, {safe_path_display(name): "control character in path" for name in names})
+                    self.assertEqual([call.args[1] for call in reader.call_args_list], [good.name])
+                    content = (self.out / "repo-map.md").read_text(encoding="utf-8")
+                    self.assertIn("Z-good.java:L1: class GoodDefinition", content)
+                    self.assertNotIn("InjectedDefinition", content)
+                    inventory = json.loads((self.out / "inventory.json").read_text(encoding="utf-8"))
+                    self.assertEqual([entry["path"] for entry in inventory["files"]], [good.name])
+                    for item in inventory["skipped"]:
+                        self.assertFalse(contains_control_characters(item["path"]))
+                        self.assertIn(json.loads('"' + item["path"] + '"'), names)
+            capped = self.map(max_files=1)
+            self.assertEqual(capped["coverage"]["candidates_seen"], 2)
+            self.assertEqual(capped["coverage"]["selected_files"], 0)
+            self.assertEqual(capped["skipped"][0]["reason"], "control character in path")
+            self.assertTrue(capped["truncated"])
+            for name, data in originals.items():
+                self.assertEqual((self.repo / name).read_bytes(), data)
+        caches = [json.loads(path.read_text(encoding="utf-8")) for path in (self.out / "cache").glob("*.json")]
+        self.assertEqual(len(caches), 1)
+        self.assertFalse(any(tag["name"] == "InjectedDefinition" for cache in caches for tag in cache["tags"]))
 
     def test_changed_same_mtime_deleted_and_poisoned_cache(self):
         path = self.write("a.py", "def alpha():\n    pass\n")
