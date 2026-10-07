@@ -38,7 +38,7 @@ These are the two canonical templates. They preserve the user's TDD and commit w
    python <skill-directory>/scripts/copy_template.py --workflow web --project-root <project-root> --candidate
    python <skill-directory>/scripts/copy_template.py --workflow desktop --project-root <project-root> --scope <existing-relative-subfolder> --candidate
    ```
-   It refuses overwrite and out-of-project targets, verifies bytes and prints a SHA-256 receipt. The receipt is execution evidence, not text for AGENTS.md.
+   It always stages AGENTS.md.candidate, refuses overwrite and out-of-project targets, verifies bytes and prints a SHA-256 receipt. The explicit --candidate flag is retained for compatibility; omitting it is equally safe. The receipt is execution evidence, not text for AGENTS.md.
 4. **Always use `--candidate`, for new and existing root/nested files.** Adapt `AGENTS.md.candidate` while active guidance stays absent or unchanged. After reviewing the diff and validating that no placeholders remain, publish new guidance with a filesystem operation that refuses overwrite, or reconcile existing guidance in a reviewed edit preserving human instructions. An interrupted adaptation leaves only the candidate; report it rather than loading/publishing it. Remove your candidate after successful publication; do not commit candidates or receipts.
 5. If the helper cannot run, use an available filesystem copy and compare bytes/hashes before editing. If the template cannot be read/copied, report the blocker; do not invent an approximation.
 6. Apply the workflow and admission rule. Fill verified placeholders; remove optional blocks rather than inventing facts. Read [scope and adaptation](references/scope-and-adaptation.md) for fields and nested rules.

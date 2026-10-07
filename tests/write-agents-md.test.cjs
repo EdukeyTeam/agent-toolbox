@@ -30,9 +30,10 @@ for (const workflow of ['web', 'desktop']) {
     const result = run(project, workflow);
     assert.equal(result.status, 0, result.stderr || result.error?.message);
     const receipt = JSON.parse(result.stdout);
-    assert.deepEqual(fs.readFileSync(path.join(project, 'AGENTS.md')), source);
+    assert.deepEqual(fs.readFileSync(path.join(project, 'AGENTS.md.candidate')), source);
+    assert.equal(fs.existsSync(path.join(project, 'AGENTS.md')), false);
     assert.equal(receipt.sha256, crypto.createHash('sha256').update(source).digest('hex'));
-    assert.equal(fs.realpathSync.native(receipt.destination), fs.realpathSync.native(path.join(project, 'AGENTS.md')));
+    assert.equal(fs.realpathSync.native(receipt.destination), fs.realpathSync.native(path.join(project, 'AGENTS.md.candidate')));
     assert.deepEqual(fs.readFileSync(path.join(skillRoot, 'assets', `${workflow}-AGENTS.md`)), source);
   });
 }
@@ -42,17 +43,18 @@ test('nested scope copies the original template without writing root guidance', 
   fs.mkdirSync(path.join(project, 'tests'));
   const result = run(project, 'desktop', ['--scope', 'tests']);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(fs.readFileSync(path.join(project, 'tests', 'AGENTS.md')),
+  assert.deepEqual(fs.readFileSync(path.join(project, 'tests', 'AGENTS.md.candidate')),
     fs.readFileSync(path.join(skillRoot, 'assets', 'desktop-AGENTS.md')));
   assert.equal(fs.existsSync(path.join(project, 'AGENTS.md')), false);
 });
 
-test('existing AGENTS.md is not overwritten', t => {
+test('existing AGENTS.md is preserved while a candidate is staged by default', t => {
   const { project } = fixture(t);
   fs.writeFileSync(path.join(project, 'AGENTS.md'), 'Human instructions\n');
   const result = run(project);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /exists|overwrite/i);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(fs.readFileSync(path.join(project, 'AGENTS.md.candidate')),
+    fs.readFileSync(path.join(skillRoot, 'assets/web-AGENTS.md')));
   assert.equal(fs.readFileSync(path.join(project, 'AGENTS.md'), 'utf8'), 'Human instructions\n');
 });
 
@@ -115,7 +117,7 @@ test('rejects a directory symlink escaping the project', t => {
 test('does not follow dangling destination symlinks', t => {
   const { directory, project } = fixture(t);
   const target = path.join(directory, 'uncreated.md');
-  const destination = path.join(project, 'AGENTS.md');
+  const destination = path.join(project, 'AGENTS.md.candidate');
   try {
     fs.symlinkSync(target, destination, 'file');
   } catch (error) {
@@ -138,7 +140,7 @@ test('receipt works with a non-UTF8 output encoding and Unicode paths', t => {
     { encoding: 'utf8', timeout: 10000, env: { ...process.env, PYTHONIOENCODING: 'cp1252' } });
   assert.equal(result.status, 0, result.stderr);
   const receipt = JSON.parse(result.stdout);
-  assert.equal(fs.realpathSync.native(receipt.destination), fs.realpathSync.native(path.join(project, 'AGENTS.md')));
+  assert.equal(fs.realpathSync.native(receipt.destination), fs.realpathSync.native(path.join(project, 'AGENTS.md.candidate')));
   assert.deepEqual(fs.readFileSync(receipt.destination),
     fs.readFileSync(path.join(skillRoot, 'assets/web-AGENTS.md')));
 });
@@ -150,7 +152,7 @@ for (const failure of ['write', 'verification']) {
       'from unittest.mock import patch',
       'namespace = runpy.run_path(sys.argv[1])',
       'project = pathlib.Path(sys.argv[2]).resolve()',
-      'destination = project / "AGENTS.md"',
+      'destination = project / "AGENTS.md.candidate"',
       'original_open = pathlib.Path.open',
       'original_read = pathlib.Path.read_bytes',
       'class BrokenOutput:',
@@ -179,5 +181,20 @@ for (const failure of ['write', 'verification']) {
     const result = spawnSync(python, ['-c', probe, script, project, failure],
       { encoding: 'utf8', timeout: 10000 });
     assert.equal(result.status, 0, result.stderr);
+  });
+}
+
+for (const scope of ['.', 'checks']) {
+  test(`default invocation stages ${scope} guidance without activating placeholders`, t => {
+    const { project } = fixture(t);
+    const directory = scope === '.' ? project : path.join(project, scope);
+    if (scope !== '.') fs.mkdirSync(directory);
+    const result = run(project, 'web', ['--scope', scope]);
+    assert.equal(result.status, 0, result.stderr);
+    const candidate = path.join(directory, 'AGENTS.md.candidate');
+    assert.equal(fs.existsSync(candidate), true, 'The default must create an inactive candidate');
+    assert.equal(fs.existsSync(path.join(directory, 'AGENTS.md')), false);
+    assert.deepEqual(fs.readFileSync(candidate), fs.readFileSync(path.join(skillRoot, 'assets/web-AGENTS.md')));
+    assert.equal(fs.realpathSync.native(JSON.parse(result.stdout).destination), fs.realpathSync.native(candidate));
   });
 }

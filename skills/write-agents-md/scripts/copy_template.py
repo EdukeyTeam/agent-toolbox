@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy an AGENTS template exactly; adaptation is a separate reviewed operation."""
+"""Stage an exact AGENTS template as AGENTS.md.candidate; adapt before publication."""
 
 import argparse
 import hashlib
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-def copy_template(workflow, project_root, scope=".", candidate=False):
+def copy_template(workflow, project_root, scope="."):
     root = Path(project_root).resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Project root must be an existing directory")
@@ -23,7 +23,7 @@ def copy_template(workflow, project_root, scope=".", candidate=False):
 
     source = Path(__file__).resolve().parent.parent / "assets" / f"{workflow}-AGENTS.md"
     template = source.read_bytes()
-    destination = directory / ("AGENTS.md.candidate" if candidate else "AGENTS.md")
+    destination = directory / "AGENTS.md.candidate"
     # Windows exclusive creation can follow a dangling file symlink.
     if destination.is_symlink() or destination.exists():
         raise FileExistsError(str(destination))
@@ -53,11 +53,11 @@ def main():
     parser.add_argument("--workflow", required=True, choices=("web", "desktop"))
     parser.add_argument("--project-root", required=True)
     parser.add_argument("--scope", default=".", help="Existing project-relative directory")
-    parser.add_argument("--candidate", action="store_true", help="Copy to AGENTS.md.candidate")
+    parser.add_argument("--candidate", action="store_true", help="Compatibility flag; copies always stage AGENTS.md.candidate")
     arguments = parser.parse_args()
     try:
         receipt = copy_template(
-            arguments.workflow, arguments.project_root, arguments.scope, arguments.candidate
+            arguments.workflow, arguments.project_root, arguments.scope
         )
     except FileExistsError:
         print("Destination already exists; refusing overwrite. Use a fresh candidate location.",
