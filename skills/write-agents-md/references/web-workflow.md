@@ -4,7 +4,7 @@ Use for browser applications. Read [scope and adaptation](scope-and-adaptation.m
 
 ## Copy and adapt
 
-1. Copy `assets/web-AGENTS.md` exactly with the helper; use candidate mode for existing guidance.
+1. Copy `assets/web-AGENTS.md` exactly with the helper in --candidate mode for both new and existing guidance. Adapt and validate the candidate before publishing active AGENTS.md.
 2. Fill purpose, agreed chat/documentation languages and existing UI locale policy. Describe the actual project purpose, audience and client when known; do not invent a client or retain names from the example.
 3. Include only non-obvious stack constraints and nonstandard layout consequences. Omit standard metadata and conventional source/test/assets maps.
 4. Point to an existing documentation entry point; do not always load PRD/ADR/design files or create them just to match the sample.

@@ -4,7 +4,7 @@ Use for native desktop applications, independent of implementation language/fram
 
 ## Copy and adapt
 
-1. Copy `assets/desktop-AGENTS.md` exactly with the helper; use candidate mode for existing guidance.
+1. Copy `assets/desktop-AGENTS.md` exactly with the helper in --candidate mode for both new and existing guidance. Adapt and validate the candidate before publishing active AGENTS.md.
 2. Fill purpose, agreed chat/documentation languages and localization policy. Describe the actual purpose, audience and client when known. Do not assume a language, framework, application, OS or home path.
 3. Include only folder/repository-wide internal constraints, nonstandard resources and state/compatibility invariants. Keep versions, package tours, protocol migrations and bootstrap detail in documentation/skills.
 4. Use one existing documentation entry point. Remove optional stack/layout blocks that merely restate obvious metadata.

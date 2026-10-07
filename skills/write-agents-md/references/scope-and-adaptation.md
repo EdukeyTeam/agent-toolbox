@@ -45,6 +45,6 @@ A stable documentation reference can help; do not replace removed detail with a 
 
 ## Existing guidance
 
-Copy to a candidate first. Adapt, compare with prior human decisions, and reconcile in a reviewed edit. Preserve unrelated tool-specific guidance and user edits. A minimal CLAUDE import is appropriate only when requested/already used; do not discard CLAUDE-specific content.
+Always copy to AGENTS.md.candidate first, including new root/nested files. Adapt and validate the complete candidate before any publication as active guidance. Confirm no placeholders remain; for a new file refuse overwrite, and for an existing file compare human decisions and reconcile in a reviewed edit. Keep active guidance absent or unchanged if adaptation is interrupted. Preserve unrelated tool-specific guidance and user edits. A minimal CLAUDE import is appropriate only when requested/already used; do not discard CLAUDE-specific content.
 
 Report template, scope, relocations, unresolved decisions and checks. Remove your candidate after reconciliation; never delete another person's draft.
