@@ -83,8 +83,8 @@ A local command-line program with three commands (`index`, `query`, `serve`) ove
 |---|---|---|
 | System of record | One SQLite file | Chunks, lexical index, provenance and embeddings commit or roll back together |
 | Lexical search | SQLite FTS5 with BM25 | Ships inside Python's `sqlite3`; exact identifiers matter most in code |
-| Default vector search | Exact scan with `math.sumprod` over float32 BLOBs | No install, no native code, same result on every platform |
-| Optional vector search | sqlite-vec 0.1.9 distance functions | 0.2 MB, no dependencies, exact, 7 to 19 times faster than the stdlib scan at 30,000 chunks |
+| Default vector search | Exact scan with `math.sumprod` over float32 BLOBs | Standard library only; exact scoring over the same stored vectors |
+| Optional vector search | sqlite-vec 0.1.9 distance functions | 0.2 MB, no Python dependencies, exact; the selected side-table scalar scan measured about 7.2 times faster than the side-table stdlib scan at 30,000 chunks |
 | Fusion and reranking | Python in the backend | Independent of the storage engine, so engines stay interchangeable |
 | Embeddings | Transformers.js in a Node subprocess, pinned model revision | Optional; already chosen by the retrieval workflow |
 | Client contract | Context7 REST routes on loopback | Lets the stock `ctx7` CLI read a private index |
@@ -168,14 +168,14 @@ Storage introduces no environment variable. The engine, paths and models are com
 
 | Variable | Purpose | Required | Example value |
 |---|---|---|---|
-| `PATH` | Read by the backend to find `node` and `git`; the only inherited variable passed to the inference helper | Yes for semantic search and for Git-aware file listing | System default |
+| `PATH` | Read by the backend to find `node` and `git`; retained in the inference helper's narrow OS environment | Yes for semantic search and for Git-aware file listing | System default |
 | `HOME` | Set by the backend for the helper subprocess to the model cache directory so nothing is written to the user profile | Set internally | Model cache path |
 | `HF_HUB_OFFLINE` | Set by the backend for the helper: `0` only while `index` downloads a model, `1` for every query | Set internally | `1` |
 | `LEGACY_RETRIEVAL_TEST_RUNTIME` | Tests only: inference runtime directory that enables the real-model tests | No | Directory containing `node_modules` |
 | `LEGACY_RETRIEVAL_TEST_CACHE` | Tests only: model cache used with the variable above | No | Model cache directory |
 | `LEGACY_CTX7_CLI` | Tests only: path to an installed `ctx7` entry script for the client contract test | No | Path to the CLI script |
 
-No credential is read, stored or forwarded. The helper receives none of the caller's other variables.
+The helper also retains `SystemRoot`, `WINDIR`, `TEMP` and `TMP` when present, preserving OS startup paths on Windows. Provider credentials and `NODE_OPTIONS` are not read, stored or forwarded; all other caller variables are excluded.
 
 ---
 
@@ -238,8 +238,8 @@ Limits of this evidence: it is a microbenchmark on one machine and one operating
 - NumPy matrix: 179 ms when the matrix is rebuilt per query, which is what a CLI process does, for a 68.6 MB dependency and a 116 ms import. It only wins inside a long-running server that caches the matrix (1 ms), and that cache would need its own invalidation.
 - Keep JSON text: 11 times slower and twice the disk of the format-4 default, with no benefit.
 **Consequences:**
-- (+) Semantic search works on every supported platform and inside a standalone executable with no native add-on.
-- (+) Exact results, so the engine can never be the reason a relevant chunk is missed.
+- (+) Vector scoring needs no native vector add-on on supported platforms, including the standalone bundle. Semantic inference still requires the separately installed Node runtime, pinned inference package and cached model; those are not bundled.
+- (+) Exact scoring avoids ANN recall loss; relevant results still depend on the embedding, chunking and candidate depth.
 - (-) Scan time grows linearly: about 95 ms at 10,000 chunks and 342 ms at 30,000 on the test machine.
 - (-) The layout change needs an index format bump, which forces a one-time reindex including re-embedding.
 **Review trigger:** The chunk limit is raised above 30,000, or the stdlib scan exceeds 500 ms at the limit on a supported platform.
@@ -313,7 +313,7 @@ Limits of this evidence: it is a microbenchmark on one machine and one operating
 **Status:** Accepted (implemented)
 **Date:** 2026-10-07
 **Context:** Hybrid search needs a lexical ranking and a semantic ranking combined. None of the local candidates fuses BM25 with vector results.
-**Decision:** Fuse the two candidate lists with reciprocal-rank fusion (constant 60) in the backend, then apply the optional lexical-symbol or cross-encoder reranker to at most 60 candidates. The vector engine only supplies an ordered candidate list.
+**Decision:** Fuse the two candidate lists with reciprocal-rank fusion (constant 60) in the backend. Each input ranking has at most 60 candidates, so the union and optional lexical-symbol reranker can examine up to 120 distinct candidates. The cross-encoder truncates that fused list to 60 before scoring. The vector engine only supplies an ordered candidate list.
 **Rejected alternatives:**
 - Engine-side fusion: unavailable locally (decision 4) and would tie result order to one engine.
 - Weighted score blending: BM25 scores and cosine similarities are on unrelated scales; rank fusion needs no calibration.

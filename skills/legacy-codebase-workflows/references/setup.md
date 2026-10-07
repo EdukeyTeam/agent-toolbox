@@ -5,8 +5,8 @@ The tools run in three ways. The first two run the same code and produce identic
 | Way | Needs on the machine | Status |
 | --- | --- | --- |
 | Python source, `scripts/repo_map.py` | Python 3.12 to 3.14 and the pinned parser packages | Default. Reference implementation. |
-| Standalone bundle, `legacy-tools` | Nothing besides the bundle; `git` when the source is a git work tree | Same Python tools frozen into a program. Use it where installing Python packages is not possible. |
-| Native binary, `legacy-repo-map` | Nothing besides the binary; `git` is optional | Experimental. Repository map only. Read [native tooling](native-tooling.md) first. |
+| Standalone bundle, `legacy-tools` | Bundle; `git` for a git work tree; matching VC Redistributable on Windows | Same Python tools frozen into a program. Use it where installing Python packages is not possible. |
+| Native binary, `legacy-repo-map` | Binary; optional `git`; matching VC Redistributable on Windows | Experimental. Repository map only. Read [native tooling](native-tooling.md) first. |
 
 None of them needs an LLM endpoint, an account or network access at run time. All of them write only to the output directory you name, which must be outside the source repository.
 
