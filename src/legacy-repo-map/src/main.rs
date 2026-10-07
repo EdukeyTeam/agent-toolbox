@@ -386,7 +386,11 @@ fn run(arguments: Arguments) -> Result<String, String> {
             })
             .collect()
     };
-    let subtrees = relative_list(&arguments.subtrees)?;
+    let selected_subtrees = arguments.subtrees.clone();
+    let subtrees: Vec<String> = relative_list(&arguments.subtrees)?
+        .into_iter()
+        .filter(|path| path != ".")
+        .collect();
     let focus_files = relative_list(&arguments.focus_files)?;
     let focus_symbols = arguments.focus_symbols;
     let excludes = arguments.excludes;
@@ -398,7 +402,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
     }
 
     let selection = json!({
-        "subtrees": subtrees,
+        "subtrees": selected_subtrees,
         "focus_files": focus_files,
         "focus_symbols": focus_symbols,
         "excludes": excludes,
@@ -496,6 +500,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
     let inventory = match inventory {
         Ok(inventory) => inventory,
         Err(message) => {
+            let failure = json!({"stage": "inventory", "message": message});
             write_atomic(
                 &output,
                 "map.meta.json",
@@ -504,9 +509,19 @@ fn run(arguments: Arguments) -> Result<String, String> {
                     pretty(&partial(
                         "failed",
                         json!({
-                            "failure": {"stage": "inventory", "message": message},
+                            "failure": failure,
                         })
                     ))
+                ),
+            )?;
+            write_atomic(
+                &output,
+                "inventory.json",
+                &format!(
+                    "{}\n",
+                    pretty(&json!({
+                        "root": display(&root), "status": "failed", "files": [], "failure": failure,
+                    }))
                 ),
             )?;
             return Err(message);
@@ -636,16 +651,39 @@ fn run(arguments: Arguments) -> Result<String, String> {
     let mut remaining = (budget * 4).saturating_sub(HEADER.chars().count());
     let mut included = 0usize;
     let mut included_lines: std::collections::HashSet<(usize, usize)> = Default::default();
+    let mut verified_sources = std::collections::HashSet::new();
     for definition in &ranked {
         if included_lines.contains(&(definition.file, definition.line)) {
             included += 1;
             continue;
         }
         let file = &parsed[definition.file];
-        let snippet = file
-            .snippets
-            .get(&definition.line)
-            .ok_or_else(|| format!("source line vanished while rendering: {}", file.path))?;
+        if verified_sources.insert(file.path.as_str()) {
+            let expected = inventory
+                .files
+                .iter()
+                .find(|entry| entry.path == file.path)
+                .expect("parsed file has an inventory entry");
+            let current = inventory::read_safe(&root, &file.path, max_file_bytes)
+                .map_err(|reason| format!("source changed while rendering: {}: {reason}", file.path));
+            let changed = match current {
+                Ok((_, digest)) => digest != expected.sha256,
+                Err(message) => {
+                    unfinished("failed", Some(&("rendering", message.clone())))?;
+                    return Err(message);
+                }
+            };
+            if changed {
+                let message = format!("source changed while rendering: {}", file.path);
+                unfinished("failed", Some(&("rendering", message.clone())))?;
+                return Err(message);
+            }
+        }
+        let Some(snippet) = file.snippets.get(&definition.line) else {
+            let message = format!("source line vanished while rendering: {}", file.path);
+            unfinished("failed", Some(&("rendering", message.clone())))?;
+            return Err(message);
+        };
         let line = format!("{}:L{}: {}\n", file.path, definition.line, snippet);
         let length = line.chars().count();
         if length <= remaining {
@@ -740,8 +778,10 @@ fn run(arguments: Arguments) -> Result<String, String> {
     let metadata = partial("complete", details);
 
     let write_started = Instant::now();
-    write_atomic(&output, "repo-map.md", &map_text)?;
-    write_atomic(&output, "map.meta.json", &format!("{}\n", pretty(&metadata)))?;
+    if let Err(message) = write_atomic(&output, "repo-map.md", &map_text) {
+        unfinished("failed", Some(&("publication", message.clone())))?;
+        return Err(message);
+    }
 
     if arguments.debug_tags {
         let tags: BTreeMap<&str, Vec<Value>> = parsed
@@ -755,7 +795,14 @@ fn run(arguments: Arguments) -> Result<String, String> {
                 (file.path.as_str(), tags)
             })
             .collect();
-        write_atomic(&output, "tags.debug.json", &format!("{}\n", pretty(&json!(tags))))?;
+        if let Err(message) = write_atomic(&output, "tags.debug.json", &format!("{}\n", pretty(&json!(tags)))) {
+            unfinished("failed", Some(&("publication", message.clone())))?;
+            return Err(message);
+        }
+    }
+    if let Err(message) = write_atomic(&output, "map.meta.json", &format!("{}\n", pretty(&metadata))) {
+        let _ = unfinished("failed", Some(&("publication", message.clone())));
+        return Err(message);
     }
 
     let mut summary = summarize("complete", &coverage, estimated_tokens, truncated);

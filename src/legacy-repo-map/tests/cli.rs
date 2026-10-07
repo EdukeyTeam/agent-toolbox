@@ -89,12 +89,33 @@ impl Fixture {
             .collect()
     }
 
-    /// Commit everything with a hermetic identity. False when git is absent.
+    /// Commit named fixture files with a hermetic identity. False when git is absent.
     fn git_commit(&self) -> bool {
         if !self.git(&["init", "-q"]) {
             return false;
         }
-        assert!(self.git(&["add", "-A"]));
+        let mut paths = Vec::new();
+        let mut directories = vec![self.source.clone()];
+        while let Some(directory) = directories.pop() {
+            for item in fs::read_dir(directory).unwrap() {
+                let path = item.unwrap().path();
+                if path.file_name().is_some_and(|name| name == ".git") {
+                    continue;
+                }
+                if path.is_dir() {
+                    directories.push(path);
+                } else {
+                    let relative = path.strip_prefix(&self.source).unwrap().to_string_lossy().into_owned();
+                    if !self.git(&["check-ignore", "-q", "--", &relative]) {
+                        paths.push(relative);
+                    }
+                }
+            }
+        }
+        paths.sort();
+        let mut add = vec!["add", "--"];
+        add.extend(paths.iter().map(String::as_str));
+        assert!(self.git(&add));
         assert!(self.git(&["commit", "-q", "-m", "fixture"]));
         true
     }
@@ -347,7 +368,6 @@ fn secrets_binaries_and_oversized_files_are_listed_but_never_read() {
         "deploy/id_rsa",
         "certs/server.pem",
         "ops/db-credentials.yaml",
-        "secrets/Vault.java",
     ] {
         assert_eq!(
             skip_reason(&inventory, path).as_deref(),
@@ -355,6 +375,8 @@ fn secrets_binaries_and_oversized_files_are_listed_but_never_read() {
             "{path}"
         );
     }
+    // Secret directories are pruned before their entries become candidates.
+    assert_eq!(skip_reason(&inventory, "secrets/Vault.java"), None);
     assert_eq!(skip_reason(&inventory, "lib/tool.bin").as_deref(), Some("binary file"));
     assert_eq!(
         skip_reason(&inventory, "docs/latin1.txt").as_deref(),
@@ -834,7 +856,7 @@ fn a_directory_ignored_by_an_enclosing_repository_is_still_mapped() {
     assert_eq!(metadata["revision"], Value::Null);
     assert!(strings(&metadata["source_notes"])
         .iter()
-        .any(|note| note.contains("larger git work tree")));
+        .any(|note| note.contains("ignored by its enclosing git work tree")));
 }
 
 #[test]

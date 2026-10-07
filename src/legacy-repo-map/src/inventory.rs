@@ -106,19 +106,33 @@ struct GitState {
     source_notes: Vec<String>,
 }
 
-fn git_state(root: &Path) -> GitState {
+fn git_state(root: &Path) -> Result<GitState, String> {
     let mut git_notes = Vec::new();
     let mut source_notes = Vec::new();
-    // Git selection applies only when the source is the top of a work tree.
+    // An ordinary module inherits the enclosing work tree's ignore and HEAD.
     let toplevel = git_text(root, &["rev-parse", "--show-toplevel"]).filter(|text| !text.is_empty());
-    let is_toplevel = toplevel
-        .as_deref()
-        .and_then(|path| fs::canonicalize(path).ok())
-        .is_some_and(|path| path == root);
-    if !is_toplevel {
-        if toplevel.is_some() {
+    let enclosing = toplevel.as_deref().and_then(|path| fs::canonicalize(path).ok());
+    let inside = enclosing.as_ref().is_some_and(|path| root.starts_with(path));
+    let ignored_root = if inside && enclosing.as_deref() != Some(root) {
+        // check-ignore accepts filenames rather than Git pathspecs.
+        let status = git_command(root)
+            .env_remove("GIT_LITERAL_PATHSPECS")
+            .args(["check-ignore", "-q", "."])
+            .stdout(Stdio::null())
+            .status()
+            .map_err(|_| "cannot safely inspect enclosing Git ignore policy".to_string())?;
+        match status.code() {
+            Some(0) => true,
+            Some(1) => false,
+            _ => return Err("cannot safely inspect enclosing Git ignore policy".to_string()),
+        }
+    } else {
+        false
+    };
+    if !inside || ignored_root {
+        if ignored_root {
             source_notes.push(
-                "the source directory is inside a larger git work tree; files were selected by directory walk and only .gitignore files inside the source apply"
+                "the supplied source directory is ignored by its enclosing git work tree; files were selected by directory walk"
                     .to_string(),
             );
         } else if root.join(".git").exists() {
@@ -127,13 +141,13 @@ fn git_state(root: &Path) -> GitState {
                     .to_string(),
             );
         }
-        return GitState {
+        return Ok(GitState {
             git: false,
             revision: None,
             dirty: None,
             git_notes,
             source_notes,
-        };
+        });
     }
     let revision = git_text(root, &["rev-parse", "--verify", "HEAD"]).filter(|text| !text.is_empty());
     if revision.is_none() {
@@ -161,6 +175,8 @@ fn git_state(root: &Path) -> GitState {
                 "--porcelain=v1",
                 "--untracked-files=all",
                 "--ignore-submodules=all",
+                "--",
+                ".",
             ];
             match git_output(root, &arguments) {
                 Some(bytes) => dirty = Some(!bytes.is_empty()),
@@ -171,13 +187,13 @@ fn git_state(root: &Path) -> GitState {
             .push("dirty state not checked: Git clean/process filters can execute repository commands".to_string()),
         _ => git_notes.push("dirty state unavailable: cannot safely inspect Git filter configuration".to_string()),
     }
-    GitState {
+    Ok(GitState {
         git: true,
         revision,
         dirty,
         git_notes,
         source_notes,
-    }
+    })
 }
 
 /// `strerror`-style text, matching the reason strings of the Python tool.
@@ -367,15 +383,25 @@ struct IgnoreChain {
 }
 
 impl IgnoreChain {
-    fn load(directory: &Path, parent: Option<Rc<IgnoreChain>>) -> Rc<IgnoreChain> {
-        let matcher = read_gitignore(directory).and_then(|text| {
+    fn load(
+        directory: &Path,
+        parent: Option<Rc<IgnoreChain>>,
+        total_bytes: &mut u64,
+    ) -> Result<Rc<IgnoreChain>, String> {
+        let matcher = if let Some(text) = read_gitignore(directory, total_bytes)? {
             let mut builder = GitignoreBuilder::new(directory);
             for line in text.lines() {
                 let _ = builder.add_line(None, line);
             }
-            builder.build().ok()
-        });
-        Rc::new(IgnoreChain { matcher, parent })
+            Some(
+                builder
+                    .build()
+                    .map_err(|error| format!("cannot parse .gitignore: {error}"))?,
+            )
+        } else {
+            None
+        };
+        Ok(Rc::new(IgnoreChain { matcher, parent }))
     }
 
     /// The nearest `.gitignore` with an opinion decides, as in git.
@@ -398,25 +424,53 @@ impl IgnoreChain {
 }
 
 /// Read `.gitignore` text without following a link or reading a huge file.
-fn read_gitignore(directory: &Path) -> Option<String> {
+fn read_gitignore(directory: &Path, total_bytes: &mut u64) -> Result<Option<String>, String> {
     let path = directory.join(".gitignore");
-    let metadata = fs::symlink_metadata(&path).ok()?;
-    if !metadata.is_file() || metadata.len() > policy::MAX_GITIGNORE_BYTES {
-        return None;
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(format!("cannot inspect .gitignore: {error}")),
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Ok(None);
+    }
+    if metadata.len() > policy::MAX_GITIGNORE_BYTES {
+        return Err(format!(
+            "ignore file exceeds {} bytes; select a smaller source tree",
+            policy::MAX_GITIGNORE_BYTES
+        ));
     }
     let mut data = Vec::new();
     open_regular(&path)
-        .ok()?
-        .take(policy::MAX_GITIGNORE_BYTES)
+        .map_err(|error| format!("cannot read .gitignore: {error}"))?
+        .take(policy::MAX_GITIGNORE_BYTES + 1)
         .read_to_end(&mut data)
-        .ok()?;
-    String::from_utf8(data).ok()
+        .map_err(|error| format!("cannot read .gitignore: {error}"))?;
+    if data.len() as u64 > policy::MAX_GITIGNORE_BYTES {
+        return Err(format!(
+            "ignore file exceeds {} bytes; select a smaller source tree",
+            policy::MAX_GITIGNORE_BYTES
+        ));
+    }
+    *total_bytes += data.len() as u64;
+    if *total_bytes > policy::MAX_IGNORE_TOTAL_BYTES {
+        return Err(format!(
+            "ignore-file byte limit exceeded ({}); select a smaller source tree",
+            policy::MAX_IGNORE_TOTAL_BYTES
+        ));
+    }
+    String::from_utf8(data)
+        .map(Some)
+        .map_err(|_| "cannot read .gitignore: non-UTF-8 file".to_string())
 }
 
 /// Pre-order directory walk for non-git sources: a directory's files in
 /// name order, then its subdirectories in name order. Links are not followed.
 struct WalkCandidates {
     pending: Vec<WalkStep>,
+    subtrees: Vec<String>,
+    visited: usize,
+    ignore_bytes: u64,
 }
 
 enum WalkStep {
@@ -425,10 +479,22 @@ enum WalkStep {
 }
 
 impl WalkCandidates {
-    fn start(root: &Path) -> Self {
+    fn start(root: &Path, subtrees: &[String]) -> Self {
         Self {
             pending: vec![WalkStep::Directory(root.to_path_buf(), String::new(), None)],
+            subtrees: subtrees.to_vec(),
+            visited: 0,
+            ignore_bytes: 0,
         }
+    }
+
+    fn selected(&self, relative: &str) -> bool {
+        self.subtrees.is_empty()
+            || self.subtrees.iter().any(|scope| {
+                relative == scope
+                    || relative.starts_with(&format!("{scope}/"))
+                    || scope.starts_with(&format!("{relative}/"))
+            })
     }
 
     fn next(&mut self) -> Result<Option<Candidate>, String> {
@@ -440,7 +506,12 @@ impl WalkCandidates {
                 WalkStep::Candidate(candidate) => return Ok(Some(candidate)),
                 WalkStep::Directory(directory, prefix, parent_chain) => (directory, prefix, parent_chain),
             };
-            let chain = IgnoreChain::load(&directory, parent_chain);
+            let chain = IgnoreChain::load(&directory, parent_chain, &mut self.ignore_bytes).map_err(|message| {
+                format!(
+                    "cannot inventory directory {}: {message}",
+                    if prefix.is_empty() { "." } else { &prefix }
+                )
+            })?;
             let entries = fs::read_dir(&directory).map_err(|error| {
                 format!(
                     "cannot read directory {}: {error}",
@@ -449,6 +520,13 @@ impl WalkCandidates {
             })?;
             let mut entries_by_name = Vec::new();
             for entry in entries {
+                self.visited += 1;
+                if self.visited > policy::MAX_DISCOVERY_ENTRIES {
+                    return Err(format!(
+                        "filesystem discovery entry limit exceeded ({}); select a smaller source tree",
+                        policy::MAX_DISCOVERY_ENTRIES
+                    ));
+                }
                 let entry = entry.map_err(|error| {
                     format!(
                         "cannot enumerate directory {}: {error}",
@@ -474,8 +552,12 @@ impl WalkCandidates {
                         continue;
                     }
                 };
+                let relative = format!("{prefix}{name}");
+                if !self.selected(&relative) {
+                    continue;
+                }
                 if file_type.is_dir() {
-                    if !policy::IGNORED_DIRS.contains(&name.as_str()) {
+                    if !policy::IGNORED_DIRS.contains(&name.as_str()) && !policy::is_secret(&relative) {
                         let absolute = directory.join(&name);
                         if !chain.ignored(&absolute, true) {
                             entries_by_name.push((
@@ -526,11 +608,11 @@ pub fn scan<F>(root: &Path, options: &ScanOptions, mut visit: F) -> Result<Inven
 where
     F: FnMut(&FileEntry, &[u8]),
 {
-    let state = git_state(root);
+    let state = git_state(root)?;
     let mut candidates = if state.git {
         Candidates::Git(GitCandidates::start(root, options.subtrees)?)
     } else {
-        Candidates::Walk(WalkCandidates::start(root))
+        Candidates::Walk(WalkCandidates::start(root, options.subtrees))
     };
     let mut files = Vec::new();
     let mut skipped = Vec::new();
@@ -624,4 +706,64 @@ where
         skipped,
         candidates_seen: seen,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn walk_refuses_excess_discovery_and_oversized_ignore_files() {
+        let source = tempfile::tempdir().unwrap();
+        fs::write(source.path().join("one.java"), "class One {}\n").unwrap();
+        let mut walk = WalkCandidates::start(source.path(), &[]);
+        walk.visited = policy::MAX_DISCOVERY_ENTRIES;
+        assert!(walk.next().err().unwrap().contains("filesystem discovery entry limit"));
+
+        fs::write(
+            source.path().join(".gitignore"),
+            vec![b'x'; policy::MAX_GITIGNORE_BYTES as usize + 1],
+        )
+        .unwrap();
+        let mut walk = WalkCandidates::start(source.path(), &[]);
+        assert!(walk.next().err().unwrap().contains("ignore file exceeds"));
+    }
+
+    #[test]
+    fn walk_prunes_unselected_directories_before_descent() {
+        let source = tempfile::tempdir().unwrap();
+        fs::create_dir(source.path().join("chosen")).unwrap();
+        fs::create_dir(source.path().join("other")).unwrap();
+        fs::write(source.path().join("chosen/one.java"), "class One {}\n").unwrap();
+        fs::write(
+            source.path().join("other/.gitignore"),
+            vec![b'x'; policy::MAX_GITIGNORE_BYTES as usize + 1],
+        )
+        .unwrap();
+        let mut walk = WalkCandidates::start(source.path(), &["chosen".to_string()]);
+        assert!(matches!(walk.next().unwrap(), Some(Candidate::Path(path)) if path == "chosen/one.java"));
+        assert!(walk.next().unwrap().is_none());
+    }
+
+    #[test]
+    fn walk_refuses_aggregate_ignore_bytes() {
+        let source = tempfile::tempdir().unwrap();
+        let mut directory = source.path().to_path_buf();
+        for depth in 0..8 {
+            let mut comment = vec![b'x'; policy::MAX_GITIGNORE_BYTES as usize];
+            comment[0] = b'#';
+            fs::write(directory.join(".gitignore"), comment).unwrap();
+            directory.push(format!("level-{depth}"));
+            fs::create_dir(&directory).unwrap();
+        }
+        let mut walk = WalkCandidates::start(source.path(), &[]);
+        let failure = loop {
+            match walk.next() {
+                Ok(Some(_)) => continue,
+                Ok(None) => panic!("walk ended before exceeding the ignore-file limit"),
+                Err(message) => break message,
+            }
+        };
+        assert!(failure.contains("ignore-file byte limit exceeded"));
+    }
 }

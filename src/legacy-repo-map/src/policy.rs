@@ -14,7 +14,9 @@ pub const MAX_BUDGET: usize = 1_000_000;
 pub const DEFAULT_BUDGET: usize = 4096;
 pub const MAX_NAME_CHARS: usize = 512;
 pub const MAX_SNIPPET_CHARS: usize = 240;
-pub const MAX_GITIGNORE_BYTES: u64 = 1_000_000;
+pub const MAX_GITIGNORE_BYTES: u64 = 256_000;
+pub const MAX_IGNORE_TOTAL_BYTES: u64 = 2_000_000;
+pub const MAX_DISCOVERY_ENTRIES: usize = 100_000;
 
 pub const LANGUAGES: &[(&str, &str)] = &[
     (".py", "python"),
@@ -188,15 +190,17 @@ pub fn safe_relative(relative: &str) -> Result<String, String> {
     for part in normalized.split('/') {
         match part {
             "" => continue,
-            "." | ".." => return Err(unsafe_path()),
+            "." => continue,
+            ".." => return Err(unsafe_path()),
             _ if cfg!(windows) && part.contains(':') => return Err(unsafe_path()),
             _ => parts.push(part),
         }
     }
-    if parts.is_empty() {
-        return Err(unsafe_path());
-    }
-    Ok(parts.join("/"))
+    Ok(if parts.is_empty() {
+        ".".to_string()
+    } else {
+        parts.join("/")
+    })
 }
 
 /// Case-sensitive shell-style match equivalent to Python's
@@ -357,7 +361,9 @@ mod tests {
     fn relative_paths_are_bounded() {
         assert_eq!(safe_relative("src\\main/A.java").unwrap(), "src/main/A.java");
         assert_eq!(safe_relative("src/").unwrap(), "src");
-        for bad in ["", "/etc/passwd", "../x", "a/../b", "./a", "a/\0b"] {
+        assert_eq!(safe_relative("./a/./b/").unwrap(), "a/b");
+        assert_eq!(safe_relative(".").unwrap(), ".");
+        for bad in ["", "/etc/passwd", "../x", "a/../b", "a/\0b"] {
             assert!(safe_relative(bad).is_err(), "{bad:?}");
         }
     }
