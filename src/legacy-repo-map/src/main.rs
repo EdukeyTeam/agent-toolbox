@@ -843,7 +843,7 @@ mod tests {
 
     #[test]
     fn reported_dependency_versions_match_the_lockfile() {
-        let lock = include_str!("../Cargo.lock");
+        let lock = include_str!("../Cargo.lock").replace("\r\n", "\n");
         for (name, version) in DEPENDENCIES {
             let entry = format!("name = \"{name}\"\nversion = \"{version}\"");
             assert!(lock.contains(&entry), "Cargo.lock does not pin {name} {version}");
