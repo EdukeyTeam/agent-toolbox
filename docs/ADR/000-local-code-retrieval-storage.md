@@ -1,7 +1,7 @@
 # ADR: Local code retrieval storage - Main Architecture
 
 **Date:** 2026-10-07
-**Status:** Accepted pending PR review for decisions 2 and 3. Their index-format-6 implementation and focused tests are in the source branch; platform CI and review remain pending. The comparison measurements below predate this implementation.
+**Status:** Accepted pending PR review for decisions 2 and 3. Their format-6 storage layout and focused tests are in the source branch; index format 7 adds configurable source-faithful chunking without changing that layout; platform CI and review remain pending. The comparison measurements below predate this implementation.
 **PRD:** None. This ADR belongs to the optional private-retrieval workflow of the `legacy-codebase-workflows` skill: [skill entrypoint](../../skills/legacy-codebase-workflows/SKILL.md), [private retrieval reference](../../skills/legacy-codebase-workflows/references/private-retrieval.md), [backend script](../../skills/legacy-codebase-workflows/scripts/context7_backend.py).
 
 ---
@@ -114,6 +114,8 @@ All entities live in the one SQLite file and last until the next `index` run cha
 
 **Index metadata.** Key and value text pairs: indexed root, optional docs root, library ID, repository revision, corpus ID (a hash over the revision and every file hash), index format version, embedding model ID and immutable revision, vector dimension when a model is configured, optional reranker ID and revision, model cache and runtime locations. The saved vector engine is a query preference, not a storage format; changing it alone does not rebuild embeddings.
 
+**Chunking version.** Index format 7 stores `chunk_chars` (default 1,200; supported 128 to 12,000), preserves whole original lines with at most 48 lines and eight overlap lines, and reports indivisible oversized lines. Changing this setting rebuilds chunks and vectors; changing only the engine preference does not. The character target is not a tokenizer budget, and optional embedding inference rejects an input over its 12,000 UTF-16-unit helper limit before scoring. Historical vector-storage benchmark figures below retain their original format labels.
+
 **File.** Kind (`code`, `repo-docs` or `docs`), relative path, SHA-256 of the content, size. Primary key is kind plus path. One file has many chunks.
 
 **Chunk.** Integer ID, kind, path, first and last original line, the exact text of those lines, extracted symbol names. The embedding is stored separately.
@@ -132,10 +134,10 @@ Invariants the store must hold after every committed `index` run: every lexical 
 
 ### `index` command
 
-- Input: repository root; database path; library ID in `/owner/name` form; optional docs root; optional embedding model with model cache and inference runtime paths; optional model revision; optional reranker model and revision; `--vector-engine stdlib|sqlite-vec` as the saved query preference.
+- Input: repository root; database path; library ID in `/owner/name` form; optional docs root; `--chunk-chars 128..12000`; optional embedding model with model cache and inference runtime paths; optional model revision; optional reranker model and revision; `--vector-engine stdlib|sqlite-vec` as the saved query preference.
 - Output: JSON with library ID, revision, corpus ID, counts of files, chunks, changed and deleted files, and skipped files with reasons.
 - Errors: database, cache or runtime inside an indexed root; database belongs to another corpus; more than 10,000 files or 30,000 chunks; embedding helper failure; a custom model without an immutable revision. Any error leaves the previous committed index untouched.
-- Notes: the only command allowed to download model files. A change of model, model revision or index format rebuilds everything. Changing only the engine preference leaves vectors unchanged. An old index with `vec0` needs the pinned extension once to drop its virtual table during reindexing; if the package is unavailable, use a fresh database path.
+- Notes: the only command allowed to download model files. A change of model, model revision, chunk target or index format rebuilds everything. Changing only the engine preference leaves vectors unchanged. An old index with `vec0` needs the pinned extension once to drop its virtual table during reindexing; if the package is unavailable, use a fresh database path.
 
 ### `query` command
 

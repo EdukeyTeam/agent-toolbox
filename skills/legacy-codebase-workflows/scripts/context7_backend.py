@@ -39,9 +39,11 @@ MAX_QUERY = 500
 MAX_RESULTS = 10
 MAX_REQUEST = 2048
 WINDOW = 48
-STEP = 40
+OVERLAP = 8
+DEFAULT_CHUNK_CHARS = 1200
+MAX_EMBEDDING_UNITS = 12000
 MODEL_BATCH = 32
-INDEX_VERSION = "6"
+INDEX_VERSION = "7"
 DEFAULT_MODEL = "Xenova/all-MiniLM-L6-v2"
 DEFAULT_MODEL_REVISION = "751bff37182d3f1213fa05d7196b954e230abad9"
 DEFAULT_RERANKER = "Xenova/ms-marco-MiniLM-L-6-v2"
@@ -193,15 +195,36 @@ def put_meta(con: sqlite3.Connection, key: str, value: str) -> None:
     con.execute("INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
 
 
-def chunks_for(text: str):
+def validate_chunk_chars(chunk_chars: int) -> None:
+    if type(chunk_chars) is not int or not 128 <= chunk_chars <= 12000:
+        raise RetrievalError("--chunk-chars must be an integer from 128 to 12000")
+
+
+def chunks_for(text: str, chunk_chars: int = DEFAULT_CHUNK_CHARS):
+    """Keep exact whole source lines, with bounded overlap and no coverage gaps."""
+    validate_chunk_chars(chunk_chars)
     lines = split_source_lines(text)
-    for offset in range(0, len(lines), STEP):
-        part = lines[offset:offset + WINDOW]
-        if not part:
-            break
-        body = "\n".join(part)
+    offset = 0
+    while offset < len(lines):
+        end, size = offset, 0
+        while end < len(lines) and end - offset < WINDOW:
+            addition = len(lines[end]) + (1 if end > offset else 0)
+            if end > offset and size + addition > chunk_chars:
+                break
+            size += addition
+            end += 1
+        body = "\n".join(lines[offset:end])
         symbols = " ".join(SYMBOL_RE.findall(body) + METHOD_RE.findall(body))
-        yield offset + 1, offset + len(part), body, symbols
+        yield offset + 1, end, body, symbols
+        if end == len(lines):
+            break
+        following = max(offset + 1, end - OVERLAP)
+        # Retain only overlap that leaves room for a new line. An indivisible
+        # oversized next line starts its own chunk rather than duplicating an
+        # overlap-only chunk. Every yielded chunk therefore extends coverage.
+        while following < end and len("\n".join(lines[following:end + 1])) > chunk_chars:
+            following += 1
+        offset = following
 
 
 def embedding_batches(batches: list[list[str]], model: str, model_revision: str, cache: Path, runtime: Path, *, download: bool):
@@ -343,7 +366,8 @@ def reranker_scores(question: str, passages: list[str], model: str, model_revisi
             reader.join(timeout=1)
 
 
-def index(root: Path, database: Path, library_id: str, docs_root: Path | None, embed_model: str | None, model_cache: Path | None, embedding_runtime: Path | None = None, *, model_revision: str | None = None, vector_engine: str = "stdlib", reranker_model: str | None = None, reranker_revision: str | None = None) -> dict:
+def index(root: Path, database: Path, library_id: str, docs_root: Path | None, embed_model: str | None, model_cache: Path | None, embedding_runtime: Path | None = None, *, model_revision: str | None = None, vector_engine: str = "stdlib", reranker_model: str | None = None, reranker_revision: str | None = None, chunk_chars: int = DEFAULT_CHUNK_CHARS) -> dict:
+    validate_chunk_chars(chunk_chars)
     root = root.resolve(strict=True)
     if not root.is_dir() or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", library_id):
         raise RetrievalError("ROOT must be a directory and library ID must be /owner/name")
@@ -384,9 +408,6 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
             raise RetrievalError("Embedding runtime does not contain @huggingface/transformers")
         if embedding_runtime.is_relative_to(root) or (docs_root and embedding_runtime.is_relative_to(docs_root)):
             raise RetrievalError("Embedding runtime must be outside indexed roots")
-    if reranker_model:
-        assert model_cache is not None and embedding_runtime is not None and reranker_revision is not None
-        reranker_scores("local retrieval warmup", ["local retrieval passage"], reranker_model, reranker_revision, model_cache, embedding_runtime, download=True)
     files = corpus_files(root, docs_root)
     database.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(database)
@@ -405,7 +426,7 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
                     raise RetrievalError("Legacy sqlite-vec index needs sqlite-vec 0.1.9 once to reindex; install it or use a fresh database path") from exc
                 raise
         con.execute("BEGIN")
-        rebuild = old.get("index_version") != INDEX_VERSION or old.get("embed_model", "") != (embed_model or "") or old.get("model_revision", "") != (model_revision or "")
+        rebuild = old.get("index_version") != INDEX_VERSION or old.get("chunk_chars") != str(chunk_chars) or old.get("embed_model", "") != (embed_model or "") or old.get("model_revision", "") != (model_revision or "")
         if rebuild and tables:
             for table in ("chunks_vec", "chunk_vectors", "chunks_fts", "chunks", "files", "meta"):
                 if table in tables:
@@ -434,13 +455,19 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
         for kind, rel in changed:
             file_hash, size, content = current[(kind, rel)]
             con.execute("INSERT INTO files VALUES(?,?,?,?)", (kind, rel, file_hash, size))
-            for start, end, body, symbols in chunks_for(content):
+            for start, end, body, symbols in chunks_for(content, chunk_chars):
+                if embed_model and len(body.encode("utf-16-le")) // 2 > MAX_EMBEDDING_UNITS:
+                    raise RetrievalError(f"Embedding input exceeds {MAX_EMBEDDING_UNITS} UTF-16 characters at {kind}:{rel}:L{start}-L{end}; use lexical indexing or provide smaller verified documentation chunks")
                 cur = con.execute("INSERT INTO chunks(kind,path,start,end,body,symbols) VALUES(?,?,?,?,?,?)", (kind, rel, start, end, body, symbols))
                 con.execute("INSERT INTO chunks_fts(rowid,body,symbols,path) VALUES(?,?,?,?)", (cur.lastrowid, body, symbols, rel))
                 pending.append((cur.lastrowid, body))
         count = con.execute("SELECT count(*) FROM chunks").fetchone()[0]
+        oversized = con.execute("SELECT count(*) FROM chunks WHERE length(body)>?", (chunk_chars,)).fetchone()[0]
         if count > MAX_CHUNKS:
             raise RetrievalError(f"Chunk limit {MAX_CHUNKS} exceeded; index a smaller subtree")
+        if reranker_model:
+            assert model_cache is not None and embedding_runtime is not None and reranker_revision is not None
+            reranker_scores("local retrieval warmup", ["local retrieval passage"], reranker_model, reranker_revision, model_cache, embedding_runtime, download=True)
         if embed_model and pending:
             assert model_cache is not None
             batches = [pending[start:start + MODEL_BATCH] for start in range(0, len(pending), MODEL_BATCH)]
@@ -461,10 +488,10 @@ def index(root: Path, database: Path, library_id: str, docs_root: Path | None, e
             raise RetrievalError("Embedding row count mismatch; reindex")
         rev = revision(root)
         signature = digest(json.dumps([rev, sorted((kind, rel, row[0]) for (kind, rel), row in current.items())], separators=(",", ":")).encode())
-        for key, value in {"root": str(root), "docs_root": str(docs_root or ""), "library_id": library_id, "embed_model": embed_model or "", "model_revision": model_revision or "", "reranker_model": reranker_model or "", "reranker_revision": reranker_revision or "", "vector_engine": vector_engine, "model_cache": str(model_cache or ""), "embedding_runtime": str(embedding_runtime or ""), "revision": rev, "corpus_id": signature, "index_version": INDEX_VERSION}.items():
+        for key, value in {"root": str(root), "docs_root": str(docs_root or ""), "library_id": library_id, "embed_model": embed_model or "", "model_revision": model_revision or "", "reranker_model": reranker_model or "", "reranker_revision": reranker_revision or "", "vector_engine": vector_engine, "model_cache": str(model_cache or ""), "embedding_runtime": str(embedding_runtime or ""), "revision": rev, "corpus_id": signature, "index_version": INDEX_VERSION, "chunk_chars": str(chunk_chars), "oversized_chunks": str(oversized)}.items():
             put_meta(con, key, value)
         con.commit()
-        return {"libraryId": library_id, "revision": rev, "corpusId": signature, "files": len(current), "chunks": count, "changed": len(changed), "deleted": len(stale), "skippedCount": len(skipped), "skipped": skipped[:20], "embeddingModel": embed_model, "modelRevision": model_revision, "rerankerModel": reranker_model, "rerankerRevision": reranker_revision, "vectorEngine": vector_engine}
+        return {"libraryId": library_id, "revision": rev, "corpusId": signature, "files": len(current), "chunks": count, "chunkChars": chunk_chars, "oversizedChunks": oversized, "changed": len(changed), "deleted": len(stale), "skippedCount": len(skipped), "skipped": skipped[:20], "embeddingModel": embed_model, "modelRevision": model_revision, "rerankerModel": reranker_model, "rerankerRevision": reranker_revision, "vectorEngine": vector_engine}
     finally:
         con.close()
 
@@ -608,7 +635,7 @@ def query(con: sqlite3.Connection, question: str, mode: str = "lexical", rerank:
         if rerank == "cross-encoder":
             item["rerankScore"] = rerank_scores_by_id[cid]
         snippets.append(item)
-    return {"libraryId": meta["library_id"], "mode": mode, "reranker": rerank, "vectorEngine": selected_engine, "corpusId": meta["corpus_id"], "results": snippets, "message": None if snippets else "No matching indexed evidence"}
+    return {"libraryId": meta["library_id"], "chunkChars": int(meta["chunk_chars"]), "oversizedChunks": int(meta["oversized_chunks"]), "mode": mode, "reranker": rerank, "vectorEngine": selected_engine, "corpusId": meta["corpus_id"], "results": snippets, "message": None if snippets else "No matching indexed evidence"}
 
 
 def context_payload(result: dict) -> dict:
@@ -704,6 +731,7 @@ def main(argv: list[str] | None = None) -> int:
     idx.add_argument("--database", type=Path, required=True)
     idx.add_argument("--library-id", required=True)
     idx.add_argument("--docs-root", type=Path)
+    idx.add_argument("--chunk-chars", type=int, default=DEFAULT_CHUNK_CHARS, help="Whole-line chunk character target, 128..12000; not a token budget")
     idx.add_argument("--embed-model")
     idx.add_argument("--model-revision", help="Immutable 40-character model commit SHA")
     idx.add_argument("--reranker-model", help="Opt-in local cross-encoder; downloads only during indexing")
@@ -728,7 +756,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "index":
-            result = index(args.root, args.database, args.library_id, args.docs_root, args.embed_model, args.model_cache, args.embedding_runtime, model_revision=args.model_revision, vector_engine=args.vector_engine, reranker_model=args.reranker_model, reranker_revision=args.reranker_revision)
+            result = index(args.root, args.database, args.library_id, args.docs_root, args.embed_model, args.model_cache, args.embedding_runtime, model_revision=args.model_revision, vector_engine=args.vector_engine, reranker_model=args.reranker_model, reranker_revision=args.reranker_revision, chunk_chars=args.chunk_chars)
             print(json.dumps(result, indent=2))
         elif args.command == "query":
             with connect(args.database) as con:

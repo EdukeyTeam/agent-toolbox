@@ -46,6 +46,95 @@ class RetrievalTests(unittest.TestCase):
     def index(self):
         return backend.index(self.root, self.db, "/local/billing", self.docs, None, None)
 
+    def test_whole_line_chunking_covers_source_without_gaps_or_duplicate_tail(self):
+        rng = random.Random(20261007)
+        for cap in (128, 400, 1200):
+            lines = [f"line_{i}_" + "x" * rng.choice((0, 12, 90, 800, 3000)) for i in range(80)]
+            text = "\r\n".join(lines) + "\r\n"
+            rows = list(backend.chunks_for(text, cap))
+            reconstructed = {}
+            previous_start, previous_end = 0, 0
+            for start, end, body, _ in rows:
+                self.assertGreater(start, previous_start)
+                self.assertGreater(end, previous_end)
+                self.assertLessEqual(start, previous_end + 1)
+                self.assertLessEqual(previous_end - start + 1, 8)
+                self.assertLessEqual(end - start + 1, 48)
+                self.assertEqual(body, "\n".join(lines[start - 1:end]))
+                if len(body) > cap:
+                    self.assertEqual(start, end)
+                    self.assertGreater(len(lines[start - 1]), cap)
+                for position in range(start, end + 1):
+                    reconstructed[position] = lines[position - 1]
+                previous_start, previous_end = start, end
+            self.assertEqual([reconstructed[i] for i in range(1, len(lines) + 1)], lines)
+            self.assertEqual(rows, list(backend.chunks_for(text, cap)))
+        self.assertEqual(list(backend.chunks_for("")), [])
+        self.assertEqual(len(list(backend.chunks_for("short\n" * 41))), 1)
+        special = "first\fform feed stays here\r\nsecond\r\n"
+        self.assertEqual(list(backend.chunks_for(special))[0][0:3], (1, 2, "first\fform feed stays here\nsecond"))
+
+    def test_chunking_invalid_bounds_and_config_rebuilds_vectors(self):
+        for invalid in (127, 12001, True, 128.0, "1200"):
+            with self.assertRaisesRegex(backend.RetrievalError, "--chunk-chars"):
+                list(backend.chunks_for("source", invalid))
+            with self.assertRaisesRegex(backend.RetrievalError, "--chunk-chars"):
+                backend.index(self.root, self.db, "/local/billing", None, None, None, chunk_chars=invalid)
+        (self.root / "src/service.py").write_text("\n".join(f"const source_{i} = '" + "x" * 60 + "';" for i in range(70)))
+        cache = Path(self.tmp.name) / "cache"
+        runtime = Path(self.tmp.name) / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        calls = []
+        def fake_batches(batches, *_args, **_kwargs):
+            calls.extend(body for batch in batches for body in batch)
+            for batch in batches:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
+            initial = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=1200)
+            self.assertTrue(calls)
+            calls.clear()
+            unchanged = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=1200)
+            self.assertEqual(unchanged["changed"], 0)
+            self.assertEqual(calls, [])
+            updated = backend.index(self.root, self.db, "/local/billing", None, backend.DEFAULT_MODEL, cache, runtime, chunk_chars=400)
+            self.assertEqual(updated["changed"], 1)
+            self.assertGreater(updated["chunks"], initial["chunks"])
+            self.assertTrue(calls)
+        with backend.connect(self.db) as con:
+            meta = backend.metadata(con)
+            self.assertEqual(meta["chunk_chars"], "400")
+            self.assertEqual(meta["index_version"], "7")
+            self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
+
+    def test_oversized_whole_lines_are_reported_and_embedding_preflight_rolls_back(self):
+        self.index()
+        with backend.connect(self.db) as con:
+            old_meta = backend.metadata(con)
+            old_chunks = con.execute("SELECT * FROM chunks ORDER BY id").fetchall()
+        (self.root / "src/service.py").write_text("class HugeLine: " + "x" * 13000 + "\n")
+        cache = Path(self.tmp.name) / "cache"
+        runtime = Path(self.tmp.name) / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("inference must not run")), mock.patch.object(backend, "reranker_scores", side_effect=AssertionError("inference must not run")):
+            with self.assertRaisesRegex(backend.RetrievalError, "code:src/service.py:L1-L1.*lexical"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con), old_meta)
+            self.assertEqual(con.execute("SELECT * FROM chunks ORDER BY id").fetchall(), old_chunks)
+        lexical = self.index()
+        self.assertEqual(lexical["oversizedChunks"], 1)
+        self.assertEqual(lexical["chunkChars"], 1200)
+        with backend.connect(self.db) as con:
+            result = backend.query(con, "HugeLine")
+            self.assertEqual(result["oversizedChunks"], 1)
+            self.assertEqual(result["results"][0]["text"], "class HugeLine: " + "x" * 13000)
+        # JS text.length counts UTF-16 units. Preflight must match that helper
+        # limit even when a single line has fewer Python Unicode characters.
+        (self.root / "src/service.py").write_text("😀" * 6001 + "\n")
+        with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("inference must not run")):
+            with self.assertRaisesRegex(backend.RetrievalError, "UTF-16"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+
     def test_configuration_files_and_candidate_limits(self):
         (self.root / "handler.properties").write_text("handler.class=InvoiceMaker\n")
         self.index()
@@ -451,7 +540,7 @@ class RetrievalTests(unittest.TestCase):
         with mock.patch.object(backend, "embedding_batches", side_effect=batches):
             backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
         with backend.connect(self.db) as con:
-            self.assertEqual(backend.metadata(con)["index_version"], "6")
+            self.assertEqual(backend.metadata(con)["index_version"], "7")
             self.assertNotIn("vector", [row[1] for row in con.execute("PRAGMA table_info(chunks)")])
             self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
 
@@ -477,7 +566,7 @@ class RetrievalTests(unittest.TestCase):
         self.index()
         with backend.connect(self.db) as con:
             self.assertFalse(con.execute("SELECT 1 FROM sqlite_master WHERE name='chunks_vec'").fetchone())
-            self.assertEqual(backend.metadata(con)["index_version"], "6")
+            self.assertEqual(backend.metadata(con)["index_version"], "7")
 
     def test_empty_and_single_chunk_semantic_scan(self):
         try:
