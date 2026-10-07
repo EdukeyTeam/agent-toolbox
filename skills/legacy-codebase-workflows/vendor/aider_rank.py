@@ -53,6 +53,8 @@ def rank_tags(tags_by_file: dict, *, focus_files=(), focus_symbols=(), max_edges
         definers = sorted(defines[ident])
         if ident not in references:
             for definer in definers:
+                if edge_count >= max_edges:
+                    raise ValueError(f"ranking edge limit exceeded ({max_edges}); map a subtree")
                 graph.add_edge(definer, definer, weight=0.1, ident=ident)
                 edge_count += 1
             continue

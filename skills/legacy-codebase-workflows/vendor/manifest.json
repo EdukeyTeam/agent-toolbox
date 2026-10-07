@@ -14,12 +14,12 @@
       "vendored_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
     },
     {
-      "changes": "adapted graph ranking and removed chat/model/cache/UI dependencies; see THIRD_PARTY.md",
+      "changes": "adapted graph ranking and removed chat/model/cache/UI dependencies; enforce the edge cap before every insertion; see THIRD_PARTY.md",
       "original_sha256": "a5d4befe70445114b9f62da47b0eeb2a5384f9e84a0c083c77a4b339caf61ecd",
       "upstream_git_blob_sha": "541bba6ef4a5385b8cf032201ec6e3f3e32a6ea6",
       "upstream_path": "aider/repomap.py",
       "vendored_path": "aider_rank.py",
-      "vendored_sha256": "7bfdd11925a4437ef5abee0c376760b5d9beb430eeb977e9592e7b079ebd5e1c"
+      "vendored_sha256": "c1069217acd10cbb2fcc45bdaee8f9110832d0c237032053dd32bf3cb6deb2a0"
     },
     {
       "changes": "none; copied upstream MIT license",

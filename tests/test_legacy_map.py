@@ -236,6 +236,19 @@ class MapTests(unittest.TestCase):
         self.assertEqual(len(list((self.out / "cache").glob("*.json"))), 2)
 
 
+    def test_rank_edge_caps_cover_referenced_and_unreferenced_definitions(self):
+        from aider_rank import rank_tags
+        def tag(name, kind, line):
+            return {"path": "a.py", "line": line, "name": name, "kind": kind}
+        for references in ([tag("A", "ref", 3)], [], [tag("Unknown", "ref", 3)]):
+            with self.subTest(references=references):
+                tags = {"a.py": [tag("A", "def", 1), tag("Z", "def", 2), *references]}
+                self.assertEqual(len(rank_tags(tags, max_edges=2)), 2)
+                for limit in (0, 1):
+                    with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "ranking edge limit exceeded"):
+                        rank_tags(tags, max_edges=limit)
+
+
     def test_changed_same_mtime_deleted_and_poisoned_cache(self):
         path = self.write("a.py", "def alpha():\n    pass\n")
         first = self.map()
