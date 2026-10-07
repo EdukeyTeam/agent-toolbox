@@ -550,6 +550,10 @@ LIBFFI_NOTICE = "libffi - Copyright (c) 1996-2022  Anthony Green, Red Hat, Inc a
 # Unmodified full notice fixture from https://raw.githubusercontent.com/python/cpython/v3.12.10/Modules/expat/COPYING
 EXPAT_NOTICE = 'Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper\nCopyright (c) 2001-2022 Expat maintainers\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n"Software"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be included\nin all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\nIN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\nCLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,\nTORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\nSOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n'
 
+# Unmodified first full comment from https://raw.githubusercontent.com/madler/zlib/v1.3.1/zlib.h
+ZLIB_NOTICE = "/* zlib.h -- interface of the 'zlib' general purpose compression library\n  version 1.3.1, January 22nd, 2024\n\n  Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler\n\n  This software is provided 'as-is', without any express or implied\n  warranty.  In no event will the authors be held liable for any damages\n  arising from the use of this software.\n\n  Permission is granted to anyone to use this software for any purpose,\n  including commercial applications, and to alter it and redistribute it\n  freely, subject to the following restrictions:\n\n  1. The origin of this software must not be misrepresented; you must not\n     claim that you wrote the original software. If you use this software\n     in a product, an acknowledgment in the product documentation would be\n     appreciated but is not required.\n  2. Altered source versions must be plainly marked as such, and must not be\n     misrepresented as being the original software.\n  3. This notice may not be removed or altered from any source distribution.\n\n  Jean-loup Gailly        Mark Adler\n  jloup@gzip.org          madler@alumni.caltech.edu\n\n\n  The data format used by the zlib library is described by RFCs (Request for\n  Comments) 1950 to 1952 in the files http://tools.ietf.org/html/rfc1950\n  (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).\n*/"
+ZLIB_HEADER = (ZLIB_NOTICE + '\n#define ZLIB_VERSION "1.3.1"\n').encode("utf-8")
+
 
 class BuildHelperTests(unittest.TestCase):
     @staticmethod
@@ -594,7 +598,7 @@ class BuildHelperTests(unittest.TestCase):
                             function(case)
                         self.assertIs(raised.exception, error)
 
-    def test_windows_spec_excludes_only_app_local_vc_runtime(self):
+    def test_windows_spec_excludes_only_known_system_runtimes(self):
         helper = self.helper()
         with tempfile.TemporaryDirectory() as temp:
             spec = Path(temp) / "legacy-tools.spec"
@@ -605,6 +609,18 @@ class BuildHelperTests(unittest.TestCase):
             self.assertIn("vcruntime140", rewritten)
             self.assertIn("msvcp140", rewritten)
             self.assertIn("pyz = PYZ(a.pure)", rewritten)
+            names = [
+                "vcruntime140.dll", "VCRUNTIME140_1.DLL", "msvcp140_atomic_wait.dll",
+                "api-ms-win-crt-convert-l1-1-0.dll", "api-ms-win-crt-runtime-l1-1-0.dll",
+                "ucrtbase.dll", "sub\\UCRTBASE.DLL", "sub/API-MS-WIN-CRT-HEAP-L1-1-0.DLL",
+                "api-ms-win-core-file-l1-1-0.dll", "api-ms-win-crtx-custom.dll", "ucrtbase-helper.dll",
+                "libcrypto-3-x64.dll", "unknown.dll", "vcruntime140.txt", "api-ms-win-crt-custom.so",
+            ]
+            binaries = [(name, "/original/" + name, "BINARY") for name in names]
+            analysis = type("FakeAnalysis", (), {"binaries": binaries, "pure": []})()
+            namespace = {"Analysis": lambda _: analysis, "PYZ": lambda _: None, "EXE": lambda *_: None}
+            exec(compile(rewritten, str(spec), "exec"), namespace)
+            self.assertEqual(analysis.binaries, binaries[8:])
             spec.write_text("a = Analysis([])\n", encoding="utf-8")
             with self.assertRaisesRegex(helper.BuildError, "cannot locate"):
                 helper.exclude_windows_redist(spec)
@@ -715,6 +731,92 @@ class BuildHelperTests(unittest.TestCase):
                 self.assertIn("IN NO EVENT", text)
             self.assertEqual(record["sha256"], helper.sha256(out / record["filename"]))
             self.assertIsNone(helper.host_license_spec("libffi-unknown.dylib"))
+
+    def test_zlib_header_preserves_exact_complete_notice_and_rejects_invalid_sources(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            def download(url, destination, *, marker):
+                self.assertEqual(url, "https://raw.githubusercontent.com/madler/zlib/v1.3.1/zlib.h")
+                self.assertEqual(marker, b"zlib.h")
+                destination.write_bytes(ZLIB_HEADER)
+                return destination
+            with mock.patch.object(helper, "download_notice", side_effect=download), mock.patch.object(helper.zlib, "ZLIB_RUNTIME_VERSION", "1.3.1"):
+                spec = helper.host_license_spec("zlib1.dll")
+                self.assertEqual(spec[:3], ("zlib", "1.3.1", "https://raw.githubusercontent.com/madler/zlib/v1.3.1/zlib.h"))
+                notice = helper.download_zlib_notice(spec[2], root / "notice.txt", "1.3.1")
+                self.assertEqual(notice.read_bytes(), ZLIB_NOTICE.encode())
+                self.assertEqual(helper.sha256(notice), hashlib.sha256(ZLIB_NOTICE.encode()).hexdigest())
+                self.assertIn("1995-2024 Jean-loup Gailly and Mark Adler", ZLIB_NOTICE)
+                self.assertIn("Permission is granted to anyone", ZLIB_NOTICE)
+                self.assertIn("In no event", ZLIB_NOTICE)
+                self.assertNotIn("#define", notice.read_text(encoding="utf-8"))
+            for malformed in (
+                ZLIB_HEADER.replace(b"version 1.3.1,", b"version 1.3.0,"),
+                ZLIB_HEADER.replace(b'#define ZLIB_VERSION "1.3.1"', b'#define ZLIB_VERSION "1.3.0"'),
+                ZLIB_HEADER.replace(b"Permission is granted to anyone", b"unverified permission"),
+                ZLIB_HEADER.replace(b"*/", b"", 1),
+                b"/* zlib.h version 1.3.1, Copyright (C) 1995-2024 */\n#define ZLIB_VERSION \"1.3.1\"\n",
+            ):
+                def invalid_download(url, destination, *, marker):
+                    destination.write_bytes(malformed)
+                    return destination
+                with self.subTest(header=malformed[:70]), mock.patch.object(helper, "download_notice", side_effect=invalid_download):
+                    with self.assertRaises(helper.BuildError):
+                        helper.download_zlib_notice(spec[2], root / "invalid.txt", "1.3.1")
+            for version in ("unknown", "1.3.1-custom", "../1.3.1"):
+                with self.subTest(version=version), mock.patch.object(helper.zlib, "ZLIB_RUNTIME_VERSION", version), mock.patch.object(helper, "download_notice") as download:
+                    with self.assertRaisesRegex(helper.BuildError, "unsupported zlib"):
+                        helper.host_license_spec("zlib1.dll")
+                    with self.assertRaisesRegex(helper.BuildError, "unsupported zlib"):
+                        helper.download_zlib_notice("unused", root / "invalid-version", version)
+                    download.assert_not_called()
+
+    def test_shared_and_static_zlib_receive_matching_full_attribution(self):
+        helper = self.helper()
+        for case in ("shared", "extension", "builtin", "shared-and-extension"):
+            with tempfile.TemporaryDirectory() as temp, self.subTest(case=case):
+                root = Path(temp).resolve()
+                shared = root / "zlib1.dll"
+                extension = root / "zlib.pyd"
+                interpreter = root / "python312.dll"
+                for file in (shared, extension, interpreter):
+                    file.write_bytes(b"controlled binary fixture")
+                cases = {
+                    "shared": [(shared.name, shared, "BINARY")],
+                    "extension": [(extension.name, extension, "EXTENSION")],
+                    "builtin": [(interpreter.name, interpreter, "BINARY")],
+                    "shared-and-extension": [(shared.name, shared, "BINARY"), (extension.name, extension, "EXTENSION")],
+                }
+                binaries = cases[case]
+                urls = []
+                def download(url, destination, *, marker):
+                    urls.append(url)
+                    if url == "https://raw.githubusercontent.com/madler/zlib/v1.3.1/zlib.h":
+                        data = ZLIB_HEADER
+                    elif url.endswith("Doc/license.rst"):
+                        data = b"Third-party software: historical zlib summary 1995-2011."
+                    else:
+                        raise AssertionError(f"Unexpected source: {url}")
+                    self.assertIn(marker.lower(), data.lower())
+                    destination.write_bytes(data)
+                    return destination
+                with mock.patch.object(helper.sys, "platform", "win32"), mock.patch.object(helper.sys, "base_prefix", str(root)), mock.patch.object(helper.sys, "builtin_module_names", ("zlib",) if case == "builtin" else ()), mock.patch.object(helper.zlib, "ZLIB_RUNTIME_VERSION", "1.3.1"), mock.patch.object(helper, "collected_binaries", return_value=binaries), mock.patch.object(helper, "cpython_windows_build_versions", return_value={"bzip2": "1.0.8", "xz": "5.2.5", "libffi": "3.4.4"}), mock.patch.object(helper, "download_notice", side_effect=download):
+                    out = helper.prepare_host_binary_licenses(root / "toc", root / "prepared", {name for name, *_ in binaries})
+                manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+                additional = json.loads((out / "additional-notices.json").read_text(encoding="utf-8"))
+                records = list(manifest.values()) + [item for item in additional if item["component"] == "zlib"]
+                self.assertEqual(len(records), 2 if case == "shared-and-extension" else 1)
+                if "shared" in case:
+                    self.assertEqual((out / shared.name).read_bytes(), ZLIB_NOTICE.encode())
+                if case != "shared":
+                    self.assertEqual((out / "zlib-LICENSE.txt").read_bytes(), ZLIB_NOTICE.encode())
+                for record in records:
+                    self.assertEqual(record["component"], "zlib")
+                    self.assertEqual(record["version"], "1.3.1")
+                    self.assertEqual(record["source"], "https://raw.githubusercontent.com/madler/zlib/v1.3.1/zlib.h")
+                    self.assertEqual(record["sha256"], hashlib.sha256(ZLIB_NOTICE.encode()).hexdigest())
+                self.assertEqual(urls.count("https://raw.githubusercontent.com/madler/zlib/v1.3.1/zlib.h"), 1)
 
     def test_final_onedir_hash_uses_processed_image_and_rejects_missing_image(self):
         helper = self.helper()

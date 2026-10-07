@@ -346,7 +346,6 @@ def host_license_spec(name: str, versions: dict[str, str] | None = None) -> tupl
     """Known libraries from official CPython macOS/Windows distributions."""
     lower = name.lower()
     python_version = platform.python_version()
-    python_notice = f"https://raw.githubusercontent.com/python/cpython/v{python_version}/Doc/license.rst"
     openssl_version = ".".join(str(part) for part in ssl.OPENSSL_VERSION_INFO[:3])
     if lower.startswith(("libcrypto", "libssl")):
         return "OpenSSL", openssl_version, f"https://raw.githubusercontent.com/openssl/openssl/openssl-{openssl_version}/LICENSE.txt", b"Apache License"
@@ -366,8 +365,38 @@ def host_license_spec(name: str, versions: dict[str, str] | None = None) -> tupl
     if lower.startswith(("libexpat", "expat.")):
         return "Expat (CPython bundled)", ".".join(map(str, pyexpat.version_info)), f"https://raw.githubusercontent.com/python/cpython/v{python_version}/Modules/expat/COPYING", b"Expat maintainers"
     if lower.startswith(("libz.", "zlib", "zlib1")):
-        return "zlib", zlib.ZLIB_RUNTIME_VERSION, python_notice, b"zlib"
+        version = zlib.ZLIB_RUNTIME_VERSION
+        if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,3}", version):
+            raise BuildError(f"unsupported zlib runtime version {version!r}")
+        return "zlib", version, f"https://raw.githubusercontent.com/madler/zlib/v{version}/zlib.h", b"zlib.h"
     return None
+
+
+
+def download_zlib_notice(url: str, destination: Path, version: str) -> Path:
+    """Retain the exact complete first comment of the matching upstream header."""
+    if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,3}", version):
+        raise BuildError(f"unsupported zlib runtime version {version!r}")
+    header = download_notice(url, destination.with_name(destination.name + ".header"), marker=b"zlib.h")
+    data = header.read_bytes()
+    match = re.match(rb"\s*(/\*.*?\*/)", data, re.DOTALL)
+    comment = match.group(1) if match else b""
+    declared = re.search(rb"\bversion\s+([0-9]+(?:\.[0-9]+)+)\s*,", comment)
+    defined = re.search(rb'^#define\s+ZLIB_VERSION\s+"([^"\r\n]+)"', data, re.MULTILINE)
+    expected = version.encode("ascii")
+    if not declared or not defined or declared.group(1) != expected or defined.group(1) != expected:
+        raise BuildError(f"zlib header does not verify runtime version {version}")
+    normalized = b" ".join(comment.split())
+    required = (
+        b"Copyright (C)", b"Jean-loup Gailly and Mark Adler",
+        b"This software is provided 'as-is'", b"authors be held liable",
+        b"Permission is granted to anyone", b"including commercial applications",
+        b"1. The origin", b"2. Altered source versions", b"3. This notice may not be removed or altered",
+    )
+    if any(part not in normalized for part in required):
+        raise BuildError("zlib header lacks complete attribution, permission, or disclaimer")
+    destination.write_bytes(comment)
+    return destination
 
 
 def prepare_host_binary_licenses(toc: Path, output: Path, included: set[str]) -> Path:
@@ -376,7 +405,8 @@ def prepare_host_binary_licenses(toc: Path, output: Path, included: set[str]) ->
     manifest = {}
     cache = {}
     versions = cpython_windows_build_versions(output) if sys.platform == "win32" else {}
-    for name, source, kind in collected_binaries(toc):
+    binaries = collected_binaries(toc)
+    for name, source, kind in binaries:
         if name not in included:
             continue
         package_name = name.split("/", 1)[0].lower().replace("_", "-")
@@ -389,7 +419,9 @@ def prepare_host_binary_licenses(toc: Path, output: Path, included: set[str]) ->
             raise BuildError(f"unknown collected host binary {name}; add verified component-specific notice preparation")
         component, version, url, marker = spec
         if url not in cache:
-            cache[url] = download_notice(url, output / f"notice-{len(cache)}.txt", marker=marker)
+            destination = output / f"notice-{len(cache)}.txt"
+            cache[url] = (download_zlib_notice(url, destination, version) if component == "zlib"
+                          else download_notice(url, destination, marker=marker))
         notice = cache[url]
         destination = output / source.name
         shutil.copy2(notice, destination)
@@ -406,6 +438,20 @@ def prepare_host_binary_licenses(toc: Path, output: Path, included: set[str]) ->
         url = f"https://raw.githubusercontent.com/python/cpython/v{python_version}/Modules/expat/COPYING"
         notice = download_notice(url, output / "expat-COPYING.txt", marker=b"Expat maintainers")
         additional.append({"component": "Expat (CPython bundled)", "version": ".".join(map(str, pyexpat.version_info)), "source": url, "filename": notice.name, "sha256": sha256(notice)})
+    static_zlib = any(name in included and kind == "EXTENSION" and re.match(r"zlib\.", Path(name).name.lower())
+                      for name, _, kind in binaries)
+    builtin_zlib = "zlib" in sys.builtin_module_names and any(
+        name in included and kind == "BINARY" and is_cpython_binary(source, kind)
+        for name, source, kind in binaries)
+    if static_zlib or builtin_zlib:
+        component, version, url, _ = host_license_spec("zlib")
+        destination = output / "zlib-LICENSE.txt"
+        if url in cache:
+            shutil.copy2(cache[url], destination)
+        else:
+            download_zlib_notice(url, destination, version)
+        additional.append({"component": component, "version": version, "source": url,
+                           "filename": destination.name, "sha256": sha256(destination)})
     if sys.platform == "win32":
         for prefix, component, version, url, marker, filename in (
             ("_bz2", "bzip2", versions["bzip2"], f"https://gitlab.com/bzip2/bzip2/-/raw/bzip2-{versions['bzip2']}/LICENSE", b"libbzip2", "bzip2-LICENSE.txt"),
@@ -507,12 +553,18 @@ def frozen_packages(table_of_contents: Path) -> set[str]:
 
 
 def exclude_windows_redist(spec: Path) -> None:
-    """Keep Microsoft VC runtime DLLs as a system prerequisite, not an artifact."""
+    """Keep Windows UCRT and Microsoft VC runtime DLLs as system prerequisites."""
     content = spec.read_text(encoding="utf-8")
     marker = "pyz = PYZ(a.pure)"
     if content.count(marker) != 1:
         raise BuildError("cannot locate PyInstaller binary collection in generated spec")
-    content = content.replace(marker, "a.binaries = [item for item in a.binaries if not item[0].lower().startswith(('vcruntime140', 'msvcp140'))]\n" + marker)
+    runtime_filter = (
+        "def _legacy_system_runtime(name):\n"
+        "    name = name.replace('\\\\', '/').rsplit('/', 1)[-1].lower()\n"
+        "    return name.endswith('.dll') and (name == 'ucrtbase.dll' or name.startswith(('vcruntime140', 'msvcp140', 'api-ms-win-crt-')))\n"
+        "a.binaries = [item for item in a.binaries if not _legacy_system_runtime(item[0])]\n"
+    )
+    content = content.replace(marker, runtime_filter + marker)
     spec.write_text(content, encoding="utf-8")
 
 

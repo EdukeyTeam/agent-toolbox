@@ -26,7 +26,7 @@ CARGO_TARGET_DIR=/path/outside/the/repository cargo build --release --locked --m
 CARGO_TARGET_DIR=/path/outside/the/repository cargo test --release --locked --manifest-path src/legacy-repo-map/Cargo.toml
 ```
 
-`cargo test` runs unit tests and `tests/cli.rs`, which executes the built binary on throwaway repositories. `tests/test_legacy_native.py` in the repository root compares the binary with the Python tool. `scripts/build-legacy-tools.py` builds a release artifact with license files and runs smoke tests. For the combined Python/Rust build, use `--prepare-host-licenses` for macOS and Windows (inert on Linux). Windows artifacts require the matching-architecture [Microsoft Visual C++ v14 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170); these DLLs are not included in the archive.
+`cargo test` runs unit tests and `tests/cli.rs`, which executes the built binary on throwaway repositories. `tests/test_legacy_native.py` in the repository root compares the binary with the Python tool. `scripts/build-legacy-tools.py` builds a release artifact with license files and runs smoke tests. For the combined Python/Rust build, use `--prepare-host-licenses` for macOS and Windows (inert on Linux). Windows artifacts target Windows 10 or later with the system Universal CRT and require the matching-architecture [Microsoft Visual C++ v14 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170); these DLLs are not included in the archive.
 
 ## Sources and versions
 
