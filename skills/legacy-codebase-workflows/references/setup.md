@@ -8,7 +8,7 @@ The tools run in three ways. The first two run the same code and produce identic
 | Standalone bundle, `legacy-tools` | Bundle; `git` for a git work tree; Windows 10+ with matching VC Redistributable | Same Python tools frozen into a program. Use it where installing Python packages is not possible. |
 | Native binary, `legacy-repo-map` | Binary; optional `git`; Windows 10+ with matching VC Redistributable | Experimental. Repository map only. Read [native tooling](native-tooling.md) first. |
 
-None of them needs an LLM endpoint, an account or network access at run time. All of them write only to the output directory you name, which must be outside the source repository.
+None of them needs an LLM endpoint or an account to map local source. Generation writes to an external output directory. The separate [report export](repo-map.md#save-a-named-report) helper can then save user-facing maps inside `docs/repo-maps` or a user-selected destination. Downloading dependencies or binaries is explicit setup, not part of offline mapping. Read [binary delivery](distribution.md) for current artifact access, platform selection, readiness and signing limits.
 
 ## Python source
 
@@ -70,7 +70,7 @@ Keep the adjacent license and notice files with the program when copying or redi
 
 `info` prints the bundled Python and package versions and the SHA-256 of every bundled script, so you can check a bundle against the skill source it was built from. `notices` prints the attribution and lists the license files.
 
-Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. Take a bundle from the build artifacts of the toolbox repository when its maintainers publish them, or build one from the toolbox source as described below. Check the archive against the `SHA256SUMS` file that is produced with it.
+Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. Current binaries are retained as Actions artifacts by the [toolbox test workflow](https://github.com/EdukeyTeam/agent-toolbox/actions/workflows/test-skills.yml), not automatically installed with this skill. Choose a successful run matching the skill source and follow [binary delivery](distribution.md); do not treat a historical benchmark run as the current installation version. Verify the archive against its accompanying `SHA256SUMS`. Durable release publishing and a platform-aware setup script are proposed there and are not implemented by this source update.
 
 The bundle covers lexical retrieval completely. Semantic retrieval is not included: it needs Node.js, the pinned inference package and a downloaded model, set up as described under optional retrieval below, and the optional `sqlite-vec` vector engine is not bundled either.
 
