@@ -139,7 +139,7 @@ class MapTests(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
         blob = subprocess.check_output(["git", "-C", str(self.repo), "hash-object", "-w", "a.py"], text=True).strip()
         stages = "".join(f"100644 {blob} {stage}\ta.py\n" for stage in (1, 2, 3))
-        subprocess.run(["git", "-C", str(self.repo), "update-index", "--index-info"], input=stages, text=True, check=True)
+        subprocess.run(["git", "-C", str(self.repo), "update-index", "--index-info"], input=stages.encode("utf-8"), check=True)
         raw = subprocess.check_output(["git", "-C", str(self.repo), "ls-files", "-z", "--cached", "--others", "--exclude-standard"])
         self.assertEqual(raw.count(b"a.py\0"), 3)
         real_popen = subprocess.Popen

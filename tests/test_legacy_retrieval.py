@@ -241,7 +241,7 @@ class RetrievalTests(unittest.TestCase):
             backend.put_meta(con, "chunk_chars", "1200")
         moved = self.root.with_name("moved")
         self.root.rename(moved)
-        self.assert_json_http_error(endpoint, 409, "No such file|does not exist")
+        self.assert_json_http_error(endpoint, 409, "^Cannot inventory source:")
         moved.rename(self.root)
         self.db.unlink()
         self.assert_json_http_error(endpoint, 409, "Database does not exist")
