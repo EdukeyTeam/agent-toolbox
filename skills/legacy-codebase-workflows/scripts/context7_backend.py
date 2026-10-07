@@ -220,10 +220,24 @@ def load_sqlite_vec(con: sqlite3.Connection) -> None:
         raise RetrievalError(f"sqlite-vec 0.1.9 required; found {version}")
 
 
+def _finite_number(value: object) -> bool:
+    if type(value) not in (int, float):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def pack_vector(vector: list[float]) -> bytes:
-    if not vector or not all(math.isfinite(x) for x in vector):
+    if not isinstance(vector, (list, tuple)) or not vector or not all(_finite_number(x) for x in vector):
         raise RetrievalError("Embedding contains invalid values")
-    norm = math.sqrt(math.sumprod(vector, vector))
+    try:
+        norm = math.sqrt(math.sumprod(vector, vector))
+    except (OverflowError, ValueError) as exc:
+        raise RetrievalError("Embedding normalization norm is invalid or overflowed") from exc
+    if not math.isfinite(norm):
+        raise RetrievalError("Embedding normalization norm is not finite")
     if not norm:
         raise RetrievalError("Embedding has zero length")
     return struct.pack(f"<{len(vector)}f", *(x / norm for x in vector))
@@ -401,6 +415,8 @@ def embedding_batches(batches: list[list[str]], model: str, model_revision: str,
                         vectors = json.loads(output)
                         if not isinstance(vectors, list) or len(vectors) != len(texts) or not all(isinstance(row, list) and row for row in vectors):
                             raise ValueError("wrong embedding shape")
+                        if not all(_finite_number(value) for row in vectors for value in row):
+                            raise ValueError("expected finite nonboolean numbers in embedding rows")
                         yield vectors
                     except (ValueError, TypeError) as exc:
                         raise RetrievalError(f"Invalid embedding output: {exc}") from exc
@@ -454,7 +470,7 @@ def reranker_scores(question: str, passages: list[str], model: str, model_revisi
                         raise RetrievalError(f"Local reranker helper failed: {errors.read(400)}")
                     try:
                         values = json.loads(output)
-                        if not isinstance(values, list) or len(values) != len(batch) or any(type(value) not in (float, int) or not math.isfinite(value) for value in values):
+                        if not isinstance(values, list) or len(values) != len(batch) or any(not _finite_number(value) for value in values):
                             raise ValueError("expected one finite scalar per passage")
                     except (ValueError, TypeError) as exc:
                         raise RetrievalError(f"Invalid reranker output: {exc}") from exc

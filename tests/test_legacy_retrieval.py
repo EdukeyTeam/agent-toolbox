@@ -202,8 +202,9 @@ class RetrievalTests(unittest.TestCase):
             self.assertTrue(backend.query(con, "App")["results"])
             self.assertFalse(con.execute("SELECT 1 FROM files WHERE path='bundle.js'").fetchone())
 
-    def start_error_test_server(self):
-        self.index()
+    def start_error_test_server(self, *, index_first=True):
+        if index_first:
+            self.index()
         proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", "0"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         def cleanup():
             if proc.poll() is None:
@@ -682,15 +683,81 @@ class RetrievalTests(unittest.TestCase):
         for path, body in ((self.root / "src/service.py", "class ChangedInvoice: pass\n"), (self.docs / "guide.md", "Changed billing guidance.\n")):
             path.write_text(body, encoding="utf-8", newline="\n")
             self.assertEqual(path.read_bytes(), body.encode("utf-8"))
-        fail_second = "import sys,json\nfor number,line in enumerate(sys.stdin):\n    print(json.dumps([[1.0,0.0]]) if number==0 else '9'*129,flush=True)\n"
-        with self.embedding_process_fixture(fail_second) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 128), mock.patch.object(backend, "MODEL_BATCH", 1):
-            with self.assertRaisesRegex(backend.RetrievalError, "response exceeds limit"):
-                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        for output, pattern in (("9" * 129, "response exceeds limit"), ('[["invalid"]]', "expected finite nonboolean numbers")):
+            fail_second = "import sys,json\nfor number,line in enumerate(sys.stdin):\n    print(json.dumps([[1.0,0.0]]) if number==0 else " + repr(output) + ",flush=True)\n"
+            with self.subTest(output=output), self.embedding_process_fixture(fail_second) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 128), mock.patch.object(backend, "MODEL_BATCH", 1):
+                with self.assertRaisesRegex(backend.RetrievalError, pattern):
+                    backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+                self.assert_embedding_process_closed(processes, readers)
+            self.assertEqual(self.db.read_bytes(), before)
+            with backend.connect(self.db) as con:
+                self.assertEqual(backend.metadata(con), old_metadata)
+                self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), old_vectors)
+
+    def test_embedding_values_reject_real_malformed_numbers_before_yield_and_keep_normal_bits(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        for value in ("invalid", None, [1], True, False, math.nan, math.inf, -math.inf, 10 ** 400):
+            output = json.dumps([[value]])
+            program = "import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\nsys.stdin.read()\n"
+            with self.subTest(value=value), self.embedding_process_fixture(program) as (processes, readers, _):
+                stream = backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False)
+                self.addCleanup(stream.close)
+                start = time.monotonic()
+                with self.assertRaisesRegex(backend.RetrievalError, "Invalid embedding output: expected finite nonboolean numbers"):
+                    next(stream)
+                self.assertLess(time.monotonic() - start, 5)
+                self.assert_embedding_process_closed(processes, readers)
+        normal = "import sys\nfor line in sys.stdin: print('[[3,4.0]]',flush=True)\n"
+        with self.embedding_process_fixture(normal) as (processes, readers, _):
+            vectors = list(backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+            self.assertEqual(vectors, [[[3, 4.0]]])
+            self.assertEqual(backend.pack_vector(vectors[0][0]).hex(), "9a99193fcdcc4c3f")
             self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_values_direct_pack_has_owned_errors_and_preserves_normalization_bits(self):
+        for vector in (None, "invalid", True, 3, [], ["invalid"], [None], [[1]], [True], [False], [10 ** 400], [math.nan], [math.inf], [-math.inf]):
+            with self.subTest(vector=vector):
+                with self.assertRaisesRegex(backend.RetrievalError, "Embedding contains invalid values"):
+                    backend.pack_vector(vector)
+        for vector in ([0], [0.0, 0.0]):
+            with self.subTest(vector=vector):
+                with self.assertRaisesRegex(backend.RetrievalError, "zero length"):
+                    backend.pack_vector(vector)
+        for vector in ([1e308], [10 ** 200], [1e300, -1e300]):
+            with self.subTest(vector=vector):
+                with self.assertRaisesRegex(backend.RetrievalError, "normalization norm"):
+                    backend.pack_vector(vector)
+        self.assertEqual(backend.pack_vector([3, 4.0]).hex(), "9a99193fcdcc4c3f")
+        self.assertEqual(backend.pack_vector([1, 0.0]).hex(), "0000803f00000000")
+
+    def test_embedding_values_actual_cli_error_and_http_json_recovery_leave_index_unchanged(self):
+        base = Path(self.tmp.name).resolve()
+        cache, runtime, control = base / "cache", base / "runtime", base / "vector.json"
+        package = runtime / "node_modules/@huggingface/transformers"
+        (package / "src").mkdir(parents=True)
+        module = "import { readFileSync } from 'node:fs';\nexport const env={};\nexport async function pipeline(){return async texts=>({tolist:()=>texts.map(()=>JSON.parse(readFileSync(new URL(" + json.dumps(control.as_uri()) + "),'utf8')))}); }\n"
+        for path, text in ((package / "package.json", '{"type":"module"}\n'), (package / "src/transformers.js", module), (control, "[3,4.0]\n")):
+            path.write_text(text, encoding="utf-8", newline="\n")
+            self.assertEqual(path.read_bytes(), text.encode("utf-8"))
+        backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        before = self.db.read_bytes()
+        control.write_text('["invalid"]\n', encoding="utf-8", newline="\n")
+        self.assertEqual(control.read_bytes(), b'["invalid"]\n')
+        result = subprocess.run([sys.executable, str(SCRIPT), "query", "--database", str(self.db), "--query", "invoice", "--mode", "semantic"], text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("retrieval error: Invalid embedding output", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertEqual(result.stdout, "")
+        endpoint = "http://" + self.start_error_test_server(index_first=False) + "/api/v2/context?libraryId=/local/billing&query=invoice"
+        self.assert_json_http_error(endpoint + "&mode=semantic", 409, "Invalid embedding output")
+        with urlopen(endpoint, timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
+        control.write_text("[3,4.0]\n", encoding="utf-8", newline="\n")
+        self.assertEqual(control.read_bytes(), b"[3,4.0]\n")
+        with urlopen(endpoint + "&mode=semantic", timeout=10) as response:
+            self.assertTrue(json.load(response)["codeSnippets"])
         self.assertEqual(self.db.read_bytes(), before)
-        with backend.connect(self.db) as con:
-            self.assertEqual(backend.metadata(con), old_metadata)
-            self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), old_vectors)
 
     def test_reranker_real_unsolicited_flood_reaches_backpressure_and_cleans_up(self):
         cache = Path(self.tmp.name).resolve() / "cache"
@@ -724,7 +791,7 @@ class RetrievalTests(unittest.TestCase):
             "import sys\nsys.stdin.readline()\nsys.stdout.write('[1.0]')\nsys.stdout.flush()\n",
             "import sys,os\nsys.stdin.readline()\nos.write(1,b'\\xff\\n')\n",
         ]
-        cases.extend("import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\n" for output in ("null", "3", "{}", "[[1.0]]", "[true]", "[NaN]"))
+        cases.extend("import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\n" for output in ("null", "3", "{}", "[[1.0]]", "[true]", "[NaN]", "[" + str(10 ** 400) + "]"))
         for program in cases:
             with self.subTest(program=program), self.embedding_process_fixture(program, helper_path=backend.RERANK_HELPER) as (processes, readers, _):
                 start = time.monotonic()
