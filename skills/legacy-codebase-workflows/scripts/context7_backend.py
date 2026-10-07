@@ -8,6 +8,7 @@ Only index downloads a model. Query and HTTP serving force local model files.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -319,6 +320,51 @@ def chunks_for(text: str, chunk_chars: int = DEFAULT_CHUNK_CHARS):
         offset = following
 
 
+@contextmanager
+def _helper_responses(proc: subprocess.Popen[str], limit: int, kind: str):
+    responses: queue.Queue[str | None | RetrievalError] = queue.Queue(maxsize=1)
+    cancelled = threading.Event()
+    def send_response(response: str | None | RetrievalError) -> bool:
+        while not cancelled.is_set():
+            try:
+                responses.put(response, timeout=0.1)
+                return True
+            except queue.Full:
+                pass
+        return False
+
+    def read_outputs():
+        assert proc.stdout is not None
+        try:
+            while not cancelled.is_set():
+                line = proc.stdout.readline(limit + 1)
+                if not line:
+                    send_response(None)
+                    return
+                if len(line) > limit or not line.endswith("\n"):
+                    send_response(RetrievalError(f"Invalid {kind} output: response exceeds limit or is unterminated"))
+                    return
+                if not send_response(line):
+                    return
+        except (OSError, UnicodeError, ValueError) as exc:
+            if not cancelled.is_set():
+                send_response(RetrievalError(f"Invalid {kind} output: {exc}"))
+    reader = threading.Thread(target=read_outputs, name=f"local-{kind}-reader", daemon=True)
+    reader.start()
+    try:
+        yield responses
+    finally:
+        cancelled.set()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        if proc.stdin and not proc.stdin.closed:
+            proc.stdin.close()
+        reader.join(timeout=1)
+        if proc.stdout:
+            proc.stdout.close()
+
+
 def embedding_batches(batches: list[list[str]], model: str, model_revision: str, cache: Path, runtime: Path, *, download: bool):
     if not batches:
         return
@@ -329,79 +375,41 @@ def embedding_batches(batches: list[list[str]], model: str, model_revision: str,
     elif not cache.is_dir():
         raise RetrievalError("Local model cache is missing; run explicit model download at index time")
     env = inference_environment(cache, download=download)
-    responses: queue.Queue[str | None | RetrievalError] = queue.Queue(maxsize=1)
-    cancelled = threading.Event()
     with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as errors:
         try:
             proc = subprocess.Popen(["node", str(RETRIEVAL), model, model_revision, str(cache), str(runtime), "download" if download else "offline"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, env=env, bufsize=1)
         except OSError as exc:
             raise RetrievalError(f"Local embedding helper failed: {exc}") from exc
-        def send_response(response: str | None | RetrievalError) -> bool:
-            while not cancelled.is_set():
-                try:
-                    responses.put(response, timeout=0.1)
-                    return True
-                except queue.Full:
-                    pass
-            return False
-
-        def read_outputs():
-            assert proc.stdout is not None
+        with _helper_responses(proc, MAX_EMBEDDING_RESPONSE_CHARS, "embedding") as responses:
             try:
-                while not cancelled.is_set():
-                    line = proc.stdout.readline(MAX_EMBEDDING_RESPONSE_CHARS + 1)
-                    if not line:
-                        send_response(None)
-                        return
-                    if len(line) > MAX_EMBEDDING_RESPONSE_CHARS or not line.endswith("\n"):
-                        send_response(RetrievalError("Invalid embedding output: response exceeds limit or is unterminated"))
-                        return
-                    if not send_response(line):
-                        return
-            except (OSError, UnicodeError, ValueError) as exc:
-                if not cancelled.is_set():
-                    send_response(RetrievalError(f"Invalid embedding output: {exc}"))
-        reader = threading.Thread(target=read_outputs, name="local-embedding-reader", daemon=True)
-        reader.start()
-        try:
-            for texts in batches:
-                if len(texts) > MODEL_BATCH:
-                    raise RetrievalError("Embedding batch exceeds limit")
-                assert proc.stdin is not None
-                proc.stdin.write(json.dumps(texts, separators=(",", ":")) + "\n")
-                proc.stdin.flush()
-                try:
-                    output = responses.get(timeout=120)
-                except queue.Empty as exc:
-                    raise RetrievalError("Local embedding helper timed out") from exc
-                if isinstance(output, RetrievalError):
-                    raise output
-                if output is None:
+                for texts in batches:
+                    if len(texts) > MODEL_BATCH:
+                        raise RetrievalError("Embedding batch exceeds limit")
+                    assert proc.stdin is not None
+                    proc.stdin.write(json.dumps(texts, separators=(",", ":")) + "\n")
+                    proc.stdin.flush()
+                    try:
+                        output = responses.get(timeout=120)
+                    except queue.Empty as exc:
+                        raise RetrievalError("Local embedding helper timed out") from exc
+                    if isinstance(output, RetrievalError):
+                        raise output
+                    if output is None:
+                        errors.seek(0)
+                        raise RetrievalError(f"Local embedding helper failed: {errors.read(400)}")
+                    try:
+                        vectors = json.loads(output)
+                        if not isinstance(vectors, list) or len(vectors) != len(texts) or not all(isinstance(row, list) and row for row in vectors):
+                            raise ValueError("wrong embedding shape")
+                        yield vectors
+                    except (ValueError, TypeError) as exc:
+                        raise RetrievalError(f"Invalid embedding output: {exc}") from exc
+                proc.stdin.close()
+                if proc.wait(timeout=15):
                     errors.seek(0)
                     raise RetrievalError(f"Local embedding helper failed: {errors.read(400)}")
-                try:
-                    vectors = json.loads(output)
-                    if not isinstance(vectors, list) or len(vectors) != len(texts) or not all(isinstance(row, list) and row for row in vectors):
-                        raise ValueError("wrong embedding shape")
-                    yield vectors
-                except (ValueError, TypeError) as exc:
-                    raise RetrievalError(f"Invalid embedding output: {exc}") from exc
-            proc.stdin.close()
-            if proc.wait(timeout=15):
-                errors.seek(0)
-                raise RetrievalError(f"Local embedding helper failed: {errors.read(400)}")
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise RetrievalError(f"Local embedding helper failed: {exc}") from exc
-        finally:
-            cancelled.set()
-            if proc.poll() is None:
-                proc.kill()
-                proc.wait()
-            if proc.stdin and not proc.stdin.closed:
-                proc.stdin.close()
-            reader.join(timeout=1)
-            if proc.stdout:
-                proc.stdout.close()
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise RetrievalError(f"Local embedding helper failed: {exc}") from exc
 
 
 def embeddings(texts: list[str], model: str, cache: Path, runtime: Path, *, download: bool, model_revision: str = DEFAULT_MODEL_REVISION) -> list[list[float]]:
@@ -422,64 +430,42 @@ def reranker_scores(question: str, passages: list[str], model: str, model_revisi
     elif not cache.is_dir():
         raise RetrievalError("Local reranker cache is missing; index with --reranker-model first")
     env = inference_environment(cache, download=download)
-    responses: queue.Queue[str | None] = queue.Queue()
     with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as errors:
         try:
             proc = subprocess.Popen(["node", str(RERANK_HELPER), model, model_revision, str(cache), str(runtime), "download" if download else "offline"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, env=env, bufsize=1)
         except OSError as exc:
             raise RetrievalError(f"Local reranker helper failed: {exc}") from exc
-        def read_outputs():
-            assert proc.stdout is not None
-            while True:
-                line = proc.stdout.readline(4097)
-                if not line:
-                    responses.put(None)
-                    break
-                if len(line) > 4096 or not line.endswith("\n"):
-                    responses.put("oversize")
-                    break
-                responses.put(line)
-        reader = threading.Thread(target=read_outputs, daemon=True)
-        reader.start()
-        scores: list[float] = []
-        try:
-            assert proc.stdin is not None
-            for start in range(0, len(passages), RERANK_BATCH):
-                batch = passages[start:start + RERANK_BATCH]
-                proc.stdin.write(json.dumps({"query": question, "passages": batch}, separators=(",", ":")) + "\n")
-                proc.stdin.flush()
-                try:
-                    output = responses.get(timeout=120)
-                except queue.Empty as exc:
-                    raise RetrievalError("Local reranker helper timed out") from exc
-                if output is None:
+        with _helper_responses(proc, 4096, "reranker") as responses:
+            scores: list[float] = []
+            try:
+                assert proc.stdin is not None
+                for start in range(0, len(passages), RERANK_BATCH):
+                    batch = passages[start:start + RERANK_BATCH]
+                    proc.stdin.write(json.dumps({"query": question, "passages": batch}, separators=(",", ":")) + "\n")
+                    proc.stdin.flush()
+                    try:
+                        output = responses.get(timeout=120)
+                    except queue.Empty as exc:
+                        raise RetrievalError("Local reranker helper timed out") from exc
+                    if isinstance(output, RetrievalError):
+                        raise output
+                    if output is None:
+                        errors.seek(0)
+                        raise RetrievalError(f"Local reranker helper failed: {errors.read(400)}")
+                    try:
+                        values = json.loads(output)
+                        if not isinstance(values, list) or len(values) != len(batch) or any(type(value) not in (float, int) or not math.isfinite(value) for value in values):
+                            raise ValueError("expected one finite scalar per passage")
+                    except (ValueError, TypeError) as exc:
+                        raise RetrievalError(f"Invalid reranker output: {exc}") from exc
+                    scores.extend(float(value) for value in values)
+                proc.stdin.close()
+                if proc.wait(timeout=15):
                     errors.seek(0)
                     raise RetrievalError(f"Local reranker helper failed: {errors.read(400)}")
-                if output == "oversize":
-                    raise RetrievalError("Invalid reranker output: response exceeds limit")
-                try:
-                    values = json.loads(output)
-                    if not isinstance(values, list) or len(values) != len(batch) or any(type(value) not in (float, int) or not math.isfinite(value) for value in values):
-                        raise ValueError("expected one finite scalar per passage")
-                except (ValueError, TypeError) as exc:
-                    raise RetrievalError(f"Invalid reranker output: {exc}") from exc
-                scores.extend(float(value) for value in values)
-            proc.stdin.close()
-            if proc.wait(timeout=15):
-                errors.seek(0)
-                raise RetrievalError(f"Local reranker helper failed: {errors.read(400)}")
-            return scores
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise RetrievalError(f"Local reranker helper failed: {exc}") from exc
-        finally:
-            if proc.poll() is None:
-                proc.kill()
-                proc.wait()
-            if proc.stdin and not proc.stdin.closed:
-                proc.stdin.close()
-            if proc.stdout:
-                proc.stdout.close()
-            reader.join(timeout=1)
+                return scores
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise RetrievalError(f"Local reranker helper failed: {exc}") from exc
 
 
 def index(root: Path, database: Path, library_id: str, docs_root: Path | None, embed_model: str | None, model_cache: Path | None, embedding_runtime: Path | None = None, *, model_revision: str | None = None, vector_engine: str = "stdlib", reranker_model: str | None = None, reranker_revision: str | None = None, chunk_chars: int = DEFAULT_CHUNK_CHARS, excludes: tuple[str, ...] | list[str] = ()) -> dict:

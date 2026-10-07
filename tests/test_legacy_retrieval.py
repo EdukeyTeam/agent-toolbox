@@ -561,7 +561,8 @@ class RetrievalTests(unittest.TestCase):
                         self.assertIn(name, text)
 
     @contextmanager
-    def embedding_process_fixture(self, program):
+    def embedding_process_fixture(self, program, *, helper_path=None, wait_for_backpressure=False):
+        target = backend.RETRIEVAL if helper_path is None else helper_path
         helper = Path(self.tmp.name).resolve() / "embedding-helper.py"
         helper.write_text(program, encoding="utf-8", newline="\n")
         self.assertEqual(helper.read_bytes(), program.encode("utf-8"))
@@ -577,8 +578,12 @@ class RetrievalTests(unittest.TestCase):
                 if self.full():
                     self.full_attempted.set()
                 return super().put(item, *args, **kwargs)
+            def get(self, *args, **kwargs):
+                if wait_for_backpressure and not self.full_attempted.wait(timeout=2):
+                    raise AssertionError("reader did not encounter backpressure")
+                return super().get(*args, **kwargs)
         def launch(command, **kwargs):
-            if len(command) < 2 or command[1] != str(backend.RETRIEVAL):
+            if len(command) < 2 or command[1] != str(target):
                 return original_popen(command, **kwargs)
             proc = original_popen([sys.executable, "-u", str(helper)], **kwargs)
             processes.append(proc)
@@ -686,6 +691,47 @@ class RetrievalTests(unittest.TestCase):
         with backend.connect(self.db) as con:
             self.assertEqual(backend.metadata(con), old_metadata)
             self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), old_vectors)
+
+    def test_reranker_real_unsolicited_flood_reaches_backpressure_and_cleans_up(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys\nsys.stdin.readline()\nsys.stdout.write('[1.0]\\n'*256)\nsys.stdout.flush()\nsys.stdin.read()\n"
+        with self.embedding_process_fixture(program, helper_path=backend.RERANK_HELPER, wait_for_backpressure=True) as (processes, readers, responses):
+            start = time.monotonic()
+            scores = backend.reranker_scores("query", ["passage"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, cache, download=False)
+            self.assertEqual(scores, [1.0])
+            self.assertTrue(responses[0].full_attempted.is_set())
+            self.assertEqual(responses[0].maxsize, 1)
+            self.assertLessEqual(responses[0].qsize(), 1)
+            self.assertLess(time.monotonic() - start, 5)
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_reranker_real_exact_boundary_multibatch_scores_and_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys,json\nfor line in sys.stdin:\n    request=json.loads(line)\n    assert len(request['passages'])<=8\n    payload=json.dumps([float(len(p)) for p in request['passages']])\n    sys.stdout.write(payload+' '*(4096-len(payload)-1)+'\\n')\n    sys.stdout.flush()\n"
+        passages = ["p" * size for size in range(1, 14)]
+        with self.embedding_process_fixture(program, helper_path=backend.RERANK_HELPER) as (processes, readers, _):
+            scores = backend.reranker_scores("query", passages, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, cache, download=False)
+            self.assertEqual(scores, [float(size) for size in range(1, 14)])
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_reranker_real_invalid_replies_and_reader_failures_have_owned_errors_and_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        cases = [
+            "import sys\nsys.stdin.readline()\nprint('9'*4096,flush=True)\n",
+            "import sys\nsys.stdin.readline()\nsys.stdout.write('[1.0]')\nsys.stdout.flush()\n",
+            "import sys,os\nsys.stdin.readline()\nos.write(1,b'\\xff\\n')\n",
+        ]
+        cases.extend("import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\n" for output in ("null", "3", "{}", "[[1.0]]", "[true]", "[NaN]"))
+        for program in cases:
+            with self.subTest(program=program), self.embedding_process_fixture(program, helper_path=backend.RERANK_HELPER) as (processes, readers, _):
+                start = time.monotonic()
+                with self.assertRaisesRegex(backend.RetrievalError, "Invalid reranker output"):
+                    backend.reranker_scores("query", ["passage"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, cache, download=False)
+                self.assertLess(time.monotonic() - start, 5)
+                self.assert_embedding_process_closed(processes, readers)
 
     def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
         cache = Path(self.tmp.name).resolve() / "cache"

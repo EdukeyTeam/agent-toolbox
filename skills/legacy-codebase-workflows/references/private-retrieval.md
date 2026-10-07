@@ -58,7 +58,7 @@ python /path/to/skill/scripts/context7_backend.py index /path/to/framework --dat
 python /path/to/skill/scripts/context7_backend.py query --database /path/to/artifacts/framework.sqlite --query "Which component retries rejected requests?" --mode hybrid --rerank cross-encoder
 ```
 
-The reranker is pinned to `a09144355adeed5f58c8ed011d209bf8ee5a1fec`. Custom models require `--reranker-revision`. Query scoring stays offline and uses up to 60 candidates, batches of eight, and 512 input tokens per pair. Returned `rerankScore` is an uncalibrated logit. The local process/model startup and pair scoring add latency; enable this route only when measured ordering quality justifies it. The default remains lexical retrieval without a learned reranker.
+The reranker is pinned to `a09144355adeed5f58c8ed011d209bf8ee5a1fec`. Custom models require `--reranker-revision`. Query scoring stays offline and uses up to 60 candidates, batches of eight, and 512 input tokens per pair. Returned `rerankScore` is an uncalibrated logit. Reranker replies must end with a newline and fit within 4,096 characters, including that newline. Embedding and reranker helpers share the same one-response queue and cancellable reader; malformed replies or unsolicited floods cannot accumulate an unbounded backlog, and cleanup reaps the child and closes its pipes. The local process/model startup and pair scoring add latency; enable this route only when measured ordering quality justifies it. The default remains lexical retrieval without a learned reranker.
 
 ## Connect a Context7 CLI
 
