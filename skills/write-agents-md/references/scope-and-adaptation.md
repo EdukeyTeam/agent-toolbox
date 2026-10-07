@@ -10,6 +10,7 @@
 | `{{NON_OBVIOUS_LANGUAGE_OR_FRAMEWORK_CONSTRAINT}}` | A hidden constraint of the actual programming language, framework or internal library. Include the applicable technology only if it changes decisions; remove obvious stack metadata. Never list versions or name a language just to fill the slot. |
 | `{{DOCUMENTATION_LABEL}}`, `{{DOCUMENTATION_PATH}}` | One existing documentation entry point with a relative link. Otherwise remove; do not fabricate a PRD, ADR or design guide. |
 | `{{NONSTANDARD_LAYOUT_RULES}}` | Nonstandard roots and enduring consequences. Remove the entire Repository Layout section if there are none. |
+| `{{WEB_QA_METHOD}}` | Prefer the Playwright CLI, as in the source template. Verify availability and preserve an agreed project runner; use an equivalent only when established or approved by the user. Missing tooling blocks required QA. |
 | `{{DESKTOP_QA_METHOD}}` | Available computer-use tooling or Computer Commander/Command Commander MCP equivalent for real native windows. Do not assert an unavailable tool is installed. |
 
 No `{{...}}` may remain in a finished AGENTS.md. Read metadata to avoid fabricated commands but keep tool-specific commands out of always-loaded output. Do not change communication language, UI locale, brand, architecture or scope to match a sample.

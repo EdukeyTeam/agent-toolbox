@@ -46,7 +46,7 @@ These are the two canonical templates. They preserve the user's TDD and commit w
 
 ## Non-negotiable testing policy
 
-Preserve the seven TDD steps and test-layer definitions. **E2E and Manual QA use the fully working application with zero mocks**, including real LLM calls, supporting services and persisted results. Unit/integration tests may isolate dependencies when useful. Before each creation/refresh of an endpoint mock, make a fresh real endpoint/database query and save the complete response verbatim to a file; derive the mock from that file, never documentation or invented objects. Read [the endpoint mock policy](references/endpoint-mocks.md) when adapting that contract. Missing access/budget blocks required real checks, not permission to fake a pass.
+Preserve the seven TDD steps and test-layer definitions. **E2E and Manual QA use the fully working application with zero mocks**, including real LLM calls, supporting services and persisted results. Unit/integration tests may isolate dependencies when useful. Before each creation/refresh of an endpoint mock, make a fresh real endpoint/database query and save the complete response verbatim to a file; derive the mock from that file, never documentation or invented objects. Use synthetic authorized test data; never commit private responses or credentials. Read [the endpoint mock policy](references/endpoint-mocks.md) when adapting that contract. Missing access/budget blocks required real checks, not permission to fake a pass.
 
 ## Size and scope
 

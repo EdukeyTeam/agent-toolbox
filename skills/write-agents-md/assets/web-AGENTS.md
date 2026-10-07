@@ -33,7 +33,7 @@ If the area has no suitable test infrastructure yet, add it as part of the task 
 
 ### Manual QA
 
-Use **the Playwright CLI** on the real app: affected flows, changed-screen screenshots, agreed visual/language checks and browser/server errors. Report evidence; missing access is blocked.
+Use **{{WEB_QA_METHOD}}** on the real app: affected flows, changed-screen screenshots, agreed visual/language checks and browser/server errors. Report evidence; missing access is blocked.
 
 ### Test Strategy
 
@@ -43,7 +43,7 @@ Use **the Playwright CLI** on the real app: affected flows, changed-screen scree
 | Integration | Mocks allowed when useful; endpoint fixtures require a fresh real response |
 | E2E and Manual QA | **Zero mocks; fully working real stack, including real LLM calls** |
 
-Endpoint mocks must use a complete response saved verbatim from a fresh real query; never invent objects from documentation. Missing access or budget blocks a required real check.
+Endpoint mocks must use a complete response saved verbatim from a fresh real query; never invent objects from documentation. Use synthetic test data; never commit private responses or credentials. Missing access or budget blocks a required real check.
 
 ### Verification
 

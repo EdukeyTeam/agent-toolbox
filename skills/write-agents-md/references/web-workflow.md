@@ -9,7 +9,7 @@ Use for browser applications. Read [scope and adaptation](scope-and-adaptation.m
 3. Include only non-obvious stack constraints and nonstandard layout consequences. Omit standard metadata and conventional source/test/assets maps.
 4. Point to an existing documentation entry point; do not always load PRD/ADR/design files or create them just to match the sample.
 5. Preserve the original seven TDD steps and commit bullets. The template generalizes the fixed dev command and brand details; integration mocks need captured real responses, while E2E/manual QA allow none. It requires no LLM, framework, typography, palette or secret variable.
-6. Keep Manual QA/scoped verification as standing gates. Scenario steps and executable commands belong in task skills.
+6. Resolve {{WEB_QA_METHOD}}: prefer the Playwright CLI and verify availability. Preserve an established project runner; change the default only to an agreed equivalent, never silently weaken QA. Missing access/tooling is blocked. Keep Manual QA/scoped verification as standing gates. Scenario steps and executable commands belong in task skills.
 7. Apply root/nested admission review and remove unused blocks/placeholders.
 
 ## Operational QA detail stays in task skills

@@ -28,11 +28,18 @@ def copy_template(workflow, project_root, scope=".", candidate=False):
     if destination.is_symlink() or destination.exists():
         raise FileExistsError(str(destination))
     # Exclusive creation also protects against an existing regular destination.
-    with destination.open("xb") as output:
-        output.write(template)
-    copied = destination.read_bytes()
-    if copied != template:
-        raise OSError("Template byte verification failed")
+    created = False
+    try:
+        with destination.open("xb") as output:
+            created = True
+            output.write(template)
+        copied = destination.read_bytes()
+        if copied != template:
+            raise OSError("Template byte verification failed")
+    except BaseException:
+        if created:
+            destination.unlink(missing_ok=True)
+        raise
     return {
         "workflow": workflow,
         "source": str(source),

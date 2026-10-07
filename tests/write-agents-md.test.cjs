@@ -142,3 +142,42 @@ test('receipt works with a non-UTF8 output encoding and Unicode paths', t => {
   assert.deepEqual(fs.readFileSync(receipt.destination),
     fs.readFileSync(path.join(skillRoot, 'assets/web-AGENTS.md')));
 });
+for (const failure of ['write', 'verification']) {
+  test(`a ${failure} failure removes only its new destination and permits retry`, t => {
+    const { project } = fixture(t);
+    const probe = [
+      'import pathlib, runpy, sys',
+      'from unittest.mock import patch',
+      'namespace = runpy.run_path(sys.argv[1])',
+      'project = pathlib.Path(sys.argv[2]).resolve()',
+      'destination = project / "AGENTS.md"',
+      'original_open = pathlib.Path.open',
+      'original_read = pathlib.Path.read_bytes',
+      'class BrokenOutput:',
+      '    def __init__(self, output): self.output = output',
+      '    def __enter__(self): return self',
+      '    def __exit__(self, *args): self.output.close()',
+      '    def write(self, payload):',
+      '        self.output.write(payload[:10])',
+      '        self.output.flush()',
+      '        raise OSError("simulated disk full")',
+      'def faulty_open(target, mode="r", *args, **kwargs):',
+      '    output = original_open(target, mode, *args, **kwargs)',
+      '    return BrokenOutput(output) if target == destination and mode == "xb" else output',
+      'def faulty_read(target):',
+      '    return b"invalid verification" if target == destination else original_read(target)',
+      'operation = "open" if sys.argv[3] == "write" else "read_bytes"',
+      'replacement = faulty_open if operation == "open" else faulty_read',
+      'with patch.object(pathlib.Path, operation, replacement):',
+      '    try: namespace["copy_template"]("web", str(project))',
+      '    except OSError: pass',
+      '    else: raise AssertionError("Injected failure was not reported")',
+      'assert not destination.exists(), "Failed copy left active partial guidance"',
+      'receipt = namespace["copy_template"]("web", str(project))',
+      'assert destination.read_bytes() == pathlib.Path(receipt["source"]).read_bytes()',
+    ].join('\n');
+    const result = spawnSync(python, ['-c', probe, script, project, failure],
+      { encoding: 'utf8', timeout: 10000 });
+    assert.equal(result.status, 0, result.stderr);
+  });
+}
