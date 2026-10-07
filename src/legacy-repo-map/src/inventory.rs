@@ -2,6 +2,7 @@
 //! `read_safe_text` in `scripts/repo_files.py`, reading every file once.
 
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -489,37 +490,83 @@ fn read_gitignore(directory: &Path, total_bytes: &mut u64) -> Result<Option<Stri
         .map_err(|_| "cannot read .gitignore: non-UTF-8 file".to_string())
 }
 
+/// Python sorts filesystem names by Unicode code point. On Unix its
+/// surrogateescape decoder maps each invalid UTF-8 byte to U+DC00 + byte.
+/// This key is used only for ordering, never as a filesystem identity.
+#[cfg(unix)]
+fn python_name_sort_key(name: &OsStr) -> Vec<u32> {
+    use std::os::unix::ffi::OsStrExt;
+    let mut remaining = name.as_bytes();
+    let mut key = Vec::new();
+    while !remaining.is_empty() {
+        match std::str::from_utf8(remaining) {
+            Ok(valid) => {
+                key.extend(valid.chars().map(u32::from));
+                break;
+            }
+            Err(error) => {
+                let valid_end = error.valid_up_to();
+                let valid = std::str::from_utf8(&remaining[..valid_end]).unwrap();
+                key.extend(valid.chars().map(u32::from));
+                remaining = &remaining[valid_end..];
+                let invalid_length = error.error_len().unwrap_or(remaining.len());
+                key.extend(remaining[..invalid_length].iter().map(|byte| 0xdc00 + u32::from(*byte)));
+                remaining = &remaining[invalid_length..];
+            }
+        }
+    }
+    key
+}
+
+#[cfg(windows)]
+fn python_name_sort_key(name: &OsStr) -> Vec<u32> {
+    use std::os::windows::ffi::OsStrExt;
+    // Preserve unpaired UTF-16 surrogates while combining valid pairs into
+    // the same scalar code points that Python compares.
+    char::decode_utf16(name.encode_wide())
+        .map(|decoded| {
+            decoded
+                .map(u32::from)
+                .unwrap_or_else(|error| u32::from(error.unpaired_surrogate()))
+        })
+        .collect()
+}
+
+#[cfg(not(any(unix, windows)))]
+fn python_name_sort_key(name: &OsStr) -> Vec<u32> {
+    name.to_string_lossy().chars().map(u32::from).collect()
+}
+
 /// Pre-order directory walk for non-git sources: a directory's files in
 /// name order, then its subdirectories in name order. Links are not followed.
 struct WalkCandidates {
     pending: Vec<WalkStep>,
-    subtrees: Vec<String>,
+    subtrees: Vec<PathBuf>,
     visited: usize,
     ignore_bytes: u64,
 }
 
 enum WalkStep {
-    Directory(PathBuf, String, Option<Rc<IgnoreChain>>),
+    Directory(PathBuf, PathBuf, Option<Rc<IgnoreChain>>),
     Candidate(Candidate),
 }
 
 impl WalkCandidates {
     fn start(root: &Path, subtrees: &[String]) -> Self {
         Self {
-            pending: vec![WalkStep::Directory(root.to_path_buf(), String::new(), None)],
-            subtrees: subtrees.to_vec(),
+            pending: vec![WalkStep::Directory(root.to_path_buf(), PathBuf::new(), None)],
+            subtrees: subtrees.iter().map(PathBuf::from).collect(),
             visited: 0,
             ignore_bytes: 0,
         }
     }
 
-    fn selected(&self, relative: &str) -> bool {
+    fn selected(&self, relative: &Path, is_directory: bool) -> bool {
         self.subtrees.is_empty()
-            || self.subtrees.iter().any(|scope| {
-                relative == scope
-                    || relative.starts_with(&format!("{scope}/"))
-                    || scope.starts_with(&format!("{relative}/"))
-            })
+            || self
+                .subtrees
+                .iter()
+                .any(|scope| relative.starts_with(scope) || (is_directory && scope.starts_with(relative)))
     }
 
     fn next(&mut self) -> Result<Option<Candidate>, String> {
@@ -531,18 +578,15 @@ impl WalkCandidates {
                 WalkStep::Candidate(candidate) => return Ok(Some(candidate)),
                 WalkStep::Directory(directory, prefix, parent_chain) => (directory, prefix, parent_chain),
             };
-            let chain = IgnoreChain::load(&directory, parent_chain, &mut self.ignore_bytes).map_err(|message| {
-                format!(
-                    "cannot inventory directory {}: {message}",
-                    if prefix.is_empty() { "." } else { &prefix }
-                )
-            })?;
-            let entries = fs::read_dir(&directory).map_err(|error| {
-                format!(
-                    "cannot read directory {}: {error}",
-                    if prefix.is_empty() { "." } else { &prefix }
-                )
-            })?;
+            let directory_display = if prefix.as_os_str().is_empty() {
+                ".".to_string()
+            } else {
+                format!("{}/", prefix.to_string_lossy())
+            };
+            let chain = IgnoreChain::load(&directory, parent_chain, &mut self.ignore_bytes)
+                .map_err(|message| format!("cannot inventory directory {}: {message}", directory_display))?;
+            let entries = fs::read_dir(&directory)
+                .map_err(|error| format!("cannot read directory {}: {error}", directory_display))?;
             let mut entries_by_name = Vec::new();
             for entry in entries {
                 self.visited += 1;
@@ -552,53 +596,44 @@ impl WalkCandidates {
                         policy::MAX_DISCOVERY_ENTRIES
                     ));
                 }
-                let entry = entry.map_err(|error| {
-                    format!(
-                        "cannot enumerate directory {}: {error}",
-                        if prefix.is_empty() { "." } else { &prefix }
-                    )
-                })?;
-                let file_type = entry.file_type().map_err(|error| {
-                    format!(
-                        "cannot inspect directory entry in {}: {error}",
-                        if prefix.is_empty() { "." } else { &prefix }
-                    )
-                })?;
-                let name = match entry.file_name().into_string() {
-                    Ok(name) => name,
-                    Err(raw) => {
-                        entries_by_name.push((
-                            raw.to_string_lossy().into_owned(),
-                            WalkStep::Candidate(Candidate::Unusable {
-                                display: format!("{prefix}{}", raw.to_string_lossy()),
-                                reason: "non-UTF-8 path",
-                            }),
-                        ));
-                        continue;
-                    }
-                };
-                let relative = format!("{prefix}{name}");
-                if !self.selected(&relative) {
+                let entry =
+                    entry.map_err(|error| format!("cannot enumerate directory {}: {error}", directory_display))?;
+                let file_type = entry
+                    .file_type()
+                    .map_err(|error| format!("cannot inspect directory entry in {}: {error}", directory_display))?;
+                let name = entry.file_name();
+                let relative = prefix.join(&name);
+                if !self.selected(&relative, file_type.is_dir()) {
                     continue;
                 }
+                let absolute = directory.join(&name);
                 if file_type.is_dir() {
-                    if !policy::IGNORED_DIRS.contains(&name.as_str()) && !policy::is_secret(&relative) {
-                        let absolute = directory.join(&name);
-                        if !chain.ignored(&absolute, true) {
-                            entries_by_name.push((
-                                name.clone(),
-                                WalkStep::Directory(absolute, format!("{prefix}{name}/"), Some(Rc::clone(&chain))),
-                            ));
-                        }
-                    }
-                } else {
-                    let absolute = directory.join(&name);
-                    if !chain.ignored(&absolute, false) {
+                    // Ancestors were already checked before descent. Inspect this
+                    // component without replacing invalid bytes with Unicode.
+                    let excluded = name
+                        .to_str()
+                        .is_some_and(|name| policy::IGNORED_DIRS.contains(&name) || policy::is_secret(name));
+                    if !excluded && !chain.ignored(&absolute, true) {
                         entries_by_name.push((
-                            name.clone(),
-                            WalkStep::Candidate(Candidate::Path(format!("{prefix}{name}"))),
+                            python_name_sort_key(&name),
+                            WalkStep::Directory(absolute, relative, Some(Rc::clone(&chain))),
                         ));
                     }
+                } else if !chain.ignored(&absolute, false) {
+                    // The complete relative path must be UTF-8, including all
+                    // ancestors; only leaves become inventory candidates.
+                    let candidate = match relative.to_str() {
+                        Some(path) => Candidate::Path(if cfg!(windows) {
+                            path.replace('\\', "/")
+                        } else {
+                            path.to_string()
+                        }),
+                        None => Candidate::Unusable {
+                            display: relative.to_string_lossy().into_owned(),
+                            reason: "non-UTF-8 path",
+                        },
+                    };
+                    entries_by_name.push((python_name_sort_key(&name), WalkStep::Candidate(candidate)));
                 }
             }
             entries_by_name.sort_by(|left, right| {
@@ -644,12 +679,13 @@ where
     let mut seen = 0usize;
     let mut completed = true;
     while let Some(candidate) = candidates.next()? {
-        let display = match &candidate {
-            Candidate::Path(relative) => relative,
-            Candidate::Unusable { display, .. } => display,
-        };
-        if !in_subtrees(display, options.subtrees) {
-            continue;
+        // Unusable names were scoped using raw filesystem paths by the
+        // walker, or literal pathspecs by Git. Their lossy display is never
+        // an identity: re-filtering it could collide with a valid U+FFFD path.
+        if let Candidate::Path(relative) = &candidate {
+            if !in_subtrees(relative, options.subtrees) {
+                continue;
+            }
         }
         seen += 1;
         if seen > options.max_files {
@@ -786,6 +822,53 @@ mod tests {
             let restored: String = serde_json::from_str(&format!("\"{shown}\"")).unwrap();
             assert_eq!(restored, path);
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_utf8_name_order_matches_python_surrogateescape() {
+        use std::os::unix::ffi::OsStrExt;
+        let key = |bytes: &[u8]| python_name_sort_key(OsStr::from_bytes(bytes));
+        assert_eq!(key(b"a-\xff"), vec![0x61, 0x2d, 0xdcff]);
+        assert!(key(b"a-\xff") < key("a-�".as_bytes()));
+        assert!(key("a-ż".as_bytes()) < key(b"a-\x80"));
+        assert_eq!(key(b"\xe2\x82"), vec![0xdce2, 0xdc82]);
+        assert_eq!(key(b"\xed\xa0\x80"), vec![0xdced, 0xdca0, 0xdc80]);
+        assert_eq!(key(b"\xff\xc5\xbc\xfe"), vec![0xdcff, 0x17c, 0xdcfe]);
+        assert_eq!(key("𐀀".as_bytes()), vec![0x10000]);
+        assert!(key(b"\xff") < key("𐀀".as_bytes()));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn non_utf8_name_order_preserves_windows_surrogates() {
+        use std::ffi::OsString;
+        use std::os::windows::ffi::OsStringExt;
+        let key = |units: &[u16]| python_name_sort_key(&OsString::from_wide(units));
+        assert_eq!(key(&[0x61, 0x2d, 0xdcff]), vec![0x61, 0x2d, 0xdcff]);
+        assert!(key(&[0x61, 0x2d, 0xdcff]) < key(&[0x61, 0x2d, 0xfffd]));
+        assert_eq!(key(&[0xd800, 0xdc00]), vec![0x10000]);
+        assert_eq!(key(&[0xd800]), vec![0xd800]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_utf8_directory_descendants_consume_discovery_budget() {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt;
+        let source = tempfile::tempdir().unwrap();
+        let directory = source.path().join(OsString::from_vec(b"bad-\xff".to_vec()));
+        if let Err(error) = fs::create_dir(&directory) {
+            if error.raw_os_error() == Some(libc::EILSEQ) {
+                return; // This filesystem cannot represent the required fixture.
+            }
+            panic!("cannot create byte directory: {error}");
+        }
+        fs::write(directory.join("One.java"), "class One {}\n").unwrap();
+        let mut walk = WalkCandidates::start(source.path(), &[]);
+        walk.visited = policy::MAX_DISCOVERY_ENTRIES - 1;
+        assert!(walk.next().err().unwrap().contains("filesystem discovery entry limit"));
+        assert_eq!(walk.visited, policy::MAX_DISCOVERY_ENTRIES + 1);
     }
 
     #[test]

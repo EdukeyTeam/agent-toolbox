@@ -345,6 +345,99 @@ fn repeated_runs_are_byte_identical_and_leave_the_source_untouched() {
 }
 
 #[cfg(unix)]
+fn byte_directory(parent: &Path, name: &[u8]) -> Option<PathBuf> {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+    let path = parent.join(OsString::from_vec(name.to_vec()));
+    match fs::create_dir(&path) {
+        Ok(()) => Some(path),
+        Err(error) if error.raw_os_error() == Some(libc::EILSEQ) => None,
+        Err(error) => panic!("cannot create byte directory: {error}"),
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_directories_count_leaves_and_enforce_file_cap() {
+    let fixture = Fixture::new();
+    let Some(bad) = byte_directory(&fixture.source, b"a-\xff") else {
+        return;
+    };
+    fs::write(bad.join("One.java"), "class HiddenOne {}\n").unwrap();
+    let Some(nested) = byte_directory(&bad, b"nested-\xfe") else {
+        return;
+    };
+    fs::write(nested.join("Two.java"), "class HiddenTwo {}\n").unwrap();
+    fixture.write("z-valid/Good.java", "class Good {}\n");
+    let Some(_) = byte_directory(&fixture.source, b"m-empty-\xfd") else {
+        return;
+    };
+
+    fixture.map_ok(&[]);
+    let inventory = fixture.json("inventory.json");
+    assert_eq!(inventory["totals"]["candidates_seen"], 3);
+    assert_eq!(inventory["totals"]["selected_files"], 1);
+    assert_eq!(
+        inventory["skipped"],
+        serde_json::json!([
+            {"path": "a-�/One.java", "reason": "non-UTF-8 path"},
+            {"path": "a-�/nested-�/Two.java", "reason": "non-UTF-8 path"}
+        ])
+    );
+    assert_eq!(inventory["files"][0]["path"], "z-valid/Good.java");
+    assert!(!fixture.map_text().contains("Hidden"));
+    assert!(fixture.map_text().contains("class Good"));
+    assert_eq!(fixture.json("map.meta.json")["truncated"], false);
+
+    fixture.map_ok(&["--max-files", "1"]);
+    let inventory = fixture.json("inventory.json");
+    assert_eq!(inventory["totals"]["candidates_seen"], 2);
+    assert_eq!(inventory["totals"]["selected_files"], 0);
+    assert_eq!(inventory["skipped"][0]["path"], "a-�/One.java");
+    assert_eq!(inventory["skipped"][1]["path"], "*");
+    assert_eq!(fixture.json("map.meta.json")["truncated"], true);
+}
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_directory_scoping_ignores_and_links_use_raw_paths() {
+    use std::os::unix::fs::symlink;
+    let fixture = Fixture::new();
+    let Some(bad) = byte_directory(&fixture.source, b"a-\xff") else {
+        return;
+    };
+    fs::write(bad.join("One.java"), "class HiddenOne {}\n").unwrap();
+    fs::write(bad.join(".gitignore"), "ignored/\n").unwrap();
+    for name in ["ignored", "node_modules", ".aws"] {
+        fs::create_dir(bad.join(name)).unwrap();
+        fs::write(bad.join(name).join("Forbidden.java"), "class Forbidden {}\n").unwrap();
+    }
+    let outside = fixture._directory.path().join("outside");
+    fs::create_dir(&outside).unwrap();
+    fs::write(outside.join("Outside.java"), "class Outside {}\n").unwrap();
+    symlink(&outside, bad.join("linked-directory")).unwrap();
+    fixture.write("a-�/Good.java", "class Good {}\n");
+
+    fixture.map_ok(&[]);
+    let inventory = fixture.json("inventory.json");
+    // .gitignore, One.java and the unfollowed link are leaves; three
+    // excluded subdirectories contribute no candidates or source reads.
+    assert_eq!(inventory["totals"]["candidates_seen"], 4);
+    assert_eq!(inventory["totals"]["selected_files"], 1);
+    let skipped = inventory["skipped"].as_array().unwrap();
+    assert_eq!(skipped.len(), 3);
+    assert!(skipped.iter().all(|entry| entry["reason"] == "non-UTF-8 path"));
+    assert!(!fixture.artifacts().contains("Forbidden.java"));
+    assert!(!fixture.map_text().contains("Outside"));
+
+    fixture.map_ok(&["--subtree", "a-�"]);
+    let scoped = fixture.json("inventory.json");
+    assert_eq!(scoped["totals"]["candidates_seen"], 1);
+    assert_eq!(scoped["files"][0]["path"], "a-�/Good.java");
+    assert_eq!(scoped["skipped"], serde_json::json!([]));
+}
+
+#[cfg(unix)]
 #[test]
 fn unmerged_non_utf8_paths_are_deduplicated_before_decoding() {
     use std::io::Write;

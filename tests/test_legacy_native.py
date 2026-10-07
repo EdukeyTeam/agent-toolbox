@@ -207,6 +207,44 @@ class RustParityTests(FixtureCase):
         self.assertEqual(json.loads(rust.stdout), {**json.loads(python.stdout), "map": str(self.base / f"rust-{label}" / "repo-map.md"), "metadata": str(self.base / f"rust-{label}" / "map.meta.json")})
         return rust_meta, rust_map.decode("utf-8")
 
+    @unittest.skipUnless(os.name == "posix", "requires POSIX byte paths")
+    def test_non_utf8_directory_leaves_and_scopes_match_python(self):
+        self.source = self.base / "byte-directory-source"
+        self.source.mkdir()
+        bad = os.fsencode(self.source) + b"/a-\xff"
+        try:
+            os.mkdir(bad)
+        except OSError as error:
+            if error.errno == errno.EILSEQ:
+                self.skipTest("Filesystem rejects invalid UTF-8 directory names (EILSEQ)")
+            raise
+        nested = bad + b"/nested-\xfe"
+        os.mkdir(nested)
+        for path in (bad + b"/One.java", nested + b"/Two.java"):
+            with open(path, "wb") as handle:
+                handle.write(b"class Hidden {}\n")
+        self.write("a-�/Good.java", b"class Good {}\n")
+        self.write("z-valid/Later.java", b"class Later {}\n")
+        for label, arguments in (("byte-dirs", []), ("byte-dirs-capped", ["--max-files", "2"]), ("byte-dirs-scope", ["--subtree", "a-�"])):
+            with self.subTest(case=label):
+                meta, text = self.assert_same(label, arguments)
+                self.assertNotIn("Hidden", text)
+                inventory = self.load(f"rust-{label}", "inventory.json")
+                if label == "byte-dirs":
+                    self.assertEqual(inventory["totals"]["candidates_seen"], 4)
+                    self.assertEqual([entry["path"] for entry in inventory["skipped"]], ["a-�/One.java", "a-�/nested-�/Two.java"])
+                    self.assertFalse(meta["truncated"])
+                elif label == "byte-dirs-capped":
+                    self.assertEqual(inventory["totals"]["candidates_seen"], 3)
+                    self.assertTrue(meta["truncated"])
+                else:
+                    self.assertEqual(inventory["totals"]["candidates_seen"], 1)
+                    self.assertEqual(inventory["skipped"], [])
+        # Both descendant files remain byte-for-byte unchanged.
+        for path in (bad + b"/One.java", nested + b"/Two.java"):
+            with open(path, "rb") as handle:
+                self.assertEqual(handle.read(), b"class Hidden {}\n")
+
     def test_maps_inventories_and_coverage_agree(self):
         before = self.snapshot()
         for label, arguments in CASES.items():
