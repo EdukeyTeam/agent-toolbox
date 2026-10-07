@@ -1,16 +1,20 @@
 # legacy-repo-map
 
-Experimental native build of the repository map from the [legacy-codebase-workflows](../../skills/legacy-codebase-workflows/SKILL.md) skill. It is a single program with the grammars and tag queries compiled in: no Python, no parser download and no network access at run time.
+Preferred native repository mapper, with an experimental implementation label, from the [legacy-codebase-workflows](../../skills/legacy-codebase-workflows/SKILL.md) skill. It is a single program with the grammars and tag queries compiled in: no Python, no parser download and no network access at run time.
 
-The Python tool `skills/legacy-codebase-workflows/scripts/repo_map.py` is the reference implementation. This crate mirrors its command line, selection policy, ranking and output files, and the test suite compares both on the same inputs. Read [native tooling](../../skills/legacy-codebase-workflows/references/native-tooling.md) for the measured results and the known differences before choosing it over the Python tool.
+The Python tool `skills/legacy-codebase-workflows/scripts/repo_map.py` is the reference implementation. This crate mirrors its command line, selection policy, ranking and output files, and the test suite compares both on the same inputs. Native is the skill’s default mapping path. Read [native tooling](../../skills/legacy-codebase-workflows/references/native-tooling.md) for measured results and known differences; use the [Python reference fallback](../../skills/legacy-codebase-workflows/references/setup.md#python-fallback) when native delivery/execution is unavailable, unsupported or policy-blocked, when native mapping fails, or for exact reference comparisons.
 
 ## Use
 
+First run `python /path/to/skill/scripts/setup_native.py status`. If setup is needed, run its explicit `install` command; use the verified `program` path returned by status. The policy pins native 0.2.0; if its first release is unavailable, use the reviewed CI/local artifact route in [native setup](../../skills/legacy-codebase-workflows/references/setup.md#native-binary), or the stated fallback. Setup does not silently compile Rust.
+
 ```bash
-legacy-repo-map /path/to/repository --output-dir /path/to/artifacts --budget 4096 --subtree src --focus-symbol ExampleService
+/path/returned/as/program /path/to/repository --output-dir /path/to/artifacts --budget 16384 --subtree src --focus-symbol ExampleService
 ```
 
-The program writes `repo-map.md`, `inventory.json` and `map.meta.json` to the output directory, which must be outside the source directory. Use the map only when `map.meta.json` reports status `complete`. Run `legacy-repo-map --help` for every option, `--notices` for the embedded license texts and `--print-policy` for the selection tables as JSON.
+The program writes `repo-map.md`, `inventory.json` and `map.meta.json` to the output directory, which must be outside the source directory. Use the map only when `map.meta.json` reports status `complete`. The default grouped renderer prints each path once, includes enclosing class/impl declarations and keeps multiline signatures without method bodies. Use `--format lines` for the historical one-line format. Use `--all-definitions --budget 65536` for all captured eligible definitions; it refuses insufficient budget or incomplete admission/parsing instead of silently returning a partial index. Captured definitions are not every possible language construct. Bounded declarations may be explicitly clipped; inspect metadata. This is an Aider-inspired adaptation, not Aider’s original renderer.
+
+Install a pinned prebuilt program via the [setup script](../../skills/legacy-codebase-workflows/references/setup.md#native-binary); local Rust builds are maintainer work. Run `legacy-repo-map --help` for every option, `--notices` for the embedded license texts and `--print-policy` for the selection tables as JSON.
 
 A file whose relative path contains an ASCII control character (code 0 to 31, or 127) is not read or mapped. It is listed in `skipped` with the reason `control character in path`, and its path is shown as JSON string content (`\n`, `\t`, `\u007f`, with quotes and backslashes escaped), so a file name cannot forge a map line or drive a terminal. Paths that are not valid UTF-8 are shown the same way with the reason `non-UTF-8 path`.
 
@@ -72,10 +76,10 @@ The same manifest covers the standalone Python bundle. The `tree-sitter` 0.25.2 
 
 ## Limits
 
-- Experimental. Ship the Python tool or its standalone bundle as the default.
+- Preferred/default mapper with experimental implementation status. Query differences and limited consumer-platform validation remain; Python source or its frozen reference bundle is the explicit fallback.
 - The notice check covers license-named files (`LICENSE*`, `LICENCE*`, `COPYING*`, `NOTICE*`, `AUTHORS*`, `UNLICENSE*`) in the linked crates. A notice that exists only as a comment in a source file, or under another file name, is not detected. Adapted source is covered only where the manifest has an `adaptation` record; the build cannot discover an adaptation that nobody recorded. In the Python bundle only the `tree-sitter` runtime wheel was compared with its source release; the grammar extensions from `tree-sitter-language-pack` and the three separate grammar wheels are covered by the license files those wheels ship and by the grammar licenses under `vendor/licenses/`.
 - The ranking matches bare identifier text between definitions and references. It is not a type-resolved call graph and does not see reflection, configuration or dependency-injection wiring.
 - Ten languages have queries: Java, Python, JavaScript, TypeScript, TSX, C, C++, C#, Go and Rust. Other files are listed in the inventory only.
-- No cache: every run reads, hashes and parses the selected files.
+- No cache: every run reads, hashes and parses the selected files. Grouped rendering reparses files for declaration context in both implementations; Python’s tag cache does not eliminate that work.
 - The grammar builds differ from the ones in the Python tool's parser package, so tag sets can differ; the documented case is Python module-level constants.
 - No parse timeout. Input is bounded by `--max-files`, `--max-file-bytes`, 100,000 discovered filesystem entries outside Git, 256,000 bytes per ignore file, 2,000,000 aggregate ignore bytes, 20,000 tags per file, 200,000 tags and 200,000 graph edges in total. Cap and read failures leave `map.meta.json` at `failed` with an explicit stage.
