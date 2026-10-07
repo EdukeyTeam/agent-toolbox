@@ -46,7 +46,7 @@ class LimitExceeded(ValueError):
 
 
 def _packages():
-    return {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-language-pack", "networkx")}
+    return {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-language-pack", "tree-sitter-c-sharp", "networkx")}
 
 
 def _atomic_write(path: Path, content: str):
@@ -117,12 +117,16 @@ def _tags(root: Path, output: Path, inventory: dict):
     parsers = {}
     total = 0
     parsed_files = 0
-    parser_version = ":".join((_packages()["tree-sitter"], _packages()["tree-sitter-language-pack"]))
+    packages = _packages()
+    base_parser_version = ":".join((packages["tree-sitter"], packages["tree-sitter-language-pack"]))
     for entry in inventory["files"]:
         language = entry["language"]
         if language not in QUERY_PATHS:
             continue
         path = entry["path"]
+        parser_version = base_parser_version
+        if language == "c_sharp":
+            parser_version += ":" + packages["tree-sitter-c-sharp"]
         try:
             text, current_digest = read_safe_text(root, path, max_file_bytes=max(entry["size"], 1))
             if current_digest != entry["sha256"]:

@@ -207,6 +207,35 @@ class MapTests(unittest.TestCase):
         actual = {path.relative_to(vendor).as_posix() for path in vendor.rglob("*") if path.is_file() and path.name != "manifest.json" and "__pycache__" not in path.parts and path.suffix != ".pyc"}
         self.assertEqual(set(paths), actual)
 
+    def test_csharp_cache_invalidates_when_separate_grammar_version_changes(self):
+        import repo_map
+        self.write("src/Example.cs", "class Example { public void Run() {} }\n")
+        first = self.map()
+        self.assertEqual(first["coverage"]["parsed_files"], 1)
+        self.assertEqual(first["dependencies"]["tree-sitter-c-sharp"], "0.23.5")
+        with patch("repo_map._extract", wraps=repo_map._extract) as extract:
+            self.map()
+            extract.assert_not_called()
+        cached = list((self.out / "cache").glob("*.json"))
+        self.assertEqual(len(cached), 1)
+        payload = json.loads(cached[0].read_text(encoding="utf-8"))
+        self.assertTrue(payload["parser_version"].endswith(":0.23.5"))
+        for tag in payload["tags"]:
+            if tag["kind"] == "def":
+                tag["name"] = "StaleGrammarOnly"
+        cached[0].write_text(json.dumps(payload), encoding="utf-8")
+        actual_version = repo_map.importlib.metadata.version
+        def upgraded_version(name):
+            return "0.23.6" if name == "tree-sitter-c-sharp" else actual_version(name)
+        with patch("repo_map.importlib.metadata.version", side_effect=upgraded_version), patch("repo_map._extract", wraps=repo_map._extract) as extract:
+            current = self.map(focus_symbols=["StaleGrammarOnly"])
+        extract.assert_called_once()
+        self.assertEqual(current["dependencies"]["tree-sitter-c-sharp"], "0.23.6")
+        self.assertEqual(current["focus_not_found"]["symbols_without_definitions"], ["StaleGrammarOnly"])
+        self.assertIn("Example.cs:L1", (self.out / "repo-map.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(list((self.out / "cache").glob("*.json"))), 2)
+
+
     def test_changed_same_mtime_deleted_and_poisoned_cache(self):
         path = self.write("a.py", "def alpha():\n    pass\n")
         first = self.map()
