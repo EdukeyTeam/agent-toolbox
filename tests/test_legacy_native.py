@@ -466,7 +466,10 @@ class DispatcherTests(FixtureCase):
                 self.assertEqual(unknown.returncode, 2)
                 self.assertIn("unknown command", unknown.stderr)
                 self.assertEqual(self.call(program, env).returncode, 2)
-                self.assertIn("Aider", self.call(program, env, "notices").stdout)
+                notices = self.call(program, env, "notices").stdout
+                self.assertIn("Aider", notices)
+                self.assertIn("vendor/licenses/java-LICENSE.txt", notices)
+                self.assertNotIn("vendor\\licenses", notices)
 
     def test_bundle_binary_licenses_match_manifest(self):
         if not TOOLS_BINARY:

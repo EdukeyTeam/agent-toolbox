@@ -75,7 +75,7 @@ def _notices() -> str:
         if path.is_file():
             parts.append(path.read_text(encoding="utf-8").rstrip())
     licenses = [notices_root / "LICENSE.txt", SKILL / "vendor" / "LICENSE.txt", *sorted((SKILL / "vendor" / "licenses").glob("*")), *sorted((notices_root / "licenses").rglob("*"))]
-    parts.append("License texts:\n" + "\n".join(f"- {path.relative_to(notices_root) if path.is_relative_to(notices_root) else path.name}" for path in licenses if path.is_file()))
+    parts.append("License texts:\n" + "\n".join(f"- {path.relative_to(notices_root).as_posix() if path.is_relative_to(notices_root) else path.name}" for path in licenses if path.is_file()))
     return "\n\n".join(parts) + "\n"
 
 
