@@ -161,21 +161,26 @@ pub fn rank_definitions<'a>(
     // networkx MultiDiGraph iterates them.
     let mut order: Vec<Vec<usize>> = vec![Vec::new(); files.len()];
     let mut grouped: Vec<HashMap<usize, Vec<(f64, usize)>>> = vec![HashMap::new(); files.len()];
+    let mut edge_count = 0usize;
+    // Every insertion passes through here, so no edge escapes the limit.
     let mut add_edge = |source: usize, destination: usize, weight: f64, identifier: usize| {
+        if edge_count >= max_edges {
+            return Err(format!("ranking edge limit exceeded ({max_edges}); map a subtree"));
+        }
         let bucket = grouped[source].entry(destination).or_insert_with(|| {
             order[source].push(destination);
             Vec::new()
         });
         bucket.push((weight, identifier));
+        edge_count += 1;
+        Ok(())
     };
     let identifiers: Vec<&'a str> = defines.keys().copied().collect();
-    let mut edge_count = 0usize;
     for (identifier_index, identifier) in identifiers.iter().enumerate() {
         let definers = &defines[identifier];
         let Some(referencers) = references.get(identifier) else {
             for definer in definers {
-                add_edge(*definer, *definer, 0.1, identifier_index);
-                edge_count += 1;
+                add_edge(*definer, *definer, 0.1, identifier_index)?;
             }
             continue;
         };
@@ -202,9 +207,6 @@ pub fn rank_definitions<'a>(
         }
         for (referencer, references_here) in counts {
             for definer in definers {
-                if edge_count >= max_edges {
-                    return Err(format!("ranking edge limit exceeded ({max_edges}); map a subtree"));
-                }
                 let boosted = multiplier
                     * if focused.contains(files[referencer].path) {
                         50.0
@@ -216,8 +218,7 @@ pub fn rank_definitions<'a>(
                     *definer,
                     boosted * (references_here as f64).sqrt(),
                     identifier_index,
-                );
-                edge_count += 1;
+                )?;
             }
         }
     }
@@ -304,14 +305,22 @@ mod tests {
     }
 
     fn order(files: &[(&str, Vec<Tag>)], focus_files: &[&str], focus_symbols: &[&str]) -> Vec<String> {
-        let inputs: Vec<RankFile> = files.iter().map(|(path, tags)| RankFile { path, tags }).collect();
         let focus_files: Vec<String> = focus_files.iter().map(|s| s.to_string()).collect();
         let focus_symbols: Vec<String> = focus_symbols.iter().map(|s| s.to_string()).collect();
-        rank_definitions(&inputs, &focus_files, &focus_symbols, 1000)
-            .unwrap()
+        capped(files, &focus_files, &focus_symbols, 1000).unwrap()
+    }
+
+    fn capped(
+        files: &[(&str, Vec<Tag>)],
+        focus_files: &[String],
+        focus_symbols: &[String],
+        max_edges: usize,
+    ) -> Result<Vec<String>, String> {
+        let inputs: Vec<RankFile> = files.iter().map(|(path, tags)| RankFile { path, tags }).collect();
+        Ok(rank_definitions(&inputs, focus_files, focus_symbols, max_edges)?
             .into_iter()
             .map(|d| format!("{}:{}:{}", inputs[d.file].path, d.line, d.name))
-            .collect()
+            .collect())
     }
 
     fn fixture() -> Vec<(&'static str, Vec<Tag>)> {
@@ -389,6 +398,67 @@ mod tests {
         let inputs: Vec<RankFile> = files.iter().map(|(path, tags)| RankFile { path, tags }).collect();
         let error = rank_definitions(&inputs, &[], &[], 1).unwrap_err();
         assert!(error.contains("edge limit"), "{error}");
+    }
+
+    // `Alpha` is referenced from another file (one weighted edge); `Zeta` is
+    // never referenced, so it gets a self-edge on its defining file.
+    fn mixed() -> Vec<(&'static str, Vec<Tag>)> {
+        vec![
+            (
+                "a/Defs.java",
+                vec![tag(1, Kind::Def, "Alpha"), tag(2, Kind::Def, "Zeta")],
+            ),
+            ("b/User.java", vec![tag(1, Kind::Ref, "Alpha")]),
+        ]
+    }
+
+    // No definition is referenced, but the reference table is not empty, so
+    // every definition takes the self-edge path.
+    fn unreferenced() -> Vec<(&'static str, Vec<Tag>)> {
+        vec![
+            (
+                "a/One.java",
+                vec![tag(1, Kind::Def, "One"), tag(5, Kind::Ref, "elsewhere")],
+            ),
+            ("b/Two.java", vec![tag(1, Kind::Def, "Two"), tag(2, Kind::Def, "Three")]),
+        ]
+    }
+
+    fn assert_limit(files: &[(&str, Vec<Tag>)], max_edges: usize) {
+        let error = capped(files, &[], &[], max_edges).unwrap_err();
+        assert_eq!(
+            error,
+            format!("ranking edge limit exceeded ({max_edges}); map a subtree")
+        );
+    }
+
+    #[test]
+    fn edge_limit_covers_a_self_edge_after_a_referenced_identifier() {
+        // The referenced `Alpha` fills the limit of one; `Zeta` must not slip past it.
+        assert_limit(&mixed(), 1);
+        assert_limit(&mixed(), 0);
+    }
+
+    #[test]
+    fn edge_limit_covers_definitions_that_are_never_referenced() {
+        assert_limit(&unreferenced(), 0);
+        assert_limit(&unreferenced(), 1);
+        assert_limit(&unreferenced(), 2);
+    }
+
+    // Expected orders were produced by `vendor/aider_rank.py` with networkx
+    // 3.4.2, which accepts the same exact limits and refuses one edge fewer.
+    #[test]
+    fn exact_edge_limit_is_accepted_and_keeps_the_order() {
+        let expected_mixed = ["a/Defs.java:2:Zeta", "a/Defs.java:1:Alpha"];
+        assert_eq!(capped(&mixed(), &[], &[], 2).unwrap(), expected_mixed);
+        assert_eq!(order(&mixed(), &[], &[]), expected_mixed);
+        let expected_unreferenced = ["a/One.java:1:One", "b/Two.java:2:Three", "b/Two.java:1:Two"];
+        assert_eq!(capped(&unreferenced(), &[], &[], 3).unwrap(), expected_unreferenced);
+        assert_eq!(order(&unreferenced(), &[], &[]), expected_unreferenced);
+        // The main fixture has two referenced edges and five self-edges.
+        assert_eq!(capped(&fixture(), &[], &[], 7).unwrap(), order(&fixture(), &[], &[]));
+        assert_limit(&fixture(), 6);
     }
 
     #[test]
