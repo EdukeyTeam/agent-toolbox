@@ -323,7 +323,7 @@ enum Candidate {
 struct GitCandidates {
     child: Child,
     reader: BufReader<std::process::ChildStdout>,
-    seen: HashSet<String>,
+    seen: HashSet<Vec<u8>>,
     failed: bool,
 }
 
@@ -364,16 +364,14 @@ impl GitCandidates {
             if raw.last() == Some(&0) {
                 raw.pop();
             }
-            if raw.is_empty() {
+            // Git emits an unmerged path once per stage, even for invalid UTF-8.
+            if raw.is_empty() || !self.seen.insert(raw.clone()) {
                 continue;
             }
             match String::from_utf8(raw) {
                 Ok(name) => {
                     let name = if cfg!(windows) { name.replace('\\', "/") } else { name };
-                    // Unmerged index entries are listed once per stage.
-                    if self.seen.insert(name.clone()) {
-                        return Some(Candidate::Path(name));
-                    }
+                    return Some(Candidate::Path(name));
                 }
                 Err(error) => {
                     return Some(Candidate::Unusable {

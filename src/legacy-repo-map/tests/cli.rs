@@ -343,6 +343,72 @@ fn repeated_runs_are_byte_identical_and_leave_the_source_untouched() {
     assert_eq!(written, ["inventory.json", "map.meta.json", "repo-map.md"]);
 }
 
+#[cfg(unix)]
+#[test]
+fn unmerged_non_utf8_paths_are_deduplicated_before_decoding() {
+    use std::io::Write;
+    let fixture = Fixture::new();
+    fixture.write("z.java", "class LaterValid {}\n");
+    assert!(fixture.git(&["init", "-q"]));
+    assert!(fixture.git(&["add", "--", "z.java"]));
+    let blob = Command::new("git")
+        .arg("-C")
+        .arg(&fixture.source)
+        .args(["hash-object", "z.java"])
+        .output()
+        .unwrap();
+    assert!(blob.status.success());
+    let hash = String::from_utf8(blob.stdout).unwrap();
+    let raw = b"a-\xff.java";
+    let mut records = Vec::new();
+    for stage in 1..=3 {
+        records.extend_from_slice(format!("100644 {} {stage}\t", hash.trim()).as_bytes());
+        records.extend_from_slice(raw);
+        records.push(0);
+    }
+    let mut child = Command::new("git")
+        .arg("-C")
+        .arg(&fixture.source)
+        .args(["update-index", "-z", "--index-info"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(&records).unwrap();
+    let changed = child.wait_with_output().unwrap();
+    assert!(changed.status.success(), "{}", String::from_utf8_lossy(&changed.stderr));
+    let listed = Command::new("git")
+        .arg("-C")
+        .arg(&fixture.source)
+        .args(["ls-files", "-z"])
+        .output()
+        .unwrap();
+    assert!(listed.status.success());
+    assert_eq!(
+        listed
+            .stdout
+            .split(|byte| *byte == 0)
+            .filter(|path| *path == raw)
+            .count(),
+        3
+    );
+    let before = snapshot(&fixture.source);
+    for options in [vec![], vec!["--max-files", "2"]] {
+        let meta = fixture.map_ok(&options);
+        let inventory = fixture.json("inventory.json");
+        assert_eq!(meta["coverage"]["candidates_seen"], 2);
+        assert_eq!(meta["coverage"]["selected_files"], 1);
+        assert_eq!(meta["truncated"], false);
+        assert_eq!(
+            inventory["skipped"],
+            serde_json::json!([{"path": "a-\u{fffd}.java", "reason": "non-UTF-8 path"}])
+        );
+        assert!(fixture.map_text().contains("z.java:L1: class LaterValid {}"));
+        assert_eq!(snapshot(&fixture.source), before);
+    }
+}
+
 #[test]
 fn budget_is_enforced_with_the_declared_estimator() {
     let fixture = Fixture::java();

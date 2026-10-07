@@ -457,6 +457,34 @@ class RustGitParityTests(RustParityTests):
         self.assertIn({"path": "src/app/Channel.java", "reason": "missing or outside source"}, meta["skipped"])
         self.assertTrue(self.load("rust-dirty", "inventory.json")["dirty"])
 
+    @unittest.skipUnless(os.name == "posix", "requires POSIX byte index paths")
+    def test_unmerged_non_utf8_paths_match_python_before_file_cap(self):
+        source = self.base / "raw-index"
+        source.mkdir()
+        (source / "z.java").write_bytes(b"class LaterValid {}\n")
+        command = ["git", "-C", str(source)]
+        subprocess.run([*command, "init", "-q"], check=True)
+        subprocess.run([*command, "add", "--", "z.java"], check=True)
+        blob = subprocess.check_output([*command, "hash-object", "z.java"]).strip()
+        raw = b"a-\xff.java"
+        stages = b"".join(b"100644 " + blob + b" " + str(stage).encode() + b"\t" + raw + b"\0" for stage in (1, 2, 3))
+        subprocess.run([*command, "update-index", "-z", "--index-info"], input=stages, check=True)
+        self.assertEqual(subprocess.check_output([*command, "ls-files", "-z"]).count(raw + b"\0"), 3)
+        outputs = []
+        for tool, mapper, env in (("rust", [str(RUST_BINARY)], os.environ.copy()), ("python", [sys.executable, str(SCRIPTS / "repo_map.py")], python_environment())):
+            out = self.base / (tool + "-raw-index")
+            result = subprocess.run([*mapper, str(source), "--output-dir", str(out), "--max-files", "2"], capture_output=True, text=True, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            meta = json.loads((out / "map.meta.json").read_text())
+            inventory = json.loads((out / "inventory.json").read_text())
+            self.assertEqual(meta["coverage"]["candidates_seen"], 2)
+            self.assertEqual(meta["coverage"]["selected_files"], 1)
+            self.assertFalse(meta["truncated"])
+            self.assertEqual(inventory["skipped"], [{"path": "a-\ufffd.java", "reason": "non-UTF-8 path"}])
+            outputs.append((inventory, (out / "repo-map.md").read_bytes()))
+        self.assertEqual(outputs[0], outputs[1])
+
+
 
 class RustWithoutPythonTests(FixtureCase):
     """The binary needs neither Python nor git on PATH."""
