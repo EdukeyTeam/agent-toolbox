@@ -101,6 +101,46 @@ class MapTests(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
         self.assertEqual(paths, {entry["path"] for entry in scan_repository(self.repo)["files"]})
 
+    def test_anchored_and_slashed_ignore_wildcards_do_not_cross_directories(self):
+        self.write(".gitignore", "/*.java\ndocs/*.txt\nlogs/*.log\n")
+        self.write("module/.gitignore", "/*.java\n")
+        excluded = ["Scratch.java", "docs/Direct.txt", "logs/Direct.log", "module/Scratch.java"]
+        kept = ["src/main/App.java", "src/main/Util.java", "docs/deep/Nested.txt", "logs/deep/Nested.log", "module/src/App.java", "other/docs/Elsewhere.txt"]
+        for name in excluded + kept:
+            self.write(name, "class Example {}\n")
+        fallback = {entry["path"] for entry in scan_repository(self.repo)["files"]}
+        self.assertTrue(set(kept).issubset(fallback))
+        self.assertFalse(set(excluded) & fallback)
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.assertEqual(fallback, {entry["path"] for entry in scan_repository(self.repo)["files"]})
+
+    def test_directory_whitelist_negation_does_not_restore_nonmatching_files(self):
+        self.write(".gitignore", "*\n!*/\n!*.java\n")
+        kept = ["Root.java", "src/App.java", "src/deep/Util.java", "out/Generated.java"]
+        excluded = ["out/cache.json", "src/generated-report.xml", "src/deep/cache.txt", "Root.txt"]
+        for name in kept + excluded:
+            self.write(name, "class Example {}\n")
+        fallback = {entry["path"] for entry in scan_repository(self.repo)["files"]}
+        self.assertEqual(fallback, set(kept))
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.assertEqual(fallback, {entry["path"] for entry in scan_repository(self.repo)["files"]})
+
+    def test_ancestor_directory_negation_does_not_restore_excluded_xml(self):
+        original = self.repo
+        for negation in ("!reports", "!reports/"):
+            with self.subTest(negation=negation):
+                self.repo = original / ("directory-rule" if negation.endswith("/") else "basename-rule")
+                self.repo.mkdir()
+                self.write(".gitignore", "*.xml\n" + negation + "\n")
+                self.write("reports/summary.xml", "<report/>\n")
+                self.write("reports/deep/summary.xml", "<report/>\n")
+                self.write("reports/keep.txt", "kept\n")
+                fallback = {entry["path"] for entry in scan_repository(self.repo)["files"]}
+                self.assertEqual(fallback, {".gitignore", "reports/keep.txt"})
+                subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+                self.assertEqual(fallback, {entry["path"] for entry in scan_repository(self.repo)["files"]})
+        self.repo = original
+
     @unittest.skipUnless(os.name == "posix", "requires POSIX byte filenames")
     def test_non_utf8_paths_are_counted_skipped_and_safe_in_git_and_non_git_maps(self):
         raw_path = os.fsencode(self.repo) + b"/Bad-\xff.java"

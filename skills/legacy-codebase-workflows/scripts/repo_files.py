@@ -122,14 +122,19 @@ def _ignored_non_git(root: Path, relative: PurePosixPath, *, ignore_cache=None, 
         pattern = pattern.removesuffix("/").removeprefix("/")
         if not pattern:
             continue
+        if directory_only and not is_directory:
+            continue
+        # Match this entry only: the walker already prunes ignored parents.
+        # A negation for an ancestor must not re-include its ignored children.
         parts = PurePosixPath(local).parts
-        # Ancestors are directories. The current entry participates in a
-        # directory-only rule only when the walker confirmed it is a directory.
-        count = len(parts) if not directory_only or is_directory else len(parts) - 1
-        candidates = ["/".join(parts[:i]) for i in range(1, count + 1)]
         if not anchored and "/" not in pattern:
-            candidates = list(parts[:count])
-        if any(fnmatch.fnmatchcase(candidate, pattern) for candidate in candidates):
+            matches = fnmatch.fnmatchcase(relative.name, pattern)
+        else:
+            patterns = pattern.split("/")
+            matches = len(parts) == len(patterns) and all(
+                fnmatch.fnmatchcase(part, rule) for part, rule in zip(parts, patterns)
+            )
+        if matches:
             ignored = not negated
     return ignored
 
