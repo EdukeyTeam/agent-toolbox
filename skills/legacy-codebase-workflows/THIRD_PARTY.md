@@ -26,3 +26,12 @@ The `.scm` files under `vendor/queries/` are unmodified copies from the pinned A
 | TypeScript/TSX | [tree-sitter-typescript](https://github.com/tree-sitter/tree-sitter-typescript) | [MIT](vendor/licenses/typescript-LICENSE.txt) |
 
 The runtime parser grammars are supplied by the pinned `tree-sitter-language-pack` dependency, not copied into this skill. The query credits are provenance for query text; see each dependency's own package license for its binaries.
+
+## Optional inference (downloaded separately)
+
+The scripts use the pinned Apache-2.0 [Transformers.js](https://github.com/huggingface/transformers.js) package. Node.js, that runtime, ONNX model weights and sqlite-vec are not included in the standalone bundle. Explicit indexing can download the following models into a separate cache; no model weights are redistributed here.
+
+| Model | Immutable revision | Provenance |
+| --- | --- | --- |
+| `Xenova/all-MiniLM-L6-v2` | `751bff37182d3f1213fa05d7196b954e230abad9` | [Converted model](https://huggingface.co/Xenova/all-MiniLM-L6-v2), Apache-2.0 model card. |
+| `Xenova/ms-marco-MiniLM-L-6-v2` | `a09144355adeed5f58c8ed011d209bf8ee5a1fec` | [Converted model](https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2) identifies the original [Apache-2.0 cross-encoder](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2). The converted card has no separate license declaration; upstream provenance is the basis for this optional use. |
