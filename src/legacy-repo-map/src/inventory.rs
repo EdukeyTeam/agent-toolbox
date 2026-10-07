@@ -277,6 +277,33 @@ pub fn read_safe(root: &Path, relative: &str, max_file_bytes: u64) -> Result<(Ve
     Ok((data, digest))
 }
 
+/// C0/C1 controls and Unicode line separators could forge lines in the map and
+/// in terminal output; `contains_control_characters` in `repo_files.py`.
+fn has_control_character(path: &str) -> bool {
+    path.chars()
+        .any(|character| character.is_control() || matches!(character, '\u{2028}' | '\u{2029}'))
+}
+
+/// Path as the content of a JSON string, as `safe_path_display` in
+/// `repo_files.py`: control characters, quotes and backslashes are escaped,
+/// other Unicode text is kept, and a JSON parser restores the original.
+pub fn safe_path_display(path: &str) -> String {
+    let quoted = serde_json::to_string(path).unwrap_or_default();
+    let content = quoted
+        .strip_prefix('"')
+        .and_then(|text| text.strip_suffix('"'))
+        .unwrap_or(&quoted);
+    // JSON leaves DEL, C1 controls and separators raw; display them safely.
+    content.chars().fold(String::new(), |mut shown, character| {
+        if matches!(character, '\u{7f}'..='\u{9f}' | '\u{2028}' | '\u{2029}') {
+            shown.push_str(&format!("\\u{:04x}", character as u32));
+        } else {
+            shown.push(character);
+        }
+        shown
+    })
+}
+
 fn in_subtrees(relative: &str, subtrees: &[String]) -> bool {
     subtrees.is_empty()
         || subtrees.iter().any(|subtree| {
@@ -639,12 +666,20 @@ where
             Candidate::Path(relative) => relative,
             Candidate::Unusable { display, reason } => {
                 skipped.push(Skip {
-                    path: display,
+                    path: safe_path_display(&display),
                     reason: reason.to_string(),
                 });
                 continue;
             }
         };
+        // Refused before any exclusion match or read, and never mapped.
+        if has_control_character(&relative) {
+            skipped.push(Skip {
+                path: safe_path_display(&relative),
+                reason: "control character in path".to_string(),
+            });
+            continue;
+        }
         let name = policy::file_name(&relative);
         if options
             .excludes
@@ -711,6 +746,49 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn control_characters_are_detected_like_the_python_tool() {
+        for path in [
+            "a\0b",
+            "a\nb",
+            "a\tb",
+            "a\u{1f}b",
+            "a\u{7f}b",
+            "a\u{80}b",
+            "a\u{9f}b",
+            "a\u{2028}b",
+            "a\u{2029}b",
+            "dir\r/File.java",
+        ] {
+            assert!(has_control_character(path), "{path:?}");
+        }
+        // Ordinary spaces and Unicode letters remain valid.
+        for path in ["a b", "a~b", "zażółć/Jaźń.java"] {
+            assert!(!has_control_character(path), "{path:?}");
+        }
+    }
+
+    #[test]
+    fn path_display_is_escaped_and_reversible() {
+        let cases = [
+            ("src/Line\nBreak.java", r"src/Line\nBreak.java"),
+            ("a\tb\rc\u{8}d\u{c}e", r"a\tb\rc\bd\fe"),
+            ("nul\0esc\u{1b}[2Jus\u{1f}", r"nul\u0000esc\u001b[2Jus\u001f"),
+            ("del\u{7f}ete", r"del\u007fete"),
+            ("c1\u{80}nel\u{85}end\u{9f}", r"c1\u0080nel\u0085end\u009f"),
+            ("line\u{2028}para\u{2029}", r"line\u2028para\u2029"),
+            ("quote\"back\\slash", r#"quote\"back\\slash"#),
+            ("zażółć gęślą/Jaźń \u{fffd}.java", "zażółć gęślą/Jaźń \u{fffd}.java"),
+        ];
+        for (path, expected) in cases {
+            let shown = safe_path_display(path);
+            assert_eq!(shown, expected);
+            assert!(!has_control_character(&shown), "{shown:?}");
+            let restored: String = serde_json::from_str(&format!("\"{shown}\"")).unwrap();
+            assert_eq!(restored, path);
+        }
+    }
 
     #[test]
     fn walk_refuses_excess_discovery_and_oversized_ignore_files() {

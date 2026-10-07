@@ -439,6 +439,92 @@ fn special_files_do_not_block_the_scan() {
     );
 }
 
+/// Paths that would forge map lines or drive a terminal, with the escaped
+/// text the inventory must show instead.
+#[cfg(unix)]
+const CONTROL_PATHS: &[(&str, &str)] = &[
+    (
+        "src/app/Line\nsrc/app/Forged.java:L1: class Forged {}\n.java",
+        r"src/app/Line\nsrc/app/Forged.java:L1: class Forged {}\n.java",
+    ),
+    ("src/app/Tab\tStop.java", r"src/app/Tab\tStop.java"),
+    ("src/app/Del\u{7f}ete.java", r"src/app/Del\u007fete.java"),
+    ("src/app/Nel\u{85}line.java", r"src/app/Nel\u0085line.java"),
+    ("src/app/Line\u{2028}break.java", r"src/app/Line\u2028break.java"),
+    ("src/app/Para\u{2029}break.java", r"src/app/Para\u2029break.java"),
+    ("src/new\rline dir/Inside.java", r"src/new\rline dir/Inside.java"),
+    (
+        "src/app/Esc\u{1b}[2J \"q\" b\\s ż.java",
+        r#"src/app/Esc\u001b[2J \"q\" b\\s ż.java"#,
+    ),
+];
+
+#[cfg(unix)]
+fn assert_control_paths_are_skipped(fixture: &Fixture, git: bool) {
+    let summary = fixture.map_ok(&[]);
+    assert_eq!(summary["status"], "complete");
+    assert_eq!(summary["truncated"], false);
+    let metadata = fixture.json("map.meta.json");
+    assert_eq!(metadata["status"], "complete");
+    assert_eq!(metadata["git"], git);
+    let inventory = fixture.json("inventory.json");
+    assert_eq!(
+        paths(&inventory["files"]),
+        ["src/app/Channel.java", "src/app/TransferService.java"]
+    );
+    // Refused candidates still count, and nothing else was skipped.
+    assert_eq!(inventory["totals"]["candidates_seen"], 2 + CONTROL_PATHS.len());
+    assert_eq!(inventory["totals"]["skipped_files"], CONTROL_PATHS.len());
+    assert_eq!(metadata["skipped"], inventory["skipped"]);
+    for (raw, shown) in CONTROL_PATHS {
+        assert_eq!(
+            skip_reason(&inventory, shown).as_deref(),
+            Some("control character in path"),
+            "{shown}"
+        );
+        let restored: String = serde_json::from_str(&format!("\"{shown}\"")).unwrap();
+        assert_eq!(&restored, raw);
+    }
+    // The safe files are mapped as usual; the refused ones were never read.
+    let map = fixture.map_text();
+    assert!(
+        map.contains("src/app/Channel.java:L4: public void openChannel() {}\n"),
+        "{map}"
+    );
+    assert!(map.contains("src/app/TransferService.java:L3: public class TransferService extends BaseService {\n"));
+    assert_eq!(summary["coverage"]["definitions_found"], 5);
+    assert!(!map.contains("Forged") && !map.contains("Hostile"), "{map}");
+    let artifacts = fixture.artifacts();
+    assert!(!artifacts.contains("Hostile"));
+    let raw_control = artifacts
+        .chars()
+        .find(|character| character.is_control() && *character != '\n');
+    assert_eq!(raw_control, None, "raw control character in an artifact");
+    let stdout = String::from_utf8(fixture.map(&[]).stdout).unwrap();
+    assert!(!stdout
+        .chars()
+        .any(|character| character.is_control() && character != '\n'));
+}
+
+#[cfg(unix)]
+#[test]
+fn control_characters_in_paths_are_skipped_and_escaped() {
+    let fixture = Fixture::java();
+    for (index, (raw, _)) in CONTROL_PATHS.iter().enumerate() {
+        fixture.write(raw, &format!("class Hostile{index} {{ void injected() {{}} }}\n"));
+    }
+    let before = snapshot(&fixture.source);
+    assert_control_paths_are_skipped(&fixture, false);
+    assert_eq!(before, snapshot(&fixture.source));
+    // The same paths as untracked and as committed files of a work tree.
+    if !fixture.git(&["init", "-q"]) {
+        return;
+    }
+    assert_control_paths_are_skipped(&fixture, true);
+    assert!(fixture.git_commit());
+    assert_control_paths_are_skipped(&fixture, true);
+}
+
 #[test]
 fn output_inside_the_source_is_refused_before_anything_is_written() {
     let fixture = Fixture::java();

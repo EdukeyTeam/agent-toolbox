@@ -311,6 +311,46 @@ class RustParityTests(FixtureCase):
         self.assertEqual([limits["max_tags_per_file"], limits["max_total_tags"], limits["max_budget"]], [constants["MAX_TAGS_PER_FILE"], constants["MAX_TOTAL_TAGS"], constants["MAX_BUDGET"]])
         self.assertEqual(policy["baseline_contract"], f"repo_map.py {constants['VERSION']}")
 
+    @unittest.skipIf(os.name != "posix", "requires POSIX file names")
+    def test_control_characters_in_paths_are_skipped_identically(self):
+        hostile = {
+            "src/app/Line\nsrc/app/Forged.java:L1: class Forged {}\n.java": "src/app/Line\\nsrc/app/Forged.java:L1: class Forged {}\\n.java",
+            "src/app/Tab\tStop.java": "src/app/Tab\\tStop.java",
+            "src/app/Del\x7fete.java": "src/app/Del\\u007fete.java",
+            "src/app/Nel\x85line.java": "src/app/Nel\\u0085line.java",
+            "src/app/Line\u2028break.java": "src/app/Line\\u2028break.java",
+            "src/app/Para\u2029break.java": "src/app/Para\\u2029break.java",
+            "src/new\rline dir/Inside.java": "src/new\\rline dir/Inside.java",
+            "src/app/Esc\x1b[2J \"q\" b\\s ż.java": "src/app/Esc\\u001b[2J \\\"q\\\" b\\\\s ż.java",
+        }
+        for index, relative in enumerate(hostile):
+            self.write(relative, f"class Hostile{index} {{ void injected() {{}} }}\n".encode("utf-8"))
+        before = self.snapshot()
+        for label, arguments in (("control", []), ("control-capped", ["--max-files", "12"]), ("control-inventory", ["--inventory-only"])):
+            with self.subTest(case=label):
+                if "--inventory-only" in arguments:
+                    self.assertEqual(self.rust(f"rust-{label}", *arguments).returncode, 0)
+                    self.assertEqual(self.python(f"python-{label}", *arguments).returncode, 0)
+                    inventories = [self.load(f"{tool}-{label}", "inventory.json") for tool in ("rust", "python")]
+                    for key in ("files", "skipped", "fingerprint", "totals"):
+                        self.assertEqual(inventories[0][key], inventories[1][key], key)
+                    continue
+                meta, text = self.assert_same(label, arguments)
+                self.assertEqual(meta["status"], "complete")
+                self.assertNotIn("Hostile", text)
+                self.assertNotIn("Forged", text)
+        inventory = self.load("rust-control", "inventory.json")
+        refused = {item["path"] for item in inventory["skipped"] if item["reason"] == "control character in path"}
+        self.assertEqual(refused, set(hostile.values()))
+        self.assertEqual({json.loads(f'"{shown}"') for shown in refused}, set(hostile))
+        self.assertIn("src/app/Channel.java", [item["path"] for item in inventory["files"]])
+        for tool in ("rust", "python"):
+            for artifact in ARTIFACTS:
+                written = (self.base / f"{tool}-control" / artifact).read_text(encoding="utf-8")
+                self.assertFalse([character for character in written if (ord(character) < 32 or ord(character) == 127) and character != "\n"], f"{tool} {artifact}")
+        self.assertEqual(before, self.snapshot())
+
+
 
 class RustGitParityTests(RustParityTests):
     """The same comparisons on a git work tree with an untracked file."""
