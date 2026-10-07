@@ -129,6 +129,11 @@ def stored_excludes(meta: dict[str, str]) -> tuple[str, ...]:
         raise RetrievalError(f"Invalid exclusion metadata; repair metadata or use a fresh database: {exc}") from exc
 
 
+def safe_skipped_path(relative: str) -> str:
+    display = json.dumps(relative.encode("utf-8", "replace").decode("utf-8"), ensure_ascii=False)[1:-1]
+    return "".join(f"\\u{ord(character):04x}" if 127 <= ord(character) < 160 or character in "\u2028\u2029" else character for character in display)
+
+
 def enumerate_files(root: Path, kind: str, excludes: tuple[str, ...] = (), skipped: list[dict[str, str]] | None = None) -> list[Path]:
     paths = []
     seen = 0
@@ -142,7 +147,13 @@ def enumerate_files(root: Path, kind: str, excludes: tuple[str, ...] = (), skipp
                 relative.encode("utf-8")
             except UnicodeEncodeError:
                 if skipped is not None:
-                    skipped.append({"kind": "docs" if kind == "docs" else "code", "path": relative.encode("utf-8", "replace").decode("utf-8"), "reason": "non-UTF-8 filename"})
+                    display = safe_skipped_path(relative)
+                    skipped.append({"kind": "docs" if kind == "docs" else "code", "path": display, "reason": "non-UTF-8 filename"})
+                continue
+            if any(ord(character) < 32 or 127 <= ord(character) < 160 or character in "\u2028\u2029" for character in relative):
+                if skipped is not None:
+                    display = safe_skipped_path(relative)
+                    skipped.append({"kind": "docs" if kind == "docs" else "code", "path": display, "reason": "control character in path"})
                 continue
             try:
                 rel = _safe_relative(relative)

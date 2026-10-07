@@ -352,7 +352,6 @@ class RetrievalTests(unittest.TestCase):
             result = backend.query(con, "TrackedInvoice")
             self.assertTrue(any(row["source"]["path"] == "Tracked.java" for row in result["results"]))
 
-
     def test_ancestor_or_equal_docs_root_is_refused_before_database_or_model_processing(self):
         source = self.root / "src"
         backend.index(source, self.db, "/local/billing", None, None, None)
@@ -367,7 +366,6 @@ class RetrievalTests(unittest.TestCase):
                 self.assertEqual(self.db.read_bytes(), before)
         with backend.connect(self.db) as con:
             self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
-
 
     def test_nested_docs_root_keeps_code_and_indexes_markdown_once(self):
         docs = self.root / "manual"
@@ -384,6 +382,47 @@ class RetrievalTests(unittest.TestCase):
             self.assertIn(("docs", "guide.md"), paths)
         self.assertEqual(backend.index(self.root, self.db, "/local/billing", docs, None, None)["changed"], 0)
 
+    def test_all_control_candidates_are_counted_skipped_and_safely_displayed(self):
+        controls = [chr(value) for value in (*range(32), *range(127, 160), 0x2028, 0x2029)]
+        candidates = [f"Bad{character}.java" for character in controls] + ["src/service.py"]
+        def inventory(*_args, **_kwargs):
+            yield from candidates
+        with mock.patch.object(backend, "_candidates", side_effect=inventory), mock.patch.object(backend, "allowed", wraps=backend.allowed) as allowed:
+            skipped = []
+            files = backend.corpus_files(self.root, None, skipped=skipped)
+            self.assertEqual([row[1] for row in files], ["src/service.py"])
+            self.assertEqual(allowed.call_count, 1)
+            self.assertEqual(len(skipped), 67)
+            self.assertTrue(all(row["reason"] == "control character in path" for row in skipped))
+            self.assertTrue(all(not any(ord(character) < 32 or 127 <= ord(character) < 160 or character in "\u2028\u2029" for character in row["path"]) for row in skipped))
+            self.assertEqual(skipped[-1]["path"], "Bad\\u2029.java")
+            self.assertEqual(backend.safe_skipped_path("Zażółć.java"), "Zażółć.java")
+            self.assertEqual([json.loads('"' + row["path"] + '"') for row in skipped], candidates[:-1])
+            result = backend.index(self.root, self.db, "/local/billing", None, None, None)
+            self.assertEqual(result["skippedCount"], 67)
+            self.assertEqual(result["files"], 1)
+            json.dumps(result, ensure_ascii=False).encode("utf-8")
+            with backend.connect(self.db) as con:
+                self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+            with mock.patch.object(backend, "MAX_SOURCE_CANDIDATES", 66):
+                with self.assertRaisesRegex(backend.RetrievalError, "Candidate limit"):
+                    backend.index(self.root, self.db, "/local/billing", None, None, None)
+
+    @unittest.skipIf(os.name == "nt", "Windows cannot create ASCII control filenames")
+    def test_real_control_filenames_are_skipped_in_git_and_non_git_roots(self):
+        for name in ("Bad\n.java", "Bad\t.java", "Bad\x7f.java", "Bad\x85.java", "Bad\u2028.java", "Bad\u2029.java"):
+            (self.root / name).write_text("class CitationConfusion {}\n", encoding="utf-8")
+        for git in (False, True):
+            with self.subTest(git=git):
+                if git:
+                    subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+                result = self.index()
+                self.assertEqual(result["skippedCount"], 6)
+                self.assertEqual(result["files"], 2)
+                self.assertEqual({row["path"] for row in result["skipped"]}, {"Bad\\n.java", "Bad\\t.java", "Bad\\u007f.java", "Bad\\u0085.java", "Bad\\u2028.java", "Bad\\u2029.java"})
+                with backend.connect(self.db) as con:
+                    self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
+                    self.assertFalse(con.execute("SELECT 1 FROM chunks WHERE body LIKE '%CitationConfusion%'").fetchone())
 
     def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
         cache = Path(self.tmp.name).resolve() / "cache"
