@@ -45,6 +45,7 @@ OVERLAP = 8
 DEFAULT_CHUNK_CHARS = 1200
 MAX_EMBEDDING_UNITS = 12000
 MODEL_BATCH = 32
+MAX_EMBEDDING_RESPONSE_CHARS = 8 * 1024 * 1024
 INDEX_VERSION = "7"
 DEFAULT_MODEL = "Xenova/all-MiniLM-L6-v2"
 DEFAULT_MODEL_REVISION = "751bff37182d3f1213fa05d7196b954e230abad9"
@@ -328,18 +329,39 @@ def embedding_batches(batches: list[list[str]], model: str, model_revision: str,
     elif not cache.is_dir():
         raise RetrievalError("Local model cache is missing; run explicit model download at index time")
     env = inference_environment(cache, download=download)
-    responses: queue.Queue[str | None] = queue.Queue()
+    responses: queue.Queue[str | None | RetrievalError] = queue.Queue(maxsize=1)
+    cancelled = threading.Event()
     with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as errors:
         try:
             proc = subprocess.Popen(["node", str(RETRIEVAL), model, model_revision, str(cache), str(runtime), "download" if download else "offline"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, env=env, bufsize=1)
         except OSError as exc:
             raise RetrievalError(f"Local embedding helper failed: {exc}") from exc
+        def send_response(response: str | None | RetrievalError) -> bool:
+            while not cancelled.is_set():
+                try:
+                    responses.put(response, timeout=0.1)
+                    return True
+                except queue.Full:
+                    pass
+            return False
+
         def read_outputs():
             assert proc.stdout is not None
-            for line in proc.stdout:
-                responses.put(line)
-            responses.put(None)
-        reader = threading.Thread(target=read_outputs, daemon=True)
+            try:
+                while not cancelled.is_set():
+                    line = proc.stdout.readline(MAX_EMBEDDING_RESPONSE_CHARS + 1)
+                    if not line:
+                        send_response(None)
+                        return
+                    if len(line) > MAX_EMBEDDING_RESPONSE_CHARS or not line.endswith("\n"):
+                        send_response(RetrievalError("Invalid embedding output: response exceeds limit or is unterminated"))
+                        return
+                    if not send_response(line):
+                        return
+            except (OSError, UnicodeError, ValueError) as exc:
+                if not cancelled.is_set():
+                    send_response(RetrievalError(f"Invalid embedding output: {exc}"))
+        reader = threading.Thread(target=read_outputs, name="local-embedding-reader", daemon=True)
         reader.start()
         try:
             for texts in batches:
@@ -352,15 +374,17 @@ def embedding_batches(batches: list[list[str]], model: str, model_revision: str,
                     output = responses.get(timeout=120)
                 except queue.Empty as exc:
                     raise RetrievalError("Local embedding helper timed out") from exc
+                if isinstance(output, RetrievalError):
+                    raise output
                 if output is None:
                     errors.seek(0)
                     raise RetrievalError(f"Local embedding helper failed: {errors.read(400)}")
                 try:
                     vectors = json.loads(output)
-                    if len(vectors) != len(texts) or not all(isinstance(row, list) and row for row in vectors):
+                    if not isinstance(vectors, list) or len(vectors) != len(texts) or not all(isinstance(row, list) and row for row in vectors):
                         raise ValueError("wrong embedding shape")
                     yield vectors
-                except ValueError as exc:
+                except (ValueError, TypeError) as exc:
                     raise RetrievalError(f"Invalid embedding output: {exc}") from exc
             proc.stdin.close()
             if proc.wait(timeout=15):
@@ -369,14 +393,15 @@ def embedding_batches(batches: list[list[str]], model: str, model_revision: str,
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise RetrievalError(f"Local embedding helper failed: {exc}") from exc
         finally:
+            cancelled.set()
             if proc.poll() is None:
                 proc.kill()
                 proc.wait()
             if proc.stdin and not proc.stdin.closed:
                 proc.stdin.close()
+            reader.join(timeout=1)
             if proc.stdout:
                 proc.stdout.close()
-            reader.join(timeout=1)
 
 
 def embeddings(texts: list[str], model: str, cache: Path, runtime: Path, *, download: bool, model_revision: str = DEFAULT_MODEL_REVISION) -> list[list[float]]:

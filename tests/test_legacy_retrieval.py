@@ -1,5 +1,6 @@
 """Focused retrieval tests, runnable with python -m unittest discover -s tests."""
 
+from contextlib import contextmanager
 import errno
 import importlib.util
 import json
@@ -14,6 +15,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest import mock
@@ -557,6 +559,133 @@ class RetrievalTests(unittest.TestCase):
                         self.assertEqual(text, path.read_text(encoding="utf-8"))
                         self.assertEqual(file_hash, source["fileSha256"])
                         self.assertIn(name, text)
+
+    @contextmanager
+    def embedding_process_fixture(self, program):
+        helper = Path(self.tmp.name).resolve() / "embedding-helper.py"
+        helper.write_text(program, encoding="utf-8", newline="\n")
+        self.assertEqual(helper.read_bytes(), program.encode("utf-8"))
+        processes, readers, responses = [], [], []
+        original_popen = subprocess.Popen
+        original_thread = threading.Thread
+        original_queue = backend.queue.Queue
+        class ObservedQueue(original_queue):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.full_attempted = threading.Event()
+            def put(self, item, *args, **kwargs):
+                if self.full():
+                    self.full_attempted.set()
+                return super().put(item, *args, **kwargs)
+        def launch(command, **kwargs):
+            if len(command) < 2 or command[1] != str(backend.RETRIEVAL):
+                return original_popen(command, **kwargs)
+            proc = original_popen([sys.executable, "-u", str(helper)], **kwargs)
+            processes.append(proc)
+            return proc
+        def reader(*args, **kwargs):
+            thread = original_thread(*args, **kwargs)
+            readers.append(thread)
+            return thread
+        def response_queue(*args, **kwargs):
+            queue = ObservedQueue(*args, **kwargs)
+            responses.append(queue)
+            return queue
+        try:
+            with mock.patch.object(subprocess, "Popen", side_effect=launch), mock.patch.object(backend.threading, "Thread", side_effect=reader), mock.patch.object(backend.queue, "Queue", side_effect=response_queue):
+                yield processes, readers, responses
+        finally:
+            # A failed assertion must not leave the controlled child running.
+            for proc in processes:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait(timeout=5)
+
+    def assert_embedding_process_closed(self, processes, readers):
+        self.assertTrue(processes)
+        for proc in processes:
+            self.assertIsNotNone(proc.poll())
+            self.assertTrue(proc.stdin.closed)
+            self.assertTrue(proc.stdout.closed)
+        self.assertTrue(readers)
+        self.assertTrue(all(not reader.is_alive() for reader in readers))
+
+    def test_embedding_response_rejects_wide_continuous_and_unterminated_real_output(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        cases = (
+            "import sys,json\nsys.stdin.readline()\nprint(json.dumps([[1.0]*128]),flush=True)\n",
+            "import sys,os\nsys.stdin.readline()\nwhile True: os.write(1,b'9'*64)\n",
+            "import sys\nsys.stdin.readline()\nsys.stdout.write('[[1.0]]')\nsys.stdout.flush()\n",
+        )
+        for program in cases:
+            with self.subTest(program=program), self.embedding_process_fixture(program) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 128):
+                start = time.monotonic()
+                with self.assertRaisesRegex(backend.RetrievalError, "response exceeds limit or is unterminated"):
+                    list(backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+                self.assertLess(time.monotonic() - start, 5)
+                self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_exact_response_ceiling_and_normal_real_multibatch(self):
+        self.assertEqual(backend.MAX_EMBEDDING_RESPONSE_CHARS, 8 * 1024 * 1024)
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys,json\nfor line in sys.stdin:\n    vectors=[[1.0,0.0] for _ in json.loads(line)]\n    payload=json.dumps(vectors)\n    sys.stdout.write(payload+' '*(256-len(payload)-1)+'\\n')\n    sys.stdout.flush()\n"
+        with self.embedding_process_fixture(program) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 256):
+            result = list(backend.embedding_batches([["one", "two"], ["three"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+            self.assertEqual(result, [[[1.0, 0.0], [1.0, 0.0]], [[1.0, 0.0]]])
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_unsolicited_real_flood_has_bounded_queue_and_early_close_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        program = "import sys,os\nsys.stdin.readline()\nwhile True: os.write(1,b'[[1.0]]\\n'*128)\n"
+        with self.embedding_process_fixture(program) as (processes, readers, responses):
+            stream = backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False)
+            self.addCleanup(stream.close)
+            self.assertEqual(next(stream), [[1.0]])
+            self.assertTrue(responses[0].full_attempted.wait(timeout=2), "reader did not encounter backpressure")
+            self.assertEqual(responses[0].maxsize, 1)
+            self.assertLessEqual(responses[0].qsize(), 1)
+            start = time.monotonic()
+            stream.close()
+            self.assertLess(time.monotonic() - start, 2)
+            self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_malformed_real_helper_shapes_raise_owned_errors_and_cleanup(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        cache.mkdir()
+        for output in ("null", "3", "{}", "[[]]", "[[1.0]] trailing"):
+            program = "import sys\nsys.stdin.readline()\nprint(" + repr(output) + ",flush=True)\n"
+            with self.subTest(output=output), self.embedding_process_fixture(program) as (processes, readers, _):
+                with self.assertRaisesRegex(backend.RetrievalError, "Invalid embedding output"):
+                    list(backend.embedding_batches([["fixture"]], backend.DEFAULT_MODEL, backend.DEFAULT_MODEL_REVISION, cache, cache, download=False))
+                self.assert_embedding_process_closed(processes, readers)
+
+    def test_embedding_rejected_real_update_rolls_back_existing_index_bytes(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        normal = "import sys,json\nfor line in sys.stdin: print(json.dumps([[1.0,0.0] for _ in json.loads(line)]),flush=True)\n"
+        with self.embedding_process_fixture(normal) as (processes, readers, _):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+            self.assert_embedding_process_closed(processes, readers)
+        with backend.connect(self.db) as con:
+            old_metadata = backend.metadata(con)
+            old_vectors = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
+        before = self.db.read_bytes()
+        for path, body in ((self.root / "src/service.py", "class ChangedInvoice: pass\n"), (self.docs / "guide.md", "Changed billing guidance.\n")):
+            path.write_text(body, encoding="utf-8", newline="\n")
+            self.assertEqual(path.read_bytes(), body.encode("utf-8"))
+        fail_second = "import sys,json\nfor number,line in enumerate(sys.stdin):\n    print(json.dumps([[1.0,0.0]]) if number==0 else '9'*129,flush=True)\n"
+        with self.embedding_process_fixture(fail_second) as (processes, readers, _), mock.patch.object(backend, "MAX_EMBEDDING_RESPONSE_CHARS", 128), mock.patch.object(backend, "MODEL_BATCH", 1):
+            with self.assertRaisesRegex(backend.RetrievalError, "response exceeds limit"):
+                backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+            self.assert_embedding_process_closed(processes, readers)
+        self.assertEqual(self.db.read_bytes(), before)
+        with backend.connect(self.db) as con:
+            self.assertEqual(backend.metadata(con), old_metadata)
+            self.assertEqual(con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall(), old_vectors)
 
     def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
         cache = Path(self.tmp.name).resolve() / "cache"
