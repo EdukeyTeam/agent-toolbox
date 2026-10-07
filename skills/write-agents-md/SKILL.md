@@ -67,6 +67,8 @@ An internal framework, hidden compatibility boundary, or nonstandard root can qu
 
 ## Completion
 
+Treat `AGENTS.md.candidate` as an internal draft, not the delivered result. Complete adaptation, validation and publication/reconciliation as `AGENTS.md` within the same authoring task, before presenting final files or opening a PR. Commit the finished `AGENTS.md` only; remove your candidate. If interrupted, report the task as incomplete.
+
 Show files actually changed, template copied, adaptations/relocations and checks. Leave application code untouched unless authorized. Preserve unrelated work and tool-specific instructions. Create a CLAUDE.md import only when requested or established; do not duplicate guidance or overwrite tool-specific content.
 
 Require affected instructions and documentation to be updated in the same logical change when enduring facts/policies change. Do not claim enforcement against an agent ignoring the skill: the helper proves the starting copy; final scope and meaning require review.
