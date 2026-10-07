@@ -778,7 +778,7 @@ class RetrievalTests(unittest.TestCase):
             ("private", "\ue000", ("\ue000",)),
         )
         for name, body, _ in cases:
-            (self.root / (name + ".py")).write_text(body + "\n", encoding="utf-8")
+            (self.root / (name + ".py")).write_text(body + "\n", encoding="utf-8", newline="\n")
         self.index()
         before = self.db.read_bytes()
         with sqlite3.connect(self.db.as_uri() + "?mode=ro", uri=True, factory=backend.ClosingConnection) as con:
