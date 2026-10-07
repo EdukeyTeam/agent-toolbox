@@ -88,7 +88,10 @@ repository map (https://github.com/Aider-AI/aider, aider/repomap.py at
 and derive from the tree-sitter grammar projects below, each under the MIT
 license. The program links the tree-sitter runtime and grammar crates (MIT)
 and other Rust crates whose license texts ship beside the binary in the
-release artifact.
+release artifact. The tree-sitter runtime compiles in ICU's UTF-8 and UTF-16
+headers and the regex-syntax crate compiles in tables generated from the
+Unicode Character Database; both Unicode, Inc. notices are printed in full
+below.
 ";
 
 macro_rules! vendored {
@@ -108,6 +111,10 @@ const NOTICES: &[(&str, &str)] = &[
         vendored!("queries/tree-sitter-languages/README.md"),
     ),
     ("tree-sitter (MIT)", include_str!("../licenses/tree-sitter-LICENSE.txt")),
+    (
+        "ICU Unicode headers in tree-sitter (ICU license, ICU 58 and later)",
+        include_str!("../licenses/tree-sitter-unicode-LICENSE.txt"),
+    ),
     ("tree-sitter-c (MIT)", vendored!("licenses/c-LICENSE.txt")),
     ("tree-sitter-cpp (MIT)", vendored!("licenses/cpp-LICENSE.txt")),
     ("tree-sitter-c-sharp (MIT)", vendored!("licenses/csharp-LICENSE.txt")),
@@ -122,6 +129,10 @@ const NOTICES: &[(&str, &str)] = &[
     (
         "tree-sitter-typescript (MIT)",
         vendored!("licenses/typescript-LICENSE.txt"),
+    ),
+    (
+        "Unicode data tables in regex-syntax (Unicode license agreement)",
+        include_str!("../licenses/regex-syntax-LICENSE-UNICODE.txt"),
     ),
 ];
 
@@ -386,11 +397,8 @@ fn run(arguments: Arguments) -> Result<String, String> {
             })
             .collect()
     };
-    let selected_subtrees = arguments.subtrees.clone();
-    let subtrees: Vec<String> = relative_list(&arguments.subtrees)?
-        .into_iter()
-        .filter(|path| path != ".")
-        .collect();
+    let selected_subtrees = relative_list(&arguments.subtrees)?;
+    let subtrees: Vec<String> = selected_subtrees.iter().filter(|path| *path != ".").cloned().collect();
     let focus_files = relative_list(&arguments.focus_files)?;
     let focus_symbols = arguments.focus_symbols;
     let excludes = arguments.excludes;
@@ -848,6 +856,34 @@ mod tests {
             let entry = format!("name = \"{name}\"\nversion = \"{version}\"");
             assert!(lock.contains(&entry), "Cargo.lock does not pin {name} {version}");
         }
+    }
+
+    #[test]
+    fn notices_print_every_pinned_text_in_full() {
+        let manifest: Value = serde_json::from_str(include_str!("../licenses/manifest.json")).unwrap();
+        let printed = notices().replace("\r\n", "\n");
+        let records = manifest["notices"].as_array().unwrap();
+        assert_eq!(records.len(), 3);
+        for record in records {
+            let file = record["file"].as_str().unwrap();
+            let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("licenses").join(file);
+            // A checkout may translate line endings; the pinned hash is of the upstream bytes.
+            let text = fs::read_to_string(path).unwrap().replace("\r\n", "\n");
+            let digest = inventory::sha256_hex(text.as_bytes());
+            assert_eq!(
+                digest,
+                record["sha256"].as_str().unwrap(),
+                "{file} differs from its pinned hash"
+            );
+            let section = format!(
+                "\n==== {} ====\n\n{}\n",
+                record["title"].as_str().unwrap(),
+                text.trim_end()
+            );
+            assert!(printed.contains(&section), "--notices does not print {file} in full");
+        }
+        assert!(printed.contains("Copyright © 1991-2019 Unicode, Inc. All rights reserved."));
+        assert!(printed.contains("UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE"));
     }
 
     #[test]

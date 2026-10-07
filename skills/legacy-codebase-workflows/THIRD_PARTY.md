@@ -27,6 +27,12 @@ The `.scm` files under `vendor/queries/` are unmodified copies from the pinned A
 
 The runtime parser grammars are supplied by the pinned `tree-sitter-language-pack` dependency, not copied into this skill. The query credits are provenance for query text; see each dependency's own package license for its binaries.
 
+## Compiled-in Tree-sitter and Unicode notices
+
+The standalone Rust mapper embeds the full ICU notice for Tree-sitter's UTF-8/UTF-16 headers and the Unicode data license used by `regex-syntax`. The build helper also collects nested crate notices with their relative paths and hashes. In the toolbox source, `src/legacy-repo-map/licenses/manifest.json` records immutable upstream origins, crate checksums and the source-release evidence.
+
+The Python `tree-sitter` 0.25.2 wheel carries the binding's MIT license but omits the compiled runtime's separate MIT copyright notice and ICU notice. The standalone bundle adds both from the verified source of that exact release, records their hashes and origins in `BUILD-INFO.json`, and lists them through `notices`. Dependency updates require these records to be verified again. This audit covers those runtime sources and license-named crate files; it does not claim to detect every notice embedded in arbitrary source comments.
+
 ## Optional inference (downloaded separately)
 
 The scripts use the pinned Apache-2.0 [Transformers.js](https://github.com/huggingface/transformers.js) package. Node.js, that runtime, ONNX model weights and sqlite-vec are not included in the standalone bundle. Explicit indexing can download the following models into a separate cache; no model weights are redistributed here.

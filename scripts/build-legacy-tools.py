@@ -53,6 +53,10 @@ EXCLUDED_MODULES = ["numpy", "scipy", "pandas", "matplotlib", "tkinter", "IPytho
 # build machine happens to have installed fails the build instead of shipping.
 ALLOWED_PACKAGES = {"networkx", "tree_sitter", "tree_sitter_c_sharp", "tree_sitter_embedded_template", "tree_sitter_language_pack", "tree_sitter_yaml"}
 LICENSE_PREFIXES = ("license", "licence", "copying", "notice", "authors", "unlicense")
+# Program sources that merely carry a license-like name, such as `license.rs`.
+SOURCE_SUFFIXES = (".rs", ".c", ".h", ".cc", ".cpp", ".py", ".js", ".ts", ".go", ".java", ".toml", ".json", ".yml", ".yaml")
+# Notice texts for compiled-in code whose package omits or nests the text.
+NOTICE_DATA = CRATE / "licenses"
 EXE = ".exe" if os.name == "nt" else ""
 
 
@@ -179,7 +183,25 @@ def map_parser_names() -> list[str]:
 
 
 def license_files(directory: Path) -> list[Path]:
-    return sorted(path for path in directory.iterdir() if path.is_file() and path.name.lower().startswith(LICENSE_PREFIXES)) if directory.is_dir() else []
+    """Relative paths of the license-named texts in a package, at any depth."""
+    found = []
+    for parent, _, names in os.walk(directory):
+        for name in names:
+            path = Path(parent) / name
+            if name.lower().startswith(LICENSE_PREFIXES) and not name.lower().endswith(SOURCE_SUFFIXES) and path.is_file():
+                found.append(path.relative_to(directory))
+    return sorted(found, key=lambda path: path.as_posix())
+
+
+def pinned_notices() -> list[dict]:
+    """Notice records of `licenses/manifest.json` with their verified texts."""
+    records = json.loads((NOTICE_DATA / "manifest.json").read_text(encoding="utf-8"))["notices"]
+    for record in records:
+        # A checkout may translate line endings; the pinned hash is of the upstream bytes.
+        record["data"] = (NOTICE_DATA / record["file"]).read_bytes().replace(b"\r\n", b"\n")
+        if hashlib.sha256(record["data"]).hexdigest() != record["sha256"]:
+            raise BuildError(f"{record['file']} differs from the hash pinned in {NOTICE_DATA.name}/manifest.json")
+    return records
 
 
 def copy_license(source: Path, destination: Path) -> Path:
@@ -210,7 +232,11 @@ def distribution_license_files(dist: importlib.metadata.Distribution) -> list[Pa
             source = Path(dist.locate_file(item))
             if source.is_file():
                 found.append(source)
-    return sorted(set(found))
+    found = sorted(set(found))
+    # The texts are stored by file name; a second file of that name would replace the first.
+    if len({path.name.lower() for path in found}) != len(found):
+        raise BuildError(f"{dist.metadata.get('Name')} {dist.version} has license files that share a name; keep their relative paths before bundling it")
+    return found
 
 
 def collected_binaries(toc: Path) -> list[tuple[str, Path, str]]:
@@ -506,7 +532,30 @@ def license_collected_binaries(stage: Path, toc: Path, search: list[Path], suppl
     return records
 
 
-def stage_skill(stage: Path, search: list[Path]) -> list[Path]:
+def stage_source_notices(skill: Path, distributions: dict[str, importlib.metadata.Distribution]) -> list[dict]:
+    """Add the notices of code compiled into a runtime wheel that omits them."""
+    staged = []
+    for record in pinned_notices():
+        use = record.get("pypi")
+        if not use:
+            continue
+        dist = distributions.get(use["name"])
+        if dist is None or dist.version != use["version"]:
+            raise BuildError(f"{record['file']} was verified against the source of {use['name']} {use['version']}, not {dist.version if dist else 'an absent distribution'}; verify it against that release before bundling")
+        destination = skill / "licenses" / "python" / f"{use['name']}-{use['version']}" / use["bundle_path"]
+        if destination.exists():
+            raise BuildError(f"two license texts of {use['name']} {use['version']} claim {use['bundle_path']}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(record["data"])
+        staged.append({
+            "component": f"{record['component']} in {use['name']}", "version": use["version"], "source": record["origin"], "sha256": record["sha256"],
+            "license": destination.relative_to(skill).as_posix(),
+            "verified_against": {key: use[key] for key in ("sdist", "sdist_sha256", "sdist_path", "basis")},
+        })
+    return staged
+
+
+def stage_skill(stage: Path, search: list[Path]) -> tuple[list[Path], list[dict]]:
     """Copy the tools and their resources into the layout the bundle keeps."""
     skill = stage / "skill"
     (skill / "scripts" / "retrieval").mkdir(parents=True)
@@ -541,8 +590,13 @@ def stage_skill(stage: Path, search: list[Path]) -> list[Path]:
             copy_license(source, target / source.name)
     copy_license(python_license(), skill / "licenses" / "python" / f"cpython-{platform.python_version()}" / "LICENSE.txt")
     lines += ["", f"CPython {platform.python_version()} PSF license text is in `licenses/python/cpython-{platform.python_version()}/LICENSE.txt`.", "The PyInstaller bootloader license and exception are in `licenses/python/pyinstaller-6.22.3/COPYING.txt`.", "Every collected binary and its license text are listed in `BUILD-INFO.json` beside the program.", ""]
+    source_notices = stage_source_notices(skill, distributions)
+    if source_notices:
+        lines += ["## Notices for code compiled into a distribution", "", "These wheels omit the texts below; each is an unmodified copy from the pinned upstream source of that release.", "", "| Component | Version | Notice | SHA-256 | Origin |", "| --- | --- | --- | --- | --- |"]
+        lines += [f"| {item['component']} | {item['version']} | `{item['license']}` | `{item['sha256']}` | {item['source']} |" for item in source_notices]
+        lines.append("")
     (skill / "BUNDLED_LICENSES.md").write_text("\n".join(lines), encoding="utf-8")
-    return scripts
+    return scripts, source_notices
 
 
 def frozen_packages(table_of_contents: Path) -> set[str]:
@@ -575,7 +629,7 @@ def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, too
     search = [path for path in (tools, deps) if path]
     stage = work / "stage"
     shutil.rmtree(stage, ignore_errors=True)
-    scripts = stage_skill(stage, search)
+    scripts, additional_notices = stage_skill(stage, search)
     sources = scripts + sorted((SKILL / "vendor").glob("*.py"))
     wanted = imported_modules(sources)
     for parser in map_parser_names():
@@ -609,7 +663,6 @@ def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, too
         raise BuildError(f"the bundle picked up unaudited packages from this machine: {', '.join(unexpected)}; add them to EXCLUDED_MODULES or build in a clean environment")
     analysis_toc = work / "pyinstaller" / "legacy-tools" / "Analysis-00.toc"
     included = final_binary_names(analysis_toc, mode)
-    additional_notices = []
     if prepare_host_licenses and sys.platform in ("darwin", "win32"):
         if binary_licenses is not None:
             raise BuildError("choose either --prepare-host-licenses or --binary-license-dir")
@@ -660,6 +713,12 @@ def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, too
     return {"directory": artifact, "program": artifact / f"legacy-tools{EXE}", "info": info}
 
 
+def locked_checksums() -> dict[tuple[str, str], str]:
+    """Registry archive SHA-256 of each crate in `Cargo.lock`."""
+    lock = (CRATE / "Cargo.lock").read_text(encoding="utf-8").replace("\r\n", "\n")
+    return {(match[1], match[2]): match[3] for match in re.finditer(r'name = "([^"]+)"\nversion = "([^"]+)"\nsource = "[^"]+"\nchecksum = "([0-9a-f]{64})"', lock)}
+
+
 def rust_dependencies(env: dict) -> list[dict]:
     """Crates linked into the binary: normal dependencies for this host."""
     host = next(line.split(": ", 1)[1] for line in subprocess.run(["rustc", "-vV"], check=True, capture_output=True, text=True).stdout.splitlines() if line.startswith("host: "))
@@ -675,7 +734,45 @@ def rust_dependencies(env: dict) -> list[dict]:
             if any(kind["kind"] is None for kind in dependency["dep_kinds"]) and dependency["pkg"] not in reached:
                 reached.add(dependency["pkg"])
                 pending.append(dependency["pkg"])
-    return sorted(({"name": packages[i]["name"], "version": packages[i]["version"], "license": packages[i].get("license") or "see crate", "repository": packages[i].get("repository") or "", "directory": str(Path(packages[i]["manifest_path"]).parent)} for i in reached), key=lambda item: (item["name"], item["version"]))
+    checksums = locked_checksums()
+    return sorted(({"name": packages[i]["name"], "version": packages[i]["version"], "license": packages[i].get("license") or "see crate", "repository": packages[i].get("repository") or "", "source": packages[i].get("source") or "", "checksum": checksums.get((packages[i]["name"], packages[i]["version"]), ""), "directory": str(Path(packages[i]["manifest_path"]).parent)} for i in reached), key=lambda item: (item["name"], item["version"]))
+
+
+def license_crate(crate: dict, directory: Path, artifact: Path, notices: str, pinned: list[dict]) -> None:
+    """Copy every license text of one linked crate and record where each is."""
+    folder = f"{crate['name']}-{crate['version']}"
+    files = license_files(directory)
+    if len({path.as_posix().lower() for path in files}) != len(files):
+        raise BuildError(f"crate {folder} has license files whose paths differ only in case")
+    packaged = []
+    for relative in files:
+        destination = copy_license(directory / relative, artifact / "licenses" / "rust" / folder / relative)
+        packaged.append({"path": destination.relative_to(artifact).as_posix(), "source": relative.as_posix(), "sha256": sha256(destination)})
+    embedded = []
+    for record in pinned:
+        use = record.get("cargo")
+        if not use or use["name"] != crate["name"]:
+            continue
+        if (use["version"], use["checksum"]) != (crate["version"], crate["checksum"]):
+            raise BuildError(f"{record['file']} was verified against {use['name']} {use['version']} ({use['checksum']}), not the linked {folder}; verify it against that crate")
+        if use["path"] and not any(item["source"] == use["path"] and item["sha256"] == record["sha256"] for item in packaged):
+            raise BuildError(f"{record['file']} is not the {use['path']} of crate {folder}")
+        if f"\n==== {record['title']} ====\n\n{record['data'].decode('utf-8').rstrip()}\n" not in notices:
+            raise BuildError(f"the program's --notices output lacks the full text of {record['file']}")
+        embedded.append({"title": record["title"], "source": use["path"], "sha256": record["sha256"], "origin": record["origin"]})
+    # A text below the crate root covers code from another project; the
+    # program must print it too, because it can be copied without the archive.
+    unpinned = sorted({item["source"] for item in packaged if "/" in item["source"]} - {item["source"] for item in embedded})
+    if unpinned:
+        raise BuildError(f"crate {folder} carries nested notices that --notices does not print: {', '.join(unpinned)}; add them to {NOTICE_DATA.name}/manifest.json and to NOTICES in src/main.rs")
+    if any("/" not in item["source"] for item in packaged):
+        where = f"licenses/rust/{folder}/"
+    elif any(item["source"] is None for item in embedded) or f"==== {crate['name']} (" in notices:
+        # Some crate packages omit the file; the binary embeds the text.
+        where = "NOTICES.txt"
+    else:
+        raise BuildError(f"no license text found for crate {folder}; add it to the crate's embedded notices")
+    crate.update({"license_text": where, "license_files": packaged, "embedded_notices": embedded})
 
 
 def build_rust(work: Path, out: Path) -> dict:
@@ -692,29 +789,21 @@ def build_rust(work: Path, out: Path) -> dict:
     shutil.copy2(binary, program)
     for name in ("LICENSE.txt", "NOTICE.txt"):
         copy_license(CRATE / name, artifact / name)
-    notices = subprocess.run([str(program), "--notices"], check=True, capture_output=True, text=True).stdout
+    notices = subprocess.run([str(program), "--notices"], check=True, capture_output=True, text=True, encoding="utf-8").stdout
     (artifact / "NOTICES.txt").write_text(notices, encoding="utf-8")
     dependencies = rust_dependencies(env)
+    pinned = pinned_notices()
+    unlinked = sorted({record["cargo"]["name"] for record in pinned if record.get("cargo")} - {crate["name"] for crate in dependencies})
+    if unlinked:
+        raise BuildError(f"{NOTICE_DATA.name}/manifest.json names crates that are not linked: {', '.join(unlinked)}")
     lines = ["# Rust crates linked into legacy-repo-map", "", "| Crate | Version | License | Source | License text |", "| --- | --- | --- | --- | --- |"]
+    nested = ["", "## Notices inside crate packages", "", "Texts below a crate's root directory cover code from another project that the crate compiles in. Each keeps its path under `licenses/rust/` and is printed by `legacy-repo-map --notices`.", "", "| Crate | Notice | File | SHA-256 | Origin |", "| --- | --- | --- | --- | --- |"]
     for crate in dependencies:
-        files = license_files(Path(crate["directory"]))
-        folder = f"{crate['name']}-{crate['version']}"
-        if files:
-            destination = artifact / "licenses" / "rust" / folder
-            destination.mkdir(parents=True)
-            for path in files:
-                shutil.copy2(path, destination / path.name)
-            where = f"`licenses/rust/{folder}/`"
-        elif f"==== {crate['name']} (" in notices:
-            # Some crate packages omit the file; the binary embeds the text.
-            where = "`NOTICES.txt`"
-        else:
-            raise BuildError(f"no license text found for crate {folder}; add it to the crate's embedded notices")
-        lines.append(f"| {crate['name']} | {crate['version']} | {crate['license']} | {crate['repository']} | {where} |")
-        crate["license_files"] = [path.name for path in files]
-        crate["license_text"] = where.strip("`")
-        del crate["directory"]
-    (artifact / "THIRD_PARTY_RUST.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        license_crate(crate, Path(crate.pop("directory")), artifact, notices, pinned)
+        lines.append(f"| {crate['name']} | {crate['version']} | {crate['license']} | {crate['repository']} | `{crate['license_text']}` |")
+        files = {item["source"]: item["path"] for item in crate["license_files"]}
+        nested += [f"| {crate['name']} {crate['version']} | {item['title']} | `{files[item['source']]}` | `{item['sha256']}` | {item['origin']} |" for item in crate["embedded_notices"] if item["source"]]
+    (artifact / "THIRD_PARTY_RUST.md").write_text("\n".join(lines + nested) + "\n", encoding="utf-8")
     info = {
         "artifact": artifact.name, "program": binary.name, "platform": platform_tag(), "status": "experimental",
         "version": subprocess.run([str(program), "--version"], check=True, capture_output=True, text=True).stdout.strip(),

@@ -30,7 +30,7 @@ CARGO_TARGET_DIR=/path/outside/the/repository cargo test --release --locked --ma
 
 ## Sources and versions
 
-Tree-sitter's [Rust binding](https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_rust/README.md) ([API documentation](https://docs.rs/tree-sitter/0.25.10/tree_sitter/)) parses the source and runs the queries. Versions are pinned exactly in `Cargo.toml` and `Cargo.lock`:
+Tree-sitter's [Rust binding](https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_rust/README.md) ([API documentation](https://docs.rs/tree-sitter/0.25.10/tree_sitter/)) parses the source and runs the queries. `Cargo.toml` pins the parser runtime and each grammar crate to one exact version (`=`). It declares `ignore`, `sha2`, `serde_json` and `libc` as version ranges; the committed `Cargo.lock` fixes those and every transitive crate to one version and registry checksum, and the build and test commands above pass `--locked` so that Cargo refuses to resolve anything else:
 
 | Crate | Version | Role |
 | --- | --- | --- |
@@ -44,18 +44,30 @@ Tree-sitter's [Rust binding](https://github.com/tree-sitter/tree-sitter/blob/mas
 | `tree-sitter-c-sharp` | 0.23.5 | C# grammar |
 | `tree-sitter-go` | 0.25.0 | Go grammar |
 | `tree-sitter-rust` | 0.24.2 | Rust grammar |
-| `ignore` | 0.4 | `.gitignore` matching for directories that are not git work trees |
-| `sha2`, `serde_json`, `libc` | see `Cargo.lock` | hashing, JSON output, no-follow file opening on Unix |
+| `ignore` | range `0.4`, see `Cargo.lock` | `.gitignore` matching for directories that are not git work trees |
+| `sha2`, `serde_json`, `libc` | ranges, see `Cargo.lock` | hashing, JSON output, no-follow file opening on Unix |
 
 The tag queries are not copied into this crate. `src/tags.rs` embeds the files under `skills/legacy-codebase-workflows/vendor/queries/` at compile time, so both implementations use the same query text, and `map.meta.json` records each query's SHA-256.
 
 ## Attribution
 
-`src/rank.rs` is a port of `skills/legacy-codebase-workflows/vendor/aider_rank.py`, which adapts the ranking in [Aider's repository map](https://aider.chat/2023/10/22/repomap.html) (`aider/repomap.py` at revision `5dc9490bb35f9729ef2c95d00a19ccd30c26339c`, Apache License 2.0). The port keeps the graph weighting, personalization and PageRank rank distribution, and reimplements the pure-Python PageRank of networkx 3.4.2 (BSD-3-Clause) step by step so that both tools order definitions identically. `Cargo.toml` declares Apache-2.0 for this crate because of that derivation; the declaration covers this crate only, not the rest of the toolbox. See [THIRD_PARTY.md](../../skills/legacy-codebase-workflows/THIRD_PARTY.md) for the full attribution and the tag-query licenses. `legacy-repo-map --notices` prints the Aider license, the grammar projects' MIT licenses and the Tree-sitter runtime's MIT license. The `tree-sitter` crate package ships no license file, so `licenses/tree-sitter-LICENSE.txt` is an unmodified copy of the [upstream file at tag v0.25.10](https://github.com/tree-sitter/tree-sitter/blob/v0.25.10/LICENSE) (SHA-256 `5f9cf9fb6acb1972b35ae29119ce563bb60ec097656bc4b69b9bac2d04c7a147`).
+`src/rank.rs` is a port of `skills/legacy-codebase-workflows/vendor/aider_rank.py`, which adapts the ranking in [Aider's repository map](https://aider.chat/2023/10/22/repomap.html) (`aider/repomap.py` at revision `5dc9490bb35f9729ef2c95d00a19ccd30c26339c`, Apache License 2.0). The port keeps the graph weighting, personalization and PageRank rank distribution, and reimplements the pure-Python PageRank of networkx 3.4.2 (BSD-3-Clause) step by step so that both tools order definitions identically. `Cargo.toml` declares Apache-2.0 for this crate because of that derivation; the declaration covers this crate only, not the rest of the toolbox. See [THIRD_PARTY.md](../../skills/legacy-codebase-workflows/THIRD_PARTY.md) for the full attribution and the tag-query licenses. `legacy-repo-map --notices` prints the Aider license, the grammar projects' MIT licenses, the Tree-sitter runtime's MIT license and the two Unicode, Inc. notices below.
+
+Two linked crates compile in code from another project and keep its notice below the crate root, where a scan of the root directory does not see it:
+
+| Crate | Compiled-in code | Notice in the crate package | Copy in `licenses/` |
+| --- | --- | --- | --- |
+| `tree-sitter` 0.25.10 | ICU's UTF-8 and UTF-16 headers, used by the lexer | `src/unicode/LICENSE` | `tree-sitter-unicode-LICENSE.txt` |
+| `regex-syntax` 0.8.11 | tables generated from the Unicode Character Database, enabled by the resolved `unicode-*` features | `src/unicode_tables/LICENSE-UNICODE` | `regex-syntax-LICENSE-UNICODE.txt` |
+
+The `tree-sitter` crate package also ships no license file of its own, so `licenses/tree-sitter-LICENSE.txt` is an unmodified copy of the upstream file. [licenses/manifest.json](licenses/manifest.json) records each copy's SHA-256, its origin at an immutable upstream commit, and the crate version and registry checksum it was verified against. `scripts/build-legacy-tools.py` collects license-named files at any depth of every linked crate, keeps their relative paths under `licenses/rust/<crate>-<version>/`, and records each path and SHA-256 in `BUILD-INFO.json` and `THIRD_PARTY_RUST.md`. It stops when a linked crate carries a nested notice that is not in the manifest, when a copy differs from the crate's file, or when `--notices` does not print a text in full.
+
+The same manifest covers the standalone Python bundle. The `tree-sitter` 0.25.2 wheel compiles the same Tree-sitter commit and ICU headers but carries only the Python binding's license, so the helper adds the runtime's MIT license and the ICU notice under `licenses/python/tree-sitter-0.25.2/tree_sitter/core/` and refuses another `tree-sitter` version until the notices are verified against that release's source.
 
 ## Limits
 
 - Experimental. Ship the Python tool or its standalone bundle as the default.
+- The notice check covers license-named files (`LICENSE*`, `LICENCE*`, `COPYING*`, `NOTICE*`, `AUTHORS*`, `UNLICENSE*`) in the linked crates. A notice that exists only as a comment in a source file, or under another file name, is not detected. In the Python bundle only the `tree-sitter` runtime wheel was compared with its source release; the grammar extensions from `tree-sitter-language-pack` and the three separate grammar wheels are covered by the license files those wheels ship and by the grammar licenses under `vendor/licenses/`.
 - The ranking matches bare identifier text between definitions and references. It is not a type-resolved call graph and does not see reflection, configuration or dependency-injection wiring.
 - Ten languages have queries: Java, Python, JavaScript, TypeScript, TSX, C, C++, C#, Go and Rust. Other files are listed in the inventory only.
 - No cache: every run reads, hashes and parses the selected files.

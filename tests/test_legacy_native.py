@@ -11,6 +11,9 @@ Environment:
   LEGACY_MAP_DEPS      optional directory holding the Python map dependencies
                        (pip --target layout) when they are not installed.
   LEGACY_BUILD_TOOLS   pinned build tools for real onefile archive verification.
+  LEGACY_LICENSE_SOURCES  optional directory holding the source archives named
+                       in `src/legacy-repo-map/licenses/manifest.json`, to
+                       check the pinned notices against them again.
 """
 
 import ast
@@ -23,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import struct
+import tarfile
 import zlib
 import zipfile
 import tempfile
@@ -930,6 +934,7 @@ class BuildHelperTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(BUILD_HELPER), "--target", "python-bundle", "--output-dir", str(Path(temp) / "out"), "--tools-dir", str(tools)], capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn("PyInstaller is not importable from the selected target directory", result.stderr)
+
     def test_refuses_to_write_inside_the_repository(self):
         inside = REPO / "tests" / "native-build-output"
         for option in ("--output-dir", "--deps-dir"):
@@ -951,6 +956,262 @@ class BuildHelperTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1)
             self.assertIn("PyInstaller is not importable", result.stderr)
             self.assertEqual(list(empty.iterdir()), [])
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+class LicenseNoticeTests(unittest.TestCase):
+    """Notices for third-party code inside a crate package or a wheel."""
+
+    def setUp(self):
+        self.helper = BuildHelperTests.helper()
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.base = Path(temp.name).resolve()
+        self.crate = {"name": "demo", "version": "1.0.0", "checksum": "c" * 64}
+
+    def package(self, files):
+        directory = self.base / "registry" / "demo-1.0.0"
+        for relative, text in files.items():
+            path = directory / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(text.encode("utf-8"))
+        return directory
+
+    @staticmethod
+    def pin(path, text, **use):
+        data = text.encode("utf-8")
+        cargo = {"name": "demo", "version": "1.0.0", "checksum": "c" * 64, "path": path, **use}
+        return {"file": f"demo-{path or 'own'}", "title": f"notice for {path or 'demo'}", "sha256": digest(data), "origin": f"https://example.invalid/{path or 'LICENSE'}", "data": data, "cargo": cargo}
+
+    @staticmethod
+    def printed(*pins):
+        return "header\n" + "".join(f"\n==== {pin['title']} ====\n\n{pin['data'].decode('utf-8').rstrip()}\n" for pin in pins)
+
+    def license(self, files, pins, notices=None, crate=None):
+        crate = dict(crate or self.crate)
+        self.helper.license_crate(crate, self.package(files), self.base / "artifact", self.printed(*pins) if notices is None else notices, pins)
+        return crate
+
+    def test_crate_license_collection_is_recursive_and_keeps_relative_paths(self):
+        texts = {"LICENSE": "demo license\n", "src/unicode/LICENSE": "Unicode notice ©\n", "src/tables/LICENSE": "tables notice\n", "vendor/zlib/COPYING.txt": "zlib notice\n"}
+        directory = self.package({**texts, "src/license.rs": "// code\n", "src/lib.rs": "", "README.md": "demo\n"})
+        self.assertEqual([path.as_posix() for path in self.helper.license_files(directory)], sorted(texts))
+        self.assertEqual(self.helper.license_files(self.base / "absent"), [])
+        pins = [self.pin(path, text) for path, text in texts.items() if "/" in path]
+        crate = self.license(texts, pins)
+        root = self.base / "artifact" / "licenses" / "rust" / "demo-1.0.0"
+        # Three files named LICENSE stay three files.
+        self.assertEqual({path.relative_to(root).as_posix(): path.read_text(encoding="utf-8") for path in root.rglob("*") if path.is_file()}, texts)
+        self.assertEqual(crate["license_files"], [{"path": f"licenses/rust/demo-1.0.0/{path}", "source": path, "sha256": digest(texts[path].encode("utf-8"))} for path in sorted(texts)])
+        self.assertEqual(crate["license_text"], "licenses/rust/demo-1.0.0/")
+        self.assertEqual({item["source"]: (item["sha256"], item["origin"]) for item in crate["embedded_notices"]}, {pin["cargo"]["path"]: (pin["sha256"], pin["origin"]) for pin in pins})
+
+    def test_nested_notice_must_be_verified_and_printed_in_full(self):
+        texts = {"LICENSE": "demo license\n", "src/unicode/LICENSE": "first paragraph\n\nsecond paragraph\n"}
+        pin = self.pin("src/unicode/LICENSE", texts["src/unicode/LICENSE"])
+        cases = [
+            ("nested notices that --notices does not print: src/unicode/LICENSE", [], None, None),
+            ("is not the src/unicode/LICENSE of crate", [self.pin("src/unicode/LICENSE", "another text\n")], None, None),
+            ("verified against demo 0.9.0", [self.pin("src/unicode/LICENSE", texts["src/unicode/LICENSE"], version="0.9.0")], None, None),
+            ("verified against demo 1.0.0", [pin], None, {**self.crate, "checksum": "d" * 64}),
+            ("lacks the full text", [pin], "header\n\n==== notice for src/unicode/LICENSE ====\n\nfirst paragraph\n", None),
+        ]
+        for message, pins, notices, crate in cases:
+            with self.subTest(message=message), self.assertRaisesRegex(self.helper.BuildError, message):
+                self.license(texts, pins, notices, crate)
+        with mock.patch.object(self.helper, "license_files", return_value=[Path("LICENSE"), Path("license")]):
+            with self.assertRaisesRegex(self.helper.BuildError, "differ only in case"):
+                self.license(texts, [pin])
+
+    def test_crate_needs_its_own_license_beside_a_nested_notice(self):
+        nested = {"src/unicode/LICENSE": "Unicode notice\n"}
+        pin = self.pin("src/unicode/LICENSE", nested["src/unicode/LICENSE"])
+        with self.assertRaisesRegex(self.helper.BuildError, "no license text found for crate demo-1.0.0"):
+            self.license(nested, [pin])
+        own = self.pin(None, "demo license kept beside the program\n")
+        crate = self.license(nested, [own, pin])
+        self.assertEqual(crate["license_text"], "NOTICES.txt")
+        self.assertEqual([item["source"] for item in crate["embedded_notices"]], [None, "src/unicode/LICENSE"])
+        self.assertEqual(self.license(nested, [pin], self.printed(pin) + "\n==== demo (MIT) ====\n\ntext\n")["license_text"], "NOTICES.txt")
+
+    def test_pinned_notices_match_the_lockfile_and_the_python_requirement(self):
+        pinned = self.helper.pinned_notices()
+        checksums = self.helper.locked_checksums()
+        requirements = self.helper.pinned_versions(self.helper.MAP_REQUIREMENTS.read_text(encoding="utf-8").splitlines())
+        self.assertEqual({record["file"] for record in pinned}, {path.name for path in (CRATE / "licenses").iterdir()} - {"manifest.json"})
+        for record in pinned:
+            with self.subTest(notice=record["file"]):
+                self.assertEqual(digest(record["data"]), record["sha256"])
+                self.assertRegex(record["origin"], r"^https://raw\.githubusercontent\.com/[^/]+/[^/]+/[0-9a-f]{40}/")
+                use = record["cargo"]
+                self.assertEqual(checksums[(use["name"], use["version"])], use["checksum"])
+                if "pypi" in record:
+                    self.assertEqual(requirements[record["pypi"]["name"]], record["pypi"]["version"])
+                    self.assertRegex(record["pypi"]["sdist_sha256"], r"^[0-9a-f]{64}$")
+                    self.assertTrue(record["pypi"]["sdist"].endswith(f"/{record['pypi']['name']}-{record['pypi']['version']}.tar.gz"))
+        self.assertGreater(len(checksums), 30)
+
+    def test_pinned_notice_survives_a_crlf_checkout_but_not_an_edit(self):
+        copy = self.base / "licenses"
+        shutil.copytree(CRATE / "licenses", copy)
+        target = copy / "tree-sitter-unicode-LICENSE.txt"
+        upstream = target.read_bytes().replace(b"\r\n", b"\n")
+        target.write_bytes(upstream.replace(b"\n", b"\r\n"))
+        with mock.patch.object(self.helper, "NOTICE_DATA", copy):
+            record = next(item for item in self.helper.pinned_notices() if item["file"] == target.name)
+            self.assertEqual(record["data"], upstream)
+            target.write_bytes(upstream.replace(b"1991-2019", b"1991-2020"))
+            with self.assertRaisesRegex(self.helper.BuildError, "tree-sitter-unicode-LICENSE.txt differs from the hash pinned"):
+                self.helper.pinned_notices()
+
+    def test_linked_crates_carry_exactly_the_pinned_nested_notices(self):
+        if RUST_BINARY is None or not shutil.which("cargo"):
+            self.skipTest(RUST_SKIP or "cargo is not installed")
+        notices = subprocess.run([str(RUST_BINARY), "--notices"], check=True, capture_output=True, text=True, encoding="utf-8").stdout
+        pinned = self.helper.pinned_notices()
+        crates = self.helper.rust_dependencies(dict(os.environ))
+        artifact = self.base / "artifact"
+        # The actual crate sources and the actual program output, as in a build.
+        for crate in crates:
+            self.helper.license_crate(crate, Path(crate.pop("directory")), artifact, notices, pinned)
+            self.assertRegex(crate["checksum"], r"^[0-9a-f]{64}$")
+            self.assertTrue(crate["source"].startswith("registry+"))
+        nested = {(crate["name"], crate["version"], item["source"], item["sha256"]) for crate in crates for item in crate["license_files"] if "/" in item["source"]}
+        self.assertEqual(nested, {(record["cargo"]["name"], record["cargo"]["version"], record["cargo"]["path"], record["sha256"]) for record in pinned if record["cargo"]["path"]})
+        self.assertEqual({name for name, *_ in nested}, {"tree-sitter", "regex-syntax"})
+        for name, version, source, _ in nested:
+            copied = artifact / "licenses" / "rust" / f"{name}-{version}" / source
+            self.assertIn("Unicode, Inc.", copied.read_text(encoding="utf-8"))
+        by_name = {crate["name"]: crate for crate in crates}
+        self.assertEqual(by_name["tree-sitter"]["license_text"], "NOTICES.txt")
+        self.assertEqual([item["source"] for item in by_name["tree-sitter"]["embedded_notices"]], [None, "src/unicode/LICENSE"])
+        self.assertIn("LICENSE-MIT", [item["source"] for item in by_name["regex-syntax"]["license_files"]])
+
+    def test_program_prints_each_pinned_notice_in_full(self):
+        if RUST_BINARY is None:
+            self.skipTest(RUST_SKIP)
+        notices = subprocess.run([str(RUST_BINARY), "--notices"], check=True, capture_output=True, text=True, encoding="utf-8").stdout
+        for record in self.helper.pinned_notices():
+            with self.subTest(notice=record["file"]):
+                self.assertIn(f"\n==== {record['title']} ====\n\n{record['data'].decode('utf-8').rstrip()}\n", notices)
+        self.assertIn("Copyright © 1991-2019 Unicode, Inc. All rights reserved.", notices)
+        self.assertIn("UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE", notices)
+
+    def test_rust_artifact_ships_every_recorded_license_text(self):
+        artifact = Path(RUST_BINARY).parent if RUST_BINARY else None
+        if artifact is None or not (artifact / "BUILD-INFO.json").is_file():
+            self.skipTest("LEGACY_REPO_MAP_BIN is not inside an artifact of the build helper")
+        info = json.loads((artifact / "BUILD-INFO.json").read_text(encoding="utf-8"))
+        notices = (artifact / "NOTICES.txt").read_text(encoding="utf-8")
+        table = (artifact / "THIRD_PARTY_RUST.md").read_text(encoding="utf-8")
+        recorded, nested = set(), set()
+        for crate in info["crates"]:
+            with self.subTest(crate=crate["name"]):
+                self.assertRegex(crate["checksum"], r"^[0-9a-f]{64}$")
+                self.assertTrue(crate["license_text"] == "NOTICES.txt" or any("/" not in item["source"] for item in crate["license_files"]))
+                for item in crate["license_files"]:
+                    self.assertEqual(item["path"], f"licenses/rust/{crate['name']}-{crate['version']}/{item['source']}")
+                    self.assertEqual(digest((artifact / item["path"]).read_bytes()), item["sha256"])
+                    recorded.add(item["path"])
+                for item in crate["embedded_notices"]:
+                    self.assertIn(f"\n==== {item['title']} ====\n", notices)
+                    if item["source"]:
+                        nested.add((crate["name"], crate["version"], item["source"], item["sha256"]))
+                        self.assertIn(f"`licenses/rust/{crate['name']}-{crate['version']}/{item['source']}` | `{item['sha256']}` | {item['origin']} |", table)
+        self.assertEqual({path.relative_to(artifact).as_posix() for path in (artifact / "licenses" / "rust").rglob("*") if path.is_file()}, recorded)
+        self.assertEqual(nested, {(record["cargo"]["name"], record["cargo"]["version"], record["cargo"]["path"], record["sha256"]) for record in self.helper.pinned_notices() if record["cargo"]["path"]})
+        self.assertNotIn(str(REPO), json.dumps(info))
+
+    def test_wheel_source_notices_follow_the_selected_distribution(self):
+        expected = {record["pypi"]["bundle_path"]: record for record in self.helper.pinned_notices() if "pypi" in record}
+        self.assertEqual(set(expected), {"tree_sitter/core/LICENSE", "tree_sitter/core/lib/src/unicode/LICENSE"})
+        version = next(iter(expected.values()))["pypi"]["version"]
+        selected = type("Distribution", (), {"version": version})()
+        skill = self.base / "skill"
+        staged = self.helper.stage_source_notices(skill, {"tree-sitter": selected})
+        root = skill / "licenses" / "python" / f"tree-sitter-{version}"
+        self.assertEqual({path.relative_to(root).as_posix(): digest(path.read_bytes()) for path in root.rglob("*") if path.is_file()}, {path: record["sha256"] for path, record in expected.items()})
+        for item in staged:
+            record = expected[Path(item["license"]).relative_to(f"licenses/python/tree-sitter-{version}").as_posix()]
+            self.assertEqual((item["sha256"], item["source"], item["version"]), (record["sha256"], record["origin"], version))
+            self.assertEqual(item["verified_against"]["sdist_sha256"], record["pypi"]["sdist_sha256"])
+        self.assertIn("Copyright © 1991-2019 Unicode, Inc.", (root / "tree_sitter/core/lib/src/unicode/LICENSE").read_text(encoding="utf-8"))
+        with self.assertRaisesRegex(self.helper.BuildError, "claim tree_sitter/core/"):
+            self.helper.stage_source_notices(skill, {"tree-sitter": selected})
+        other = type("Distribution", (), {"version": "0.26.0"})()
+        for distributions, found in (({"tree-sitter": other}, "not 0.26.0"), ({}, "not an absent distribution")):
+            with self.subTest(found=found), self.assertRaisesRegex(self.helper.BuildError, f"verified against the source of tree-sitter {version}, {found}"):
+                self.helper.stage_source_notices(self.base / "other", distributions)
+        self.assertFalse((self.base / "other").exists())
+
+    def test_staged_bundle_licenses_include_the_notices_the_wheel_omits(self):
+        tools = os.environ.get("LEGACY_BUILD_TOOLS")
+        if not (MAP_DEPS and tools):
+            self.skipTest("LEGACY_MAP_DEPS and LEGACY_BUILD_TOOLS are not set")
+        _, staged = self.helper.stage_skill(self.base / "stage", [Path(tools), Path(MAP_DEPS)])
+        skill = self.base / "stage" / "skill"
+        installed = self.helper.selected_distributions(Path(MAP_DEPS))["tree-sitter"]
+        # The wheel itself carries only the binding's license.
+        self.assertEqual([path.name for path in self.helper.distribution_license_files(installed)], ["LICENSE"])
+        self.assertEqual(len(staged), 2)
+        listed = (skill / "BUNDLED_LICENSES.md").read_text(encoding="utf-8")
+        for item in staged:
+            self.assertEqual(digest((skill / item["license"]).read_bytes()), item["sha256"])
+            self.assertIn(f"`{item['license']}` | `{item['sha256']}` | {item['source']} |", listed)
+        self.assertTrue((skill / "licenses" / "python" / f"tree-sitter-{installed.version}" / "LICENSE").is_file())
+
+    def test_bundle_ships_the_notices_the_wheel_omits(self):
+        if not TOOLS_BINARY:
+            self.skipTest("LEGACY_TOOLS_BIN is not set")
+        artifact = Path(TOOLS_BINARY).parent
+        info = json.loads((artifact / "BUILD-INFO.json").read_text(encoding="utf-8"))
+        shipped = {item["license"]: item for item in info["additional_notices"]}
+        listed = (artifact / "BUNDLED_LICENSES.md").read_text(encoding="utf-8")
+        for record in self.helper.pinned_notices():
+            use = record.get("pypi")
+            if not use:
+                continue
+            with self.subTest(notice=record["file"]):
+                self.assertEqual(info["distributions"][use["name"]], use["version"])
+                path = f"licenses/python/{use['name']}-{use['version']}/{use['bundle_path']}"
+                self.assertEqual((shipped[path]["sha256"], shipped[path]["source"]), (record["sha256"], record["origin"]))
+                self.assertEqual(digest((artifact / path).read_bytes()), record["sha256"])
+                self.assertIn(f"`{path}` | `{record['sha256']}`", listed)
+
+    def test_distribution_license_files_with_one_name_are_refused(self):
+        files = ["demo-1.0.dist-info/licenses/LICENSE", "demo/_vendor/other/LICENSE", "demo/__init__.py"]
+        for relative in files:
+            (self.base / relative).parent.mkdir(parents=True, exist_ok=True)
+            (self.base / relative).write_text(relative, encoding="utf-8")
+        distribution = type("Distribution", (), {"version": "1.0", "metadata": {"Name": "demo"}, "files": files, "locate_file": lambda _, item: self.base / item})()
+        with self.assertRaisesRegex(self.helper.BuildError, "demo 1.0 has license files that share a name"):
+            self.helper.distribution_license_files(distribution)
+        distribution.files = files[:1] + files[2:]
+        self.assertEqual(self.helper.distribution_license_files(distribution), [self.base / files[0]])
+
+    def test_pinned_notices_match_the_published_python_source(self):
+        sources = os.environ.get("LEGACY_LICENSE_SOURCES")
+        if not sources:
+            self.skipTest("LEGACY_LICENSE_SOURCES is not set")
+        for record in self.helper.pinned_notices():
+            use = record.get("pypi")
+            if not use:
+                continue
+            with self.subTest(notice=record["file"]):
+                archive = Path(sources) / use["sdist"].rsplit("/", 1)[1]
+                self.assertEqual(digest(archive.read_bytes()), use["sdist_sha256"])
+                prefix = f"{use['name']}-{use['version']}/"
+                with tarfile.open(archive) as bundle:
+                    names = set(bundle.getnames())
+                    self.assertIn('"tree_sitter/core/lib/src/lib.c"', bundle.extractfile(prefix + "setup.py").read().decode("utf-8"))
+                    if use["sdist_path"]:
+                        self.assertEqual(digest(bundle.extractfile(prefix + use["sdist_path"]).read()), record["sha256"])
+                    else:
+                        # The source release omits this text; its origin is the pinned upstream commit.
+                        self.assertNotIn(prefix + use["bundle_path"], names)
 
 
 if __name__ == "__main__":
