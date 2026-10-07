@@ -1,6 +1,8 @@
 """Functional checks for the offline legacy repository map and citation verifier."""
 
 import os
+import errno
+import hashlib
 import json
 from unittest.mock import patch
 import subprocess
@@ -56,6 +58,114 @@ class MapTests(unittest.TestCase):
         before = [(self.out / n).read_bytes() for n in ("repo-map.md", "inventory.json", "map.meta.json")]
         self.map(budget=4096, focus_symbols=["renderView"])
         self.assertEqual(before, [(self.out / n).read_bytes() for n in ("repo-map.md", "inventory.json", "map.meta.json")])
+
+    def test_focus_paths_normalize_before_ranking_and_report_missing_targets(self):
+        self.write("src/a.java", "class Preferred { void selected() {} }\n")
+        self.write("src/b.java", "class Ordinary { void other() {} }\n")
+        baseline = self.map(focus_files=["src/a.java"])
+        content = (self.out / "repo-map.md").read_bytes()
+        for path in ("./src/a.java", "src\\a.java"):
+            with self.subTest(path=path):
+                meta = self.map(focus_files=[path])
+                self.assertEqual(meta["selection"]["focus_files"], ["src/a.java"])
+                self.assertEqual(meta["focus_not_found"]["files_not_parsed"], [])
+                self.assertEqual(content, (self.out / "repo-map.md").read_bytes())
+        missing = self.map(focus_files=["./src/missing.java"], focus_symbols=["ImaginaryMethod"])
+        self.assertEqual(missing["focus_not_found"], {"files_not_parsed": ["src/missing.java"], "symbols_without_definitions": ["ImaginaryMethod"]})
+        self.assertEqual(baseline["focus_not_found"]["files_not_parsed"], [])
+        for unsafe in ("../outside.java", "..\\outside.java"):
+            with self.subTest(path=unsafe), self.assertRaises(ValueError):
+                self.map(focus_files=[unsafe])
+
+    def test_non_git_ignore_directory_anchors_scope_and_negation(self):
+        self.write(".gitignore", "target/\n/dist\n*.tmp\n")
+        self.write("moduleA/.gitignore", "cache/\n/local/\n!keep.tmp\n*.drop\n!keep.drop\nblocked/\n!blocked/rescue.java\n")
+        excluded = ["moduleA/target/classes/Foo.java", "dist/Root.java", "moduleA/cache/Cached.java", "moduleA/deep/cache/Cached.java", "moduleA/local/Local.java", "moduleB/file.tmp", "moduleA/file.drop", "moduleA/blocked/rescue.java"]
+        kept = ["moduleA/deep/dist/Kept.java", "moduleB/dist/Kept.java", "moduleA/deep/local/Kept.java", "moduleB/cache/Kept.java", "moduleA/keep.tmp", "moduleA/keep.drop", "moduleB/target"]
+        for name in excluded + kept:
+            self.write(name, "class Example {}\n")
+        visited = []
+        original = os.scandir
+        def observe(directory):
+            visited.append(Path(directory).relative_to(self.repo).as_posix())
+            return original(directory)
+        with patch("repo_files.os.scandir", side_effect=observe):
+            inventory = scan_repository(self.repo)
+        paths = {entry["path"] for entry in inventory["files"]}
+        self.assertTrue(set(kept).issubset(paths))
+        self.assertFalse(set(excluded) & paths)
+        for directory in ("moduleA/target", "moduleA/cache", "moduleA/deep/cache", "moduleA/blocked", "dist"):
+            self.assertNotIn(directory, visited)
+        self.assertIn("moduleA/deep/local", visited)
+        # The same basic policies agree with Git's actual ignore engine.
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.assertEqual(paths, {entry["path"] for entry in scan_repository(self.repo)["files"]})
+
+    @unittest.skipUnless(os.name == "posix", "requires POSIX byte filenames")
+    def test_non_utf8_paths_are_counted_skipped_and_safe_in_git_and_non_git_maps(self):
+        raw_path = os.fsencode(self.repo) + b"/Bad-\xff.java"
+        try:
+            with open(raw_path, "wb") as handle:
+                handle.write(b"class MustNotParse {}\n")
+        except OSError as error:
+            if error.errno == errno.EILSEQ:
+                self.skipTest("filesystem does not support invalid UTF-8 filenames (EILSEQ)")
+            raise
+        self.write("Good.java", "class Good {}\n")
+        for git in (False, True):
+            if git:
+                subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+                subprocess.run([b"git", b"-C", os.fsencode(self.repo), b"add", b"--", b"Bad-\xff.java", b"Good.java"], check=True)
+            for excludes in ((), ("Bad-*",)):
+                with self.subTest(git=git, excludes=excludes):
+                    meta = self.map(excludes=excludes)
+                    self.assertEqual(meta["status"], "complete")
+                    self.assertEqual(meta["coverage"]["candidates_seen"], 2)
+                    self.assertEqual(meta["skipped"], [{"path": "Bad-\ufffd.java", "reason": "non-UTF-8 path"}])
+                    self.assertEqual(len(meta["working_copy_fingerprint"]), 64)
+                    self.assertIn("Good.java", (self.out / "repo-map.md").read_text(encoding="utf-8"))
+                    for name in ("repo-map.md", "inventory.json", "map.meta.json"):
+                        (self.out / name).read_bytes().decode("utf-8")
+            capped = self.map(max_files=1)
+            self.assertEqual(capped["coverage"]["candidates_seen"], 2)
+            self.assertEqual(capped["coverage"]["selected_files"], 0)
+            self.assertEqual(capped["skipped"][0]["reason"], "non-UTF-8 path")
+            self.assertTrue(capped["truncated"])
+            with open(raw_path, "rb") as handle:
+                self.assertEqual(handle.read(), b"class MustNotParse {}\n")
+
+    def test_git_conflict_entries_deduplicate_without_recent_git_option(self):
+        self.write("a.py", "def alpha(): pass\n")
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        blob = subprocess.check_output(["git", "-C", str(self.repo), "hash-object", "-w", "a.py"], text=True).strip()
+        stages = "".join(f"100644 {blob} {stage}\ta.py\n" for stage in (1, 2, 3))
+        subprocess.run(["git", "-C", str(self.repo), "update-index", "--index-info"], input=stages, text=True, check=True)
+        raw = subprocess.check_output(["git", "-C", str(self.repo), "ls-files", "-z", "--cached", "--others", "--exclude-standard"])
+        self.assertEqual(raw.count(b"a.py\0"), 3)
+        real_popen = subprocess.Popen
+        with patch("repo_files.subprocess.Popen", wraps=real_popen) as launched:
+            inventory = scan_repository(self.repo, max_files=1)
+        ls_calls = [call.args[0] for call in launched.call_args_list if "ls-files" in call.args[0]]
+        self.assertEqual(len(ls_calls), 1)
+        self.assertNotIn("--deduplicate", ls_calls[0])
+        self.assertEqual([entry["path"] for entry in inventory["files"]], ["a.py"])
+        self.assertEqual(inventory["totals"]["candidates_seen"], 1)
+        self.assertEqual(inventory["skipped"], [])
+
+    def test_vendor_manifest_lists_existing_resources_with_exact_hashes(self):
+        vendor = SCRIPTS.parent / "vendor"
+        manifest = json.loads((vendor / "manifest.json").read_text(encoding="utf-8"))
+        paths = [entry["vendored_path"] for entry in manifest["entries"]]
+        self.assertEqual(len(paths), len(set(paths)))
+        self.assertNotIn("manifest.json", paths)
+        self.assertFalse(any("__pycache__" in Path(path).parts or path.endswith(".pyc") for path in paths))
+        for entry in manifest["entries"]:
+            with self.subTest(path=entry["vendored_path"]):
+                path = vendor / entry["vendored_path"]
+                self.assertTrue(path.is_file())
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), entry["vendored_sha256"])
+        actual = {path.relative_to(vendor).as_posix() for path in vendor.rglob("*") if path.is_file() and path.name != "manifest.json" and "__pycache__" not in path.parts and path.suffix != ".pyc"}
+        self.assertEqual(set(paths), actual)
 
     def test_changed_same_mtime_deleted_and_poisoned_cache(self):
         path = self.write("a.py", "def alpha():\n    pass\n")

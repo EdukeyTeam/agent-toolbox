@@ -80,7 +80,7 @@ def git_context(root: Path) -> bool:
     return ignored == 1
 
 
-def _read_gitignore(root: Path, directory: Path, cache=None) -> list[tuple[str, bool, bool]]:
+def _read_gitignore(root: Path, directory: Path, cache=None) -> list[tuple[str, str, bool, bool]]:
     cache = cache if cache is not None else {"files": {}, "bytes": 0}
     rules = []
     current = root
@@ -103,23 +103,33 @@ def _read_gitignore(root: Path, directory: Path, cache=None) -> list[tuple[str, 
                         continue
                     negated = rule.startswith("!")
                     rule = rule[1:] if negated else rule
-                    local.append((f"{folder.relative_to(root).as_posix()}/{rule}" if folder != root else rule, negated, rule.endswith("/")))
+                    scope = folder.relative_to(root).as_posix() if folder != root else ""
+                    local.append((scope, rule, negated, rule.endswith("/")))
             cache["files"][folder] = local
         rules.extend(cache["files"][folder])
     return rules
 
 
-def _ignored_non_git(root: Path, relative: PurePosixPath, *, ignore_cache=None) -> bool:
+def _ignored_non_git(root: Path, relative: PurePosixPath, *, ignore_cache=None, is_directory=False) -> bool:
     ignored = False
-    for pattern, negated, directory_only in _read_gitignore(root, (root / str(relative)).parent, ignore_cache):
-        pattern = pattern.removesuffix("/").removeprefix("./")
-        segments = relative.parts
-        candidates = [relative.as_posix()]
-        if directory_only:
-            candidates.extend("/".join(segments[:i]) for i in range(1, len(segments)))
-        elif "/" not in pattern:
-            candidates.append(relative.name)
-        if any(fnmatch.fnmatchcase(candidate, pattern) or candidate.startswith(pattern + "/") for candidate in candidates):
+    for scope, pattern, negated, directory_only in _read_gitignore(root, (root / str(relative)).parent, ignore_cache):
+        local = relative.as_posix()
+        if scope:
+            if not local.startswith(scope + "/"):
+                continue
+            local = local[len(scope) + 1:]
+        anchored = pattern.startswith("/")
+        pattern = pattern.removesuffix("/").removeprefix("/")
+        if not pattern:
+            continue
+        parts = PurePosixPath(local).parts
+        # Ancestors are directories. The current entry participates in a
+        # directory-only rule only when the walker confirmed it is a directory.
+        count = len(parts) if not directory_only or is_directory else len(parts) - 1
+        candidates = ["/".join(parts[:i]) for i in range(1, count + 1)]
+        if not anchored and "/" not in pattern:
+            candidates = list(parts[:count])
+        if any(fnmatch.fnmatchcase(candidate, pattern) for candidate in candidates):
             ignored = not negated
     return ignored
 
@@ -128,18 +138,24 @@ def _candidates(root: Path, git_repo: bool, subtrees, *, max_discovery_entries=N
     if git_repo:
         env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
         env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GIT_LITERAL_PATHSPECS": "1"})
-        args = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), "ls-files", "--deduplicate", "-z", "--cached", "--others", "--exclude-standard"]
+        args = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"]
         if subtrees:
             args.extend(["--", *subtrees])
         proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
         try:
             buffer = b""
+            seen = set()
             while chunk := proc.stdout.read(64 * 1024):
                 buffer += chunk
                 pieces = buffer.split(b"\0")
                 buffer = pieces.pop()
                 for piece in pieces:
-                    if piece:
+                    if piece and piece not in seen:
+                        # Allow the extra candidate that reports max_files
+                        # truncation, while bounding de-duplication memory.
+                        if len(seen) >= HARD_MAX_FILES + 1:
+                            raise ValueError("Git discovery entry limit exceeded; select a smaller source tree")
+                        seen.add(piece)
                         yield os.fsdecode(piece).replace(os.sep, "/")
             if proc.wait() != 0:
                 raise ValueError("git ls-files failed")
@@ -180,7 +196,7 @@ def _candidates(root: Path, git_repo: bool, subtrees, *, max_discovery_entries=N
             if not selected(relative):
                 continue
             if entry.is_dir(follow_symlinks=False):
-                if entry.name not in IGNORED_DIRS and not _secret(rel) and not _ignored_non_git(root, rel, ignore_cache=ignore_cache):
+                if entry.name not in IGNORED_DIRS and not _secret(rel) and not _ignored_non_git(root, rel, ignore_cache=ignore_cache, is_directory=True):
                     directories.append(Path(entry.path))
             elif not _ignored_non_git(root, rel, ignore_cache=ignore_cache):
                 leaves.append(Path(entry.path))
@@ -266,6 +282,11 @@ def scan_repository(root: str | Path, *, subtrees=(), excludes=(), max_files: in
             if candidates > max_files:
                 skipped.append({"path": "*", "reason": f"max_files exceeded ({max_files}); map a subtree"})
                 break
+            try:
+                relative.encode("utf-8")
+            except UnicodeEncodeError:
+                skipped.append({"path": os.fsencode(relative).decode("utf-8", "replace"), "reason": "non-UTF-8 path"})
+                continue
             if any(fnmatch.fnmatchcase(rel.as_posix(), pattern) or fnmatch.fnmatchcase(rel.name, pattern) for pattern in excludes):
                 skipped.append({"path": relative, "reason": "explicit exclusion"})
                 continue

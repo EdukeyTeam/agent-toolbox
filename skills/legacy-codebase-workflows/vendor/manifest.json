@@ -14,14 +14,6 @@
       "vendored_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
     },
     {
-      "changes": "license copied from upstream grammar repository",
-      "original_sha256": null,
-      "upstream_git_blob_sha": null,
-      "upstream_path": null,
-      "vendored_path": "__pycache__/aider_rank.cpython-314.pyc",
-      "vendored_sha256": "3df0f695035d1c7ad2ab1ee9abfa793ce46264f7a152ff107f50abf6c7efd4cc"
-    },
-    {
       "changes": "adapted graph ranking and removed chat/model/cache/UI dependencies; see THIRD_PARTY.md",
       "original_sha256": "a5d4befe70445114b9f62da47b0eeb2a5384f9e84a0c083c77a4b339caf61ecd",
       "upstream_git_blob_sha": "541bba6ef4a5385b8cf032201ec6e3f3e32a6ea6",

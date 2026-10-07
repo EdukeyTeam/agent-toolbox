@@ -15,7 +15,7 @@ from functools import lru_cache
 from collections import Counter
 from pathlib import Path
 
-from repo_files import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_FILES, read_safe_text, scan_repository, split_source_lines
+from repo_files import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_FILES, _safe_relative, read_safe_text, scan_repository, split_source_lines
 
 VENDOR = Path(__file__).resolve().parents[1] / "vendor"
 sys.path.insert(0, str(VENDOR))
@@ -177,6 +177,8 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
     for path in [*subtrees, *focus_files]:
         if Path(path).is_absolute() or ".." in Path(path).parts:
             raise ValueError(f"focus/subtree path must be relative: {path}")
+    subtrees = tuple(_safe_relative(path).as_posix() for path in subtrees)
+    focus_files = tuple(_safe_relative(path).as_posix() for path in focus_files)
     output.mkdir(parents=True, exist_ok=True)
     initial = {"tool": "legacy-codebase-workflows repo_map", "version": VERSION, "status": "in-progress", "source_root": str(root), "coverage": None, "map_sha256": None}
     _atomic_write(output / "repo-map.md", "# Repository inventory\n\nNo current symbol map. Inspect map.meta.json for generation status.\n")
@@ -254,6 +256,10 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 4096, su
             "limits": {"budget": budget, "max_files": max_files, "max_file_bytes": max_file_bytes, "max_tags_per_file": MAX_TAGS_PER_FILE, "max_total_tags": MAX_TOTAL_TAGS},
             "coverage": {"candidates_seen": inventory["totals"]["candidates_seen"], "selected_files": len(inventory["files"]), "parsed_files": parsed_count, "files_with_definitions": len({tag["path"] for tag in ranked}), "definitions_found": len(ranked), "definitions_in_map": len(included)},
             "skipped": inventory["skipped"], "parse_failures": parse_failures,
+            "focus_not_found": {
+                "files_not_parsed": [path for path in focus_files if path not in tags_by_file],
+                "symbols_without_definitions": [name for name in focus_symbols if not any(tag["kind"] == "def" and tag["name"] == name for tags in tags_by_file.values() for tag in tags)],
+            },
             "unsupported_languages": sorted({entry["path"] for entry in inventory["files"] if entry["language"] is None and entry["kind"] == "other" and Path(entry["path"]).suffix}),
             "descriptors": sorted(entry["path"] for entry in inventory["files"] if entry["kind"] == "descriptor"),
             "truncated": len(included) < len(ranked) or any(item["path"] == "*" for item in inventory["skipped"]),
