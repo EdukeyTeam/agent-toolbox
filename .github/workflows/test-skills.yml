@@ -126,6 +126,19 @@ jobs:
           LEGACY_MAP_DEPS: ${{ runner.temp }}/legacy-map-deps
           LEGACY_BUILD_TOOLS: ${{ runner.temp }}/legacy-build-deps
         run: python -m unittest discover -s tests -p test_legacy_native.py -v
+      - name: Prepare a source-identified per-platform CI install index
+        env:
+          CI_RUN_HEAD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: python
+        run: |
+          import os, shutil, subprocess, sys
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          artifacts, index = root / 'legacy-artifacts', root / 'legacy-ci-index'
+          subprocess.run([sys.executable, 'scripts/create-legacy-release-manifest.py', 'prepare', '--artifact-dir', str(artifacts), '--output-dir', str(index), '--source-commit', os.environ['GITHUB_SHA'], '--ci-run-head-commit', os.environ['CI_RUN_HEAD_COMMIT'], '--ci-run-id', os.environ['GITHUB_RUN_ID']], check=True)
+          shutil.copy2(index / 'legacy-tools-release.json', artifacts / 'legacy-tools-release.json')
+          for path in index.glob('build-manifest.*.json'):
+              shutil.copy2(path, artifacts / path.name)
       - name: Retain reviewable native artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -135,5 +148,7 @@ jobs:
             ${{ runner.temp }}/legacy-artifacts/*.zip
             ${{ runner.temp }}/legacy-artifacts/SHA256SUMS
             ${{ runner.temp }}/legacy-artifacts/build-manifest.json
+            ${{ runner.temp }}/legacy-artifacts/legacy-tools-release.json
+            ${{ runner.temp }}/legacy-artifacts/build-manifest.*.json
           if-no-files-found: error
           retention-days: 14

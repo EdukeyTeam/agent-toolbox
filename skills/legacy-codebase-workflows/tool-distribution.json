@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "repository": "EdukeyTeam/agent-toolbox",
+  "release_tag": "legacy-tools-v0.2.0",
+  "native_version": "0.2.0",
+  "source_contract": "repo_map.py 1.1.0",
+  "release_manifest": "legacy-tools-release.json",
+  "publication": "pending-first-release",
+  "platforms": {
+    "windows-x86_64": {"archive": "legacy-repo-map-windows-x86_64.zip", "archive_root": "legacy-repo-map-windows-x86_64", "program": "legacy-repo-map.exe", "ci_artifact": "legacy-tools-windows-latest", "consumer_verified": false},
+    "linux-x86_64": {"archive": "legacy-repo-map-linux-x86_64.tar.gz", "archive_root": "legacy-repo-map-linux-x86_64", "program": "legacy-repo-map", "ci_artifact": "legacy-tools-ubuntu-latest", "consumer_verified": false},
+    "macos-arm64": {"archive": "legacy-repo-map-macos-arm64.tar.gz", "archive_root": "legacy-repo-map-macos-arm64", "program": "legacy-repo-map", "ci_artifact": "legacy-tools-macos-latest", "consumer_verified": false}
+  }
+}

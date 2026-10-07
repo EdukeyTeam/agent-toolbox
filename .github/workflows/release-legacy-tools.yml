@@ -1,0 +1,154 @@
+name: Release legacy native tools
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Pinned tag declared by the skill distribution policy
+        default: legacy-tools-v0.2.0
+        required: true
+        type: string
+      publish_release:
+        description: Publish assets to an existing reviewed tag (false only prepares artifacts)
+        default: false
+        type: boolean
+  push:
+    tags: ['legacy-tools-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legacy-tools-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+          - os: windows-latest
+            platform: windows-x86_64
+          - os: macos-latest
+            platform: macos-arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_TARGET_DIR: ${{ runner.temp }}/legacy-cargo-target
+      LEGACY_NATIVE_BUILD: '0'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.ref || (github.event_name == 'workflow_dispatch' && inputs.publish_release && inputs.release_tag || github.sha) }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Require pinned tag, source contract, and host platform
+        id: identity
+        shell: python
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+        run: |
+          import json, os, subprocess, sys, tomllib
+          from pathlib import Path
+          sys.path.insert(0, 'skills/legacy-codebase-workflows/scripts')
+          import setup_native
+          policy = setup_native.load_policy()
+          assert os.environ['REQUESTED_TAG'] == policy['release_tag'], 'Requested tag must match checked-in distribution policy'
+          assert setup_native.detect_platform() == os.environ['EXPECTED_PLATFORM'], 'Hosted runner architecture differs from the pinned platform'
+          cargo = tomllib.loads(Path('src/legacy-repo-map/Cargo.toml').read_text())
+          assert cargo['package']['version'] == policy['native_version']
+          source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'source_commit={source}\n')
+      - run: npm ci
+      - run: npm test
+      - name: Install pinned map dependencies
+        run: python -m pip install -r skills/legacy-codebase-workflows/requirements-map.txt
+      - name: Run existing Python behavior checks
+        run: python -m unittest discover -s tests -p "test_legacy_*.py" -v
+      - name: Run native behavior checks
+        run: cargo test --locked --manifest-path src/legacy-repo-map/Cargo.toml
+      - name: Build existing licensed standalone packages and verify parity
+        run: python scripts/build-legacy-tools.py --output-dir "${{ runner.temp }}/legacy-artifacts" --deps-dir "${{ runner.temp }}/legacy-map-deps" --tools-dir "${{ runner.temp }}/legacy-build-deps" --install --prepare-host-licenses --require-parity
+      - name: Locate actual binaries for existing integration checks
+        shell: python
+        run: |
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'legacy-artifacts'
+          manifest = json.loads((root / 'build-manifest.json').read_text())
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              for artifact in manifest['artifacts']:
+                  key = 'LEGACY_TOOLS_BIN' if artifact['artifact'].startswith('legacy-tools-') else 'LEGACY_REPO_MAP_BIN'
+                  output.write(f"{key}={root / artifact['artifact'] / artifact['program']}\n")
+      - name: Test actual binaries against Python source
+        env:
+          LEGACY_MAP_DEPS: ${{ runner.temp }}/legacy-map-deps
+          LEGACY_BUILD_TOOLS: ${{ runner.temp }}/legacy-build-deps
+        run: python -m unittest discover -s tests -p test_legacy_native.py -v
+      - name: Prepare source-identified native release assets
+        run: python scripts/create-legacy-release-manifest.py prepare --artifact-dir "${{ runner.temp }}/legacy-artifacts" --output-dir "${{ runner.temp }}/legacy-release" --source-commit "${{ steps.identity.outputs.source_commit }}" --ci-run-head-commit "${{ github.sha }}" --ci-run-id "${{ github.run_id }}"
+      - name: Verify consumer install and receipt in an isolated user cache
+        run: python skills/legacy-codebase-workflows/scripts/setup_native.py install --local-package "${{ runner.temp }}/legacy-release" --cache-dir "${{ runner.temp }}/legacy-consumer-cache" --expected-source "${{ steps.identity.outputs.source_commit }}"
+      - name: Retain reviewable packages, manifests and checksums
+        uses: actions/upload-artifact@v7
+        with:
+          name: legacy-tools-${{ matrix.os }}
+          path: ${{ runner.temp }}/legacy-release/*
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.ref || inputs.release_tag }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: legacy-tools-*
+          path: ${{ runner.temp }}/legacy-indexes
+          merge-multiple: false
+      - name: Aggregate all three verified platform indexes
+        shell: python
+        run: |
+          import os, subprocess, sys
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          command = [sys.executable, 'scripts/create-legacy-release-manifest.py', 'aggregate', '--output-dir', str(root / 'legacy-release-assets'), '--require-all']
+          for directory in sorted((root / 'legacy-indexes').iterdir()):
+              command.extend(['--index-dir', str(directory)])
+          subprocess.run(command, check=True)
+      - name: Publish immutable assets to the deliberately requested existing tag
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import json, os, subprocess
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'legacy-release-assets'
+          manifest = json.loads((root / 'legacy-tools-release.json').read_text())
+          tag = manifest['release_tag']
+          existing = subprocess.run(['gh', 'release', 'view', tag], capture_output=True)
+          if existing.returncode == 0:
+              raise SystemExit('Release already exists; refusing to replace assets. Create a new pinned version.')
+          notes = root / 'release-notes.md'
+          notes.write_text(f"Native repository mapper {manifest['native_version']} for the legacy-codebase-workflows skill.\n\nSource: {manifest['source_commit']}\n\nPackages retain all licenses; checksums and source/platform manifests accompany them. No code-signing or platform-policy bypass is included.\n", encoding='utf-8')
+          assets = [str(path) for path in sorted(root.iterdir()) if path != notes]
+          subprocess.run(['gh', 'release', 'create', tag, '--verify-tag', '--target', manifest['source_commit'], '--title', tag, '--notes-file', str(notes), *assets], check=True)
