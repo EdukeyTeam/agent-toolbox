@@ -263,6 +263,31 @@ fn literal_backslash_paths_keep_distinct_current_byte_identities() {
 }
 
 #[test]
+fn source_snippet_controls_are_sanitized_without_changing_bytes_or_lines() {
+    let fixture = Fixture::new();
+    let controls: String = (1..32)
+        .chain(127..160)
+        .chain([0x2028, 0x2029])
+        .filter(|value| *value != 10)
+        .map(|value| char::from_u32(value).unwrap())
+        .collect();
+    let source = format!("class Hostile {{\tvoid run() {{}} }} // żółć{controls} marker\r\n\nclass After {{}}\n");
+    fixture.write("Hostile.java", &source);
+    let before = snapshot(&fixture.source);
+    let meta = fixture.map_ok(&["--budget", "128"]);
+    let text = fixture.map_text();
+    assert!(text.contains("Hostile.java:L1: class Hostile {\tvoid run() {} } // żółć"));
+    assert!(text.contains("Hostile.java:L3: class After {}"));
+    assert!(!text
+        .chars()
+        .any(|c| (c.is_control() && c != '\t' && c != '\n') || matches!(c, '\u{2028}' | '\u{2029}')));
+    assert!(meta["estimated_tokens"].as_u64().unwrap() <= 128);
+    let inventory = fixture.json("inventory.json");
+    assert_eq!(inventory["files"][0]["sha256"], sha256(source.as_bytes()));
+    assert_eq!(snapshot(&fixture.source), before);
+}
+
+#[test]
 fn inventory_hashes_are_the_current_bytes_and_the_fingerprint_tracks_content() {
     let fixture = Fixture::java();
     fixture.map_ok(&[]);

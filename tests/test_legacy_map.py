@@ -298,6 +298,70 @@ class MapTests(unittest.TestCase):
         self.assertEqual(len(caches), 1)
         self.assertFalse(any(tag["name"] == "InjectedDefinition" for cache in caches for tag in cache["tags"]))
 
+    @unittest.skipUnless(os.name == "posix", "requires literal POSIX backslash filenames")
+    def test_literal_backslash_paths_preserve_inventory_hashes_and_citations(self):
+        literal = self.write("a\\b.py", "def literal_backslash(): pass\n")
+        nested = self.write("a/b.py", "def nested_identity(): pass\n")
+        traversal_looking = self.write("..\\literal.py", "def legitimate_literal(): pass\n")
+        original = {path.relative_to(self.repo).as_posix(): path.read_bytes() for path in (literal, nested, traversal_looking)}
+        for git in (False, "untracked", "tracked"):
+            if git:
+                subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+                if git == "tracked":
+                    subprocess.run(["git", "-C", str(self.repo), "add", "--", *original], check=True)
+            with self.subTest(git=git):
+                meta = self.map()
+                inventory = json.loads((self.out / "inventory.json").read_text(encoding="utf-8"))
+                entries = {item["path"]: item for item in inventory["files"]}
+                self.assertEqual(set(entries), set(original))
+                for name, data in original.items():
+                    text, digest = read_safe_text(self.repo, name)
+                    self.assertEqual(text.encode(), data)
+                    self.assertEqual(entries[name]["sha256"], hashlib.sha256(data).hexdigest())
+                    card = {"path": name, "sha256": digest, "start_line": 1, "end_line": 1, "quote": text.strip()}
+                    self.assertTrue(check_cards(self.repo, {"citations": [card]})["valid"])
+                wrong = {"path": "a\\b.py", "sha256": entries["a/b.py"]["sha256"], "start_line": 1, "end_line": 1, "quote": "nested_identity"}
+                self.assertFalse(check_cards(self.repo, {"citations": [wrong]})["valid"])
+                content = (self.out / "repo-map.md").read_text(encoding="utf-8")
+                self.assertIn("a\\b.py:L1: def literal_backslash", content)
+                self.assertIn("a/b.py:L1: def nested_identity", content)
+                self.assertIn("..\\literal.py:L1: def legitimate_literal", content)
+                scoped = self.map(subtrees=["a"], focus_files=["a\\b.py"])
+                self.assertEqual(scoped["selection"]["focus_files"], ["a/b.py"])
+                self.assertEqual(scoped["coverage"]["selected_files"], 1)
+                filtered = scan_repository(self.repo, excludes=["a\\b.py"])
+                self.assertNotIn("a\\b.py", {item["path"] for item in filtered["files"]})
+                self.assertIn("a/b.py", {item["path"] for item in filtered["files"]})
+                for name, data in original.items():
+                    self.assertEqual((self.repo / name).read_bytes(), data)
+        with self.assertRaises(ValueError):
+            read_safe_text(self.repo, "a/../b.py")
+
+    def test_snippets_sanitize_controls_preserving_tabs_unicode_and_original_source(self):
+        import repo_map
+        for value in (*range(32), *range(127, 160), 0x2028, 0x2029):
+            character = chr(value)
+            original_line = character + "żółć" + character + "x\tz" + character
+            expected = "żółć" + ("\t" if value == 9 else " ") + "x\tz"
+            with self.subTest(control=value):
+                self.assertEqual(repo_map._line({"path": "source.java", "line": 1}, lambda _: [original_line]), "source.java:L1: " + expected + "\n")
+        controls = "".join(chr(value) for value in (*range(1, 32), *range(127, 160), 0x2028, 0x2029) if value != 10)
+        original_line = "class Hostile {\tvoid run() {} } // żółć" + controls + " marker"
+        path = self.write("Hostile.java", original_line + "\r\n\nclass After {}\n")
+        original_bytes = path.read_bytes()
+        meta = self.map(budget=128)
+        self.assertEqual(meta["coverage"]["parsed_files"], 1)
+        self.assertLessEqual(meta["estimated_tokens"], 128)
+        text = (self.out / "repo-map.md").read_text(encoding="utf-8")
+        self.assertIn("Hostile.java:L1: class Hostile {\tvoid run() {} } // żółć", text)
+        self.assertIn("Hostile.java:L3: class After {}", text)
+        self.assertFalse(any(contains_control_characters(c) for c in text if c not in "\t\n"))
+        inventory = json.loads((self.out / "inventory.json").read_text(encoding="utf-8"))
+        digest = hashlib.sha256(original_bytes).hexdigest()
+        self.assertEqual(inventory["files"][0]["sha256"], digest)
+        self.assertTrue(check_cards(self.repo, {"citations": [{"path": "Hostile.java", "sha256": digest, "start_line": 1, "end_line": 1, "quote": original_line}]})["valid"])
+        self.assertEqual(path.read_bytes(), original_bytes)
+
     def test_changed_same_mtime_deleted_and_poisoned_cache(self):
         path = self.write("a.py", "def alpha():\n    pass\n")
         first = self.map()
@@ -611,46 +675,6 @@ class MapTests(unittest.TestCase):
             self.assertFalse(check_cards(self.repo, {"citations": [bad]})["valid"])
         self.write("src/a.py", "def alpha():\n    return 2\n")
         self.assertFalse(check_cards(self.repo, {"citations": [card]})["valid"])
-
-    @unittest.skipUnless(os.name == "posix", "requires literal POSIX backslash filenames")
-    def test_literal_backslash_paths_preserve_inventory_hashes_and_citations(self):
-        literal = self.write("a\\b.py", "def literal_backslash(): pass\n")
-        nested = self.write("a/b.py", "def nested_identity(): pass\n")
-        traversal_looking = self.write("..\\literal.py", "def legitimate_literal(): pass\n")
-        original = {path.relative_to(self.repo).as_posix(): path.read_bytes() for path in (literal, nested, traversal_looking)}
-        for git in (False, "untracked", "tracked"):
-            if git:
-                subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
-                if git == "tracked":
-                    subprocess.run(["git", "-C", str(self.repo), "add", "--", *original], check=True)
-            with self.subTest(git=git):
-                meta = self.map()
-                inventory = json.loads((self.out / "inventory.json").read_text(encoding="utf-8"))
-                entries = {item["path"]: item for item in inventory["files"]}
-                self.assertEqual(set(entries), set(original))
-                for name, data in original.items():
-                    text, digest = read_safe_text(self.repo, name)
-                    self.assertEqual(text.encode(), data)
-                    self.assertEqual(entries[name]["sha256"], hashlib.sha256(data).hexdigest())
-                    card = {"path": name, "sha256": digest, "start_line": 1, "end_line": 1, "quote": text.strip()}
-                    self.assertTrue(check_cards(self.repo, {"citations": [card]})["valid"])
-                wrong = {"path": "a\\b.py", "sha256": entries["a/b.py"]["sha256"], "start_line": 1, "end_line": 1, "quote": "nested_identity"}
-                self.assertFalse(check_cards(self.repo, {"citations": [wrong]})["valid"])
-                content = (self.out / "repo-map.md").read_text(encoding="utf-8")
-                self.assertIn("a\\b.py:L1: def literal_backslash", content)
-                self.assertIn("a/b.py:L1: def nested_identity", content)
-                self.assertIn("..\\literal.py:L1: def legitimate_literal", content)
-                scoped = self.map(subtrees=["a"], focus_files=["a\\b.py"])
-                self.assertEqual(scoped["selection"]["focus_files"], ["a/b.py"])
-                self.assertEqual(scoped["coverage"]["selected_files"], 1)
-                filtered = scan_repository(self.repo, excludes=["a\\b.py"])
-                self.assertNotIn("a\\b.py", {item["path"] for item in filtered["files"]})
-                self.assertIn("a/b.py", {item["path"] for item in filtered["files"]})
-                for name, data in original.items():
-                    self.assertEqual((self.repo / name).read_bytes(), data)
-        with self.assertRaises(ValueError):
-            read_safe_text(self.repo, "a/../b.py")
-
 
 
 if __name__ == "__main__":

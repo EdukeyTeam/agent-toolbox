@@ -15,7 +15,7 @@ from functools import lru_cache
 from collections import Counter
 from pathlib import Path
 
-from repo_files import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_FILES, _safe_relative, read_safe_text, scan_repository, split_source_lines
+from repo_files import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_FILES, _safe_relative, contains_control_characters, read_safe_text, scan_repository, split_source_lines
 
 VENDOR = Path(__file__).resolve().parents[1] / "vendor"
 sys.path.insert(0, str(VENDOR))
@@ -165,7 +165,7 @@ def _line(tag: dict, line_cache):
     lines = line_cache(tag["path"])
     if tag["line"] > len(lines):
         raise ValueError(f"source line vanished while rendering: {tag['path']}")
-    snippet = lines[tag["line"] - 1].strip()
+    snippet = "".join(" " if character != "\t" and contains_control_characters(character) else character for character in lines[tag["line"] - 1]).strip()
     return f"{tag['path']}:L{tag['line']}: {snippet[:240]}\n"
 
 

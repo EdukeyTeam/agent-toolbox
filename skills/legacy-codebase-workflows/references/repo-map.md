@@ -28,6 +28,8 @@ Read the bounded `inventory_summary` on stdout (language counts and up to 20 mod
 
 Metadata `status` distinguishes `complete`, `inventory-only`, `in-progress` and `failed`. A failed inventory invalidates earlier artifacts and reports unknown coverage. A failed parse/rank/render retains the fresh inventory and records the failure stage, while replacing any old symbol map with a diagnostic. Do not use a map unless status is `complete`. A full graph is capped at 200,000 edges and 200,000 tags; map a subtree if either limit is reached.
 
+Map snippets replace control characters and Unicode line/paragraph separators with spaces; tabs and LF-based original line numbers are preserved. This display cleanup leaves original source hashes and citation text unchanged.
+
 Budget units are estimated tokens using `ceil(Unicode characters / 4)`. This enforces a text-size bound, not a model's tokenizer count or billing cost. Check the metadata's estimator. A short map deliberately omits definitions; it is not a complete repository index.
 
 The audited queries cover Java, Python, JavaScript, TypeScript/TSX, C/C++, C#, Go and Rust. Unsupported text remains visible in inventory where eligible. XML/properties/build descriptors have separate inventory entries; inspect them directly for registration, reflection and resource wiring. Syntax queries do not establish a resolved runtime call graph.

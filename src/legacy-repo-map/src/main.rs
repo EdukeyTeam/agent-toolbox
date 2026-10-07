@@ -30,8 +30,7 @@ const RANKING: &str = "Aider-derived PageRank over identifier definitions and re
 const HEADER: &str = "# Repository map\n\n";
 const DIAGNOSTIC: &str =
     "# Repository inventory\n\nNo symbol map generated. Inspect inventory.json and choose a subtree.\n";
-const EMPTY_MESSAGE: &str =
-    "No supported definitions found in selected files. See inventory.json for descriptors, unsupported files and skips.\n";
+const EMPTY_MESSAGE: &str = "No supported definitions found in selected files. See inventory.json for descriptors, unsupported files and skips.\n";
 
 /// Exact crate versions pinned in Cargo.toml; a test checks them against
 /// Cargo.lock.
@@ -936,6 +935,12 @@ mod tests {
             "class Old {     void legacy() {} }"
         );
         assert_eq!(snippet("a\tb\u{2028}c"), "a\tb c");
+        for value in (0..32).chain(127..160).chain([0x2028, 0x2029]) {
+            let c = char::from_u32(value).unwrap();
+            let input = format!("{c}żółć{c}x\tz{c}");
+            let separator = if c == '\t' { "\t" } else { " " };
+            assert_eq!(snippet(&input), format!("żółć{separator}x\tz"), "{value:#x}");
+        }
         assert_eq!(snippet(&"x".repeat(500)).chars().count(), policy::MAX_SNIPPET_CHARS);
     }
 

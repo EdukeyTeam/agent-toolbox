@@ -324,6 +324,39 @@ class RustParityTests(FixtureCase):
                 self.assertFalse([character for character in written if (ord(character) < 32 or ord(character) == 127) and character != "\n"], f"{tool} {artifact}")
         self.assertEqual(before, self.snapshot())
 
+    @unittest.skipUnless(os.name == "posix", "requires literal POSIX backslash filenames")
+    def test_literal_backslash_path_identities_agree(self):
+        files = {"a\\b.java": "class LiteralBackslash {}\n", "a/b.java": "class NestedIdentity {}\n", "..\\literal.java": "class LegitimateLiteral {}\n"}
+        for name, text in files.items():
+            self.write(name, text.encode())
+        for git in (False, "untracked", "tracked"):
+            if git:
+                subprocess.run(["git", "-C", str(self.source), "init", "-q"], check=True)
+                if git == "tracked":
+                    subprocess.run(["git", "-C", str(self.source), "add", "--", *files], check=True)
+            before = self.snapshot()
+            label = "literal-backslash-" + str(git)
+            meta, content = self.assert_same(label, [])
+            entries = {entry["path"]: entry for entry in self.load("rust-" + label, "inventory.json")["files"]}
+            for name, text in files.items():
+                self.assertEqual(entries[name]["sha256"], hashlib.sha256(text.encode()).hexdigest())
+                self.assertIn(name + ":L1: " + text.strip(), content)
+            self.assert_same(label + "-focused", ["--subtree", "a", "--focus-file", "a\\b.java"])
+            self.assertEqual(before, self.snapshot())
+
+    def test_snippet_controls_sanitize_identically_without_source_mutation(self):
+        controls = "".join(chr(value) for value in (*range(1, 32), *range(127, 160), 0x2028, 0x2029) if value != 10)
+        source = "class Hostile {\tvoid run() {} } // żółć" + controls + " marker\r\n\nclass After {}\n"
+        self.write("Hostile.java", source.encode())
+        before = self.snapshot()
+        meta, text = self.assert_same("snippet-controls", [])
+        self.assertIn("Hostile.java:L1: class Hostile {\tvoid run() {} } // żółć", text)
+        self.assertIn("Hostile.java:L3: class After {}", text)
+        self.assertFalse(any((ord(c) < 32 or 127 <= ord(c) < 160 or c in "\u2028\u2029") and c not in "\t\n" for c in text))
+        entry = next(entry for entry in self.load("rust-snippet-controls", "inventory.json")["files"] if entry["path"] == "Hostile.java")
+        self.assertEqual(entry["sha256"], hashlib.sha256(source.encode()).hexdigest())
+        self.assertEqual(before, self.snapshot())
+
     def test_selection_policy_tables_match_the_python_modules(self):
         policy = json.loads(subprocess.run([str(RUST_BINARY), "--print-policy"], check=True, capture_output=True, text=True, encoding="utf-8").stdout)
         code = "import json, re, repo_files as f; print(json.dumps({k: sorted(v) if isinstance(v, (set, frozenset)) else [v.pattern, bool(v.flags & re.IGNORECASE)] if isinstance(v, re.Pattern) else v for k, v in list(vars(f).items()) if k.isupper()}))"
@@ -349,27 +382,6 @@ class RustParityTests(FixtureCase):
             self.assertEqual(entry["sha256"], hashlib.sha256(vendored.read_bytes()).hexdigest(), language)
         self.assertEqual([limits["max_tags_per_file"], limits["max_total_tags"], limits["max_budget"]], [constants["MAX_TAGS_PER_FILE"], constants["MAX_TOTAL_TAGS"], constants["MAX_BUDGET"]])
         self.assertEqual(policy["baseline_contract"], f"repo_map.py {constants['VERSION']}")
-
-    @unittest.skipUnless(os.name == "posix", "requires literal POSIX backslash filenames")
-    def test_literal_backslash_path_identities_agree(self):
-        files = {"a\\b.java": "class LiteralBackslash {}\n", "a/b.java": "class NestedIdentity {}\n", "..\\literal.java": "class LegitimateLiteral {}\n"}
-        for name, text in files.items():
-            self.write(name, text.encode())
-        for git in (False, "untracked", "tracked"):
-            if git:
-                subprocess.run(["git", "-C", str(self.source), "init", "-q"], check=True)
-                if git == "tracked":
-                    subprocess.run(["git", "-C", str(self.source), "add", "--", *files], check=True)
-            before = self.snapshot()
-            label = "literal-backslash-" + str(git)
-            meta, content = self.assert_same(label, [])
-            entries = {entry["path"]: entry for entry in self.load("rust-" + label, "inventory.json")["files"]}
-            for name, text in files.items():
-                self.assertEqual(entries[name]["sha256"], hashlib.sha256(text.encode()).hexdigest())
-                self.assertIn(name + ":L1: " + text.strip(), content)
-            self.assert_same(label + "-focused", ["--subtree", "a", "--focus-file", "a\\b.java"])
-            self.assertEqual(before, self.snapshot())
-
 
 
 class RustGitParityTests(RustParityTests):
