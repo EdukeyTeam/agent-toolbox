@@ -619,14 +619,40 @@ def terms(query: str) -> list[str]:
     return list(dict.fromkeys(t.lower() for t in WORD_RE.findall(query) if t.lower() not in STOPWORDS))[:32]
 
 
+def lexical_terms(query: str) -> list[str]:
+    # Keep ASCII underscore names as quoted phrases. Splitting them into OR
+    # components would let an absent identifier acquire a lexical anchor.
+    pieces: list[tuple[str, str | None]] = []
+    start = 0
+    for match in re.finditer(r"(?<!\w)[A-Za-z_][A-Za-z_0-9]*(?!\w)", query):
+        if "_" in match[0]:
+            pieces.extend(((query[start:match.start()], None), (match[0], match[0].lower())))
+            start = match.end()
+    pieces.append((query[start:], None))
+    # Ask the same default tokenizer used by chunks_fts, instead of approximating
+    # its Unicode 6.1 categories and normalization with Python's Unicode rules.
+    with sqlite3.connect(":memory:", factory=ClosingConnection) as tokenizer:
+        tokenizer.execute("CREATE VIRTUAL TABLE query_text USING fts5(body)")
+        tokenizer.execute("CREATE VIRTUAL TABLE query_tokens USING fts5vocab(query_text, 'instance')")
+        tokenizer.executemany("INSERT INTO query_text(rowid,body) VALUES(?,?)", ((i, text) for i, (text, _) in enumerate(pieces, 1)))
+        words: dict[str, None] = {}
+        for doc, token in tokenizer.execute("SELECT doc,term FROM query_tokens ORDER BY doc,offset"):
+            word = pieces[doc - 1][1] or token
+            if word not in STOPWORDS:
+                words.setdefault(word, None)
+                if len(words) == 32:
+                    break
+        return list(words)
+
+
 def lexical(con: sqlite3.Connection, query: str, limit: int) -> list[tuple[int, float]]:
-    words = terms(query)
+    words = lexical_terms(query)
     if not words:
         return []
     expression = " OR ".join('"' + word.replace('"', '') + '"' for word in words)
     rows = con.execute("SELECT f.rowid, bm25(chunks_fts,1.0,4.0,2.0) AS rank, c.symbols FROM chunks_fts f JOIN chunks c ON c.id=f.rowid WHERE chunks_fts MATCH ? ORDER BY rank LIMIT ?", (expression, limit)).fetchall()
     scored = []
-    wordset = set(words)
+    wordset = set(terms(query))
     for row in rows:
         symbolset = {word.lower() for word in row["symbols"].split()}
         scored.append((row["rowid"], -row["rank"] + 5 * len(wordset & symbolset)))

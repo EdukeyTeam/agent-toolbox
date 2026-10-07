@@ -674,6 +674,28 @@ class DispatcherTests(FixtureCase):
                 refused = self.call(program, env, "map", str(self.source), "--output-dir", str(self.source / "maps"))
                 self.assertEqual(refused.returncode, 2)
 
+    def test_unicode_numeric_queries_through_the_dispatcher_keep_citations(self):
+        cases = (("latin.py", "café"), ("cjk.py", "你好"), ("number.py", "404"))
+        for name, body in cases:
+            (self.source / name).write_text(body + "\n", encoding="utf-8", newline="\n")
+        for label, program, env in self.programs():
+            with self.subTest(program=label):
+                database = self.base / f"unicode-index-{label}.sqlite"
+                indexed = self.call(program, env, "index", str(self.source), "--database", str(database), "--library-id", "/local/fixture")
+                self.assertEqual(indexed.returncode, 0, indexed.stderr)
+                before = database.read_bytes()
+                for name, body in cases:
+                    with self.subTest(query=body):
+                        found = self.call(program, env, "query", "--database", str(database), "--query", body)
+                        self.assertEqual(found.returncode, 0, found.stderr)
+                        results = json.loads(found.stdout)["results"]
+                        self.assertEqual(len(results), 1)
+                        self.assertEqual(results[0]["text"], body)
+                        self.assertEqual(results[0]["source"]["path"], name)
+                        self.assertEqual((results[0]["source"]["startLine"], results[0]["source"]["endLine"]), (1, 1))
+                        self.assertEqual(results[0]["source"]["fileSha256"], hashlib.sha256((body + "\n").encode("utf-8")).hexdigest())
+                self.assertEqual(database.read_bytes(), before)
+
     def test_index_and_query_through_the_dispatcher(self):
         for label, program, env in self.programs():
             with self.subTest(program=label):

@@ -6,6 +6,8 @@ The bundled `scripts/context7_backend.py` is a local reference implementation. I
 
 ## Start with lexical retrieval
 
+Lexical queries use SQLite's default FTS5 `unicode61` tokenizer, matching the index for Unicode letters, numbers, private-use characters and Latin diacritic normalization. Queries retain the first 32 unique non-stopword terms. FTS operators are treated as text. ASCII underscore identifiers remain quoted phrases so an absent name cannot match only one component; symbol/path ranking keeps its existing identifier rules. Query tokenization uses a separate in-memory database and leaves the stored index unchanged.
+
 Keep the database outside both source and docs directories. The docs root may be separate from the source root or nested within it; it must not equal or contain the source root. Overlap that would remove the code corpus is rejected before database or model processing. Nested Markdown is indexed once with docs provenance:
 
 ```bash

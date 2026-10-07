@@ -750,6 +750,118 @@ class RetrievalTests(unittest.TestCase):
         with self.assertRaisesRegex(backend.RetrievalError, "Cross-encoder default"):
             backend.serve(self.db, "127.0.0.1", 0, default_rerank="cross-encoder")
 
+    def test_lexical_terms_use_fts_unicode_normalization_order_and_cap(self):
+        self.assertEqual(backend.lexical_terms("CAFÉ cafe cafe\u0301 你好 مرحبا ПРИВЕТ 404 \ue000"),
+                         ["cafe", "你好", "مرحبا", "привет", "404", "\ue000"])
+        self.assertEqual(backend.lexical_terms("the and OR café resume_upload café 404"),
+                         ["cafe", "resume_upload", "404"])
+        self.assertEqual(backend.lexical_terms(" ".join(str(i) for i in range(40))),
+                         [str(i) for i in range(32)])
+        for question in ("", " ", "?!:()[]\"*+-", "\u0301", "the AND OR"):
+            with self.subTest(question=question):
+                self.assertEqual(backend.lexical_terms(question), [])
+        (self.root / "numeric.py").write_text("404\n", encoding="utf-8")
+        self.index()
+        with backend.connect(self.db) as con:
+            capped = " ".join(f"absent{i}" for i in range(32)) + " 404"
+            self.assertEqual(backend.query(con, capped)["results"], [])
+            self.assertEqual([item["source"]["path"] for item in backend.query(con, "404 " + capped)["results"]], ["numeric.py"])
+
+    def test_unicode_and_numeric_lexical_results_keep_exact_source_and_readonly_index(self):
+        cases = (
+            ("latin", "café", ("café", "CAFÉ", "cafe", "cafe\u0301")),
+            ("cjk", "你好", ("你好",)),
+            ("arabic", "مرحبا", ("مرحبا",)),
+            ("cyrillic", "Привет", ("Привет", "ПРИВЕТ")),
+            ("number", "404", ("404",)),
+            ("combining", "na\u0308ive", ("naïve", "naive", "na\u0308ive")),
+            ("private", "\ue000", ("\ue000",)),
+        )
+        for name, body, _ in cases:
+            (self.root / (name + ".py")).write_text(body + "\n", encoding="utf-8")
+        self.index()
+        before = self.db.read_bytes()
+        with sqlite3.connect(self.db.as_uri() + "?mode=ro", uri=True, factory=backend.ClosingConnection) as con:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA query_only=ON")
+            for name, body, questions in cases:
+                for question in questions:
+                    for reranker in (None, "lexical-symbol"):
+                        with self.subTest(question=question, reranker=reranker):
+                            found = backend.query(con, question, rerank=reranker)["results"]
+                            self.assertEqual([item["source"]["path"] for item in found], [name + ".py"])
+                            item = found[0]
+                            self.assertEqual(item["text"], body)
+                            self.assertEqual((item["source"]["startLine"], item["source"]["endLine"]), (1, 1))
+                            self.assertEqual(item["source"]["fileSha256"], backend.digest((body + "\n").encode("utf-8")))
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_lexical_operators_and_punctuation_remain_data(self):
+        (self.root / "needle.py").write_text("needle\n", encoding="utf-8")
+        (self.root / "operators.py").write_text("near not blocker\n", encoding="utf-8")
+        self.index()
+        before = self.db.read_bytes()
+        with backend.connect(self.db) as con:
+            self.assertEqual([item["source"]["path"] for item in backend.query(con, '"needle" OR symbols:absent')["results"]], ["needle.py"])
+            self.assertEqual({item["source"]["path"] for item in backend.query(con, "needle NOT blocker")["results"]}, {"needle.py", "operators.py"})
+            self.assertEqual([item["source"]["path"] for item in backend.query(con, "NEAR")["results"]], ["operators.py"])
+            for question in ("?!:()[]\"*+-", "AND OR", '\"; DROP TABLE chunks; --'):
+                with self.subTest(question=question):
+                    self.assertEqual(backend.query(con, question)["results"], [])
+            for question in ("", " ", "x" * 501):
+                with self.assertRaises(backend.RetrievalError):
+                    backend.query(con, question)
+            self.assertGreater(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 0)
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_lexical_identifier_phrases_priority_and_hybrid_absent_anchor_are_preserved(self):
+        (self.root / "owner.py").write_text("def resume_upload():\n    pass\n", encoding="utf-8")
+        (self.root / "reference.py").write_text("class UploadReference:\n    # resume_upload\n", encoding="utf-8")
+        (self.root / "partial.py").write_text("resume broken elsewhere\n", encoding="utf-8")
+        (self.root / "dollar.py").write_text("const $InvoiceTotal = 3;\n", encoding="utf-8")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        with backend.connect(self.db) as con:
+            semantic_rows = [(row[0], 0.99) for row in con.execute("SELECT id FROM chunks ORDER BY id")]
+            for reranker in (None, "lexical-symbol"):
+                found = backend.query(con, "resume_upload", rerank=reranker)["results"]
+                self.assertEqual([item["source"]["path"] for item in found], ["owner.py", "reference.py"])
+                self.assertGreater(found[0]["score"], 5)
+                self.assertEqual([item["source"]["path"] for item in backend.query(con, "$InvoiceTotal", rerank=reranker)["results"]], ["dollar.py"])
+            with mock.patch.object(backend, "semantic", return_value=semantic_rows):
+                for mode in ("lexical", "semantic", "hybrid"):
+                    with self.subTest(mode=mode):
+                        self.assertEqual(backend.query(con, "resume_broken_upload", mode=mode)["results"], [])
+                        paths = {item["source"]["path"] for item in backend.query(con, "resume_upload", mode=mode)["results"]}
+                        self.assertEqual(paths, {"owner.py", "reference.py"})
+
+    def test_hybrid_keeps_unicode_numeric_lexical_contribution_without_semantic_hits(self):
+        (self.root / "tokens.py").write_text("café 你好 404\n", encoding="utf-8")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def batches(groups, *_args, **_kwargs):
+            for group in groups:
+                yield [[1.0, 0.0] for _ in group]
+        with mock.patch.object(backend, "embedding_batches", side_effect=batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        before = self.db.read_bytes()
+        with backend.connect(self.db) as con, mock.patch.object(backend, "semantic", return_value=[]) as semantic:
+            for question in ("café", "你好", "404"):
+                with self.subTest(question=question):
+                    result = backend.query(con, question, mode="hybrid")["results"]
+                    self.assertEqual([item["source"]["path"] for item in result], ["tokens.py"])
+                    self.assertAlmostEqual(result[0]["score"], 1 / 61)
+                    self.assertEqual(result[0]["text"], "café 你好 404")
+            self.assertEqual(semantic.call_count, 3)
+        self.assertEqual(self.db.read_bytes(), before)
+
     def test_provenance_and_separate_docs(self):
         meta = self.index()
         self.assertEqual(meta["files"], 2)
