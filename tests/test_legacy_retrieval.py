@@ -30,21 +30,111 @@ class RetrievalTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        base = Path(self.tmp.name)
+        git_environment = mock.patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"})
+        git_environment.start()
+        self.addCleanup(git_environment.stop)
+        base = Path(self.tmp.name).resolve()
         self.root = base / "source"
         self.docs = base / "docs"
         self.root.mkdir()
         self.docs.mkdir()
         (self.root / "src").mkdir()
-        (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def create_invoice(self):\n        return 'invoice total'\n", encoding="utf-8")
-        (self.docs / "guide.md").write_text("# Billing guide\nCall InvoiceMaker to create a customer invoice.\n", encoding="utf-8")
-        (self.root / ".env").write_text("SECRET_SHOULD_NEVER_APPEAR=xyz\n")
+        (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def create_invoice(self):\n        return 'invoice total'\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("# Billing guide\nCall InvoiceMaker to create a customer invoice.\n", encoding="utf-8", newline="\n")
+        (self.root / ".env").write_text("SECRET_SHOULD_NEVER_APPEAR=xyz\n", encoding="utf-8", newline="\n")
         (self.root / "outside.py").symlink_to(self.docs / "guide.md")
         (self.root / "linked-docs").symlink_to(self.docs, target_is_directory=True)
         self.db = base / "index.sqlite"
 
     def index(self):
         return backend.index(self.root, self.db, "/local/billing", self.docs, None, None)
+
+    def require_sqlite_vec(self):
+        with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
+            try:
+                backend.load_sqlite_vec(con)
+            except backend.VectorAdapterUnavailable as error:
+                if os.environ.get("LEGACY_REQUIRE_SQLITE_VEC") == "1":
+                    self.fail(f"Required actual sqlite-vec acceptance unavailable: {error}")
+                self.skipTest(str(error))
+
+    def test_inference_environment_preserves_os_paths_and_excludes_provider_settings(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        supplied = {"PATH": "local-toolchain", "SystemRoot": "C:\\Windows", "WINDIR": "C:\\Windows", "TEMP": str(cache), "TMP": str(cache), "NODE_OPTIONS": "--inspect", "HF_TOKEN": "dummy-test-value", "OPENAI_API_KEY": "dummy-test-value", "ANTHROPIC_API_KEY": "dummy-test-value"}
+        with mock.patch.dict(os.environ, supplied, clear=True):
+            offline = backend.inference_environment(cache, download=False)
+            online = backend.inference_environment(cache, download=True)
+        self.assertEqual({key.upper() for key in offline}, {"PATH", "HOME", "HF_HUB_OFFLINE", "SYSTEMROOT", "WINDIR", "TEMP", "TMP"})
+        self.assertEqual(offline["HOME"], str(cache))
+        self.assertEqual(offline["HF_HUB_OFFLINE"], "1")
+        self.assertEqual(online["HF_HUB_OFFLINE"], "0")
+        for key in ("SystemRoot", "WINDIR", "TEMP", "TMP"):
+            self.assertEqual(offline[key], supplied[key])
+
+    def test_runtime_without_sqlite_extension_api_falls_back_only_when_requested(self):
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
+        (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
+        def fake_batches(batches, *_args, **_kwargs):
+            for batch in batches:
+                yield [[1.0, 0.0] for _ in batch]
+        with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
+            backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
+        class NoExtensionAPI:
+            def __init__(self, connection):
+                self.connection = connection
+            def __getattr__(self, name):
+                if name in ("enable_load_extension", "load_extension"):
+                    raise AttributeError(name)
+                return getattr(self.connection, name)
+        class InstalledPackage:
+            @staticmethod
+            def load(_connection):
+                raise AssertionError("An unavailable runtime must be rejected before loading")
+        with backend.connect(self.db) as con, mock.patch.dict(sys.modules, {"sqlite_vec": InstalledPackage}), mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
+            limited = NoExtensionAPI(con)
+            self.assertTrue(backend.query(limited, "invoice")["results"])
+            exact = backend.query(limited, "invoice", mode="semantic", vector_engine="stdlib")
+            automatic = backend.query(limited, "invoice", mode="semantic", vector_engine="auto")
+            self.assertEqual(automatic["vectorEngine"], "stdlib")
+            self.assertEqual(automatic["results"], exact["results"])
+            with self.assertRaisesRegex(backend.VectorAdapterUnavailable, "runtime cannot load extensions.*Homebrew"):
+                backend.query(limited, "invoice", mode="semantic", vector_engine="sqlite-vec")
+            def cannot_enable(_enabled):
+                raise sqlite3.OperationalError("extension loading disabled by build")
+            limited.enable_load_extension = cannot_enable
+            limited.load_extension = lambda _path: None
+            with self.assertRaisesRegex(backend.VectorAdapterUnavailable, "cannot enable extension loading"):
+                backend.load_sqlite_vec(limited)
+
+    def test_broken_installed_sqlite_adapter_is_not_an_auto_fallback(self):
+        class LoadableConnection:
+            enabled = False
+            def enable_load_extension(self, enabled):
+                self.enabled = enabled
+            def load_extension(self, _path):
+                pass
+        class BrokenPackage:
+            @staticmethod
+            def load(_connection):
+                raise sqlite3.OperationalError("incompatible extension architecture")
+        connection = LoadableConnection()
+        with mock.patch.dict(sys.modules, {"sqlite_vec": BrokenPackage}):
+            with self.assertRaisesRegex(backend.RetrievalError, "Installed sqlite-vec adapter failed to load") as raised:
+                backend.load_sqlite_vec(connection)
+            self.assertNotIsInstance(raised.exception, backend.VectorAdapterUnavailable)
+        self.assertFalse(connection.enabled)
+
+    def test_required_native_acceptance_fails_instead_of_skipping_missing_capability(self):
+        with mock.patch.dict(os.environ, {"LEGACY_REQUIRE_SQLITE_VEC": "1"}), mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+            with self.assertRaisesRegex(self.failureException, "Required actual sqlite-vec acceptance unavailable"):
+                self.require_sqlite_vec()
+        with mock.patch.dict(os.environ, {"LEGACY_REQUIRE_SQLITE_VEC": "1"}), mock.patch.object(backend, "load_sqlite_vec", side_effect=backend.VectorAdapterUnavailable("SQLite runtime cannot load extensions")):
+            with self.assertRaisesRegex(self.failureException, "runtime cannot load extensions"):
+                self.require_sqlite_vec()
+        with mock.patch.dict(os.environ, {"LEGACY_REQUIRE_SQLITE_VEC": "0"}), mock.patch.dict(sys.modules, {"sqlite_vec": None}):
+            with self.assertRaisesRegex(unittest.SkipTest, "sqlite-vec 0.1.9 is required"):
+                self.require_sqlite_vec()
 
     def test_whole_line_chunking_covers_source_without_gaps_or_duplicate_tail(self):
         rng = random.Random(20261007)
@@ -80,9 +170,9 @@ class RetrievalTests(unittest.TestCase):
                 list(backend.chunks_for("source", invalid))
             with self.assertRaisesRegex(backend.RetrievalError, "--chunk-chars"):
                 backend.index(self.root, self.db, "/local/billing", None, None, None, chunk_chars=invalid)
-        (self.root / "src/service.py").write_text("\n".join(f"const source_{i} = '" + "x" * 60 + "';" for i in range(70)))
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        (self.root / "src/service.py").write_text("\n".join(f"const source_{i} = '" + "x" * 60 + "';" for i in range(70)), encoding="utf-8", newline="\n")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         calls = []
         def fake_batches(batches, *_args, **_kwargs):
@@ -111,9 +201,9 @@ class RetrievalTests(unittest.TestCase):
         with backend.connect(self.db) as con:
             old_meta = backend.metadata(con)
             old_chunks = con.execute("SELECT * FROM chunks ORDER BY id").fetchall()
-        (self.root / "src/service.py").write_text("class HugeLine: " + "x" * 13000 + "\n")
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        (self.root / "src/service.py").write_text("class HugeLine: " + "x" * 13000 + "\n", encoding="utf-8", newline="\n")
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("inference must not run")), mock.patch.object(backend, "reranker_scores", side_effect=AssertionError("inference must not run")):
             with self.assertRaisesRegex(backend.RetrievalError, "code:src/service.py:L1-L1.*lexical"):
@@ -130,13 +220,13 @@ class RetrievalTests(unittest.TestCase):
             self.assertEqual(result["results"][0]["text"], "class HugeLine: " + "x" * 13000)
         # JS text.length counts UTF-16 units. Preflight must match that helper
         # limit even when a single line has fewer Python Unicode characters.
-        (self.root / "src/service.py").write_text("😀" * 6001 + "\n")
+        (self.root / "src/service.py").write_text("😀" * 6001 + "\n", encoding="utf-8", newline="\n")
         with mock.patch.object(backend, "embedding_batches", side_effect=AssertionError("inference must not run")):
             with self.assertRaisesRegex(backend.RetrievalError, "UTF-16"):
                 backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
 
     def test_configuration_files_and_candidate_limits(self):
-        (self.root / "handler.properties").write_text("handler.class=InvoiceMaker\n")
+        (self.root / "handler.properties").write_text("handler.class=InvoiceMaker\n", encoding="utf-8", newline="\n")
         self.index()
         with backend.connect(self.db) as con:
             self.assertTrue(any(x["source"]["path"] == "handler.properties" for x in backend.query(con, "handler.class")["results"]))
@@ -173,7 +263,7 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(unchanged["changed"], 0)
         self.assertEqual(first["corpusId"], unchanged["corpusId"])
         source = self.root / "src/service.py"
-        source.write_text("class RevisedInvoiceMaker:\n    pass\n")
+        source.write_text("class RevisedInvoiceMaker:\n    pass\n", encoding="utf-8", newline="\n")
         with backend.connect(self.db) as con:
             with self.assertRaisesRegex(backend.RetrievalError, "changed"):
                 backend.query(con, "invoice")
@@ -188,15 +278,15 @@ class RetrievalTests(unittest.TestCase):
         self.index()
         with backend.connect(self.db) as con:
             self.assertEqual(backend.query(con, "NeverExistingMagicType")["results"], [])
-        (self.root / "new.py").write_text("def new_function(): pass\n")
+        (self.root / "new.py").write_text("def new_function(): pass\n", encoding="utf-8", newline="\n")
         with backend.connect(self.db) as con:
             with self.assertRaisesRegex(backend.RetrievalError, "appeared"):
                 backend.query(con, "invoice")
 
     def test_gitignore_and_revision_change(self):
         subprocess.run(["git", "-C", str(self.root), "init", "-q"], check=True)
-        (self.root / ".gitignore").write_text("ignored.py\n")
-        (self.root / "ignored.py").write_text("SECRET_SHOULD_NOT_INDEX\n")
+        (self.root / ".gitignore").write_text("ignored.py\n", encoding="utf-8", newline="\n")
+        (self.root / "ignored.py").write_text("SECRET_SHOULD_NOT_INDEX\n", encoding="utf-8", newline="\n")
         subprocess.run(["git", "-C", str(self.root), "add", "src/service.py", ".gitignore"], check=True)
         subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial"], check=True)
         first = self.index()
@@ -211,8 +301,8 @@ class RetrievalTests(unittest.TestCase):
 
     def test_module_root_keeps_git_revision_and_parent_ignores(self):
         subprocess.run(["git", "-C", str(self.root), "init", "-q"], check=True)
-        (self.root / ".gitignore").write_text("src/ignored.py\n")
-        (self.root / "src/ignored.py").write_text("class ShouldRemainIgnored: pass\n")
+        (self.root / ".gitignore").write_text("src/ignored.py\n", encoding="utf-8", newline="\n")
+        (self.root / "src/ignored.py").write_text("class ShouldRemainIgnored: pass\n", encoding="utf-8", newline="\n")
         subprocess.run(["git", "-C", str(self.root), "add", ".gitignore", "src/service.py"], check=True)
         subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial"], check=True)
         result = backend.index(self.root / "src", self.db, "/local/billing", None, None, None)
@@ -224,7 +314,7 @@ class RetrievalTests(unittest.TestCase):
             found = backend.query(con, "InvoiceMaker")
             self.assertEqual(found["results"][0]["source"]["path"], "service.py")
             self.assertEqual(found["results"][0]["source"]["revision"], expected_revision)
-        (self.root / "src/ignored.py").write_text("class ChangedIgnored: pass\n")
+        (self.root / "src/ignored.py").write_text("class ChangedIgnored: pass\n", encoding="utf-8", newline="\n")
         with backend.connect(self.db) as con:
             self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
 
@@ -240,7 +330,7 @@ class RetrievalTests(unittest.TestCase):
             self.assertTrue(backend.query(con, "InvoiceMaker")["results"])
 
     def test_markdown_in_repo_has_doc_provenance(self):
-        (self.root / "README.md").write_text("# Architecture\nThe billing operation runs from this entry point.\n")
+        (self.root / "README.md").write_text("# Architecture\nThe billing operation runs from this entry point.\n", encoding="utf-8", newline="\n")
         self.index()
         with backend.connect(self.db) as con:
             result = backend.query(con, "Architecture")
@@ -263,8 +353,8 @@ class RetrievalTests(unittest.TestCase):
             backend.index(self.root, self.root / "bad.sqlite", "/local/billing", None, None, None)
 
     def test_reranker_configuration_and_lexical_only_candidates(self):
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         with self.assertRaisesRegex(backend.RetrievalError, "--reranker-revision"):
             backend.index(self.root, self.db, "/local/billing", self.docs, None, cache, runtime, reranker_model="custom/model")
@@ -295,7 +385,7 @@ class RetrievalTests(unittest.TestCase):
                 self.assertIsInstance(found["results"][0]["rerankScore"], float)
                 self.assertEqual(backend.query(con, "ImaginaryGovernmentFramework", rerank="cross-encoder")["results"], [])
         self.assertEqual([call[2] for call in calls], [True, False])
-        (self.root / "src/service.py").write_text("class Changed: pass\n")
+        (self.root / "src/service.py").write_text("class Changed: pass\n", encoding="utf-8", newline="\n")
         with backend.connect(self.db) as con:
             with self.assertRaisesRegex(backend.RetrievalError, "changed"):
                 backend.query(con, "InvoiceMaker", rerank="cross-encoder")
@@ -305,12 +395,9 @@ class RetrievalTests(unittest.TestCase):
                 backend.query(con, "InvoiceMaker", rerank="cross-encoder")
 
     def test_reranker_rejects_malformed_helper_output_and_cleans_up(self):
-        helper_dir = Path(self.tmp.name) / "bin"
-        helper_dir.mkdir()
-        node = helper_dir / "node"
-        node.write_text("#!/usr/bin/python3\nimport sys\nfor line in sys.stdin:\n print('{\"wrong\": 1}', flush=True)\n")
-        node.chmod(0o755)
-        cache = Path(self.tmp.name) / "cache"
+        helper = Path(self.tmp.name).resolve() / "fake-reranker.mjs"
+        helper.write_text("import { createInterface } from 'node:readline';\nfor await (const line of createInterface({input: process.stdin})) console.log('{\"wrong\": 1}');\n", encoding="utf-8", newline="\n")
+        cache = Path(self.tmp.name).resolve() / "cache"
         cache.mkdir()
         launched = []
         original = subprocess.Popen
@@ -318,36 +405,36 @@ class RetrievalTests(unittest.TestCase):
             proc = original(*args, **kwargs)
             launched.append(proc)
             return proc
-        with mock.patch.dict(os.environ, {"PATH": str(helper_dir) + os.pathsep + os.environ["PATH"]}), mock.patch.object(subprocess, "Popen", side_effect=capture):
+        with mock.patch.object(backend, "RERANK_HELPER", helper), mock.patch.object(subprocess, "Popen", side_effect=capture):
             with self.assertRaisesRegex(backend.RetrievalError, "Invalid reranker output"):
-                backend.reranker_scores("query", ["passage"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name), download=False)
+                backend.reranker_scores("query", ["passage"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name).resolve(), download=False)
         self.assertEqual(len(launched), 1)
         self.assertIsNotNone(launched[0].poll())
-        node.write_text("#!/usr/bin/python3\nimport json, sys\nfor line in sys.stdin:\n request = json.loads(line)\n if len(request['passages']) > 8: sys.exit(3)\n print(json.dumps([1.0] * len(request['passages'])), flush=True)\n")
-        with mock.patch.dict(os.environ, {"PATH": str(helper_dir) + os.pathsep + os.environ["PATH"]}):
-            scores = backend.reranker_scores("query", ["passage"] * 9, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name), download=False)
+        helper.write_text("import { createInterface } from 'node:readline';\nfor await (const line of createInterface({input: process.stdin})) { const request=JSON.parse(line); if(request.passages.length>8) process.exit(3); console.log(JSON.stringify(request.passages.map(()=>1))); }\n", encoding="utf-8", newline="\n")
+        with mock.patch.object(backend, "RERANK_HELPER", helper):
+            scores = backend.reranker_scores("query", ["passage"] * 9, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name).resolve(), download=False)
             self.assertEqual(scores, [1.0] * 9)
             with self.assertRaisesRegex(backend.RetrievalError, "candidate limit"):
-                backend.reranker_scores("query", ["passage"] * 61, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name), download=False)
+                backend.reranker_scores("query", ["passage"] * 61, backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, cache, Path(self.tmp.name).resolve(), download=False)
 
     def test_reranker_rejects_wrong_classification_dimension(self):
-        runtime = Path(self.tmp.name) / "fake-runtime"
+        runtime = Path(self.tmp.name).resolve() / "fake-runtime"
         package = runtime / "node_modules/@huggingface/transformers"
         (package / "src").mkdir(parents=True)
-        (package / "package.json").write_text('{"type":"module"}')
+        (package / "package.json").write_text('{"type":"module"}', encoding="utf-8", newline="\n")
         (package / "src/transformers.js").write_text(
             "export const env = {};\n"
             "export const AutoTokenizer = { from_pretrained: async () => () => ({}) };\n"
             "export const AutoModelForSequenceClassification = { from_pretrained: async () => "
             "Object.assign(async () => ({ logits: { dims: [1, 2], data: [1, 2] } }), "
             "{ config: { num_labels: 2 } }) };\n"
-        )
-        result = subprocess.run(["node", str(backend.RERANK_HELPER), "custom/model", "a" * 40, str(Path(self.tmp.name) / "cache"), str(runtime), "offline"], input="", text=True, capture_output=True, timeout=10)
+        , encoding="utf-8", newline="\n")
+        result = subprocess.run(["node", str(backend.RERANK_HELPER), "custom/model", "a" * 40, str(Path(self.tmp.name).resolve() / "cache"), str(runtime), "offline"], input="", text=True, capture_output=True, timeout=10)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("single-logit", result.stderr)
         module = package / "src/transformers.js"
-        module.write_text(module.read_text().replace("num_labels: 2", "num_labels: 1"))
-        result = subprocess.run(["node", str(backend.RERANK_HELPER), "custom/model", "a" * 40, str(Path(self.tmp.name) / "cache"), str(runtime), "offline"], input=json.dumps({"query": "q", "passages": ["p"]}) + "\n", text=True, capture_output=True, timeout=10)
+        module.write_text(module.read_text(encoding="utf-8").replace("num_labels: 2", "num_labels: 1"), encoding="utf-8", newline="\n")
+        result = subprocess.run(["node", str(backend.RERANK_HELPER), "custom/model", "a" * 40, str(Path(self.tmp.name).resolve() / "cache"), str(runtime), "offline"], input=json.dumps({"query": "q", "passages": ["p"]}) + "\n", text=True, capture_output=True, timeout=10)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("one scalar logit", result.stderr)
 
@@ -359,14 +446,14 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual({entry["path"] for entry in result["skipped"]}, {"large.py", "binary.py"})
 
     def test_parent_symlink_and_git_fsmonitor_are_not_used(self):
-        outside = Path(self.tmp.name) / "outside"
+        outside = Path(self.tmp.name).resolve() / "outside"
         outside.mkdir()
-        (outside / "stolen.py").write_text("PRIVATE_SOURCE_MARKER\n")
+        (outside / "stolen.py").write_text("PRIVATE_SOURCE_MARKER\n", encoding="utf-8", newline="\n")
         (self.root / "escape").symlink_to(outside, target_is_directory=True)
         subprocess.run(["git", "-C", str(self.root), "init", "-q"], check=True)
-        marker = Path(self.tmp.name) / "fsmonitor-ran"
-        hook = Path(self.tmp.name) / "fsmonitor.sh"
-        hook.write_text(f"#!/bin/sh\ntouch '{marker}'\n")
+        marker = Path(self.tmp.name).resolve() / "fsmonitor-ran"
+        hook = Path(self.tmp.name).resolve() / "fsmonitor.sh"
+        hook.write_text(f"#!/bin/sh\ntouch '{marker}'\n", encoding="utf-8", newline="\n")
         hook.chmod(0o755)
         subprocess.run(["git", "-C", str(self.root), "config", "core.fsmonitor", str(hook)], check=True)
         subprocess.run(["git", "-C", str(self.root), "add", "src/service.py"], check=True)
@@ -374,7 +461,7 @@ class RetrievalTests(unittest.TestCase):
         (self.root / "src/service.py").unlink()
         (self.root / "src").rmdir()
         (self.root / "src").symlink_to(outside, target_is_directory=True)
-        (outside / "service.py").write_text("PRIVATE_SOURCE_MARKER\n")
+        (outside / "service.py").write_text("PRIVATE_SOURCE_MARKER\n", encoding="utf-8", newline="\n")
         result = self.index()
         self.assertEqual(result["files"], 1)
         self.assertFalse(marker.exists())
@@ -382,19 +469,16 @@ class RetrievalTests(unittest.TestCase):
             self.assertFalse(any("PRIVATE_SOURCE_MARKER" in row[0] for row in con.execute("SELECT body FROM chunks")))
 
     def test_vector_engines_agree_and_failed_update_rolls_back(self):
-        try:
-            import sqlite_vec  # noqa: F401
-        except ImportError:
-            self.skipTest("optional sqlite-vec is not installed")
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        self.require_sqlite_vec()
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         def fake_batches(batches, *_args, **_kwargs):
             for batch in batches:
                 yield [[1.0, 0.0] if "InvoiceMaker" in text else [0.0, 1.0] for text in batch]
         results = []
         for engine in ("stdlib", "sqlite-vec"):
-            db = Path(self.tmp.name) / f"{engine}.sqlite"
+            db = Path(self.tmp.name).resolve() / f"{engine}.sqlite"
             with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
                 backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
             with mock.patch.object(backend, "embeddings", return_value=[[1.0, 0.0]]):
@@ -402,7 +486,7 @@ class RetrievalTests(unittest.TestCase):
                     result = backend.query(con, "InvoiceMaker", mode="semantic", vector_engine=engine)
                     self.assertEqual(result["vectorEngine"], engine)
                     results.append([(item["source"]["kind"], item["source"]["path"]) for item in result["results"]])
-            (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def updated(self): pass\n")
+            (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def updated(self): pass\n", encoding="utf-8", newline="\n")
             def fail_batches(*_args, **_kwargs):
                 raise backend.RetrievalError("model failed")
                 yield []
@@ -412,16 +496,16 @@ class RetrievalTests(unittest.TestCase):
             with backend.connect(db) as con:
                 self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 2)
                 self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 2)
-            (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def create_invoice(self):\n        return 'invoice total'\n")
+            (self.root / "src/service.py").write_text("class InvoiceMaker:\n    def create_invoice(self):\n        return 'invoice total'\n", encoding="utf-8", newline="\n")
             guide = self.docs / "guide.md"
-            guide_text = guide.read_text()
+            guide_text = guide.read_text(encoding="utf-8")
             guide.unlink()
             with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
                 self.assertEqual(backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)["deleted"], 1)
             with backend.connect(db) as con:
                 self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], 1)
                 self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 1)
-            guide.write_text(guide_text)
+            guide.write_text(guide_text, encoding="utf-8", newline="\n")
             with mock.patch.object(backend, "embedding_batches", side_effect=fake_batches):
                 rebuilt = backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, model_revision="a" * 40, vector_engine=engine)
             self.assertEqual(rebuilt["changed"], 2)
@@ -430,16 +514,16 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(results[0], results[1])
 
     def test_sqlite_vec_index_requires_optional_package(self):
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         with mock.patch.dict(sys.modules, {"sqlite_vec": None}):
             with self.assertRaisesRegex(backend.RetrievalError, "sqlite-vec 0.1.9 is required"):
                 backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine="sqlite-vec")
 
     def test_vector_preference_changes_without_reembedding_or_schema_copy(self):
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
             backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
@@ -469,8 +553,8 @@ class RetrievalTests(unittest.TestCase):
                     backend.query(con, "invoice", mode="semantic", vector_engine="auto")
 
     def test_vector_rows_cascade_and_failed_update_preserves_metadata(self):
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         def batches(batch_groups, *_args, **_kwargs):
             for batch in batch_groups:
@@ -480,11 +564,11 @@ class RetrievalTests(unittest.TestCase):
         with backend.connect(self.db) as con:
             old_meta = backend.metadata(con)
             old_rows = con.execute("SELECT chunk_id,embedding FROM chunk_vectors ORDER BY chunk_id").fetchall()
-        (self.root / "src/service.py").write_text("class ChangedInvoiceMaker: pass\n", encoding="utf-8")
+        (self.root / "src/service.py").write_text("class ChangedInvoiceMaker: pass\n", encoding="utf-8", newline="\n")
         def fail_after_write(batch_groups, *_args, **_kwargs):
             yield [[1.0, 0.0] for _ in batch_groups[0]]
             raise backend.RetrievalError("second batch failed")
-        (self.docs / "extra.md").write_text("Extra source\n", encoding="utf-8")
+        (self.docs / "extra.md").write_text("Extra source\n", encoding="utf-8", newline="\n")
         with mock.patch.object(backend, "MODEL_BATCH", 1), mock.patch.object(backend, "embedding_batches", side_effect=fail_after_write):
             with self.assertRaisesRegex(backend.RetrievalError, "second batch failed"):
                 backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
@@ -503,8 +587,8 @@ class RetrievalTests(unittest.TestCase):
             self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
 
     def test_model_removal_clears_vector_metadata(self):
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         with mock.patch.object(backend, "embedding_batches", return_value=iter([[[1.0, 0.0], [0.0, 1.0]]])):
             backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime)
@@ -514,8 +598,8 @@ class RetrievalTests(unittest.TestCase):
             self.assertEqual(con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0], 0)
 
     def test_old_index_reindexes_and_failed_migration_rolls_back_schema(self):
-        cache = Path(self.tmp.name) / "cache"
-        runtime = Path(self.tmp.name) / "runtime"
+        cache = Path(self.tmp.name).resolve() / "cache"
+        runtime = Path(self.tmp.name).resolve() / "runtime"
         (runtime / "node_modules/@huggingface/transformers").mkdir(parents=True)
         with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
             con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
@@ -545,10 +629,7 @@ class RetrievalTests(unittest.TestCase):
             self.assertEqual(con.execute("SELECT count(*) FROM chunks").fetchone()[0], con.execute("SELECT count(*) FROM chunk_vectors").fetchone()[0])
 
     def test_old_vec0_index_requires_package_once_for_reindex(self):
-        try:
-            import sqlite_vec  # noqa: F401
-        except ImportError:
-            self.skipTest("optional sqlite-vec is not installed")
+        self.require_sqlite_vec()
         with sqlite3.connect(self.db, factory=backend.ClosingConnection) as con:
             backend.load_sqlite_vec(con)
             con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
@@ -569,10 +650,7 @@ class RetrievalTests(unittest.TestCase):
             self.assertEqual(backend.metadata(con)["index_version"], "7")
 
     def test_empty_and_single_chunk_semantic_scan(self):
-        try:
-            import sqlite_vec  # noqa: F401
-        except ImportError:
-            self.skipTest("optional sqlite-vec is not installed")
+        self.require_sqlite_vec()
         with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
             con.row_factory = sqlite3.Row
             backend.setup(con)
@@ -588,10 +666,7 @@ class RetrievalTests(unittest.TestCase):
                     self.assertEqual([cid for cid, _ in backend.semantic(con, "x", "model", "revision", self.root, self.root, 10, engine)], [1, 2])
 
     def test_fixed_seed_float64_oracle_matches_both_engines(self):
-        try:
-            import sqlite_vec  # noqa: F401
-        except ImportError:
-            self.skipTest("optional sqlite-vec is not installed")
+        self.require_sqlite_vec()
         rng = random.Random(20261007)
         with sqlite3.connect(":memory:", factory=backend.ClosingConnection) as con:
             con.row_factory = sqlite3.Row
@@ -647,7 +722,7 @@ class RetrievalTests(unittest.TestCase):
             urlopen(base + "/api/v2/context?libraryId=/public/unknown&query=invoice")
         self.assertEqual(error.exception.code, 404)
         error.exception.close()
-        (self.root / "src/service.py").write_text("changed\n")
+        (self.root / "src/service.py").write_text("changed\n", encoding="utf-8", newline="\n")
         with self.assertRaises(HTTPError) as error:
             urlopen(base + "/api/v2/context?libraryId=/local/billing&query=invoice")
         self.assertEqual(error.exception.code, 409)
@@ -666,10 +741,11 @@ class RetrievalTests(unittest.TestCase):
         proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", str(port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
             self.assertIn("Local Context7", proc.stdout.readline())
-            config = Path(self.tmp.name) / "isolated-cli"
+            config = Path(self.tmp.name).resolve() / "isolated-cli"
             (config / "context7").mkdir(parents=True)
-            (config / "context7/credentials.json").write_text("null\n")
-            env = {"PATH": os.environ["PATH"], "HOME": str(config), "XDG_CONFIG_HOME": str(config), "XDG_STATE_HOME": str(config / "state"), "XDG_CACHE_HOME": str(config / "cache"), "CTX7_TELEMETRY_DISABLED": "1", "CI": "1", "NO_UPDATE_NOTIFIER": "1"}
+            (config / "context7/credentials.json").write_text("null\n", encoding="utf-8", newline="\n")
+            env = backend.inference_environment(config, download=False)
+            env.update({"HOME": str(config), "XDG_CONFIG_HOME": str(config), "XDG_STATE_HOME": str(config / "state"), "XDG_CACHE_HOME": str(config / "cache"), "CTX7_TELEMETRY_DISABLED": "1", "CI": "1", "NO_UPDATE_NOTIFIER": "1"})
             prefix = ["node", os.environ["LEGACY_CTX7_CLI"], "--base-url", f"http://127.0.0.1:{port}"]
             found = subprocess.run(prefix + ["library", "billing", "local source", "--json"], env=env, text=True, capture_output=True, timeout=20, check=True)
             self.assertEqual(json.loads(found.stdout)[0]["id"], "/local/billing")
@@ -689,9 +765,9 @@ class RetrievalTests(unittest.TestCase):
     def test_actual_cross_encoder_warmup_and_offline_query(self):
         cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
         runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
-        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n")
-        (self.docs / "guide.md").write_text("The PayrollEngine computes compensation and applies withholding before the pay statement.\n")
-        (self.docs / "cleanup.md").write_text("A scheduled cleanup job purges obsolete files at midnight.\n")
+        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("The PayrollEngine computes compensation and applies withholding before the pay statement.\n", encoding="utf-8", newline="\n")
+        (self.docs / "cleanup.md").write_text("A scheduled cleanup job purges obsolete files at midnight.\n", encoding="utf-8", newline="\n")
         result = backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
         self.assertEqual(result["rerankerRevision"], backend.DEFAULT_RERANKER_REVISION)
         with backend.connect(self.db) as con:
@@ -702,11 +778,11 @@ class RetrievalTests(unittest.TestCase):
             with mock.patch.object(backend, "reranker_scores", side_effect=backend.RetrievalError("offline reranker unavailable")):
                 with self.assertRaisesRegex(backend.RetrievalError, "offline reranker unavailable"):
                     backend.query(con, "PayrollEngine", rerank="cross-encoder")
-        missing_cache = Path(self.tmp.name) / "empty-cache"
+        missing_cache = Path(self.tmp.name).resolve() / "empty-cache"
         missing_cache.mkdir()
         with self.assertRaisesRegex(backend.RetrievalError, "Local reranker helper failed"):
             backend.reranker_scores("payroll", ["payroll document"], backend.DEFAULT_RERANKER, backend.DEFAULT_RERANKER_REVISION, missing_cache, runtime, download=False)
-        lexical_db = Path(self.tmp.name) / "lexical-only.sqlite"
+        lexical_db = Path(self.tmp.name).resolve() / "lexical-only.sqlite"
         backend.index(self.root, lexical_db, "/local/billing", self.docs, None, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
         with backend.connect(lexical_db) as con:
             self.assertFalse(backend.metadata(con)["embed_model"])
@@ -718,8 +794,8 @@ class RetrievalTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME") and os.environ.get("LEGACY_CTX7_CLI"), "requires optional inference runtime and stock ctx7 client")
     def test_stock_ctx7_uses_configured_hybrid_and_learned_reranker(self):
-        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n")
-        (self.docs / "guide.md").write_text("The PayrollEngine calculates salaries and applies withholding before the pay statement.\n")
+        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("The PayrollEngine calculates salaries and applies withholding before the pay statement.\n", encoding="utf-8", newline="\n")
         cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
         runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
         backend.index(self.root, self.db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, reranker_model=backend.DEFAULT_RERANKER)
@@ -729,10 +805,11 @@ class RetrievalTests(unittest.TestCase):
         proc = subprocess.Popen([sys.executable, str(SCRIPT), "serve", "--database", str(self.db), "--port", str(port), "--default-mode", "hybrid", "--default-rerank", "cross-encoder"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
             self.assertIn("mode=hybrid rerank=cross-encoder", proc.stdout.readline())
-            config = Path(self.tmp.name) / "hybrid-client"
+            config = Path(self.tmp.name).resolve() / "hybrid-client"
             (config / "context7").mkdir(parents=True)
-            (config / "context7/credentials.json").write_text("null\n")
-            env = {"PATH": os.environ["PATH"], "HOME": str(config), "XDG_CONFIG_HOME": str(config), "XDG_CACHE_HOME": str(config / "cache"), "XDG_STATE_HOME": str(config / "state"), "CTX7_TELEMETRY_DISABLED": "1", "CI": "1", "NO_UPDATE_NOTIFIER": "1"}
+            (config / "context7/credentials.json").write_text("null\n", encoding="utf-8", newline="\n")
+            env = backend.inference_environment(config, download=False)
+            env.update({"HOME": str(config), "XDG_CONFIG_HOME": str(config), "XDG_CACHE_HOME": str(config / "cache"), "XDG_STATE_HOME": str(config / "state"), "CTX7_TELEMETRY_DISABLED": "1", "CI": "1", "NO_UPDATE_NOTIFIER": "1"})
             result = subprocess.run(["node", os.environ["LEGACY_CTX7_CLI"], "--base-url", f"http://127.0.0.1:{port}", "docs", "/local/billing", "Who computes compensation deductions?", "--json"], env=env, capture_output=True, text=True, timeout=30, check=True)
             snippets = json.loads(result.stdout)["infoSnippets"]
             self.assertTrue(any(x["pageTitle"] == "guide.md" for x in snippets))
@@ -744,9 +821,9 @@ class RetrievalTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
     def test_actual_semantic_hybrid_and_reranking(self):
-        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n")
-        (self.docs / "guide.md").write_text("The PayrollEngine calculates salaries and applies withholding before the pay statement.\n")
-        (self.docs / "cleanup.md").write_text("A scheduled cleanup job removes obsolete files at midnight.\n")
+        (self.root / "src/service.py").write_text("class PayrollEngine:\n    def calculate_salary(self):\n        return withholding\n", encoding="utf-8", newline="\n")
+        (self.docs / "guide.md").write_text("The PayrollEngine calculates salaries and applies withholding before the pay statement.\n", encoding="utf-8", newline="\n")
+        (self.docs / "cleanup.md").write_text("A scheduled cleanup job removes obsolete files at midnight.\n", encoding="utf-8", newline="\n")
         cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
         runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
         backend.index(self.root, self.db, "/local/billing", self.docs, "Xenova/all-MiniLM-L6-v2", cache, runtime)
@@ -764,7 +841,7 @@ class RetrievalTests(unittest.TestCase):
         cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
         runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
         for n in range(35):
-            (self.docs / f"topic-{n:02d}.md").write_text(f"A scheduled cleanup job removes obsolete file group {n} at midnight.\n")
+            (self.docs / f"topic-{n:02d}.md").write_text(f"A scheduled cleanup job removes obsolete file group {n} at midnight.\n", encoding="utf-8", newline="\n")
         original = subprocess.Popen
         launched = []
         def count_process(*args, **kwargs):
@@ -787,16 +864,13 @@ class RetrievalTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get("LEGACY_RETRIEVAL_TEST_RUNTIME"), "optional local model runtime not installed")
     def test_actual_sqlite_vec_matches_stdlib_top_k(self):
-        try:
-            import sqlite_vec  # noqa: F401
-        except ImportError:
-            self.skipTest("optional sqlite-vec is not installed")
+        self.require_sqlite_vec()
         cache = Path(os.environ["LEGACY_RETRIEVAL_TEST_CACHE"])
         runtime = Path(os.environ["LEGACY_RETRIEVAL_TEST_RUNTIME"])
-        (self.docs / "cleanup.md").write_text("A scheduled cleanup job removes obsolete files at midnight.\n")
+        (self.docs / "cleanup.md").write_text("A scheduled cleanup job removes obsolete files at midnight.\n", encoding="utf-8", newline="\n")
         ranked = []
         for engine in ("stdlib", "sqlite-vec"):
-            db = Path(self.tmp.name) / f"actual-{engine}.sqlite"
+            db = Path(self.tmp.name).resolve() / f"actual-{engine}.sqlite"
             backend.index(self.root, db, "/local/billing", self.docs, backend.DEFAULT_MODEL, cache, runtime, vector_engine=engine)
             with backend.connect(db) as con:
                 result = backend.query(con, "Who computes compensation deductions?", mode="semantic", limit=3, vector_engine=engine)

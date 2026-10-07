@@ -20,7 +20,10 @@ class MapTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.base = Path(self.temp.name)
+        git_environment = patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"})
+        git_environment.start()
+        self.addCleanup(git_environment.stop)
+        self.base = Path(self.temp.name).resolve()
         self.repo = self.base / "source with spaces"
         self.repo.mkdir()
         self.out = self.base / "artifacts"
@@ -28,7 +31,7 @@ class MapTests(unittest.TestCase):
     def write(self, name, text):
         path = self.repo / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        path.write_text(text, encoding="utf-8", newline="\n")
         return path
 
     def map(self, **options):
@@ -40,12 +43,12 @@ class MapTests(unittest.TestCase):
         self.write("src/view.ts", "export function renderView() { return 2; }\n")
         self.write("src/more.py", "".join(f"def extra_{n}(): return {n}\n" for n in range(20)))
         meta = self.map(budget=128, focus_symbols=["renderView"])
-        content = (self.out / "repo-map.md").read_text()
+        content = (self.out / "repo-map.md").read_text(encoding="utf-8")
         self.assertIn("view.ts:L1", content)
         self.assertLessEqual(meta["estimated_tokens"], 128)
         self.assertTrue(meta["truncated"])
         full = self.map(budget=4096, focus_symbols=["renderView"])
-        content = (self.out / "repo-map.md").read_text()
+        content = (self.out / "repo-map.md").read_text(encoding="utf-8")
         self.assertIn("École.java:L1", content)
         self.assertIn("app.py:L1", content)
         self.assertIn("view.ts:L1", content)
@@ -58,16 +61,16 @@ class MapTests(unittest.TestCase):
         path = self.write("a.py", "def alpha():\n    pass\n")
         first = self.map()
         old_mtime = path.stat().st_mtime_ns
-        path.write_text("def omega():\n    pass\n", encoding="utf-8")
+        path.write_text("def omega():\n    pass\n", encoding="utf-8", newline="\n")
         os.utime(path, ns=(old_mtime, old_mtime))
         second = self.map()
         self.assertNotEqual(first["working_copy_fingerprint"], second["working_copy_fingerprint"])
-        self.assertIn("omega", (self.out / "repo-map.md").read_text())
-        self.assertNotIn("alpha", (self.out / "repo-map.md").read_text())
+        self.assertIn("omega", (self.out / "repo-map.md").read_text(encoding="utf-8"))
+        self.assertNotIn("alpha", (self.out / "repo-map.md").read_text(encoding="utf-8"))
         for cache in (self.out / "cache").glob("*.json"):
-            cache.write_text('{"tags": "poison"}', encoding="utf-8")
+            cache.write_text('{"tags": "poison"}', encoding="utf-8", newline="\n")
         self.map()
-        self.assertIn("omega", (self.out / "repo-map.md").read_text())
+        self.assertIn("omega", (self.out / "repo-map.md").read_text(encoding="utf-8"))
         path.unlink()
         last = self.map()
         self.assertEqual(last["coverage"]["definitions_found"], 0)
@@ -81,7 +84,7 @@ class MapTests(unittest.TestCase):
         subprocess.run(["git", "-C", str(self.repo), "add", "tracked.py"], check=True)
         subprocess.run(["git", "-C", str(self.repo), "add", "-f", ".env"], check=True)
         outside = self.base / "outside.py"
-        outside.write_text("def outside(): pass\n")
+        outside.write_text("def outside(): pass\n", encoding="utf-8", newline="\n")
         (self.repo / "link.py").symlink_to(outside)
         inventory = scan_repository(self.repo)
         paths = {item["path"] for item in inventory["files"]}
@@ -109,7 +112,7 @@ class MapTests(unittest.TestCase):
         self.assertIn("build.xml", meta["descriptors"])
         self.assertIn("build.gradle.kts", meta["descriptors"])
         self.assertIn("setup.properties", meta["descriptors"])
-        self.assertIn("żółć.py:L1", (self.out / "repo-map.md").read_text())
+        self.assertIn("żółć.py:L1", (self.out / "repo-map.md").read_text(encoding="utf-8"))
         self.assertEqual(meta["coverage"]["parsed_files"], 1)
         self.assertIn("x.kt", meta["unsupported_languages"])
         with self.assertRaisesRegex(ValueError, "outside"):
@@ -128,7 +131,7 @@ class MapTests(unittest.TestCase):
         self.write("z/main.py", "def desired(): pass\n")
         meta = self.map(subtrees=["z"], max_files=1)
         self.assertEqual(meta["coverage"]["selected_files"], 1)
-        self.assertIn("desired", (self.out / "repo-map.md").read_text())
+        self.assertIn("desired", (self.out / "repo-map.md").read_text(encoding="utf-8"))
 
     def test_subtree_dot_and_relative_prefix_preserve_selected_scope(self):
         self.write("module/a.py", "def selected(): pass\n")
@@ -154,7 +157,7 @@ class MapTests(unittest.TestCase):
 
     def test_nested_ignored_directory_is_scanned_as_non_git(self):
         subprocess.run(["git", "init", "-q", str(self.base)], check=True)
-        (self.base / ".gitignore").write_text("source with spaces/\n", encoding="utf-8")
+        (self.base / ".gitignore").write_text("source with spaces/\n", encoding="utf-8", newline="\n")
         self.write("a.py", "def visible(): pass\n")
         inventory = scan_repository(self.repo)
         self.assertFalse(inventory["git"])
@@ -200,7 +203,7 @@ class MapTests(unittest.TestCase):
         with patch("repo_files.MAX_DISCOVERY_ENTRIES", 5):
             with self.assertRaisesRegex(ValueError, "discovery entry limit"):
                 self.map(inventory_only=True)
-        meta = json.loads((self.out / "map.meta.json").read_text())
+        meta = json.loads((self.out / "map.meta.json").read_text(encoding="utf-8"))
         self.assertEqual(meta["status"], "failed")
         self.assertIsNone(meta["coverage"])
         self.assertEqual(meta["failure"]["stage"], "inventory")
@@ -219,11 +222,11 @@ class MapTests(unittest.TestCase):
         with patch("repo_map.rank_tags", side_effect=change_source):
             with self.assertRaises(ValueError):
                 self.map()
-        meta = json.loads((self.out / "map.meta.json").read_text())
+        meta = json.loads((self.out / "map.meta.json").read_text(encoding="utf-8"))
         self.assertEqual(meta["status"], "failed")
         self.assertEqual(meta["failure"]["stage"], "rendering")
         self.assertEqual(meta["coverage"]["selected_files"], 1)
-        self.assertNotIn("# Repository map", (self.out / "repo-map.md").read_text())
+        self.assertNotIn("# Repository map", (self.out / "repo-map.md").read_text(encoding="utf-8"))
 
     def test_publication_failure_records_failed_stage(self):
         self.write("a.py", "def initial(): pass\n")
@@ -236,7 +239,7 @@ class MapTests(unittest.TestCase):
         with patch("repo_map._atomic_write", side_effect=fail_map):
             with self.assertRaisesRegex(OSError, "publication failure"):
                 self.map()
-        meta = json.loads((self.out / "map.meta.json").read_text())
+        meta = json.loads((self.out / "map.meta.json").read_text(encoding="utf-8"))
         self.assertEqual(meta["status"], "failed")
         self.assertEqual(meta["failure"]["stage"], "publication")
 
@@ -244,7 +247,7 @@ class MapTests(unittest.TestCase):
         self.write("a.py", "".join(f"def other_{n}(): pass\n" for n in range(30)))
         self.write("z.py", "def target(): pass\n")
         self.map(budget=64, focus_files=["z.py"])
-        self.assertIn("z.py:L1", (self.out / "repo-map.md").read_text())
+        self.assertIn("z.py:L1", (self.out / "repo-map.md").read_text(encoding="utf-8"))
 
     def test_output_symlinks_cannot_redirect_writes_into_source(self):
         self.write("a.py", "def safe(): pass\n")
@@ -252,19 +255,19 @@ class MapTests(unittest.TestCase):
         self.out.mkdir()
         (self.out / "repo-map.md").symlink_to(target)
         self.map()
-        self.assertEqual(target.read_text(), "DO NOT CHANGE\n")
+        self.assertEqual(target.read_text(encoding="utf-8"), "DO NOT CHANGE\n")
         self.assertFalse((self.out / "repo-map.md").is_symlink())
         (self.out / "cache").rename(self.out / "old-cache")
         (self.out / "cache").symlink_to(self.repo, target_is_directory=True)
         with self.assertRaisesRegex(ValueError, "cache path"):
             self.map()
-        self.assertEqual(target.read_text(), "DO NOT CHANGE\n")
+        self.assertEqual(target.read_text(encoding="utf-8"), "DO NOT CHANGE\n")
 
     def test_offline_process(self):
         self.write("a.py", "def alpha(): pass\n")
         guard = self.base / "guard"
         guard.mkdir()
-        (guard / "sitecustomize.py").write_text("import socket\ndef deny(*args, **kwargs): raise RuntimeError('network denied')\nsocket.socket=deny\nsocket.create_connection=deny\n")
+        (guard / "sitecustomize.py").write_text("import socket\ndef deny(*args, **kwargs): raise RuntimeError('network denied')\nsocket.socket=deny\nsocket.create_connection=deny\n", encoding="utf-8", newline="\n")
         env = os.environ.copy()
         env["PYTHONPATH"] = os.pathsep.join([str(guard), env.get("PYTHONPATH", "")])
         result = subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.repo), "--output-dir", str(self.out)], capture_output=True, text=True, env=env)
@@ -280,7 +283,7 @@ class MapTests(unittest.TestCase):
         subprocess.run(["git", "-C", str(self.repo), "add", "a.py", ".gitattributes"], check=True)
         marker = self.base / "filter-was-run"
         script = self.base / "filter.py"
-        script.write_text("from pathlib import Path; import sys; Path(%r).touch(); print(sys.stdin.read())" % str(marker))
+        script.write_text("from pathlib import Path; import sys; Path(%r).touch(); print(sys.stdin.read())" % str(marker), encoding="utf-8", newline="\n")
         subprocess.run(["git", "-C", str(self.repo), "config", "filter.untrusted.clean", f'"{sys.executable}" "{script}"'], check=True)
         self.write("a.py", "def changed(): pass\n")
         inventory = scan_repository(self.repo)
@@ -294,13 +297,13 @@ class MapTests(unittest.TestCase):
         with patch("repo_map.scan_repository", side_effect=ValueError("cannot inventory directory")):
             with self.assertRaisesRegex(ValueError, "cannot inventory"):
                 self.map()
-        meta = json.loads((self.out / "map.meta.json").read_text())
-        inventory = json.loads((self.out / "inventory.json").read_text())
+        meta = json.loads((self.out / "map.meta.json").read_text(encoding="utf-8"))
+        inventory = json.loads((self.out / "inventory.json").read_text(encoding="utf-8"))
         self.assertEqual(meta["status"], "failed")
         self.assertEqual(meta["failure"]["stage"], "inventory")
         self.assertEqual(inventory["status"], "failed")
         self.assertIsNone(meta["coverage"])
-        self.assertNotIn("alpha", (self.out / "repo-map.md").read_text())
+        self.assertNotIn("alpha", (self.out / "repo-map.md").read_text(encoding="utf-8"))
 
     @unittest.skipUnless(os.name == "posix" and os.geteuid() != 0, "requires non-root POSIX permissions")
     def test_unreadable_subtree_is_reported_as_scan_failure(self):
@@ -311,7 +314,7 @@ class MapTests(unittest.TestCase):
         try:
             with self.assertRaisesRegex(ValueError, "cannot inventory directory"):
                 self.map()
-            self.assertEqual(json.loads((self.out / "map.meta.json").read_text())["status"], "failed")
+            self.assertEqual(json.loads((self.out / "map.meta.json").read_text(encoding="utf-8"))["status"], "failed")
         finally:
             hidden.chmod(0o700)
 
@@ -326,7 +329,7 @@ class MapTests(unittest.TestCase):
     def test_form_feed_does_not_shift_original_line_numbers(self):
         self.write("a.py", "# comment\fcontinued\n\ndef real_definition():\n    pass\n")
         self.map()
-        self.assertIn("a.py:L3: def real_definition():", (self.out / "repo-map.md").read_text())
+        self.assertIn("a.py:L3: def real_definition():", (self.out / "repo-map.md").read_text(encoding="utf-8"))
         _text, digest = read_safe_text(self.repo, "a.py")
         card = {"path": "a.py", "sha256": digest, "start_line": 3, "end_line": 3, "quote": "def real_definition():"}
         self.assertTrue(check_cards(self.repo, {"citations": [card]})["valid"])
@@ -351,12 +354,12 @@ class MapTests(unittest.TestCase):
         with patch("repo_map.rank_tags", side_effect=ValueError("ranking edge limit exceeded")):
             with self.assertRaisesRegex(ValueError, "ranking edge limit"):
                 self.map()
-        meta = json.loads((self.out / "map.meta.json").read_text())
+        meta = json.loads((self.out / "map.meta.json").read_text(encoding="utf-8"))
         self.assertEqual(meta["status"], "failed")
         self.assertEqual(meta["failure"]["stage"], "ranking")
         self.assertIsNone(meta["map_sha256"])
-        self.assertIn("src/b.py", {x["path"] for x in json.loads((self.out / "inventory.json").read_text())["files"]})
-        self.assertNotIn("alpha", (self.out / "repo-map.md").read_text())
+        self.assertIn("src/b.py", {x["path"] for x in json.loads((self.out / "inventory.json").read_text(encoding="utf-8"))["files"]})
+        self.assertNotIn("alpha", (self.out / "repo-map.md").read_text(encoding="utf-8"))
 
     def test_citations_exact_hash_lines_and_quote(self):
         self.write("src/a.py", "def alpha():\n    return 1\n")

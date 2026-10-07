@@ -106,6 +106,8 @@ Lexical indexing, querying and serving use only the standard library with SQLite
 
 Only the explicit `index --embed-model` command downloads model files; querying and serving use local files. The optional `sqlite-vec` vector engine is a pinned Python package in `scripts/requirements-retrieval.txt`; install it into the tool environment, never globally. See [private retrieval](private-retrieval.md) for commands, models and limits.
 
+The optional vector extension needs both its package and an extension-enabled Python `sqlite3` runtime. If the runtime cannot load extensions, use `--vector-engine stdlib` or explicit `auto` fallback, or a compatible Python build such as Homebrew Python 3.12 on macOS. See [runtime capability notes](private-retrieval.md#evaluate-semantic-retrieval-for-prose-paraphrases).
+
 ## Check an installation
 
 ```bash

@@ -26,6 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from legacy_common import inference_environment
 from repo_files import _candidates, _git, git_context, _safe_relative, _secret, read_safe_text, split_source_lines
 
 
@@ -148,16 +149,27 @@ def connect(path: Path) -> sqlite3.Connection:
 def load_sqlite_vec(con: sqlite3.Connection) -> None:
     try:
         import sqlite_vec
-        con.enable_load_extension(True)
+    except ImportError as exc:
+        raise VectorAdapterUnavailable("sqlite-vec 0.1.9 is required; install the optional pinned package") from exc
+    enable = getattr(con, "enable_load_extension", None)
+    if not callable(enable) or not callable(getattr(con, "load_extension", None)):
+        raise VectorAdapterUnavailable("This Python sqlite3 runtime cannot load extensions; use a Python build with --enable-loadable-sqlite-extensions (for example Homebrew Python on macOS), or select --vector-engine stdlib/auto")
+    try:
+        enable(True)
+    except sqlite3.Error as exc:
+        raise VectorAdapterUnavailable(f"This SQLite runtime cannot enable extension loading: {exc}; use an extension-capable Python build or select --vector-engine stdlib/auto") from exc
+    try:
         try:
             sqlite_vec.load(con)
         finally:
-            con.enable_load_extension(False)
+            enable(False)
         version = con.execute("SELECT vec_version()").fetchone()[0]
-        if version != "v0.1.9" and version != "0.1.9":
-            raise RetrievalError(f"sqlite-vec 0.1.9 required; found {version}")
-    except (ImportError, AttributeError, sqlite3.Error) as exc:
-        raise VectorAdapterUnavailable("sqlite-vec 0.1.9 is required; install the optional pinned package") from exc
+    except (AttributeError, OSError, sqlite3.Error) as exc:
+        # An installed but broken/incompatible adapter is an error, rather than
+        # a missing capability that auto may quietly replace with stdlib.
+        raise RetrievalError(f"Installed sqlite-vec adapter failed to load: {exc}") from exc
+    if version not in ("v0.1.9", "0.1.9"):
+        raise RetrievalError(f"sqlite-vec 0.1.9 required; found {version}")
 
 
 def pack_vector(vector: list[float]) -> bytes:
@@ -236,7 +248,7 @@ def embedding_batches(batches: list[list[str]], model: str, model_revision: str,
         cache.mkdir(parents=True, exist_ok=True)
     elif not cache.is_dir():
         raise RetrievalError("Local model cache is missing; run explicit model download at index time")
-    env = {"PATH": os.environ.get("PATH", ""), "HOME": str(cache), "HF_HUB_OFFLINE": "0" if download else "1"}
+    env = inference_environment(cache, download=download)
     responses: queue.Queue[str | None] = queue.Queue()
     with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as errors:
         try:
@@ -305,7 +317,7 @@ def reranker_scores(question: str, passages: list[str], model: str, model_revisi
         cache.mkdir(parents=True, exist_ok=True)
     elif not cache.is_dir():
         raise RetrievalError("Local reranker cache is missing; index with --reranker-model first")
-    env = {"PATH": os.environ.get("PATH", ""), "HOME": str(cache), "HF_HUB_OFFLINE": "0" if download else "1"}
+    env = inference_environment(cache, download=download)
     responses: queue.Queue[str | None] = queue.Queue()
     with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as errors:
         try:
