@@ -1,0 +1,7 @@
+Legacy repository map
+Copyright 2026 Edukey Sp. z o.o.
+
+Licensed under the Apache License, Version 2.0. The native binary uses
+Tree-sitter grammars and Rust crates. Their notices and license texts are
+included in each distribution archive's NOTICES.txt, THIRD_PARTY_RUST.md
+and licenses/rust/ directory.
