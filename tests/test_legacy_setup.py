@@ -150,6 +150,87 @@ class SetupTests(unittest.TestCase):
                 with patch.object(setup.platform, "system", return_value=system), patch.object(setup.platform, "machine", return_value=machine):
                     self.assertEqual(self.real_detect(), expected)
 
+    def legacy_policy(self):
+        policy = copy.deepcopy(self.policy)
+        policy["publication"] = "pending-first-release"
+        policy["platforms"][self.platform]["consumer_verified"] = False
+        path = self.base / "legacy-policy.json"
+        path.write_text(json.dumps(policy), encoding="utf-8")
+        return path
+
+    def test_fresh_cache_is_local_need_with_explicit_install_and_no_fetch(self):
+        policy_path = self.legacy_policy()
+        with patch.object(setup, "_download") as fetched:
+            result = setup.status(cache_dir=self.cache, policy_path=policy_path)
+        self.assertEqual(result["state"], "needs-setup")
+        self.assertEqual(result["next_action"], "install")
+        self.assertIn("local", result["message"].lower())
+        self.assertIn("no Rust compiler", result["message"])
+        self.assertNotIn("publication", result)
+        self.assertNotIn("consumer_verified", result)
+        self.assertEqual(result["setup_command"][-2:], ["--policy", str(policy_path)])
+        self.assertFalse(self.cache.exists())
+        fetched.assert_not_called()
+        self.mock_probe.assert_not_called()
+
+    def test_legacy_policy_markers_do_not_block_verified_local_readiness(self):
+        policy_path = self.legacy_policy()
+        installed = setup.install(cache_dir=self.cache, local_package=self.artifacts, policy_path=policy_path)
+        self.assertEqual(installed["state"], "ready")
+        self.assertEqual(installed["next_action"], "run")
+        self.assertEqual(installed["source_kind"], "local")
+        self.assertEqual(setup.status(cache_dir=self.cache, policy_path=policy_path)["next_action"], "run")
+        self.assertNotIn("publication", installed)
+        self.assertNotIn("consumer_verified", installed)
+
+    def test_legacy_policy_markers_allow_verified_pinned_release_install(self):
+        policy_path = self.legacy_policy()
+        downloaded = []
+
+        def download(url, destination, **_options):
+            name = url.rsplit("/", 1)[-1]
+            downloaded.append(name)
+            shutil.copyfile(self.artifacts / name, destination)
+
+        with patch.object(setup, "_download", side_effect=download):
+            installed = setup.install(cache_dir=self.cache, policy_path=policy_path)
+        self.assertEqual(downloaded, ["legacy-tools-release.json", "legacy-repo-map-linux-x86_64.tar.gz"])
+        self.assertEqual(installed["state"], "ready")
+        self.assertEqual(installed["next_action"], "run")
+        self.assertEqual(installed["source_kind"], "release")
+        self.assertEqual(installed["source_commit"], "a" * 40)
+        self.assertTrue(any(call.kwargs.get("smoke") for call in self.mock_probe.call_args_list))
+        self.assertEqual(Path(installed["program"]).read_bytes(), self.binary.read_bytes())
+
+    def test_cli_exit_codes_for_missing_ready_and_invalid_policy(self):
+        policy_path = self.legacy_policy()
+
+        def cli(*args):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = setup.main(["status", "--cache-dir", str(self.cache), "--policy", str(policy_path), *args])
+            return code, json.loads(output.getvalue())
+
+        missing_code, missing = cli()
+        self.assertEqual((missing_code, missing["state"], missing["next_action"]), (1, "needs-setup", "install"))
+        setup.install(cache_dir=self.cache, local_package=self.artifacts, policy_path=policy_path)
+        ready_code, ready = cli()
+        self.assertEqual((ready_code, ready["state"], ready["next_action"]), (0, "ready", "run"))
+        policy_path.write_text("{}", encoding="utf-8")
+        error_code, error = cli()
+        self.assertEqual((error_code, error["state"]), (2, "error"))
+
+    def test_invalid_cached_package_requires_explicit_replace_in_guidance(self):
+        policy_path = self.legacy_policy()
+        installed = setup.install(cache_dir=self.cache, local_package=self.artifacts, policy_path=policy_path)
+        Path(installed["program"]).write_bytes(b"tampered")
+        result = setup.status(cache_dir=self.cache, policy_path=policy_path)
+        self.assertEqual(result["state"], "needs-setup")
+        self.assertEqual(result["next_action"], "install")
+        self.assertIn("--replace", result["message"])
+        self.assertIn("--replace", result["setup_command"])
+        self.assertEqual(result["setup_command"][-2:], ["--policy", str(policy_path)])
+
     def test_status_before_setup_reports_explicit_pinned_install_location(self):
         result = setup.status(cache_dir=self.cache)
         self.assertEqual(result["state"], "needs-setup")

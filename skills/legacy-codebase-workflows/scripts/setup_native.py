@@ -289,10 +289,11 @@ def status(cache_dir=None, *, policy_path=None):
     tag, target = _target(policy)
     cache = _cache_root(cache_dir)
     destination = _destination(cache, policy, tag)
-    result = {"state": "needs-setup", "platform": tag, "version": policy["native_version"], "release_tag": policy["release_tag"],
-              "cache_directory": str(destination), "publication": policy.get("publication"),
-              "consumer_verified": target.get("consumer_verified", False),
-              "setup_command": [sys.executable, str(Path(__file__).resolve()), "install", "--cache-dir", str(cache)]}
+    setup_command = [sys.executable, str(Path(__file__).resolve()), "install", "--cache-dir", str(cache)]
+    result = {"state": "needs-setup", "next_action": "install", "platform": tag,
+              "version": policy["native_version"], "release_tag": policy["release_tag"],
+              "cache_directory": str(destination), "setup_command": setup_command,
+              "message": "Local native package needs setup; install the pinned prebuilt release (no Rust compiler required)."}
     try:
         receipt = _object(destination / "receipt.json")
         if receipt.get("source_kind") not in ("local", "ci", "release"):
@@ -304,10 +305,15 @@ def status(cache_dir=None, *, policy_path=None):
         _probe_binary(package / target["program"], policy)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         result["reason"] = str(exc)
-        return result
-    result.update(state="ready", program=str(package / target["program"]), source_kind=receipt["source_kind"],
-                  source_commit=receipt["source_commit"], source_dirty=receipt["source_dirty"])
-    result.pop("reason", None)
+        if destination.exists():
+            setup_command.append("--replace")
+            result["message"] += " An invalid package occupies this cache destination; inspect the reason and use --replace explicitly."
+    else:
+        result.update(state="ready", next_action="run", program=str(package / target["program"]),
+                      source_kind=receipt["source_kind"], source_commit=receipt["source_commit"],
+                      source_dirty=receipt["source_dirty"], message="Verified local native package is ready to run.")
+    if policy_path is not None:
+        setup_command.extend(("--policy", str(Path(policy_path).resolve())))
     return result
 
 
