@@ -1,6 +1,9 @@
 """Offline behavior checks for the pinned native installer and its cache."""
 
+import contextlib
+import copy
 import hashlib
+import shutil
 import importlib.util
 import io
 import json
@@ -66,6 +69,79 @@ class SetupTests(unittest.TestCase):
 
     def install(self, **options):
         return setup.install(cache_dir=self.cache, local_package=self.artifacts, **options)
+
+    def forged_override(self):
+        forged = copy.deepcopy(self.manifest)
+        forged.update(source_commit="f" * 40, ci_run_head_commit="b" * 40, ci_run_id="42")
+        override = self.base / "unauthenticated-override.json"
+        override.write_text(json.dumps(forged), encoding="utf-8")
+        return override
+
+    def test_ci_manifest_override_cannot_forge_source_identity_with_matching_archive(self):
+        override = self.forged_override()
+        self.manifest.update(ci_run_head_commit="b" * 40, ci_run_id="42")
+        self.refresh()
+        with patch.object(setup, "_ci_source", return_value=(self.artifacts, "b" * 40)) as fetched:
+            with self.assertRaisesRegex(setup.SetupError, "manifest.*local-package", msg="A caller override must not publish ready for a forged source SHA"):
+                setup.install(cache_dir=self.cache, from_ci="42", expected_source="f" * 40, manifest_path=override)
+        fetched.assert_not_called()
+        self.mock_probe.assert_not_called()
+        self.assertFalse(self.cache.exists())
+
+    def test_release_manifest_override_rejected_before_download_or_cache_creation(self):
+        override = self.forged_override()
+        def authentic_download(url, destination, **options):
+            shutil.copyfile(self.artifacts / url.rsplit("/", 1)[-1], destination)
+        with patch.object(setup, "_download", side_effect=authentic_download) as fetched:
+            with self.assertRaisesRegex(setup.SetupError, "manifest.*local-package", msg="A local override must not replace the pinned release source identity"):
+                setup.install(cache_dir=self.cache, expected_source="f" * 40, manifest_path=override)
+        fetched.assert_not_called()
+        self.mock_probe.assert_not_called()
+        self.assertFalse(self.cache.exists())
+
+    def test_invalid_manifest_source_preserves_existing_verified_cache(self):
+        installed = self.install()
+        destination = Path(installed["cache_directory"])
+        before = {p.relative_to(destination).as_posix(): p.read_bytes() for p in destination.rglob("*") if p.is_file()}
+        override = self.forged_override()
+        self.mock_probe.reset_mock()
+        with patch.object(setup, "_ci_source") as ci, patch.object(setup, "_download") as release:
+            for options in ({"from_ci": "42", "replace": True, "expected_source": "f" * 40},
+                            {"replace": True, "expected_source": "f" * 40},
+                            {"expected_source": "a" * 40}):
+                with self.subTest(options=options), self.assertRaisesRegex(setup.SetupError, "manifest.*local-package"):
+                    setup.install(cache_dir=self.cache, manifest_path=override, **options)
+            ci.assert_not_called()
+            release.assert_not_called()
+        self.mock_probe.assert_not_called()
+        after = {p.relative_to(destination).as_posix(): p.read_bytes() for p in destination.rglob("*") if p.is_file()}
+        self.assertEqual(after, before)
+        self.assertEqual(setup.status(cache_dir=self.cache)["source_commit"], "a" * 40)
+
+    def test_local_archive_with_separate_manifest_remains_supported(self):
+        archive = self.refresh()
+        separate = self.base / "separate-reviewed-local-index.json"
+        separate.write_text(json.dumps(self.manifest), encoding="utf-8")
+        with patch.object(setup, "_download") as release, patch.object(setup, "_ci_source") as ci:
+            installed = setup.install(cache_dir=self.cache, local_package=archive, manifest_path=separate, expected_source="a" * 40)
+            release.assert_not_called()
+            ci.assert_not_called()
+        self.assertEqual(installed["state"], "ready")
+        self.assertEqual(installed["source_commit"], "a" * 40)
+        self.assertEqual(installed["source_kind"], "local")
+
+    def test_cli_manifest_without_local_package_reports_error_before_fetch(self):
+        override = self.forged_override()
+        output = io.StringIO()
+        with patch.object(setup, "_download") as release, patch.object(setup, "_ci_source") as ci, contextlib.redirect_stdout(output):
+            result = setup.main(["install", "--cache-dir", str(self.cache), "--manifest", str(override)])
+        self.assertEqual(result, 2)
+        response = json.loads(output.getvalue())
+        self.assertEqual(response["state"], "error")
+        self.assertIn("--local-package", response["reason"])
+        release.assert_not_called()
+        ci.assert_not_called()
+        self.assertFalse(self.cache.exists())
 
     def test_platform_normalization_uses_executing_os_not_wsl_host(self):
         for system, machine, expected in (("Windows", "AMD64", "windows-x86_64"), ("Linux", "x86_64", "linux-x86_64"),

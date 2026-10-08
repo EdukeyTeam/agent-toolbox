@@ -411,6 +411,8 @@ def _ci_source(run_id, expected_source, policy, tag, scratch):
 
 
 def install(*, cache_dir=None, local_package=None, manifest_path=None, from_ci=None, expected_source=None, replace=False, policy_path=None):
+    if manifest_path is not None and local_package is None:
+        raise SetupError("--manifest requires --local-package; CI and release installs use their fetched provenance index")
     policy = load_policy(policy_path)
     tag, target = _target(policy)
     cache = _cache_root(cache_dir)
@@ -512,7 +514,7 @@ def main(argv=None):
             sources = command.add_mutually_exclusive_group()
             sources.add_argument("--local-package", type=Path, help="explicit verified artifact directory, native package directory, or archive")
             sources.add_argument("--from-ci", help="successful authenticated GitHub run; requires --expected-source and matching release manifest")
-            command.add_argument("--manifest", type=Path, dest="manifest_path", help="release index for a directly supplied local package/archive")
+            command.add_argument("--manifest", type=Path, dest="manifest_path", help="separate release index; only supported with --local-package")
             command.add_argument("--expected-source", help="full reviewed source commit SHA; mandatory for CI")
             command.add_argument("--replace", action="store_true", help="explicitly replace this version/platform cache only after verification succeeds")
     args = vars(parser.parse_args(argv))

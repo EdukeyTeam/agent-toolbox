@@ -40,7 +40,7 @@ For a previously downloaded indexed artifact directory or package/archive plus i
 python /path/to/skill/scripts/setup_native.py install --local-package /path/to/artifact-directory --expected-source <full-source-sha>
 ```
 
-Use `--manifest /path/to/legacy-tools-release.json` when the index is separate. Local dirty-source packages are allowed only as explicit local development evidence; receipts expose `source_dirty`, and those packages cannot be promoted through CI/release aggregation. `--replace` explicitly replaces this version/platform after successful verification; failed verification preserves the prior installation.
+Use `--manifest /path/to/legacy-tools-release.json` only with `--local-package` when the local index is separate. CI and release installs reject that override before fetching or touching the cache, so the authenticated index remains their provenance source. Local dirty-source packages are allowed only as explicit local development evidence; receipts expose `source_dirty`, and those packages cannot be promoted through CI/release aggregation. `--replace` explicitly replaces this version/platform after successful verification; failed verification preserves the prior installation.
 
 `legacy-repo-map` maps locally without Python or a resource download once installed. It remains experimental because parser builds and captured tag sets can differ from the Python reference. If OS policy blocks execution or the platform is unsupported, use isolated Python source. Setup never changes PATH, security policy, quarantine metadata or installed instructions.
 
