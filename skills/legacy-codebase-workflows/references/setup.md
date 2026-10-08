@@ -24,7 +24,7 @@ python /path/to/skill/scripts/setup_native.py status
 python /path/to/skill/scripts/setup_native.py install
 ```
 
-This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests grouped/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. The first pinned `legacy-tools-v0.2.0` release is pending; an unavailable release produces a clear error and does not compile Rust or silently select an old build.
+This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release has not yet been published, installation produces a clear error and does not compile Rust or silently select an old build.
 
 Before release publication, an authenticated `gh` installation can fetch a successful matching CI artifact whose index was produced by the updated test workflow:
 

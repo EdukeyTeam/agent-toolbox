@@ -40,17 +40,17 @@ class SetupTests(unittest.TestCase):
         for name in ("LICENSE.txt", "NOTICE.txt", "NOTICES.txt", "THIRD_PARTY_RUST.md"):
             (self.package / name).write_text("fixture license/notice text", encoding="utf-8")
         self.info = {"platform": self.platform, "artifact": self.package.name, "program": "legacy-repo-map",
-                     "version": "legacy-repo-map 0.2.0 (experimental)"}
+                     "version": "legacy-repo-map 0.3.0 (experimental)"}
         (self.package / "BUILD-INFO.json").write_text(json.dumps(self.info))
         self.manifest = {"schema_version": 1, "repository": self.policy["repository"], "release_tag": self.policy["release_tag"],
-                         "native_version": "0.2.0", "source_contract": "repo_map.py 1.1.0", "source_commit": "a" * 40,
+                         "native_version": "0.3.0", "source_contract": "repo_map.py 1.2.0", "source_commit": "a" * 40,
                          "source_dirty": False, "platforms": {}}
         self.refresh()
         self.real_detect = setup.detect_platform
         self.detect = patch.object(setup, "detect_platform", return_value=self.platform)
         self.detect.start()
         self.addCleanup(self.detect.stop)
-        self.probe = patch.object(setup, "_probe_binary", return_value={"version": "0.2.0", "source_contract": "repo_map.py 1.1.0"})
+        self.probe = patch.object(setup, "_probe_binary", return_value={"version": "0.3.0", "source_contract": "repo_map.py 1.2.0"})
         self.mock_probe = self.probe.start()
         self.addCleanup(self.probe.stop)
 
@@ -153,7 +153,7 @@ class SetupTests(unittest.TestCase):
     def test_status_before_setup_reports_explicit_pinned_install_location(self):
         result = setup.status(cache_dir=self.cache)
         self.assertEqual(result["state"], "needs-setup")
-        self.assertEqual(result["release_tag"], "legacy-tools-v0.2.0")
+        self.assertEqual(result["release_tag"], "legacy-tools-v0.3.0")
         self.assertIn("install", result["setup_command"])
         self.assertFalse(self.cache.exists())
         self.mock_probe.assert_not_called()
@@ -167,7 +167,7 @@ class SetupTests(unittest.TestCase):
         receipt = json.loads((program.parent.parent / "receipt.json").read_text())
         self.assertEqual(receipt["source_commit"], "a" * 40)
         self.assertEqual(receipt["source_kind"], "local")
-        self.assertEqual(receipt["native_version"], "0.2.0")
+        self.assertEqual(receipt["native_version"], "0.3.0")
         self.assertEqual(setup.status(cache_dir=self.cache)["state"], "ready")
         self.assertGreaterEqual(self.mock_probe.call_count, 2)
         calls = self.mock_probe.call_count
@@ -184,13 +184,13 @@ class SetupTests(unittest.TestCase):
         receipt["source_contract"] = "repo_map.py 1.0.0"
         receipt_file.write_text(json.dumps(receipt))
         self.assertEqual(setup.status(cache_dir=self.cache)["state"], "needs-setup")
-        receipt["source_contract"] = "repo_map.py 1.1.0"
+        receipt["source_contract"] = "repo_map.py 1.2.0"
         receipt_file.write_text(json.dumps(receipt))
         self.mock_probe.side_effect = setup.SetupError("native version mismatch")
         self.assertEqual(setup.status(cache_dir=self.cache)["state"], "needs-setup")
 
     def test_existing_unknown_destination_refused_without_replace(self):
-        destination = self.cache / "native/0.2.0/linux-x86_64"
+        destination = self.cache / "native/0.3.0/linux-x86_64"
         destination.mkdir(parents=True)
         marker = destination / "unrelated.txt"
         marker.write_text("keep me")
@@ -214,14 +214,14 @@ class SetupTests(unittest.TestCase):
         with self.assertRaisesRegex(setup.SetupError, "checksum|hash"):
             self.install()
         self.mock_probe.assert_not_called()
-        self.assertFalse((self.cache / "native/0.2.0/linux-x86_64/receipt.json").exists())
+        self.assertFalse((self.cache / "native/0.3.0/linux-x86_64/receipt.json").exists())
 
     def test_manifest_source_contract_and_old_ci_version_rejected(self):
         self.manifest["native_version"] = "0.1.0"
         (self.artifacts / "legacy-tools-release.json").write_text(json.dumps(self.manifest))
         with self.assertRaisesRegex(setup.SetupError, "version"):
             self.install()
-        self.manifest["native_version"] = "0.2.0"
+        self.manifest["native_version"] = "0.3.0"
         self.manifest["source_contract"] = "repo_map.py 1.0.0"
         (self.artifacts / "legacy-tools-release.json").write_text(json.dumps(self.manifest))
         with self.assertRaisesRegex(setup.SetupError, "contract"):
@@ -304,7 +304,7 @@ class SetupTests(unittest.TestCase):
         with patch.object(setup, "_gh_json", side_effect=[run, listing]), patch.object(setup, "_gh_artifact", side_effect=download):
             result = setup.install(cache_dir=self.cache, from_ci="123", expected_source="a" * 40)
         self.assertEqual(result["state"], "ready")
-        self.assertEqual(result["version"], "0.2.0")
+        self.assertEqual(result["version"], "0.3.0")
         self.assertEqual(result["source_kind"], "ci")
         self.assertEqual(result["source_commit"], "a" * 40)
 

@@ -5,7 +5,7 @@ on:
     inputs:
       release_tag:
         description: Pinned tag declared by the skill distribution policy
-        default: legacy-tools-v0.2.0
+        default: legacy-tools-v0.3.0
         required: true
         type: string
       publish_release:

@@ -217,12 +217,12 @@ def _probe_binary(binary, policy, *, smoke=False):
             (source / "Fixture.java").write_text("class Fixture { void render(String value) {} }\n", encoding="utf-8")
             output = root / "output"
             try:
-                subprocess.run([str(binary), str(source), "--output-dir", str(output), "--budget", "256", "--format", "grouped", "--all-definitions"],
+                subprocess.run([str(binary), str(source), "--output-dir", str(output), "--budget", "256", "--all-definitions"],
                                capture_output=True, timeout=30, check=True)
             except (OSError, subprocess.SubprocessError) as exc:
                 raise SetupError("native isolated map smoke failed; source package remains uninstalled") from exc
             metadata = _object(output / "map.meta.json")
-            if metadata.get("status") != "complete" or metadata.get("baseline_contract") != policy["source_contract"] or metadata.get("rendering", {}).get("format") != "grouped" or metadata.get("coverage", {}).get("definitions_in_map") != 2:
+            if metadata.get("status") != "complete" or metadata.get("baseline_contract") != policy["source_contract"] or metadata.get("rendering", {}).get("format") != "compact" or metadata.get("coverage", {}).get("definitions_in_map") != 2:
                 raise SetupError("native smoke/source contract mismatch")
             text = (output / "repo-map.md").read_text(encoding="utf-8")
             if "Fixture" not in text or "render(String value)" not in text or _digest(output / "repo-map.md") != metadata.get("map_sha256"):

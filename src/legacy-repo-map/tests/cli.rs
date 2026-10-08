@@ -1260,6 +1260,7 @@ fn grouped(fixture: &Fixture, extra: &[&str]) -> Output {
         .arg(&fixture.source)
         .arg("--output-dir")
         .arg(&fixture.output)
+        .args(["--format", "grouped"])
         .args(extra)
         .stdin(Stdio::null())
         .output()
@@ -1660,4 +1661,223 @@ fn compact_ast_context_gaps_preserve_original_whitespace_in_final_map() {
             expected.chars().count().div_ceil(4)
         );
     }
+}
+
+fn native(fixture: &Fixture, extra: &[&str]) -> Output {
+    Command::new(BINARY)
+        .arg(&fixture.source)
+        .arg("--output-dir")
+        .arg(&fixture.output)
+        .args(extra)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap()
+}
+
+fn native_ok(fixture: &Fixture, extra: &[&str]) -> Value {
+    let result = native(fixture, extra);
+    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    serde_json::from_slice(&result.stdout).unwrap()
+}
+
+#[test]
+fn compact_default_preserves_ancestors_multiline_headers_inline_literals_and_elision() {
+    let fixture = Fixture::new();
+    fixture.write("tags.py", "class Tag:\n    @decorate(\"keep  inline  spaces\")\n    def convert(\n        self,\n        value: str = \"a  b\",\n    ) -> str:\n        return \"BODY_MUST_NOT_LEAK\"\n");
+    fixture.write(
+        "Inline.java",
+        "class Inline { void first() { secret(); } void second(String value) { other(); } }\n",
+    );
+    native_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert_eq!(map, "# Repository map\n\n## Inline.java\n\nL1: class Inline { void first() { … void second(String value) {\n\n## tags.py\n\nL1: class Tag:\nL2: @decorate(\"keep  inline  spaces\")\nL3: def convert(\nL4: self,\nL5: value: str = \"a  b\",\nL6: ) -> str:\n\n");
+    let metadata = fixture.json("map.meta.json");
+    assert_eq!(metadata["rendering"]["format"], "compact");
+    assert!(metadata["rendering"]["whitespace"]
+        .as_str()
+        .unwrap()
+        .contains("declaration sketch"));
+    assert_eq!(metadata["coverage"]["definitions_found"], 5);
+    assert_eq!(metadata["coverage"]["definitions_in_map"], 5);
+}
+
+#[test]
+fn compact_normalizes_large_whitespace_gaps_before_budget_admission() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "Space.java",
+        &format!("class Space {{{}void run() {{}} }}\n", " ".repeat(150_000)),
+    );
+    native_ok(&fixture, &["--all-definitions", "--budget", "64"]);
+    let map = fixture.map_text();
+    assert_eq!(
+        map,
+        "# Repository map\n\n## Space.java\n\nL1: class Space { void run() {\n\n"
+    );
+    assert_eq!(
+        fixture.json("map.meta.json")["estimated_tokens"],
+        map.chars().count().div_ceil(4)
+    );
+    let grouped_result = grouped(&fixture, &["--all-definitions", "--budget", "64"]);
+    assert!(!grouped_result.status.success(), "grouped whitespace contract changed");
+}
+
+#[test]
+fn compact_omits_line_jump_rows_and_fences_and_keeps_clipping_records() {
+    let fixture = Fixture::new();
+    let decorators = (0..100).map(|_| "@decorate()\n").collect::<String>();
+    fixture.write(
+        "decorated.py",
+        &format!("{decorators}def visible(value):\n    return value\n"),
+    );
+    native_ok(&fixture, &["--all-definitions"]);
+    let map = fixture.map_text();
+    assert!(!map.contains("```"), "{map}");
+    assert!(!map.lines().any(|line| line == "  ..."), "{map}");
+    assert!(map.contains("L101: def visible(value):"), "{map}");
+    assert!(map.contains("declaration clipped"), "{map}");
+    assert_eq!(fixture.json("map.meta.json")["coverage"]["definitions_in_map"], 1);
+    assert_eq!(fixture.json("map.meta.json")["truncated"], true);
+}
+
+#[test]
+fn human_readable_is_grouped_and_rejects_any_explicit_format_before_artifacts() {
+    let fixture = Fixture::java();
+    native_ok(&fixture, &["--human-readable", "--all-definitions"]);
+    let human_map = fixture.map_text();
+    native_ok(&fixture, &["--format", "grouped", "--all-definitions"]);
+    assert_eq!(fixture.map_text(), human_map);
+    for format in ["compact", "grouped", "lines"] {
+        let invalid = Fixture::java();
+        let result = native(&invalid, &["--format", format, "--human-readable"]);
+        assert!(!result.status.success());
+        assert!(!invalid.output.exists(), "contradictory flags created artifacts");
+    }
+}
+
+fn coverage_fixture() -> Fixture {
+    let fixture = Fixture::new();
+    fixture.write(
+        "Many.java",
+        "class Many {\n    void one() {}\n    void two() {}\n    void three() {}\n    void four() {}\n}\n",
+    );
+    fixture
+}
+
+#[test]
+fn coverage_caps_count_accepted_definitions_and_report_actual_percent_for_each_format() {
+    for format in ["compact", "grouped", "lines"] {
+        for (flags, expected, reached) in [
+            (vec!["--coverage", "5e-324"], 1u64, true),
+            (vec!["--coverage", "0.1"], 1u64, true),
+            (vec!["--coverage", "40"], 2, true),
+            (vec!["--coverage", "100"], 5, false),
+            (vec!["--max-definitions", "3"], 3, true),
+            (vec!["--max-definitions", "200000"], 5, false),
+            (vec![], 5, false),
+        ] {
+            let fixture = coverage_fixture();
+            let mut args = vec!["--format", format, "--budget", "4096"];
+            args.extend(flags.iter().copied());
+            native_ok(&fixture, &args);
+            let metadata = fixture.json("map.meta.json");
+            assert_eq!(metadata["coverage"]["definitions_found"], 5, "{format}");
+            assert_eq!(metadata["coverage"]["definitions_in_map"], expected, "{args:?}");
+            assert_eq!(metadata["selection"]["effective_max_definitions"], expected, "{args:?}");
+            assert_eq!(metadata["selection"]["selection_limit_reached"], reached, "{args:?}");
+            assert_eq!(
+                metadata["selection"]["coverage_percent"].as_f64().unwrap(),
+                expected as f64 * 20.0
+            );
+            if flags.first() == Some(&"--coverage") {
+                assert_eq!(
+                    metadata["selection"]["requested_coverage_percent"].as_f64().unwrap(),
+                    flags[1].parse::<f64>().unwrap()
+                );
+                assert!(metadata["selection"]["requested_max_definitions"].is_null());
+            } else if flags.first() == Some(&"--max-definitions") {
+                assert_eq!(
+                    metadata["selection"]["requested_max_definitions"].as_u64().unwrap(),
+                    flags[1].parse::<u64>().unwrap()
+                );
+                assert!(metadata["selection"]["requested_coverage_percent"].is_null());
+            } else {
+                assert!(metadata["selection"]["requested_coverage_percent"].is_null());
+                assert!(metadata["selection"]["requested_max_definitions"].is_null());
+            }
+        }
+    }
+}
+
+#[test]
+fn coverage_rejects_invalid_values_and_contradictions_before_artifacts() {
+    for flags in [
+        vec!["--coverage", "0"],
+        vec!["--coverage", "-1"],
+        vec!["--coverage", "101"],
+        vec!["--coverage", "NaN"],
+        vec!["--coverage", "inf"],
+        vec!["--coverage", "-inf"],
+        vec!["--coverage", "word"],
+        vec!["--max-definitions", "0"],
+        vec!["--max-definitions", "-1"],
+        vec!["--max-definitions", "1.2"],
+        vec!["--coverage", "50", "--max-definitions", "2"],
+        vec!["--all-definitions", "--coverage", "100"],
+        vec!["--all-definitions", "--max-definitions", "999"],
+    ] {
+        let fixture = Fixture::java();
+        let result = native(&fixture, &flags);
+        assert!(!result.status.success(), "accepted {flags:?}");
+        assert!(!fixture.output.exists(), "invalid {flags:?} created artifacts");
+    }
+}
+
+#[test]
+fn max_definitions_accepts_admission_bound_and_empty_coverage_is_zero() {
+    let fixture = coverage_fixture();
+    native_ok(&fixture, &["--max-definitions", "200000"]);
+    assert_eq!(
+        fixture.json("map.meta.json")["selection"]["requested_max_definitions"],
+        200000
+    );
+    for invalid in ["200001".to_string(), usize::MAX.to_string()] {
+        let rejected = Fixture::java();
+        assert!(!native(&rejected, &["--max-definitions", &invalid]).status.success());
+        assert!(!rejected.output.exists());
+    }
+    let empty = Fixture::new();
+    empty.write("README.md", "No supported source.");
+    native_ok(&empty, &["--coverage", "0.1"]);
+    let metadata = empty.json("map.meta.json");
+    assert_eq!(metadata["selection"]["coverage_percent"], 0.0);
+    assert_eq!(metadata["selection"]["effective_max_definitions"], 0);
+    assert_eq!(metadata["selection"]["selection_limit_reached"], false);
+}
+
+#[test]
+fn definition_cap_is_independent_of_budget_and_skips_unfitting_ranked_candidates() {
+    let fixture = Fixture::new();
+    let arguments = (0..40)
+        .map(|i| format!("        int argument{i},\n"))
+        .collect::<String>();
+    fixture.write("Many.java", &format!("class Many {{\n    void giant(\n{arguments}        int last\n    ) {{}}\n    void small() {{}}\n    void other() {{}}\n}}\n"));
+    native_ok(
+        &fixture,
+        &["--budget", "64", "--max-definitions", "2", "--focus-symbol", "giant"],
+    );
+    let metadata = fixture.json("map.meta.json");
+    let map = fixture.map_text();
+    assert!(!map.contains("void giant"), "{map}");
+    assert_eq!(metadata["coverage"]["definitions_found"], 4);
+    assert_eq!(metadata["coverage"]["definitions_in_map"], 2);
+    assert_eq!(metadata["selection"]["selection_limit_reached"], true);
+    assert!(map.chars().count().div_ceil(4) <= 64);
+    native_ok(
+        &fixture,
+        &["--budget", "64", "--max-definitions", "4", "--focus-symbol", "giant"],
+    );
+    let metadata = fixture.json("map.meta.json");
+    assert!(metadata["coverage"]["definitions_in_map"].as_u64().unwrap() < 4);
+    assert_eq!(metadata["selection"]["selection_limit_reached"], false);
 }

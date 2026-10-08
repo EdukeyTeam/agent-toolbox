@@ -23,7 +23,7 @@ use tags::{ExtractError, Extractor, Kind, Tag};
 const TOOL: &str = "legacy-codebase-workflows legacy-repo-map";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// `VERSION` of the Python `repo_map.py` whose behavior this build mirrors.
-const BASELINE_CONTRACT: &str = "repo_map.py 1.1.0";
+const BASELINE_CONTRACT: &str = "repo_map.py 1.2.0";
 const ESTIMATOR: &str = "ceil(Unicode characters / 4); a size estimate, not a model tokenizer";
 const FINGERPRINT_SCOPE: &str =
     "selected readable files and skip reasons, from current bytes; ignored files and secret contents are excluded";
@@ -59,10 +59,16 @@ Options:
   --output-dir <dir>       artifact directory outside the source (required)
   --inventory-only         write the file inventory without parsing or ranking
   --budget <n>             estimated tokens, ceil(Unicode characters / 4),
-                           64..1000000 (default 16384)
-  --format <name>          grouped headers/signatures (default) or legacy lines
+                           64..1000000 (default 16384); size estimate, not accuracy
+  --format <name>          compact declaration sketch (default), grouped, or lines
+  --human-readable         shorthand for grouped; cannot accompany --format
+  --coverage <percent>     finite percent of found definitions, 0 < percent <= 100
+  --max-definitions <n>    maximum accepted definitions, 1..200000
+                           coverage and max-definitions are mutually exclusive;
+                           either cap can still be limited by the token budget
   --all-definitions        include every query definition in the selected scope;
-                           fail if the budget or scan/parser limits prevent it
+                           fail if the budget or scan/parser limits prevent it;
+                           cannot accompany --coverage or --max-definitions
   --subtree <path>         relative module or subtree; repeatable
   --focus-file <path>      relative file to prioritize; repeatable
   --focus-symbol <name>    identifier to prioritize; repeatable
@@ -162,6 +168,9 @@ struct Arguments {
     debug_tags: bool,
     inventory_only: bool,
     map_format: Option<String>,
+    human_readable: bool,
+    coverage_percent: Option<f64>,
+    max_definitions: Option<usize>,
     all_definitions: bool,
 }
 
@@ -202,6 +211,15 @@ fn parse_arguments(raw: Vec<String>) -> Result<Invocation, String> {
             "--notices" => return Ok(Invocation::Print(notices())),
             "--print-policy" => return Ok(Invocation::Print(format!("{}\n", policy_json()))),
             "--format" => arguments.map_format = Some(value(&name)?),
+            "--human-readable" => arguments.human_readable = true,
+            "--coverage" => {
+                let text = value(&name)?;
+                arguments.coverage_percent = Some(
+                    text.parse::<f64>()
+                        .map_err(|_| format!("--coverage needs a finite percent, got {text:?}"))?,
+                );
+            }
+            "--max-definitions" => arguments.max_definitions = Some(number(&name, value(&name)?)?),
             "--all-definitions" => arguments.all_definitions = true,
             "--timings" => arguments.timings = true,
             "--inventory-only" => arguments.inventory_only = true,
@@ -377,11 +395,44 @@ fn run(arguments: Arguments) -> Result<String, String> {
         .ok_or("a repository path is required; see --help")?;
     let output_dir = arguments.output_dir.ok_or("--output-dir is required")?;
     let budget = arguments.budget.unwrap_or(policy::DEFAULT_BUDGET);
-    let map_format = arguments.map_format.as_deref().unwrap_or("grouped");
-    if !matches!(map_format, "grouped" | "lines") {
-        return Err("--format must be grouped or lines".to_string());
+    if arguments.human_readable && arguments.map_format.is_some() {
+        return Err("--human-readable cannot be combined with any explicit --format".to_string());
+    }
+    let map_format =
+        arguments
+            .map_format
+            .as_deref()
+            .unwrap_or(if arguments.human_readable { "grouped" } else { "compact" });
+    if !matches!(map_format, "compact" | "grouped" | "lines") {
+        return Err("--format must be compact, grouped, or lines".to_string());
+    }
+    let render_format = if map_format == "compact" {
+        render::Format::Compact
+    } else {
+        render::Format::Grouped
+    };
+    let whitespace = match map_format {
+        "compact" => {
+            "leading whitespace removed, including multiline literal lines; declaration sketch, not verbatim source"
+        }
+        "grouped" => "source indentation preserved",
+        _ => "source line stripped; legacy 240-character snippet",
+    };
+    let requested_coverage = arguments.coverage_percent;
+    let requested_max_definitions = arguments.max_definitions;
+    if requested_coverage.is_some_and(|percent| !percent.is_finite() || percent <= 0.0 || percent > 100.0) {
+        return Err("--coverage must be finite and greater than 0 through 100".to_string());
+    }
+    if requested_max_definitions.is_some_and(|count| count == 0 || count > policy::MAX_TOTAL_TAGS) {
+        return Err(format!("--max-definitions must be 1..{}", policy::MAX_TOTAL_TAGS));
+    }
+    if requested_coverage.is_some() && requested_max_definitions.is_some() {
+        return Err("--coverage and --max-definitions are mutually exclusive".to_string());
     }
     let all_definitions = arguments.all_definitions;
+    if all_definitions && (requested_coverage.is_some() || requested_max_definitions.is_some()) {
+        return Err("--all-definitions cannot be combined with --coverage or --max-definitions".to_string());
+    }
     if all_definitions && arguments.inventory_only {
         return Err("--all-definitions cannot be combined with --inventory-only".to_string());
     }
@@ -435,6 +486,11 @@ fn run(arguments: Arguments) -> Result<String, String> {
 
     let selection = json!({
         "mode": if all_definitions { "all-definitions" } else { "ranked" },
+        "requested_coverage_percent": requested_coverage,
+        "requested_max_definitions": requested_max_definitions,
+        "effective_max_definitions": Value::Null,
+        "coverage_percent": 0.0,
+        "selection_limit_reached": false,
         "subtrees": selected_subtrees,
         "focus_files": focus_files,
         "focus_symbols": focus_symbols,
@@ -453,6 +509,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
             "selection": selection,
             "rendering": {
                 "format": map_format,
+                "whitespace": whitespace,
                 "declaration_line_limit": render::DECLARATION_LINE_LIMIT,
                 "declaration_character_limit": render::DECLARATION_CHARACTER_LIMIT,
                 "clipped_declarations": [],
@@ -506,7 +563,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         }
         let parse_started = Instant::now();
         let outcome =
-            extractor.extract_with_declarations(language, &entry.path, data, map_format == "grouped", all_definitions);
+            extractor.extract_with_declarations(language, &entry.path, data, map_format != "lines", all_definitions);
         parse_time += parse_started.elapsed();
         match outcome {
             Ok(file_tags) => {
@@ -707,6 +764,31 @@ fn run(arguments: Arguments) -> Result<String, String> {
         }
     };
     let rank_elapsed = rank_started.elapsed();
+    let found = ranked.len();
+    let effective_max_definitions = if let Some(percent) = requested_coverage {
+        if found == 0 {
+            0
+        } else {
+            ((found as f64 * percent / 100.0).ceil() as usize).max(1).min(found)
+        }
+    } else {
+        requested_max_definitions.unwrap_or(found).min(found)
+    };
+    let selection_with_coverage = |accepted: usize| {
+        let mut details = selection.clone();
+        details["effective_max_definitions"] = json!(effective_max_definitions);
+        details["coverage_percent"] = json!(if found == 0 {
+            0.0
+        } else {
+            accepted as f64 * 100.0 / found as f64
+        });
+        details["selection_limit_reached"] = json!(
+            (requested_coverage.is_some() || requested_max_definitions.is_some())
+                && effective_max_definitions < found
+                && accepted >= effective_max_definitions
+        );
+        details
+    };
 
     let mut map_text = String::from(HEADER);
     let mut remaining = (budget * 4).saturating_sub(HEADER.chars().count());
@@ -715,7 +797,11 @@ fn run(arguments: Arguments) -> Result<String, String> {
     let mut included = 0usize;
     let mut included_lines: std::collections::HashSet<(usize, usize)> = Default::default();
     let mut verified_sources = std::collections::HashSet::new();
-    let mut grouped = render::Grouped::new();
+    let mut grouped = if render_format == render::Format::Grouped {
+        render::Grouped::new()
+    } else {
+        render::Grouped::with_format(render_format)
+    };
     let mut source_cache = render::SourceCache::new(render::SOURCE_CACHE_BYTES);
     let mut load_render_source = |index: usize| {
         source_cache.get(index, || {
@@ -734,6 +820,9 @@ fn run(arguments: Arguments) -> Result<String, String> {
         })
     };
     for definition in &ranked {
+        if included >= effective_max_definitions {
+            break;
+        }
         if map_format == "lines" && included_lines.contains(&(definition.file, definition.line)) {
             included += 1;
             continue;
@@ -760,7 +849,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
                 return Err(message);
             }
         }
-        if map_format == "grouped" {
+        if map_format != "lines" {
             let key = (definition.line, definition.name.to_string());
             let Some(declaration) = file.declarations.get(&key) else {
                 let message = format!(
@@ -810,8 +899,8 @@ fn run(arguments: Arguments) -> Result<String, String> {
         }
     }
     let paths: Vec<&str> = parsed.iter().map(|file| file.path.as_str()).collect();
-    let complete_grouped = if map_format == "grouped" && all_definitions {
-        let completed = render::Grouped::complete(
+    let complete_grouped = if map_format != "lines" && all_definitions {
+        let completed = render::Grouped::complete_with_format(
             &paths,
             ranked.iter().map(|definition| {
                 let key = (definition.line, definition.name.to_string());
@@ -825,6 +914,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
             }),
             budget * 4,
             &mut load_render_source,
+            render_format,
         );
         match completed {
             Ok(completed) => Some(completed),
@@ -836,7 +926,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
     } else {
         None
     };
-    let clipped_declarations: Vec<Value> = if map_format == "grouped" {
+    let clipped_declarations: Vec<Value> = if map_format != "lines" {
         let clips: Vec<_> = if let Some(complete) = &complete_grouped {
             complete.clipped.iter().map(|(file, clip)| (*file, clip)).collect()
         } else {
@@ -856,7 +946,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
     };
     let required_tokens = if let Some(complete) = &complete_grouped {
         complete.characters.div_ceil(4)
-    } else if map_format == "grouped" {
+    } else if map_format != "lines" {
         grouped.tokens()
     } else {
         line_characters.div_ceil(4)
@@ -870,6 +960,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         });
         extra["rendering"] = json!({
             "format": map_format,
+                "whitespace": whitespace,
             "declaration_line_limit": render::DECLARATION_LINE_LIMIT,
             "declaration_character_limit": render::DECLARATION_CHARACTER_LIMIT,
             "clipped_declarations": clipped_declarations,
@@ -881,7 +972,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         )?;
         return Err(message);
     }
-    if map_format == "grouped" {
+    if map_format != "lines" {
         map_text = if let Some(complete) = complete_grouped {
             complete
                 .text
@@ -944,6 +1035,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         .collect();
     let mut details = provenance.clone();
     let complete = json!({
+        "selection": selection_with_coverage(included),
         "focus_not_found": {
             "files_not_parsed": focus_files.iter().filter(|path| !parsed_paths.contains(path.as_str())).collect::<Vec<_>>(),
             "symbols_without_definitions": focus_symbols.iter().filter(|name| !defined.contains(name.as_str())).collect::<Vec<_>>(),
@@ -968,6 +1060,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
         "ranking": RANKING,
         "rendering": {
             "format": map_format,
+                "whitespace": whitespace,
             "declaration_line_limit": render::DECLARATION_LINE_LIMIT,
             "declaration_character_limit": render::DECLARATION_CHARACTER_LIMIT,
             "clipped_declarations": clipped_declarations,
