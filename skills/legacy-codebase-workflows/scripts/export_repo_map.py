@@ -44,6 +44,36 @@ def _json_object(data, label):
     return value
 
 
+def _validate_selection(selection, found, included):
+    fields = {"requested_coverage_percent", "requested_max_definitions", "effective_max_definitions", "coverage_percent", "selection_limit_reached"}
+    if not fields.intersection(selection):
+        return  # Accept historical metadata that predates selection caps.
+    if not fields.issubset(selection):
+        raise ValueError("incomplete selection-control metadata")
+    coverage = selection['requested_coverage_percent']
+    maximum = selection['requested_max_definitions']
+    if coverage is not None and (type(coverage) not in (int, float) or not 0 < coverage <= 100 or not math.isfinite(coverage)):
+        raise ValueError("requested coverage must be a finite percentage greater than 0 and at most 100")
+    if maximum is not None and (type(maximum) is not int or not 1 <= maximum <= 200_000):
+        raise ValueError("requested maximum definitions must be 1..200000")
+    if coverage is not None and maximum is not None:
+        raise ValueError("requested coverage and maximum definitions are mutually exclusive")
+    requested = coverage is not None or maximum is not None
+    if selection.get("mode") == "all-definitions" and requested:
+        raise ValueError("all-definitions cannot have selection caps")
+    expected_cap = min(found, maximum) if maximum is not None else min(found, max(1, math.ceil(found * coverage / 100))) if coverage is not None and found else found
+    effective = _count(selection['effective_max_definitions'], "effective maximum definitions")
+    if effective != expected_cap or included > effective:
+        raise ValueError("inconsistent effective maximum definitions")
+    actual = selection['coverage_percent']
+    expected_coverage = included * 100.0 / found if found else 0
+    if type(actual) not in (int, float) or not 0 <= actual <= 100 or not math.isfinite(actual) or not math.isclose(actual, expected_coverage, rel_tol=1e-12, abs_tol=1e-12):
+        raise ValueError("inconsistent actual captured-definition coverage")
+    reached = selection['selection_limit_reached']
+    if type(reached) is not bool or reached != (requested and effective < found and included >= effective):
+        raise ValueError("inconsistent selection-limit-reached flag")
+
+
 def _validate_artifacts(root, raw_bytes, metadata, inventory):
     if metadata.get("status") != "complete":
         raise ValueError("only a complete generated symbol map can be exported")
@@ -86,9 +116,10 @@ def _validate_artifacts(root, raw_bytes, metadata, inventory):
             raise ValueError("unknown selection mode")
         if mode == "all-definitions" and omitted:
             raise ValueError("all-definitions map omits captured definitions")
+        _validate_selection(selection, coverage["definitions_found"], coverage["definitions_in_map"])
     if "rendering" in metadata:
         rendering = metadata["rendering"]
-        if not isinstance(rendering, dict) or rendering.get("format") not in ("lines", "grouped"):
+        if not isinstance(rendering, dict) or rendering.get("format") not in ("compact", "lines", "grouped"):
             raise ValueError("invalid rendering metadata")
         clipped = rendering.get("clipped_declarations")
         if not isinstance(clipped, list) or any(not isinstance(entry, dict) for entry in clipped):
@@ -129,6 +160,18 @@ def _report(raw, metadata, implementation, elapsed_seconds, paths):
     truncation = "yes; scan or map is truncated; coverage is not complete" if metadata["truncated"] else "no; exclusions, unsupported files and parse failures still limit coverage"
     revision = json.dumps(metadata["revision"], ensure_ascii=False)
     source = json.dumps(metadata["source_root"], ensure_ascii=False)
+    selection = metadata.get("selection", {})
+    selection_controls = ""
+    if "effective_max_definitions" in selection:
+        requested_coverage = "none" if selection['requested_coverage_percent'] is None else f"{selection['requested_coverage_percent']:g}%"
+        requested_maximum = "none" if selection['requested_max_definitions'] is None else str(selection['requested_max_definitions'])
+        selection_controls = (
+            f"- Requested coverage: {requested_coverage}\n"
+            f"- Requested maximum definitions: {requested_maximum}\n"
+            f"- Effective maximum definitions: {selection['effective_max_definitions']}\n"
+            f"- Actual captured-definition coverage: {selection['coverage_percent']:g}%\n"
+            f"- Selection limit reached: {'yes' if selection['selection_limit_reached'] else 'no'}\n"
+        )
     details = (
         "# Repository map export\n\n"
         f"- Implementation: {implementation}\n"
@@ -139,19 +182,21 @@ def _report(raw, metadata, implementation, elapsed_seconds, paths):
         f"- Definitions found / selected: {coverage['definitions_found']} / {coverage['definitions_in_map']}\n"
         f"- Captured definitions omitted: {coverage['definitions_found'] - coverage['definitions_in_map']}\n"
         f"- Selection mode / rendering: {metadata.get('selection', {}).get('mode', 'budget')} / {metadata.get('rendering', {}).get('format', 'lines')}\n"
-        f"- Declaration snippets clipped: {len(metadata.get('rendering', {}).get('clipped_declarations', []))}\n"
+        + selection_controls
+        + f"- Declaration snippets clipped: {len(metadata.get('rendering', {}).get('clipped_declarations', []))}\n"
         f"- Map budget: {metadata['limits']['budget']} estimated tokens\n"
         f"- Truncated: {truncation}\n"
         f"- Skipped entries / parse failures: {len(metadata['skipped'])} / {len(metadata['parse_failures'])}\n"
         f"- Original generation wall time: {elapsed}\n"
         f"- Raw content: {len(raw)} Unicode characters, {len(raw.encode('utf-8'))} UTF-8 bytes, approximately {raw_estimate} tokens\n"
     )
+    complete_status = "complete" if metadata.get("rendering", {}).get("format") == "compact" else "`complete`"
     suffix = (
         f"- Token estimator: {ESTIMATOR}\n"
         f"- Raw map SHA-256: {metadata['map_sha256']}\n"
-        f"- Evidence sidecars: {json.dumps(_evidence_label(paths["raw"], paths["report"]), ensure_ascii=False)}, "
-        f"{json.dumps(_evidence_label(paths["metadata"], paths["report"]), ensure_ascii=False)}, {json.dumps(_evidence_label(paths["inventory"], paths["report"]), ensure_ascii=False)}\n\n"
-        "Generation status `complete` means the selected map was published, not that every repository file or relationship was analyzed. "
+        f"- Evidence sidecars: {json.dumps(_evidence_label(paths['raw'], paths['report']), ensure_ascii=False)}, "
+        f"{json.dumps(_evidence_label(paths['metadata'], paths['report']), ensure_ascii=False)}, {json.dumps(_evidence_label(paths['inventory'], paths['report']), ensure_ascii=False)}\n\n"
+        f"Generation status {complete_status} means the selected map was published, not that every repository file or relationship was analyzed. "
         "Read the sidecars for scope, skips, parser failures and the original working-copy fingerprint.\n\n---\n\n"
     )
     estimate = 0
@@ -274,7 +319,7 @@ def export_map(repository, artifact_dir, *, implementation, output_file=None, ev
     # map_sha256 and estimated_tokens retain their original raw-map semantics.
     metadata["export"] = {
         "schema_version": 1, "implementation": implementation, "artifact_dir": str(artifacts),
-        "report_file": str(output), "raw_file": str(paths["raw"]), "evidence_dir": str(evidence),
+        "report_file": str(output), "raw_file": str(paths['raw']), "evidence_dir": str(evidence),
         "raw_unicode_characters": len(raw), "raw_utf8_bytes": len(raw_bytes),
         "raw_estimated_tokens": math.ceil(len(raw) / 4),
         "report_unicode_characters": len(report), "report_utf8_bytes": len(report_bytes),
@@ -284,12 +329,12 @@ def export_map(repository, artifact_dir, *, implementation, output_file=None, ev
     if elapsed_seconds is not None:
         metadata["export"]["generation_elapsed_seconds"] = elapsed_seconds
     metadata_bytes = (json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
-    payloads = [(paths["raw"], raw_bytes), (paths["inventory"], inventory_bytes),
-                (paths["metadata"], metadata_bytes), (paths["report"], report_bytes)]
+    payloads = [(paths['raw'], raw_bytes), (paths['inventory'], inventory_bytes),
+                (paths['metadata'], metadata_bytes), (paths['report'], report_bytes)]
     # No output directory or file is created until every input has been checked.
     output.parent.mkdir(parents=True, exist_ok=True)
     evidence.mkdir(parents=True, exist_ok=True)
-    _publish(payloads, force, paths["report"])
+    _publish(payloads, force, paths['report'])
     return paths
 
 

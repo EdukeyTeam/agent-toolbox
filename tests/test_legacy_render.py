@@ -34,10 +34,11 @@ class RenderTests(unittest.TestCase):
         return path
 
     def map(self, **options):
+        options.setdefault("map_format", "grouped")
         metadata = generate(self.repo, self.out, **options)
         return metadata, (self.out / "repo-map.md").read_text(encoding="utf-8")
 
-    def test_default_grouped_java_multiline_parameters_annotations_and_class_context(self):
+    def test_grouped_java_multiline_parameters_annotations_and_class_context(self):
         source = """@Deprecated
 public class First {
   @Deprecated
@@ -277,7 +278,7 @@ class Second:
         self.write("Name.java", "class " + "X" * 513 + " {}\n")
         # The legacy line format intentionally retains the existing filtered cache.
         self.map(map_format="lines")
-        for map_format in ("grouped", "lines"):
+        for map_format in ("compact", "grouped", "lines"):
             with self.subTest(map_format=map_format):
                 with self.assertRaises(ValueError):
                     self.map(map_format=map_format, all_definitions=True)
@@ -288,7 +289,7 @@ class Second:
     def test_all_definitions_rejects_same_line_same_name_distinct_capture_positions(self):
         self.write("Both.java", "class A { void same() { one(); } } class B { void same() { two(); } }\n")
         self.map(map_format="lines")
-        for map_format in ("grouped", "lines"):
+        for map_format in ("compact", "grouped", "lines"):
             with self.subTest(map_format=map_format):
                 with self.assertRaises(ValueError):
                     self.map(map_format=map_format, all_definitions=True)
@@ -480,6 +481,176 @@ class Second:
         self.assertNotIn("BODY_MUST_NOT_LEAK", text)
         self.assertIn("L2:   String value,\nL3:   int count\nL4: ) {", text)
         self.assertLess(peak, 2_000_000, "selected fragments kept evicted physical source bodies alive")
+
+
+
+class CompactTests(unittest.TestCase):
+    setUp = RenderTests.setUp
+    write = RenderTests.write
+
+    def map(self, **options):
+        metadata = generate(self.repo, self.out, **options)
+        return metadata, (self.out / "repo-map.md").read_text(encoding="utf-8")
+
+    def test_default_compact_keeps_complete_headers_owners_and_inline_literals(self):
+        self.write("api.py", 'class API:\n    @decorator("keep  two `ticks`")\n    def choose(\n        self,\n        value: str = "keep  two `ticks`",\n    ) -> str:\n        return HIDDEN_BODY\n\n    def other(self):\n        pass\n')
+        meta, text = self.map(all_definitions=True)
+        self.assertEqual(meta["rendering"]["format"], "compact")
+        self.assertIn("## api.py\n\nL1: class API:", text)
+        self.assertIn('L2: @decorator("keep  two `ticks`")', text)
+        self.assertIn('L5: value: str = "keep  two `ticks`",\nL6: ) -> str:', text)
+        self.assertIn("L9: def other(self):", text)
+        self.assertNotIn("```", text)
+        self.assertNotIn("  ...\n", text)
+        self.assertNotIn("HIDDEN_BODY", text)
+        self.assertEqual(meta["coverage"]["definitions_in_map"], 3)
+
+    def test_compact_normalizes_whitespace_only_inline_gaps_but_keeps_elision(self):
+        self.write("inline.java", 'class A { void first() { secret(); }' + ' ' * 50000 + 'void second(@Named("keep  two") String s) { hidden(); } }\n')
+        meta, text = self.map(budget=256)
+        self.assertIn("void first() { … void second", text)
+        self.assertNotIn("secret()", text)
+        self.assertNotIn("hidden()", text)
+        self.assertLessEqual(len(text), 256 * 4)
+        self.assertIn('"keep  two"', text)
+        self.write("gap.java", 'class B {' + ' ' * 50000 + 'void method() {} }\n')
+        meta, text = self.map(budget=256)
+        self.assertIn("class B { void method() {", text)
+        self.assertLessEqual(len(text), 256 * 4)
+
+    def test_compact_multiline_literal_is_explicitly_a_whitespace_stripped_sketch(self):
+        self.write("literal.py", 'def choose(value="""\n    keep\n    spaces\n"""):\n    pass\n')
+        meta, compact = self.map(all_definitions=True)
+        self.assertIn("L2: keep\nL3: spaces", compact)
+        self.assertIn("including multiline literal lines", meta["rendering"]["whitespace"])
+        grouped, pretty = self.map(all_definitions=True, map_format="grouped")
+        self.assertIn("L2:     keep\nL3:     spaces", pretty)
+        self.assertEqual(grouped["rendering"]["whitespace"], "source indentation preserved")
+
+    def test_compact_is_measured_before_budget_fit_and_exact_all_boundary(self):
+        self.write("x.py", "".join(f"def function_{i:02}(\n    arg: str,\n) -> str:\n    return arg\n" for i in range(20)))
+        full, full_text = self.map(all_definitions=True)
+        required = full["estimated_tokens"]
+        exact, exact_text = self.map(all_definitions=True, budget=required)
+        self.assertEqual(exact_text, full_text)
+        with self.assertRaisesRegex(ValueError, "requires.*budget"):
+            self.map(all_definitions=True, budget=required - 1)
+        grouped, _ = self.map(map_format="grouped", budget=64)
+        compact, text = self.map(budget=64)
+        self.assertGreater(compact["coverage"]["definitions_in_map"], grouped["coverage"]["definitions_in_map"])
+        self.assertLessEqual(len(text), 256)
+
+    def test_coverage_rounds_up_and_max_definitions_stops_accepted_tags(self):
+        self.write("functions.py", "".join(f"def f{i}():\n    pass\n" for i in range(7)))
+        for options, expected in [({"coverage": 30}, 3), ({"coverage": 5e-324}, 1), ({"max_definitions": 2}, 2), ({"coverage": 100}, 7), ({"max_definitions": 99}, 7), ({}, 7)]:
+            with self.subTest(options=options):
+                meta, text = self.map(**options)
+                self.assertEqual(meta["coverage"]["definitions_in_map"], expected)
+                selection = meta["selection"]
+                self.assertEqual(selection["effective_max_definitions"], expected)
+                self.assertAlmostEqual(selection["coverage_percent"], expected / 7 * 100)
+                self.assertEqual(selection["selection_limit_reached"], expected < 7)
+                self.assertEqual(selection["requested_coverage_percent"], options.get("coverage"))
+                self.assertEqual(selection["requested_max_definitions"], options.get("max_definitions"))
+                self.assertEqual(text.count("def f"), expected)
+
+    def test_cap_skips_oversized_candidate_and_counts_only_accepted_tags(self):
+        import repo_render
+        lines = ['def huge(' + 'x' * 900 + '):', 'def tiny():']
+        ranked = [{"path": "x.py", "name": name, "line": n, "kind": "def", "declaration_spans": [{"line": n, "start_line": n, "end_line": n, "start_column": 0, "end_column": len(lines[n-1])}]} for n,name in ((1,"huge"),(2,"tiny"))]
+        text, included, _ = repo_render.render_compact(ranked, lambda path: lines, 64, max_definitions=1)
+        self.assertEqual([tag["name"] for tag in included], ["tiny"])
+        self.assertNotIn("huge", text)
+        self.assertIn("tiny", text)
+
+    def test_empty_scope_has_zero_coverage_and_no_limit_reached(self):
+        meta, _ = self.map(coverage=25)
+        self.assertEqual(meta["selection"]["effective_max_definitions"], 0)
+        self.assertEqual(meta["selection"]["coverage_percent"], 0)
+        self.assertFalse(meta["selection"]["selection_limit_reached"])
+
+    def test_invalid_controls_and_strict_all_conflicts_leave_no_artifacts(self):
+        cases = [{"coverage": p} for p in (0, -1, 101, float("nan"), float("inf"), True, "5",10**1000)]
+        cases += [{"max_definitions": n} for n in (0,-1,1.5,True,"2",200001)]
+        cases += [{"coverage": 50,"max_definitions": 2}, {"all_definitions": True,"coverage": 100}, {"all_definitions": True,"max_definitions": 999}]
+        for options in cases:
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.map(**options)
+            self.assertFalse(self.out.exists())
+
+    def test_cli_human_readable_conflicts_with_any_explicit_format_before_artifacts(self):
+        self.write("a.py", "def a():\n    pass\n")
+        for explicit in ("compact","grouped","lines"):
+            result = subprocess.run([sys.executable,str(SCRIPTS/"repo_map.py"),str(self.repo),"--output-dir",str(self.out),"--human-readable","--format",explicit],capture_output=True,text=True)
+            self.assertEqual(result.returncode,2,result.stderr)
+            self.assertFalse(self.out.exists())
+        result = subprocess.run([sys.executable,str(SCRIPTS/"repo_map.py"),str(self.repo),"--output-dir",str(self.out),"--human-readable"],capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn("```text",(self.out/"repo-map.md").read_text())
+
+
+
+    def test_caps_apply_to_every_format_without_counting_incidental_class_headers(self):
+        self.write("owners.py", "class Owner:\n    def chosen(self):\n        pass\n    def other(self):\n        pass\n")
+        for style in ("compact", "grouped", "lines"):
+            with self.subTest(style=style):
+                meta, text = self.map(map_format=style, max_definitions=1, focus_symbols=["chosen"])
+                self.assertEqual(meta["coverage"]["definitions_found"], 3)
+                self.assertEqual(meta["coverage"]["definitions_in_map"], 1)
+                self.assertIn("def chosen", text)
+                self.assertNotIn("def other", text)
+                self.assertAlmostEqual(meta["selection"]["coverage_percent"], 100 / 3)
+                self.assertTrue(meta["selection"]["selection_limit_reached"])
+                if style != "lines":
+                    self.assertIn("class Owner:", text)
+
+    def test_budget_can_prevent_requested_cap_without_claiming_limit_reached(self):
+        self.write("many.py", "".join(f"def function_{i:02}(\n    argument: str,\n) -> str:\n    return argument\n" for i in range(20)))
+        meta, text = self.map(max_definitions=15, budget=64)
+        self.assertLess(meta["coverage"]["definitions_in_map"], 15)
+        self.assertFalse(meta["selection"]["selection_limit_reached"])
+        self.assertTrue(meta["truncated"])
+        self.assertLessEqual(len(text),256)
+
+    def test_compact_clipping_is_explicit_and_not_silently_complete(self):
+        self.write("long.py", "def huge(\n" + "".join(f"    value{i}: str,\n" for i in range(90)) + "):\n    pass\n")
+        meta, text = self.map(all_definitions=True)
+        self.assertEqual(meta["coverage"]["definitions_in_map"],1)
+        self.assertTrue(meta["truncated"])
+        self.assertEqual(len(meta["rendering"]["clipped_declarations"]),1)
+        self.assertIn("declaration clipped: L1-L92; line limit",text)
+        self.assertNotIn("```",text)
+
+    def test_compact_fragment_merge_never_retains_giant_whitespace_gap_or_source_body(self):
+        import repo_render
+        physical = '    class A {' + ' ' * 50000 + 'void method() {' + 'BODY' * 10000
+        first_end = physical.index('{') + 1
+        method_start = physical.index('void')
+        last_end = physical.index('{',method_start) + 1
+        first = repo_render.LineFragments.excerpt(physical,0,first_end,compact=True)
+        method = repo_render.LineFragments.excerpt(physical,method_start,last_end,compact=True)
+        merged = first.merge(method,physical).bounded(8000)
+        self.assertEqual(merged.text(),'class A { void method() {')
+        self.assertLess(merged.rendered_characters(),100)
+        self.assertLess(merged.characters(),100)
+        self.assertEqual(len(merged.intervals),2)
+        self.assertFalse(any('BODY' in value for value in vars(merged).values() if isinstance(value,str)))
+
+    def test_cli_default_caps_invalid_combinations_and_existing_artifact_preservation(self):
+        self.write("a.py", "def alpha():\n    pass\ndef beta():\n    pass\n")
+        command = [sys.executable,str(SCRIPTS/"repo_map.py"),str(self.repo),"--output-dir",str(self.out)]
+        result = subprocess.run(command+["--coverage","50"],capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        metadata = json.loads((self.out/"map.meta.json").read_text())
+        self.assertEqual(metadata["rendering"]["format"],"compact")
+        self.assertEqual(metadata["coverage"]["definitions_in_map"],1)
+        before = {p.name:p.read_bytes() for p in self.out.iterdir() if p.is_file()}
+        cases = [["--coverage","0"],["--coverage","NaN"],["--coverage","101"],["--max-definitions","0"],["--max-definitions","200001"],["--coverage","50","--max-definitions","1"],["--all-definitions","--coverage","100"],["--all-definitions","--max-definitions","2"]]
+        for flags in cases:
+            with self.subTest(flags=flags):
+                result = subprocess.run(command+flags,capture_output=True,text=True)
+                self.assertEqual(result.returncode,2,result.stderr)
+                self.assertEqual(before,{p.name:p.read_bytes() for p in self.out.iterdir() if p.is_file()})
 
 
 if __name__ == "__main__":

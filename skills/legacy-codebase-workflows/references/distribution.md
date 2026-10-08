@@ -4,7 +4,7 @@ The native Rust mapper is the default repository-map path. Read this for deliver
 
 ## What is available now
 
-This skill installation includes source/scripts, a pinned `tool-distribution.json` and the standard-library `scripts/setup_native.py` installer, not executables. The policy names release `legacy-tools-v0.2.0` in `EdukeyTeam/agent-toolbox`, native version 0.2.0 and reference contract `repo_map.py 1.1.0`. The installer reads the policy immediately; agents do not need release discovery or a “latest” search. Local status does not check GitHub publication: a missing package calls for the pinned prebuilt install, which requires no Rust compiler.
+This skill installation includes source/scripts, a pinned `tool-distribution.json` and the standard-library `scripts/setup_native.py` installer, not executables. The policy names release `legacy-tools-v0.3.0` in `EdukeyTeam/agent-toolbox`, native version 0.3.0 and reference contract `repo_map.py 1.2.0`. The installer reads the policy immediately; agents do not need release discovery or a “latest” search. Local status does not check GitHub publication: a missing package calls for the pinned prebuilt install, which requires no Rust compiler.
 
 The [test workflow](https://github.com/EdukeyTeam/agent-toolbox/actions/workflows/test-skills.yml) builds both programs and retains platform artifacts for 14 days. Updated artifacts also contain a per-platform `legacy-tools-release.json` with source commit, archive/file hashes and notices. See [native setup](setup.md#native-binary) for `status`, release `install`, `--from-ci` and local artifact commands. Historical 0.1.0 artifacts cannot satisfy this new contract. A CI run's source SHA must be supplied explicitly and its success is checked before download.
 

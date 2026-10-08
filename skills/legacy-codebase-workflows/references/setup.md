@@ -24,7 +24,7 @@ python /path/to/skill/scripts/setup_native.py status
 python /path/to/skill/scripts/setup_native.py install
 ```
 
-This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests grouped/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release cannot be fetched, installation reports the network or publication error without compiling Rust or silently selecting an old build. If status finds an invalid package already at this version/platform, inspect its reason and rerun installation with explicit `--replace` after resolving the cause.
+This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release cannot be fetched, installation reports the network or publication error without compiling Rust or silently selecting an old build. If status finds an invalid package already at this version/platform, inspect its reason and rerun installation with explicit `--replace` after resolving the cause.
 
 An authenticated `gh` installation can instead fetch a successful matching CI artifact whose index was produced by the test workflow:
 

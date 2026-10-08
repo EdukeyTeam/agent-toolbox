@@ -963,8 +963,8 @@ def smoke(python_bundle: dict | None, rust: dict | None) -> list[dict]:
             check("bundle: bundled scripts are the staged repository scripts", data.get("scripts") == python_bundle["info"]["bundled_scripts"])
             mapped = call(program, "map", str(source), "--output-dir", str(scratch / "map-python"), "--focus-symbol", "openChannel")
             text = (scratch / "map-python" / "repo-map.md").read_text(encoding="utf-8") if mapped.returncode == 0 else ""
-            check("bundle: map lists a grouped Java class and declaration with original lines", ("## src/app/Channel.java\n\n```text\n" in text and "L3: public class Channel {" in text and "L4:     public void openChannel() {" in text), mapped.stderr)
-            check("bundle: map lists a TypeScript definition", ("## web/cart.ts\n\n```text\n" in text and "L1: export function totalPrice(): number {" in text))
+            check("bundle: map lists a compact Java class and declaration with original lines", ("## src/app/Channel.java\n\n" in text and "L3: public class Channel {" in text and "L4: public void openChannel() {" in text), mapped.stderr)
+            check("bundle: map lists a TypeScript definition", ("## web/cart.ts\n\n" in text and "L1: export function totalPrice(): number {" in text))
             produced = "".join(path.read_text(encoding="utf-8") for path in (scratch / "map-python").glob("*.*")) if mapped.returncode == 0 else "smoke-secret-value"
             check("bundle: secret file content is not in any output", "smoke-secret-value" not in produced)
             card = {"path": "src/app/Channel.java", "sha256": before["src/app/Channel.java"], "start_line": 4, "end_line": 4, "quote": "public void openChannel() {}"}
@@ -1000,7 +1000,7 @@ def smoke(python_bundle: dict | None, rust: dict | None) -> list[dict]:
             program = rust["program"]
             mapped = call(program, str(source), "--output-dir", str(scratch / "map-rust"), "--focus-symbol", "openChannel")
             text = (scratch / "map-rust" / "repo-map.md").read_text(encoding="utf-8") if mapped.returncode == 0 else ""
-            check("rust: map lists a grouped Java class and declaration with original lines", ("## src/app/Channel.java\n\n```text\n" in text and "L3: public class Channel {" in text and "L4:     public void openChannel() {" in text), mapped.stderr)
+            check("rust: map lists a compact Java class and declaration with original lines", ("## src/app/Channel.java\n\n" in text and "L3: public class Channel {" in text and "L4: public void openChannel() {" in text), mapped.stderr)
             check("rust: output inside the source is refused", call(program, str(source), "--output-dir", str(source / "out")).returncode == 2)
             printed = call(program, "--notices").stdout
             check("rust: notices include the Apache license", "Apache License" in printed)
