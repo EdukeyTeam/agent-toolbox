@@ -10,38 +10,219 @@ pub const DECLARATION_LINE_LIMIT: usize = 80;
 pub const DECLARATION_CHARACTER_LIMIT: usize = 8000;
 const HEADER: &str = "# Repository map\n\n";
 
+const CHARACTER_CHECKPOINT: usize = 256;
+pub const SOURCE_CACHE_BYTES: usize = 32 * 1024 * 1024;
+const CACHE_ENTRY_ALLOWANCE: usize = 2048;
+
+#[derive(Debug)]
+struct CharacterIndex {
+    checkpoints: Vec<usize>,
+    characters: usize,
+}
+impl CharacterIndex {
+    fn new(text: &str) -> Self {
+        let mut checkpoints = Vec::new();
+        let mut characters = 0;
+        for (character, (byte, _)) in text.char_indices().enumerate() {
+            if character % CHARACTER_CHECKPOINT == 0 {
+                checkpoints.push(byte);
+            }
+            characters = character + 1;
+        }
+        if checkpoints.is_empty() {
+            checkpoints.push(0);
+        }
+        Self {
+            checkpoints,
+            characters,
+        }
+    }
+    fn byte(&self, text: &str, character: usize) -> usize {
+        assert!(character <= self.characters);
+        if character == self.characters {
+            return text.len();
+        }
+        let checkpoint = character / CHARACTER_CHECKPOINT;
+        let remainder = character % CHARACTER_CHECKPOINT;
+        let first = self.checkpoints[checkpoint];
+        first
+            + text[first..]
+                .char_indices()
+                .nth(remainder)
+                .map(|(byte, _)| byte)
+                .unwrap_or(0)
+    }
+    fn character(&self, text: &str, byte: usize) -> usize {
+        if byte == text.len() {
+            return self.characters;
+        }
+        let checkpoint = self
+            .checkpoints
+            .partition_point(|first| *first <= byte)
+            .saturating_sub(1);
+        checkpoint * CHARACTER_CHECKPOINT + text[self.checkpoints[checkpoint]..byte].chars().count()
+    }
+}
+
 #[derive(Debug)]
 struct LineContent {
     source: String,
-    offsets: Vec<usize>,
+    offsets: CharacterIndex,
 }
 impl LineContent {
+    #[cfg(test)]
     fn new(source: &str) -> Self {
-        let source = sanitize(source);
-        let mut offsets: Vec<usize> = source.char_indices().map(|(index, _)| index).collect();
-        offsets.push(source.len());
+        Self::prepared(sanitize(source))
+    }
+    fn prepared(source: String) -> Self {
+        let offsets = CharacterIndex::new(&source);
         Self { source, offsets }
     }
     fn slice(&self, start: usize, end: usize) -> &str {
-        &self.source[self.offsets[start]..self.offsets[end]]
+        &self.source[self.offsets.byte(&self.source, start)..self.offsets.byte(&self.source, end)]
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SourceView<'a> {
+    content: &'a LineContent,
+    first: usize,
+    end: usize,
+}
+impl SourceView<'_> {
+    fn slice(&self, start: usize, end: usize) -> &str {
+        assert!(end <= self.end - self.first);
+        self.content.slice(self.first + start, self.first + end)
     }
     fn whitespace(&self, start: usize, end: usize) -> bool {
         start < end && self.slice(start, end).chars().all(char::is_whitespace)
     }
 }
+
+/// One current source file. Sparse Unicode offsets keep indexed source storage
+/// proportional to input bytes rather than one usize per source character.
+pub struct RenderSource {
+    content: LineContent,
+    line_characters: Vec<usize>,
+}
+impl RenderSource {
+    pub fn new(text: &str) -> Self {
+        let mut cleaned = String::with_capacity(text.len());
+        let mut line_characters = Vec::new();
+        let mut characters = 0;
+        for (row, line) in text.split('\n').enumerate() {
+            if row > 0 {
+                cleaned.push('\n');
+                characters += 1;
+            }
+            line_characters.push(characters);
+            let line = sanitize(line.strip_suffix('\r').unwrap_or(line));
+            characters += line.chars().count();
+            cleaned.push_str(&line);
+        }
+        Self {
+            content: LineContent::prepared(cleaned),
+            line_characters,
+        }
+    }
+    fn line(&self, row: usize) -> SourceView<'_> {
+        SourceView {
+            content: &self.content,
+            first: self.line_characters[row],
+            end: self
+                .line_characters
+                .get(row + 1)
+                .map(|next| next - 1)
+                .unwrap_or(self.content.offsets.characters),
+        }
+    }
+    fn retained_bytes(&self) -> usize {
+        std::mem::size_of::<Self>()
+            + self.content.source.capacity()
+            + self.content.offsets.checkpoints.capacity() * std::mem::size_of::<usize>()
+            + self.line_characters.capacity() * std::mem::size_of::<usize>()
+    }
+}
+
+struct CachedSource {
+    source: Rc<RenderSource>,
+    bytes: usize,
+    touched: u64,
+}
+pub struct SourceCache {
+    entries: BTreeMap<usize, CachedSource>,
+    order: BTreeSet<(u64, usize)>,
+    limit: usize,
+    retained_bytes: usize,
+    clock: u64,
+}
+impl SourceCache {
+    pub fn new(limit: usize) -> Self {
+        Self {
+            entries: BTreeMap::new(),
+            order: BTreeSet::new(),
+            limit,
+            retained_bytes: 0,
+            clock: 0,
+        }
+    }
+    pub fn get(
+        &mut self,
+        index: usize,
+        load: impl FnOnce() -> Result<RenderSource, String>,
+    ) -> Result<Rc<RenderSource>, String> {
+        self.clock += 1;
+        if let Some(entry) = self.entries.get_mut(&index) {
+            self.order.remove(&(entry.touched, index));
+            entry.touched = self.clock;
+            self.order.insert((entry.touched, index));
+            return Ok(entry.source.clone());
+        }
+        let source = Rc::new(load()?);
+        // Conservative per-entry allowance covers sparsely occupied B-tree nodes,
+        // the Rc allocation and cache bookkeeping; allocator/process overhead
+        // and the active single-file parsing/loading workspace are separate.
+        let bytes = source.retained_bytes().saturating_add(CACHE_ENTRY_ALLOWANCE);
+        if bytes > self.limit {
+            return Ok(source);
+        }
+        while self.retained_bytes + bytes > self.limit {
+            let (_, oldest) = self.order.pop_first().expect("nonempty cache exceeds its budget");
+            let entry = self.entries.remove(&oldest).expect("LRU entry exists");
+            self.retained_bytes -= entry.bytes;
+        }
+        self.retained_bytes += bytes;
+        self.entries.insert(
+            index,
+            CachedSource {
+                source: source.clone(),
+                bytes,
+                touched: self.clock,
+            },
+        );
+        self.order.insert((self.clock, index));
+        Ok(source)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SourceLine {
     pub text: String,
-    source: Rc<LineContent>,
     ranges: Vec<(usize, usize)>,
+    // Byte ranges of selected payloads within compact text, never original bodies.
+    payloads: Vec<(usize, usize)>,
 }
 impl SourceLine {
-    fn new(source: Rc<LineContent>, ranges: Vec<(usize, usize)>) -> Self {
+    fn new(source: SourceView<'_>, ranges: Vec<(usize, usize)>) -> Self {
+        Self::from_ranges(source, ranges, true)
+    }
+    fn from_ranges(source: SourceView<'_>, ranges: Vec<(usize, usize)>, whitespace: bool) -> Self {
         let mut text = String::new();
+        let mut payloads = Vec::new();
         let mut previous = None;
         for (start, end) in &ranges {
             if let Some(previous) = previous {
-                if source.whitespace(previous, *start) {
+                if whitespace && source.whitespace(previous, *start) {
                     text.push_str(source.slice(previous, *start));
                 } else {
                     text.push_str(" … ");
@@ -49,12 +230,26 @@ impl SourceLine {
             } else if *start > 0 {
                 text.push_str(" … ");
             }
+            let first = text.len();
             text.push_str(source.slice(*start, *end));
+            payloads.push((first, text.len()));
             previous = Some(*end);
         }
-        Self { text, source, ranges }
+        Self { text, ranges, payloads }
     }
-    fn excerpt(source: Rc<LineContent>, mut start: usize, end: usize) -> Self {
+    #[cfg(test)]
+    fn excerpt(source: Rc<LineContent>, start: usize, end: usize) -> Self {
+        Self::excerpt_view(
+            SourceView {
+                content: &source,
+                first: 0,
+                end: source.offsets.characters,
+            },
+            start,
+            end,
+        )
+    }
+    fn excerpt_view(source: SourceView<'_>, mut start: usize, end: usize) -> Self {
         if source.whitespace(0, start) {
             start = 0;
         }
@@ -63,33 +258,58 @@ impl SourceLine {
     fn source_characters(&self) -> usize {
         self.ranges.iter().map(|(start, end)| end - start).sum()
     }
-    fn merge(&self, other: &Self) -> Self {
-        debug_assert_eq!(self.source.source, other.source.source);
+    fn merge(&self, other: &Self, source: SourceView<'_>) -> Self {
+        self.merge_ranges(other, source, true)
+    }
+    fn merge_compact(&self, other: &Self, source: SourceView<'_>) -> Self {
+        // Parsing stores selected headers only. Whitespace between disjoint
+        // headers is accounted/materialized later through the bounded cache.
+        self.merge_ranges(other, source, false)
+    }
+    fn merge_ranges(&self, other: &Self, source: SourceView<'_>, whitespace: bool) -> Self {
         let mut inputs = self.ranges.clone();
         inputs.extend(&other.ranges);
         inputs.sort_unstable();
         let mut ranges: Vec<(usize, usize)> = Vec::new();
         for (start, end) in inputs {
             if let Some(last) = ranges.last_mut() {
-                if start <= last.1 || self.source.whitespace(last.1, start) {
+                if start <= last.1 || (whitespace && source.whitespace(last.1, start)) {
                     last.1 = last.1.max(end);
                     continue;
                 }
             }
             ranges.push((start, end));
         }
-        Self::new(self.source.clone(), ranges)
+        Self::from_ranges(source, ranges, whitespace)
     }
     fn bounded(&self, mut available: usize) -> Self {
+        let mut text = String::new();
         let mut ranges = Vec::new();
-        for (start, end) in &self.ranges {
+        let mut payloads = Vec::new();
+        let mut previous = None;
+        for ((start, end), (first, last)) in self.ranges.iter().zip(&self.payloads) {
             let taken = available.min(end - start);
             if taken > 0 || start == end {
+                if let Some(previous) = previous {
+                    text.push_str(&self.text[previous..*first]);
+                } else if *start > 0 {
+                    text.push_str(" … ");
+                }
+                let payload = &self.text[*first..*last];
+                let limit = payload
+                    .char_indices()
+                    .nth(taken)
+                    .map(|(byte, _)| byte)
+                    .unwrap_or(payload.len());
+                let beginning = text.len();
+                text.push_str(&payload[..limit]);
+                payloads.push((beginning, text.len()));
                 ranges.push((*start, start + taken));
+                previous = Some(*last);
             }
             available -= taken;
         }
-        Self::new(self.source.clone(), ranges)
+        Self { text, ranges, payloads }
     }
     fn contains(&self, start: usize, end: usize) -> bool {
         self.ranges.iter().any(|(first, last)| *first <= start && *last >= end)
@@ -121,21 +341,31 @@ pub struct Declaration {
 pub struct SourceText<'a> {
     text: &'a str,
     line_starts: Vec<usize>,
-    source_lines: Vec<Rc<LineContent>>,
+    source_lines: RenderSource,
+    raw_offsets: CharacterIndex,
+    original_line_characters: Vec<usize>,
 }
 impl<'a> SourceText<'a> {
     pub fn new(text: &'a str) -> Self {
         let mut line_starts = vec![0];
-        line_starts.extend(text.match_indices('\n').map(|(index, _)| index + 1));
-        let source_lines = text
-            .split('\n')
-            .map(|line| Rc::new(LineContent::new(line.strip_suffix('\r').unwrap_or(line))))
-            .collect();
+        let mut original_line_characters = vec![0];
+        for (character, (byte, value)) in text.char_indices().enumerate() {
+            if value == '\n' {
+                line_starts.push(byte + 1);
+                original_line_characters.push(character + 1);
+            }
+        }
         Self {
             text,
             line_starts,
-            source_lines,
+            source_lines: RenderSource::new(text),
+            raw_offsets: CharacterIndex::new(text),
+            original_line_characters,
         }
+    }
+
+    fn column(&self, row: usize, byte: usize) -> usize {
+        self.raw_offsets.character(self.text, byte) - self.original_line_characters[row]
     }
 
     fn header(&self, node: Node<'_>, anchor: usize) -> Declaration {
@@ -177,11 +407,11 @@ impl<'a> SourceText<'a> {
             if first > limit {
                 continue;
             }
-            let start_column = self.text[offset..first].chars().count();
-            let end_column = self.text[offset..limit].chars().count();
+            let start_column = self.column(line - 1, first);
+            let end_column = self.column(line - 1, limit);
             lines.push((
                 line,
-                SourceLine::excerpt(self.source_lines[line - 1].clone(), start_column, end_column),
+                SourceLine::excerpt_view(self.source_lines.line(line - 1), start_column, end_column),
             ));
         }
         let line_clipped = lines.len() > DECLARATION_LINE_LIMIT;
@@ -237,11 +467,11 @@ impl<'a> SourceText<'a> {
 
     pub fn legacy_identifier_visible(&self, name: Node<'_>) -> bool {
         let row = name.start_position().row;
-        let offset = self.line_starts[row];
-        let start = self.text[offset..name.start_byte()].chars().count();
-        let end = self.text[offset..name.end_byte()].chars().count();
-        let leading = self.source_lines[row]
-            .source
+        let start = self.column(row, name.start_byte());
+        let end = self.column(row, name.end_byte());
+        let physical = self.source_lines.line(row);
+        let leading = physical
+            .slice(0, physical.end - physical.first)
             .chars()
             .take_while(|c| c.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(c))
             .count();
@@ -250,9 +480,8 @@ impl<'a> SourceText<'a> {
 
     fn check_identifier(&self, declaration: &Declaration, name: Node<'_>) -> Result<(), String> {
         let row = name.start_position().row;
-        let offset = self.line_starts[row];
-        let start = self.text[offset..name.start_byte()].chars().count();
-        let end = self.text[offset..name.end_byte()].chars().count();
+        let start = self.column(row, name.start_byte());
+        let end = self.column(row, name.end_byte());
         if !declaration
             .lines
             .get(&(row + 1))
@@ -289,7 +518,7 @@ impl<'a> SourceText<'a> {
                 if first.start_byte() > node.start_byte() {
                     let prefix =
                         self.range_header(node.start_byte(), first.start_byte(), node.start_position().row + 1);
-                    merge(&mut result, prefix);
+                    merge(&mut result, prefix, &self.source_lines);
                 }
             }
             parent = node.parent();
@@ -305,7 +534,7 @@ impl<'a> SourceText<'a> {
                 if let Some(context_name) = context_name {
                     self.check_identifier(&context, context_name)?;
                 }
-                merge(&mut result, context);
+                merge(&mut result, context, &self.source_lines);
             }
             current = node.parent();
         }
@@ -330,10 +559,10 @@ fn bound_line(source: &SourceLine, available: usize) -> (SourceLine, bool) {
     }
     (source.bounded(available), true)
 }
-fn merge(target: &mut Declaration, other: Declaration) {
+fn merge(target: &mut Declaration, other: Declaration, original: &RenderSource) {
     for (line, source) in other.lines {
         let existing = target.lines.entry(line).or_insert_with(|| source.clone());
-        *existing = existing.merge(&source);
+        *existing = existing.merge_compact(&source, original.line(line - 1));
     }
     target.clipped.extend(other.clipped);
 }
@@ -539,7 +768,14 @@ impl Grouped {
 
     /// Transactional addition measures actual Markdown, including shared context,
     /// headings, fences, gap markers and clipping notices; an overflow rolls back.
-    pub fn add(&mut self, index: usize, path: &str, declaration: &Declaration, limit: usize) -> bool {
+    pub fn add(
+        &mut self,
+        index: usize,
+        path: &str,
+        declaration: &Declaration,
+        limit: usize,
+        original: &RenderSource,
+    ) -> bool {
         let before = self.characters;
         let is_new = !self.files.contains_key(&index);
         if is_new {
@@ -553,14 +789,14 @@ impl Grouped {
         for (line, source) in &declaration.lines {
             let added;
             if let Some(existing) = file.lines.get(line) {
-                added = existing.merge(source);
+                added = existing.merge(source, original.line(*line - 1));
                 if added.ranges == existing.ranges {
                     continue;
                 }
                 self.characters = self.characters - existing.text.chars().count() + added.text.chars().count();
                 changed.push((*line, Some(existing.clone())));
             } else {
-                added = source.clone();
+                added = SourceLine::new(original.line(*line - 1), source.ranges.clone());
                 let previous = file.lines.range(..*line).next_back().map(|(n, _)| *n);
                 let next = file.lines.range((Excluded(*line), Unbounded)).next().map(|(n, _)| *n);
                 if previous.zip(next).is_some_and(|(a, b)| b > a + 1) {
@@ -572,7 +808,7 @@ impl Grouped {
                 if next.is_some_and(|n| n > *line + 1) {
                     self.characters += "  ...\n".len();
                 }
-                self.characters += format!("L{line}: {}\n", source.text).chars().count();
+                self.characters += format!("L{line}: {}\n", added.text).chars().count();
                 changed.push((*line, None));
             }
             file.lines.insert(*line, added);
@@ -636,25 +872,22 @@ impl Grouped {
 
 #[derive(Clone)]
 struct CountedLine {
-    source: Rc<LineContent>,
     ranges: Vec<(usize, usize)>,
 }
 impl CountedLine {
     fn from_line(line: &SourceLine) -> Self {
         Self {
-            source: line.source.clone(),
             ranges: line.ranges.clone(),
         }
     }
-    fn merge(&mut self, line: &SourceLine) {
-        debug_assert_eq!(self.source.source, line.source.source);
+    fn merge(&mut self, line: &SourceLine, source: SourceView<'_>) {
         let mut inputs = self.ranges.clone();
         inputs.extend(&line.ranges);
         inputs.sort_unstable();
         self.ranges.clear();
         for (start, end) in inputs {
             if let Some(previous) = self.ranges.last_mut() {
-                if start <= previous.1 || self.source.whitespace(previous.1, start) {
+                if start <= previous.1 || source.whitespace(previous.1, start) {
                     previous.1 = previous.1.max(end);
                     continue;
                 }
@@ -662,13 +895,13 @@ impl CountedLine {
             self.ranges.push((start, end));
         }
     }
-    fn characters(&self) -> usize {
+    fn characters(&self, source: SourceView<'_>) -> usize {
         let mut count = 0;
         let mut previous = None;
         for (start, end) in &self.ranges {
             count += end - start;
             if let Some(previous) = previous {
-                count += if self.source.whitespace(previous, *start) {
+                count += if source.whitespace(previous, *start) {
                     start - previous
                 } else {
                     " … ".chars().count()
@@ -680,19 +913,19 @@ impl CountedLine {
         }
         count
     }
-    fn append(&self, text: &mut String) {
+    fn append(&self, source: SourceView<'_>, text: &mut String) {
         let mut previous = None;
         for (start, end) in &self.ranges {
             if let Some(previous) = previous {
-                if self.source.whitespace(previous, *start) {
-                    text.push_str(self.source.slice(previous, *start));
+                if source.whitespace(previous, *start) {
+                    text.push_str(source.slice(previous, *start));
                 } else {
                     text.push_str(" … ");
                 }
             } else if *start > 0 {
                 text.push_str(" … ");
             }
-            text.push_str(self.source.slice(*start, *end));
+            text.push_str(source.slice(*start, *end));
             previous = Some(*end);
         }
     }
@@ -714,7 +947,8 @@ impl Grouped {
         paths: &[&str],
         declarations: impl IntoIterator<Item = (usize, &'a Declaration)>,
         limit: usize,
-    ) -> CompleteGrouped {
+        load: &mut impl FnMut(usize) -> Result<Rc<RenderSource>, String>,
+    ) -> Result<CompleteGrouped, String> {
         let mut by_file: BTreeMap<usize, Vec<&Declaration>> = BTreeMap::new();
         for (index, declaration) in declarations {
             by_file.entry(index).or_default().push(declaration);
@@ -731,12 +965,13 @@ impl Grouped {
             },
         };
         for (index, declarations) in by_file {
+            let original = load(index)?;
             let mut lines: BTreeMap<usize, CountedLine> = BTreeMap::new();
             let mut clipping = BTreeSet::new();
             for declaration in declarations {
                 for (number, source) in &declaration.lines {
                     if let Some(existing) = lines.get_mut(number) {
-                        existing.merge(source);
+                        existing.merge(source, original.line(*number - 1));
                     } else {
                         lines.insert(*number, CountedLine::from_line(source));
                     }
@@ -750,7 +985,7 @@ impl Grouped {
                 if previous.is_some_and(|n| *number > n + 1) {
                     result.characters += "  ...\n".len();
                 }
-                result.characters += format!("L{number}: ").len() + source.characters() + 1;
+                result.characters += format!("L{number}: ").len() + source.characters(original.line(*number - 1)) + 1;
                 previous = Some(*number);
             }
             for clip in &clipping {
@@ -767,7 +1002,7 @@ impl Grouped {
                         text.push_str("  ...\n");
                     }
                     text.push_str(&format!("L{number}: "));
-                    source.append(text);
+                    source.append(original.line(*number - 1), text);
                     text.push('\n');
                     previous = Some(*number);
                 }
@@ -783,7 +1018,7 @@ impl Grouped {
             }
             result.clipped.extend(clipping.into_iter().map(|clip| (index, clip)));
         }
-        result
+        Ok(result)
     }
 }
 
@@ -792,13 +1027,120 @@ mod complete_tests {
     use super::*;
 
     #[test]
+    fn singleton_source_cache_accounts_for_container_overhead_before_admission() {
+        let physical = "class Tiny {}";
+        let payload = RenderSource::new(physical).retained_bytes();
+        let mut refused = SourceCache::new(payload + 256);
+        let source = refused.get(0, || Ok(RenderSource::new(physical))).unwrap();
+        assert_eq!(source.line(0).slice(0, 5), "class");
+        assert!(refused.entries.is_empty());
+        assert!(refused.order.is_empty());
+        assert_eq!(refused.retained_bytes, 0);
+        let mut admitted = SourceCache::new(payload + CACHE_ENTRY_ALLOWANCE);
+        admitted.get(0, || Ok(RenderSource::new(physical))).unwrap();
+        assert_eq!(admitted.retained_bytes, payload + CACHE_ENTRY_ALLOWANCE);
+        assert_eq!(admitted.entries.len(), 1);
+        assert_eq!(admitted.order.len(), 1);
+    }
+
+    #[test]
+    fn stored_ast_declarations_leave_large_whitespace_gaps_lazy() {
+        let physical = format!("class Tiny {{ {}void selected() {{}} }}", " ".repeat(150_000));
+        let mut extractor = crate::tags::Extractor::new();
+        let parsed = match extractor.extract_with_declarations("java", "Tiny.java", physical.as_bytes(), true, true) {
+            Ok(parsed) => parsed,
+            Err(crate::tags::ExtractError::File(error) | crate::tags::ExtractError::Limit(error)) => panic!("{error}"),
+        };
+        let retained: usize = parsed
+            .declarations
+            .values()
+            .flat_map(|declaration| declaration.lines.values())
+            .map(|fragment| fragment.text.chars().count())
+            .sum();
+        assert!(
+            retained <= 2 * DECLARATION_CHARACTER_LIMIT + 64,
+            "compact AST declarations retained {retained} characters from an unselected whitespace gap"
+        );
+    }
+
+    #[test]
+    fn sparse_unicode_offsets_match_original_coordinates_without_per_character_storage() {
+        let text = "aα💡\u{85}\t".repeat(800);
+        let index = CharacterIndex::new(&text);
+        for (character, (byte, _)) in text.char_indices().enumerate() {
+            assert_eq!(index.byte(&text, character), byte);
+            assert_eq!(index.character(&text, byte), character);
+        }
+        assert_eq!(index.byte(&text, index.characters), text.len());
+        assert!(index.checkpoints.len() <= index.characters / CHARACTER_CHECKPOINT + 1);
+        let source = RenderSource::new(&("x".repeat(140_000)));
+        assert!(
+            source.retained_bytes() < 160_000,
+            "sparse indexing retains excessive source metadata"
+        );
+    }
+
+    #[test]
+    fn source_cache_evicts_by_retained_bytes_and_leaves_oversized_sources_uncached() {
+        let small = "💡".repeat(50_000);
+        let huge = "💡".repeat(150_000);
+        let limit = RenderSource::new(&small).retained_bytes() + CACHE_ENTRY_ALLOWANCE;
+        let mut cache = SourceCache::new(limit);
+        let mut reads = [0; 3];
+        for file in [0, 0, 1, 0, 2, 2, 0] {
+            let source = cache
+                .get(file, || {
+                    reads[file] += 1;
+                    Ok(RenderSource::new(if file == 2 { &huge } else { &small }))
+                })
+                .unwrap();
+            assert_eq!(source.line(0).slice(0, 1), "💡");
+            assert!(cache.retained_bytes <= limit);
+        }
+        assert_eq!(reads, [2, 1, 2]);
+        assert_eq!(cache.entries.len(), 1);
+        assert!(cache.entries.contains_key(&0));
+    }
+
+    #[test]
+    fn bounded_fragments_release_large_physical_source_lines_across_files() {
+        let mut stored = Vec::new();
+        let mut originals = Vec::new();
+        for file in 0..20 {
+            let header = format!("class Tiny{file} {{");
+            let physical = format!(
+                "{header}void method() {{ String hidden = \"{}\"; }}}}",
+                "BODY_MUST_NOT_RETAIN".repeat(7000)
+            );
+            let source = Rc::new(LineContent::new(&physical));
+            originals.push(Rc::downgrade(&source));
+            stored.push(SourceLine::excerpt(source, 0, header.chars().count()).bounded(DECLARATION_CHARACTER_LIMIT));
+        }
+        let retained = originals
+            .iter()
+            .filter_map(|source| source.upgrade())
+            .map(|line| line.source.len())
+            .sum::<usize>();
+        assert_eq!(
+            retained, 0,
+            "bounded declaration fragments retained {retained} physical-source bytes"
+        );
+        assert_eq!(stored.len(), 20);
+        assert!(stored.iter().all(|fragment| fragment.text.starts_with("class Tiny")));
+    }
+
+    #[test]
     fn large_complete_rejection_counts_exactly_without_retaining_oversized_output() {
         let paths = ["src/Śervice0.py", "src/Śervice1.py", "src/Śervice2.py"];
         let mut declarations = Vec::new();
+        let mut originals = Vec::new();
         for file in 0..3 {
+            let mut physical = String::from("class Shared:\n");
             let context = SourceLine::excerpt(Rc::new(LineContent::new("class Shared:")), 0, 13);
             for method in 0..120 {
                 let source = format!("    def operation{method:03}({}value):", " ".repeat(3000));
+                physical.push_str(&source);
+                physical.push_str("\n        return value\n");
                 let length = source.chars().count();
                 let fragment = SourceLine::excerpt(Rc::new(LineContent::new(&source)), 4, length);
                 let mut declaration = Declaration::default();
@@ -806,16 +1148,19 @@ mod complete_tests {
                 declaration.lines.insert(method * 2 + 2, fragment);
                 declarations.push((file, declaration));
             }
+            originals.push(Rc::new(RenderSource::new(&physical)));
         }
+        let mut load = |file: usize| Ok(originals[file].clone());
         // Unbounded reference rendering is intentional only in this test,
         // outside the measured production complete-mode budget path.
         let mut reference = Grouped::new();
         for (file, declaration) in &declarations {
-            assert!(reference.add(*file, paths[*file], declaration, usize::MAX));
+            assert!(reference.add(*file, paths[*file], declaration, usize::MAX, &originals[*file]));
         }
         let expected = reference.render(&paths);
         let required = expected.chars().count();
-        let rejected = Grouped::complete(&paths, declarations.iter().map(|(file, d)| (*file, d)), 256);
+        let rejected =
+            Grouped::complete(&paths, declarations.iter().map(|(file, d)| (*file, d)), 256, &mut load).unwrap();
         assert!(rejected.text.is_none());
         assert_eq!(rejected.characters, required);
         assert!(rejected.peak_retained_characters <= 256);
@@ -823,7 +1168,9 @@ mod complete_tests {
             &paths,
             declarations.iter().map(|(file, d)| (*file, d)),
             required.div_ceil(4) * 4,
-        );
+            &mut load,
+        )
+        .unwrap();
         assert_eq!(exact.text.as_deref(), Some(expected.as_str()));
         assert_eq!(exact.characters, required);
         assert!(exact.peak_retained_characters <= required.div_ceil(4) * 4);
@@ -848,11 +1195,15 @@ mod complete_tests {
         }
         let paths = ["Śhared.py"];
         let expected = format!("{HEADER}## Śhared.py\n\n\x60\x60\x60text\nL1: α.β\n  ... [declaration clipped: L1-L91; line limit]\n\x60\x60\x60\n\n");
+        let original = Rc::new(RenderSource::new("α.β"));
+        let mut load = |_file: usize| Ok(original.clone());
         let complete = Grouped::complete(
             &paths,
             pieces.iter().map(|declaration| (0, declaration)),
             expected.chars().count(),
-        );
+            &mut load,
+        )
+        .unwrap();
         assert_eq!(complete.text.as_deref(), Some(expected.as_str()));
         assert_eq!(complete.characters, expected.chars().count());
         assert_eq!(complete.clipped.len(), 1);

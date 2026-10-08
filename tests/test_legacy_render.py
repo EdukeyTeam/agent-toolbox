@@ -423,5 +423,64 @@ class Second:
 
 
 
+    def test_bounded_fragments_do_not_keep_minified_bodies_across_files(self):
+        import repo_render
+        fragments = []
+        for number in range(20):
+            header = f"class Tiny{number} {{"
+            physical = header + 'void method() { String hidden = "' + "BODY_MUST_NOT_RETAIN" * 7000 + '"; }}'
+            fragment = repo_render.LineFragments.excerpt(physical, 0, len(header)).bounded(repo_render.DECLARATION_CHARACTER_LIMIT)
+            fragments.append(fragment)
+
+        def reachable_strings(value, seen):
+            if id(value) in seen:
+                return 0
+            seen.add(id(value))
+            if isinstance(value, str):
+                return len(value)
+            if isinstance(value, dict):
+                return sum(reachable_strings(part, seen) for pair in value.items() for part in pair)
+            if isinstance(value, (tuple, list)):
+                return sum(reachable_strings(part, seen) for part in value)
+            if hasattr(value, "__dict__"):
+                return reachable_strings(vars(value), seen)
+            return 0
+
+        retained = reachable_strings(fragments, set())
+        self.assertLessEqual(retained, 20 * repo_render.DECLARATION_CHARACTER_LIMIT,
+                             "tiny declarations kept large original physical lines alive")
+        self.assertTrue(all(fragment.text().startswith("class Tiny") for fragment in fragments))
+
+
+    def test_ranked_minified_files_keep_compact_fragments_after_source_cache_eviction(self):
+        import repo_map
+        import tracemalloc
+        for number in range(20):
+            self.write(f"Tiny{number}.java", f'class Tiny{number} {{ void first() {{ String body = "' + "BODY_MUST_NOT_LEAK" * 8000
+                       + '"; } void second(\n  String value,\n  int count\n) {} }\n')
+        original_cache = repo_map._SourceLineCache
+        original_renderer = repo_map.render_grouped
+        peak = 0
+
+        def tiny_cache(loader):
+            return original_cache(loader, max_bytes=512)
+
+        def measured_renderer(*args, **options):
+            nonlocal peak
+            tracemalloc.start()
+            try:
+                return original_renderer(*args, **options)
+            finally:
+                peak = tracemalloc.get_traced_memory()[1]
+                tracemalloc.stop()
+
+        with patch("repo_map._SourceLineCache", side_effect=tiny_cache), patch("repo_map.render_grouped", side_effect=measured_renderer):
+            metadata, text = self.map(budget=16384)
+        self.assertEqual(metadata["coverage"]["definitions_in_map"], 60)
+        self.assertNotIn("BODY_MUST_NOT_LEAK", text)
+        self.assertIn("L2:   String value,\nL3:   int count\nL4: ) {", text)
+        self.assertLess(peak, 2_000_000, "selected fragments kept evicted physical source bodies alive")
+
+
 if __name__ == "__main__":
     unittest.main()

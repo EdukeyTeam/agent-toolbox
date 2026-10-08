@@ -716,13 +716,30 @@ fn run(arguments: Arguments) -> Result<String, String> {
     let mut included_lines: std::collections::HashSet<(usize, usize)> = Default::default();
     let mut verified_sources = std::collections::HashSet::new();
     let mut grouped = render::Grouped::new();
+    let mut source_cache = render::SourceCache::new(render::SOURCE_CACHE_BYTES);
+    let mut load_render_source = |index: usize| {
+        source_cache.get(index, || {
+            let file = &parsed[index];
+            let expected = inventory
+                .files
+                .iter()
+                .find(|entry| entry.path == file.path)
+                .expect("parsed file has an inventory entry");
+            let (data, digest) = inventory::read_safe(&root, &file.path, max_file_bytes)
+                .map_err(|reason| format!("source changed while rendering: {}: {reason}", file.path))?;
+            if digest != expected.sha256 {
+                return Err(format!("source changed while rendering: {}", file.path));
+            }
+            Ok(render::RenderSource::new(&String::from_utf8_lossy(&data)))
+        })
+    };
     for definition in &ranked {
         if map_format == "lines" && included_lines.contains(&(definition.file, definition.line)) {
             included += 1;
             continue;
         }
         let file = &parsed[definition.file];
-        if verified_sources.insert(file.path.as_str()) {
+        if map_format == "lines" && verified_sources.insert(file.path.as_str()) {
             let expected = inventory
                 .files
                 .iter()
@@ -757,8 +774,17 @@ fn run(arguments: Arguments) -> Result<String, String> {
                 // Admission is complete-mode's exact per-file counting pass below;
                 // never accumulate an unbounded map in the ranked renderer.
                 included += 1;
-            } else if grouped.add(definition.file, &file.path, declaration, budget * 4) {
-                included += 1;
+            } else {
+                let original = match load_render_source(definition.file) {
+                    Ok(source) => source,
+                    Err(message) => {
+                        unfinished("failed", Some(&("rendering", message.clone())))?;
+                        return Err(message);
+                    }
+                };
+                if grouped.add(definition.file, &file.path, declaration, budget * 4, &original) {
+                    included += 1;
+                }
             }
         } else {
             let Some(snippet) = file.snippets.get(&definition.line) else {
@@ -785,7 +811,7 @@ fn run(arguments: Arguments) -> Result<String, String> {
     }
     let paths: Vec<&str> = parsed.iter().map(|file| file.path.as_str()).collect();
     let complete_grouped = if map_format == "grouped" && all_definitions {
-        Some(render::Grouped::complete(
+        let completed = render::Grouped::complete(
             &paths,
             ranked.iter().map(|definition| {
                 let key = (definition.line, definition.name.to_string());
@@ -798,7 +824,15 @@ fn run(arguments: Arguments) -> Result<String, String> {
                 )
             }),
             budget * 4,
-        ))
+            &mut load_render_source,
+        );
+        match completed {
+            Ok(completed) => Some(completed),
+            Err(message) => {
+                unfinished("failed", Some(&("rendering", message.clone())))?;
+                return Err(message);
+            }
+        }
     } else {
         None
     };

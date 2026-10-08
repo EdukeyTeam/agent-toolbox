@@ -96,6 +96,31 @@ def _owner(name, declarations):
     return node
 
 
+class _SourceColumns(list):
+    """Sparse UTF-8 byte/character index; conversions decode at most 1 KiB."""
+    def __init__(self, data):
+        super().__init__([0, *(index + 1 for index, character in enumerate(data) if character == 10)])
+        self.data = data
+        self.byte_starts = [0]
+        self.character_starts = [0]
+        previous = 0
+        characters = 0
+        for byte in range(1024, len(data), 1024):
+            while byte > previous and data[byte] & 0xC0 == 0x80:
+                byte -= 1
+            characters += len(data[previous:byte].decode("utf-8"))
+            self.byte_starts.append(byte)
+            self.character_starts.append(characters)
+            previous = byte
+
+    def _characters_before(self, byte):
+        checkpoint = bisect.bisect_right(self.byte_starts, byte) - 1
+        return self.character_starts[checkpoint] + len(self.data[self.byte_starts[checkpoint]:byte].decode("utf-8"))
+
+    def column(self, row, byte):
+        return self._characters_before(byte) - self._characters_before(self[row - 1])
+
+
 def _range_span(start, end, data, line_starts, name_line, name=None):
     while end > start and data[end - 1:end] in (b" ", b"\t", b"\r", b"\n"):
         end -= 1
@@ -103,19 +128,18 @@ def _range_span(start, end, data, line_starts, name_line, name=None):
     end_line = bisect.bisect_right(line_starts, max(start, end - 1))
     span = {
         "line": name_line, "start_line": start_line, "end_line": end_line,
-        "start_column": len(data[line_starts[start_line - 1]:start].decode("utf-8")),
-        "end_column": len(data[line_starts[end_line - 1]:end].decode("utf-8")),
+        "start_column": line_starts.column(start_line, start),
+        "end_column": line_starts.column(end_line, end),
     }
     if name is not None:
         name_start_line = name.start_point.row + 1
         name_end_line = name.end_point.row + 1
         if name_start_line != name_end_line:
             raise ValueError("a definition name spans multiple source lines")
-        offset = line_starts[name_start_line - 1]
         span["identity"] = (
             name_start_line,
-            len(data[offset:name.start_byte].decode("utf-8")),
-            len(data[offset:name.end_byte].decode("utf-8")),
+            line_starts.column(name_start_line, name.start_byte),
+            line_starts.column(name_start_line, name.end_byte),
         )
     return span
 
@@ -179,8 +203,7 @@ def extract_declarations(text, parser, query, path, tags, *, strict_syntax=False
         if expected != actual:
             raise ValueError(f"current AST definitions differ from the cached definition inventory in {path}; complete mapping cannot omit captured definitions")
 
-    line_starts = [0]
-    line_starts.extend(index + 1 for index, character in enumerate(data) if character == 10)
+    line_starts = _SourceColumns(data)
     span_cache = {}
 
     def span(node, name_line, name=None):
@@ -210,66 +233,95 @@ def extract_declarations(text, parser, query, path, tags, *, strict_syntax=False
     return result
 
 
+def _whitespace_range(source, start, end):
+    # Avoid copying or sanitizing an unrelated minified body just to discover
+    # that the first character of a gap is not whitespace.
+    return start < end and all(
+        source[index].isspace() or (source[index] != "\t" and contains_control_characters(source[index]))
+        for index in range(start, end)
+    )
+
+
 @dataclass(frozen=True)
 class LineFragments:
-    source: str
+    # Retain only selected payloads, with coordinates in the original line.
+    # Original source is consulted transiently when merging shared ranges.
+    value: str
     intervals: tuple[tuple[int, int], ...]
+    payloads: tuple[tuple[int, int], ...]
+
+    @classmethod
+    def _from_source(cls, source, intervals):
+        chunks = []
+        payloads = []
+        length = 0
+        previous = None
+        for start, end in intervals:
+            if previous is None and start:
+                separator = " … "
+            elif previous is not None:
+                separator = sanitize(source[previous:start]) if _whitespace_range(source, previous, start) else " … "
+            else:
+                separator = ""
+            chunks.append(separator)
+            length += len(separator)
+            payload = sanitize(source[start:end])
+            payloads.append((length, length + len(payload)))
+            chunks.append(payload)
+            length += len(payload)
+            previous = end
+        return cls("".join(chunks), tuple(intervals), tuple(payloads))
 
     @classmethod
     def excerpt(cls, source, start, end):
-        source = sanitize(source)
-        if start and source[:start].isspace():
+        # Sanitization preserves character coordinates. Do not sanitize/copy
+        # the unrelated physical-line body merely to excerpt a short header.
+        if start and _whitespace_range(source, 0, start):
             start = 0
-        return cls(source, ((start, end),))
+        return cls._from_source(source, ((start, end),))
 
-    def merge(self, other):
-        if self.source != other.source:
-            raise ValueError("source changed while merging declaration fragments")
+    def merge(self, other, source):
         ranges = []
         for start, end in sorted((*self.intervals, *other.intervals)):
-            if ranges and (start <= ranges[-1][1] or self.source[ranges[-1][1]:start].isspace()):
+            whitespace = ranges and _whitespace_range(source, ranges[-1][1], start)
+            if ranges and (start <= ranges[-1][1] or whitespace):
                 ranges[-1] = (ranges[-1][0], max(ranges[-1][1], end))
             else:
                 ranges.append((start, end))
-        return LineFragments(self.source, tuple(ranges))
+        return LineFragments._from_source(source, ranges)
 
     def characters(self):
         return sum(end - start for start, end in self.intervals)
 
     def bounded(self, available):
+        chunks = []
         ranges = []
-        for start, end in self.intervals:
+        payloads = []
+        previous_end = None
+        length = 0
+        for (start, end), (first, last) in zip(self.intervals, self.payloads):
             taken = min(available, end - start)
             if taken or start == end:
+                separator = self.value[previous_end:first] if previous_end is not None else " … " if start else ""
+                chunks.append(separator)
+                length += len(separator)
+                payload = self.value[first:first + taken]
+                payloads.append((length, length + len(payload)))
+                chunks.append(payload)
+                length += len(payload)
                 ranges.append((start, start + taken))
+                previous_end = last
             available -= taken
-        return LineFragments(self.source, tuple(ranges))
+        return LineFragments("".join(chunks), tuple(ranges), tuple(payloads))
 
     def contains(self, start, end):
         return any(first <= start and last >= end for first, last in self.intervals)
 
     def rendered_characters(self):
-        characters = self.characters()
-        previous = None
-        for start, end in self.intervals:
-            if previous is None and start:
-                characters += len(" … ")
-            elif previous is not None:
-                characters += start - previous if self.source[previous:start].isspace() else len(" … ")
-            previous = end
-        return characters
+        return len(self.value)
 
     def text(self):
-        chunks = []
-        previous = None
-        for start, end in self.intervals:
-            if previous is None and start:
-                chunks.append(" … ")
-            elif previous is not None:
-                chunks.append(self.source[previous:start] if self.source[previous:start].isspace() else " … ")
-            chunks.append(self.source[start:end])
-            previous = end
-        return "".join(chunks)
+        return self.value
 
 
 def _clip_span(span, source_lines, path):
@@ -365,7 +417,7 @@ def _render_complete_grouped(ranked, source_lines, budget):
             for span in tag["declaration_spans"]:
                 snippets, record = _clip_span(span, original_lines, path)
                 for number, snippet in snippets.items():
-                    selected[number] = selected[number].merge(snippet) if number in selected else snippet
+                    selected[number] = selected[number].merge(snippet, original_lines[number - 1]) if number in selected else snippet
                 if record:
                     clipping[_record_key(record)] = record
         total_characters += _file_characters(path, selected, clipping)
@@ -404,12 +456,12 @@ def render_grouped(ranked, source_lines, budget, *, all_definitions=False):
         for span in tag["declaration_spans"]:
             snippets, record = _clip_span(span, original_lines, path)
             for line, snippet in snippets.items():
-                additions[line] = additions[line].merge(snippet) if line in additions else snippet
+                additions[line] = additions[line].merge(snippet, original_lines[line - 1]) if line in additions else snippet
             if record:
                 records[_record_key(record)] = record
         candidate = dict(files.get(path, {}))
         for line, snippet in additions.items():
-            candidate[line] = candidate[line].merge(snippet) if line in candidate else snippet
+            candidate[line] = candidate[line].merge(snippet, original_lines[line - 1]) if line in candidate else snippet
         candidate_records = {**clipping.get(path, {}), **records}
         candidate_cost = len(_file_text(path, candidate, candidate_records))
         new_total = total_characters - costs.get(path, 0) + candidate_cost

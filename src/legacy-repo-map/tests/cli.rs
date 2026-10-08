@@ -1619,3 +1619,45 @@ fn all_definitions_large_failure_keeps_exact_diagnostic_and_boundary_bytes() {
         assert_eq!(fs::read(fixture.output.join("repo-map.md")).unwrap(), bytes);
     }
 }
+
+#[test]
+fn grouped_minified_files_keep_late_unicode_signatures_and_omit_large_bodies() {
+    let fixture = Fixture::new();
+    for file in 0..20 {
+        let source = format!(
+            "class Tiny{file} {{ void first() {{ String body = \"{}\"; }} void second(\n  String value,\n  int count\n) {{}} }}\n",
+            "BODY_MUST_NOT_LEAK💡".repeat(8000),
+        );
+        fixture.write(&format!("Tiny{file}.java"), &source);
+    }
+    let before = snapshot(&fixture.source);
+    for extra in [&[][..], &["--all-definitions"][..]] {
+        let summary = grouped_ok(&fixture, extra);
+        let map = fixture.map_text();
+        assert_eq!(summary["coverage"]["definitions_in_map"], 60);
+        assert!(!map.contains("BODY_MUST_NOT_LEAK"), "{map}");
+        assert!(map.contains("L2:   String value,\nL3:   int count\nL4: ) {"), "{map}");
+        assert_eq!(map.matches("void first() {").count(), 20);
+        assert_eq!(map.matches("void second(").count(), 20);
+        assert_eq!(before, snapshot(&fixture.source));
+    }
+}
+
+#[test]
+fn compact_ast_context_gaps_preserve_original_whitespace_in_final_map() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "Tiny.java",
+        &format!("class Tiny {{ {}void selected() {{}} }}\n", " ".repeat(3000)),
+    );
+    let expected = format!("# Repository map\n\n## Tiny.java\n\n\x60\x60\x60text\nL1: class Tiny {{ {}void selected() {{\n\x60\x60\x60\n\n", " ".repeat(3000));
+    for extra in [&[][..], &["--all-definitions"][..]] {
+        let summary = grouped_ok(&fixture, extra);
+        assert_eq!(fixture.map_text().as_bytes(), expected.as_bytes());
+        assert_eq!(summary["coverage"]["definitions_in_map"], 2);
+        assert_eq!(
+            summary["estimated_tokens"].as_u64().unwrap() as usize,
+            expected.chars().count().div_ceil(4)
+        );
+    }
+}
