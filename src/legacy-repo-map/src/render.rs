@@ -247,19 +247,25 @@ impl SourceLine {
             },
             start,
             end,
+            Format::Grouped,
         )
     }
-    fn excerpt_view(source: SourceView<'_>, mut start: usize, end: usize) -> Self {
-        if source.whitespace(0, start) {
+    fn excerpt_view(source: SourceView<'_>, mut start: usize, end: usize, format: Format) -> Self {
+        if format == Format::Compact {
+            // Trim before declaration quota/identity checks, keeping coordinates
+            // in the original physical line. Never charge discarded indentation.
+            start += source
+                .slice(start, end)
+                .chars()
+                .take_while(|c| c.is_whitespace())
+                .count();
+        } else if source.whitespace(0, start) {
             start = 0;
         }
         Self::new(source, vec![(start, end)])
     }
     fn source_characters(&self) -> usize {
         self.ranges.iter().map(|(start, end)| end - start).sum()
-    }
-    fn merge(&self, other: &Self, source: SourceView<'_>) -> Self {
-        self.merge_ranges(other, source, true)
     }
     fn merge_compact(&self, other: &Self, source: SourceView<'_>) -> Self {
         // Parsing stores selected headers only. Whitespace between disjoint
@@ -344,9 +350,13 @@ pub struct SourceText<'a> {
     source_lines: RenderSource,
     raw_offsets: CharacterIndex,
     original_line_characters: Vec<usize>,
+    format: Format,
 }
 impl<'a> SourceText<'a> {
     pub fn new(text: &'a str) -> Self {
+        Self::with_format(text, Format::Grouped)
+    }
+    pub fn with_format(text: &'a str, format: Format) -> Self {
         let mut line_starts = vec![0];
         let mut original_line_characters = vec![0];
         for (character, (byte, value)) in text.char_indices().enumerate() {
@@ -361,6 +371,7 @@ impl<'a> SourceText<'a> {
             source_lines: RenderSource::new(text),
             raw_offsets: CharacterIndex::new(text),
             original_line_characters,
+            format,
         }
     }
 
@@ -411,7 +422,7 @@ impl<'a> SourceText<'a> {
             let end_column = self.column(line - 1, limit);
             lines.push((
                 line,
-                SourceLine::excerpt_view(self.source_lines.line(line - 1), start_column, end_column),
+                SourceLine::excerpt_view(self.source_lines.line(line - 1), start_column, end_column, self.format),
             ));
         }
         let line_clipped = lines.len() > DECLARATION_LINE_LIMIT;
@@ -746,20 +757,58 @@ pub fn fallback_owner(mut node: Node<'_>) -> Node<'_> {
     node
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Format {
+    Grouped,
+    Compact,
+}
+impl Format {
+    fn heading(self, path: &str) -> String {
+        match self {
+            Self::Grouped => format!("## {path}\n\n```text\n"),
+            Self::Compact => format!("## {path}\n\n"),
+        }
+    }
+    fn ending(self) -> &'static str {
+        match self {
+            Self::Grouped => "```\n\n",
+            Self::Compact => "\n",
+        }
+    }
+}
+
+#[derive(Clone)]
+struct RenderedLine {
+    text: String,
+    ranges: CountedLine,
+}
+impl RenderedLine {
+    fn new(ranges: CountedLine, source: SourceView<'_>, format: Format) -> Self {
+        let mut text = String::new();
+        ranges.append(source, format, &mut text);
+        Self { text, ranges }
+    }
+}
+
 #[derive(Default)]
 struct SelectedFile {
-    lines: BTreeMap<usize, SourceLine>,
+    lines: BTreeMap<usize, RenderedLine>,
     clipped: BTreeSet<Clipping>,
 }
 pub struct Grouped {
     files: BTreeMap<usize, SelectedFile>,
     characters: usize,
+    format: Format,
 }
 impl Grouped {
     pub fn new() -> Self {
+        Self::with_format(Format::Grouped)
+    }
+    pub fn with_format(format: Format) -> Self {
         Self {
             files: BTreeMap::new(),
             characters: HEADER.chars().count(),
+            format,
         }
     }
     pub fn tokens(&self) -> usize {
@@ -779,9 +828,7 @@ impl Grouped {
         let before = self.characters;
         let is_new = !self.files.contains_key(&index);
         if is_new {
-            self.characters += format!("## {path}\n\n\x60\x60\x60text\n\x60\x60\x60\n\n")
-                .chars()
-                .count();
+            self.characters += self.format.heading(path).chars().count() + self.format.ending().chars().count();
         }
         let file = self.files.entry(index).or_default();
         let mut changed = Vec::new();
@@ -789,23 +836,25 @@ impl Grouped {
         for (line, source) in &declaration.lines {
             let added;
             if let Some(existing) = file.lines.get(line) {
-                added = existing.merge(source, original.line(*line - 1));
-                if added.ranges == existing.ranges {
+                let mut ranges = existing.ranges.clone();
+                ranges.merge(source, original.line(*line - 1), self.format);
+                if ranges.ranges == existing.ranges.ranges {
                     continue;
                 }
+                added = RenderedLine::new(ranges, original.line(*line - 1), self.format);
                 self.characters = self.characters - existing.text.chars().count() + added.text.chars().count();
                 changed.push((*line, Some(existing.clone())));
             } else {
-                added = SourceLine::new(original.line(*line - 1), source.ranges.clone());
+                added = RenderedLine::new(CountedLine::from_line(source), original.line(*line - 1), self.format);
                 let previous = file.lines.range(..*line).next_back().map(|(n, _)| *n);
                 let next = file.lines.range((Excluded(*line), Unbounded)).next().map(|(n, _)| *n);
-                if previous.zip(next).is_some_and(|(a, b)| b > a + 1) {
+                if self.format == Format::Grouped && previous.zip(next).is_some_and(|(a, b)| b > a + 1) {
                     self.characters -= "  ...\n".len();
                 }
-                if previous.is_some_and(|n| *line > n + 1) {
+                if self.format == Format::Grouped && previous.is_some_and(|n| *line > n + 1) {
                     self.characters += "  ...\n".len();
                 }
-                if next.is_some_and(|n| n > *line + 1) {
+                if self.format == Format::Grouped && next.is_some_and(|n| n > *line + 1) {
                     self.characters += "  ...\n".len();
                 }
                 self.characters += format!("L{line}: {}\n", added.text).chars().count();
@@ -845,10 +894,10 @@ impl Grouped {
     pub fn render(&self, paths: &[&str]) -> String {
         let mut text = String::from(HEADER);
         for (index, file) in &self.files {
-            text.push_str(&format!("## {}\n\n\x60\x60\x60text\n", paths[*index]));
+            text.push_str(&self.format.heading(paths[*index]));
             let mut previous = None;
             for (line, source) in &file.lines {
-                if previous.is_some_and(|n| *line > n + 1) {
+                if self.format == Format::Grouped && previous.is_some_and(|n| *line > n + 1) {
                     text.push_str("  ...\n");
                 }
                 text.push_str(&format!("L{line}: {}\n", source.text));
@@ -857,7 +906,7 @@ impl Grouped {
             for clip in &file.clipped {
                 text.push_str(&clip.marker());
             }
-            text.push_str("\x60\x60\x60\n\n");
+            text.push_str(self.format.ending());
         }
         debug_assert_eq!(text.chars().count(), self.characters);
         text
@@ -880,14 +929,14 @@ impl CountedLine {
             ranges: line.ranges.clone(),
         }
     }
-    fn merge(&mut self, line: &SourceLine, source: SourceView<'_>) {
+    fn merge(&mut self, line: &SourceLine, source: SourceView<'_>, format: Format) {
         let mut inputs = self.ranges.clone();
         inputs.extend(&line.ranges);
         inputs.sort_unstable();
         self.ranges.clear();
         for (start, end) in inputs {
             if let Some(previous) = self.ranges.last_mut() {
-                if start <= previous.1 || source.whitespace(previous.1, start) {
+                if start <= previous.1 || (format == Format::Grouped && source.whitespace(previous.1, start)) {
                     previous.1 = previous.1.max(end);
                     continue;
                 }
@@ -895,39 +944,41 @@ impl CountedLine {
             self.ranges.push((start, end));
         }
     }
-    fn characters(&self, source: SourceView<'_>) -> usize {
-        let mut count = 0;
-        let mut previous = None;
-        for (start, end) in &self.ranges {
-            count += end - start;
-            if let Some(previous) = previous {
-                count += if source.whitespace(previous, *start) {
-                    start - previous
-                } else {
-                    " … ".chars().count()
-                };
-            } else if *start > 0 {
-                count += " … ".chars().count();
-            }
-            previous = Some(*end);
-        }
-        count
-    }
-    fn append(&self, source: SourceView<'_>, text: &mut String) {
+    /// Visit selected original intervals without copying omitted source. Compact
+    /// removes leading whitespace and normalizes only omitted whitespace gaps;
+    /// inline literal content inside a selected interval is left untouched.
+    fn pieces(&self, source: SourceView<'_>, format: Format, mut emit: impl FnMut(&str)) {
         let mut previous = None;
         for (start, end) in &self.ranges {
             if let Some(previous) = previous {
                 if source.whitespace(previous, *start) {
-                    text.push_str(source.slice(previous, *start));
+                    if format == Format::Compact {
+                        emit(" ");
+                    } else {
+                        emit(source.slice(previous, *start));
+                    }
                 } else {
-                    text.push_str(" … ");
+                    emit(" … ");
                 }
-            } else if *start > 0 {
-                text.push_str(" … ");
+            } else if *start > 0 && (format == Format::Grouped || !source.whitespace(0, *start)) {
+                emit(" … ");
             }
-            text.push_str(source.slice(*start, *end));
+            let payload = source.slice(*start, *end);
+            emit(if previous.is_none() && format == Format::Compact {
+                payload.trim_start()
+            } else {
+                payload
+            });
             previous = Some(*end);
         }
+    }
+    fn characters(&self, source: SourceView<'_>, format: Format) -> usize {
+        let mut count = 0;
+        self.pieces(source, format, |piece| count += piece.chars().count());
+        count
+    }
+    fn append(&self, source: SourceView<'_>, format: Format, text: &mut String) {
+        self.pieces(source, format, |piece| text.push_str(piece));
     }
 }
 
@@ -943,11 +994,22 @@ impl Grouped {
     /// Count/merge one file's ranges at a time, without copying source payloads.
     /// Output is retained only while it fits the declared character budget.
     /// After overflow, discard it and keep counting for an exact diagnostic.
+    #[cfg(test)]
     pub fn complete<'a>(
         paths: &[&str],
         declarations: impl IntoIterator<Item = (usize, &'a Declaration)>,
         limit: usize,
         load: &mut impl FnMut(usize) -> Result<Rc<RenderSource>, String>,
+    ) -> Result<CompleteGrouped, String> {
+        Self::complete_with_format(paths, declarations, limit, load, Format::Grouped)
+    }
+
+    pub fn complete_with_format<'a>(
+        paths: &[&str],
+        declarations: impl IntoIterator<Item = (usize, &'a Declaration)>,
+        limit: usize,
+        load: &mut impl FnMut(usize) -> Result<Rc<RenderSource>, String>,
+        format: Format,
     ) -> Result<CompleteGrouped, String> {
         let mut by_file: BTreeMap<usize, Vec<&Declaration>> = BTreeMap::new();
         for (index, declaration) in declarations {
@@ -971,21 +1033,22 @@ impl Grouped {
             for declaration in declarations {
                 for (number, source) in &declaration.lines {
                     if let Some(existing) = lines.get_mut(number) {
-                        existing.merge(source, original.line(*number - 1));
+                        existing.merge(source, original.line(*number - 1), format);
                     } else {
                         lines.insert(*number, CountedLine::from_line(source));
                     }
                 }
                 clipping.extend(declaration.clipped.iter().cloned());
             }
-            let heading = format!("## {}\n\n\x60\x60\x60text\n", paths[index]);
-            result.characters += heading.chars().count() + "\x60\x60\x60\n\n".chars().count();
+            let heading = format.heading(paths[index]);
+            result.characters += heading.chars().count() + format.ending().chars().count();
             let mut previous = None;
             for (number, source) in &lines {
-                if previous.is_some_and(|n| *number > n + 1) {
+                if format == Format::Grouped && previous.is_some_and(|n| *number > n + 1) {
                     result.characters += "  ...\n".len();
                 }
-                result.characters += format!("L{number}: ").len() + source.characters(original.line(*number - 1)) + 1;
+                result.characters +=
+                    format!("L{number}: ").len() + source.characters(original.line(*number - 1), format) + 1;
                 previous = Some(*number);
             }
             for clip in &clipping {
@@ -998,18 +1061,18 @@ impl Grouped {
                 text.push_str(&heading);
                 let mut previous = None;
                 for (number, source) in &lines {
-                    if previous.is_some_and(|n| *number > n + 1) {
+                    if format == Format::Grouped && previous.is_some_and(|n| *number > n + 1) {
                         text.push_str("  ...\n");
                     }
                     text.push_str(&format!("L{number}: "));
-                    source.append(original.line(*number - 1), text);
+                    source.append(original.line(*number - 1), format, text);
                     text.push('\n');
                     previous = Some(*number);
                 }
                 for clip in &clipping {
                     text.push_str(&clip.marker());
                 }
-                text.push_str("\x60\x60\x60\n\n");
+                text.push_str(format.ending());
                 debug_assert_eq!(text.chars().count(), result.characters);
                 #[cfg(test)]
                 {
@@ -1047,7 +1110,13 @@ mod complete_tests {
     fn stored_ast_declarations_leave_large_whitespace_gaps_lazy() {
         let physical = format!("class Tiny {{ {}void selected() {{}} }}", " ".repeat(150_000));
         let mut extractor = crate::tags::Extractor::new();
-        let parsed = match extractor.extract_with_declarations("java", "Tiny.java", physical.as_bytes(), true, true) {
+        let parsed = match extractor.extract_with_declarations(
+            "java",
+            "Tiny.java",
+            physical.as_bytes(),
+            Some(Format::Grouped),
+            true,
+        ) {
             Ok(parsed) => parsed,
             Err(crate::tags::ExtractError::File(error) | crate::tags::ExtractError::Limit(error)) => panic!("{error}"),
         };
@@ -1150,30 +1219,39 @@ mod complete_tests {
             }
             originals.push(Rc::new(RenderSource::new(&physical)));
         }
-        let mut load = |file: usize| Ok(originals[file].clone());
-        // Unbounded reference rendering is intentional only in this test,
-        // outside the measured production complete-mode budget path.
-        let mut reference = Grouped::new();
-        for (file, declaration) in &declarations {
-            assert!(reference.add(*file, paths[*file], declaration, usize::MAX, &originals[*file]));
+        for format in [Format::Grouped, Format::Compact] {
+            let mut load = |file: usize| Ok(originals[file].clone());
+            // Unbounded reference rendering is intentional only in this test,
+            // outside the measured production complete-mode budget path.
+            let mut reference = Grouped::with_format(format);
+            for (file, declaration) in &declarations {
+                assert!(reference.add(*file, paths[*file], declaration, usize::MAX, &originals[*file]));
+            }
+            let expected = reference.render(&paths);
+            let required = expected.chars().count();
+            let rejected = Grouped::complete_with_format(
+                &paths,
+                declarations.iter().map(|(file, d)| (*file, d)),
+                256,
+                &mut load,
+                format,
+            )
+            .unwrap();
+            assert!(rejected.text.is_none());
+            assert_eq!(rejected.characters, required);
+            assert!(rejected.peak_retained_characters <= 256);
+            let exact = Grouped::complete_with_format(
+                &paths,
+                declarations.iter().map(|(file, d)| (*file, d)),
+                required.div_ceil(4) * 4,
+                &mut load,
+                format,
+            )
+            .unwrap();
+            assert_eq!(exact.text.as_deref(), Some(expected.as_str()));
+            assert_eq!(exact.characters, required);
+            assert!(exact.peak_retained_characters <= required.div_ceil(4) * 4);
         }
-        let expected = reference.render(&paths);
-        let required = expected.chars().count();
-        let rejected =
-            Grouped::complete(&paths, declarations.iter().map(|(file, d)| (*file, d)), 256, &mut load).unwrap();
-        assert!(rejected.text.is_none());
-        assert_eq!(rejected.characters, required);
-        assert!(rejected.peak_retained_characters <= 256);
-        let exact = Grouped::complete(
-            &paths,
-            declarations.iter().map(|(file, d)| (*file, d)),
-            required.div_ceil(4) * 4,
-            &mut load,
-        )
-        .unwrap();
-        assert_eq!(exact.text.as_deref(), Some(expected.as_str()));
-        assert_eq!(exact.characters, required);
-        assert!(exact.peak_retained_characters <= required.div_ceil(4) * 4);
     }
 
     #[test]

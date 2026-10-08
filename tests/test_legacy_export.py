@@ -340,5 +340,35 @@ class ExportTests(unittest.TestCase):
         self.assertIn("elapsed", result.stderr)
 
 
+
+    def test_compact_selection_controls_and_actual_coverage_preserve_literals(self):
+        self.raw = '# Repository map\n\n## a.py\n\nL1: def f(value="keep  two `ticks`"):\n\n'
+        self.metadata["map_sha256"] = hashlib.sha256(self.raw.encode()).hexdigest()
+        self.metadata["rendering"] = {"format": "compact", "clipped_declarations": []}
+        self.metadata["selection"] = {"mode": "ranked", "requested_coverage_percent": 20, "requested_max_definitions": None, "effective_max_definitions": 2, "coverage_percent": 100 / 7, "selection_limit_reached": False}
+        self.write_artifacts()
+        paths = self.export()
+        report = paths["report"].read_text(encoding="utf-8")
+        self.assertIn("ranked / compact", report)
+        self.assertIn("Requested coverage: 20%", report)
+        self.assertIn("Effective maximum definitions: 2", report)
+        self.assertIn("Actual captured-definition coverage: 14.2857%", report)
+        self.assertIn('"keep  two `ticks`"', report)
+        self.assertNotIn("status `complete`",report)
+        sidecar = json.loads(paths["metadata"].read_text())
+        self.assertEqual(sidecar["export"]["report_estimated_tokens"],math.ceil(len(report)/4))
+        self.assertEqual(paths["raw"].read_text(),self.raw)
+
+    def test_inconsistent_selection_caps_fail_before_publication(self):
+        base = {"mode": "ranked", "requested_coverage_percent": 20, "requested_max_definitions": None, "effective_max_definitions": 2, "coverage_percent": 100 / 7, "selection_limit_reached": False}
+        for change in ({"coverage_percent": 99}, {"coverage_percent":10**1000}, {"requested_coverage_percent":10**1000}, {"effective_max_definitions": 0}, {"requested_max_definitions": 1}, {"selection_limit_reached": True}, {"requested_coverage_percent": float("nan")}):
+            with self.subTest(change=change):
+                self.metadata["selection"] = {**base,**change}
+                self.write_artifacts()
+                with self.assertRaises(ValueError):
+                    self.export()
+                self.assertFalse((self.repo/"docs").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
