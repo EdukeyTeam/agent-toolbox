@@ -36,7 +36,6 @@ jobs:
             platform: macos-arm64
     runs-on: ${{ matrix.os }}
     env:
-      CARGO_TARGET_DIR: ${{ runner.temp }}/legacy-cargo-target
       LEGACY_NATIVE_BUILD: '0'
     steps:
       - uses: actions/checkout@v6
@@ -69,6 +68,8 @@ jobs:
           source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
               output.write(f'source_commit={source}\n')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write(f"CARGO_TARGET_DIR={Path(os.environ['RUNNER_TEMP']) / 'legacy-cargo-target'}\n")
       - run: npm ci
       - run: npm test
       - name: Install pinned map dependencies
@@ -109,7 +110,7 @@ jobs:
 
   publish:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
     runs-on: ubuntu-latest
     permissions:
       contents: write
