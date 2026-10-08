@@ -211,7 +211,12 @@ fn parse_arguments(raw: Vec<String>) -> Result<Invocation, String> {
             "--notices" => return Ok(Invocation::Print(notices())),
             "--print-policy" => return Ok(Invocation::Print(format!("{}\n", policy_json()))),
             "--format" => arguments.map_format = Some(value(&name)?),
-            "--human-readable" => arguments.human_readable = true,
+            "--human-readable" => {
+                if inline.is_some() {
+                    return Err("--human-readable does not accept a value".to_string());
+                }
+                arguments.human_readable = true;
+            }
             "--coverage" => {
                 let text = value(&name)?;
                 arguments.coverage_percent = Some(
@@ -562,8 +567,13 @@ fn run(arguments: Arguments) -> Result<String, String> {
             return;
         }
         let parse_started = Instant::now();
-        let outcome =
-            extractor.extract_with_declarations(language, &entry.path, data, map_format != "lines", all_definitions);
+        let outcome = extractor.extract_with_declarations(
+            language,
+            &entry.path,
+            data,
+            (map_format != "lines").then_some(render_format),
+            all_definitions,
+        );
         parse_time += parse_started.elapsed();
         match outcome {
             Ok(file_tags) => {

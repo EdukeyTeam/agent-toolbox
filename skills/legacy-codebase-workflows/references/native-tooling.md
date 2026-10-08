@@ -21,7 +21,7 @@ The Rust program embeds the same query files the Python tool reads from `vendor/
 
 ## Historical measurements on three sources (legacy line format)
 
-These pre-0.3.0 measurements describe the historical line renderer, not the current grouped renderer or default budget. One Linux x86-64 machine, 7 cores, shared with other work during the runs. Wall time of the whole command, median of 5 runs, default budget of 4096 estimated tokens. "Cold" is an empty output directory, so the Python tag cache is empty; "warm" repeats the run in the same output directory. The operating-system file cache was warm throughout, so first-run disk reads are not measured. The Rust program has no cache, so its two columns do the same work.
+These pre-0.2.0 measurements describe the historical line renderer; they describe neither the current compact/grouped renderers nor the default budget. One Linux x86-64 machine, 7 cores, shared with other work during the runs. Wall time of the whole command, median of 5 runs, default budget of 4096 estimated tokens. "Cold" is an empty output directory, so the Python tag cache is empty; "warm" repeats the run in the same output directory. The operating-system file cache was warm throughout, so first-run disk reads are not measured. The Rust program has no cache, so its two columns do the same work.
 
 | Source | Files seen / read / parsed | Definitions found / in map | Python source cold / warm | Bundle cold / warm | Rust cold / warm |
 | --- | --- | --- | --- | --- | --- |

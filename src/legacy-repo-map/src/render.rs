@@ -247,10 +247,19 @@ impl SourceLine {
             },
             start,
             end,
+            Format::Grouped,
         )
     }
-    fn excerpt_view(source: SourceView<'_>, mut start: usize, end: usize) -> Self {
-        if source.whitespace(0, start) {
+    fn excerpt_view(source: SourceView<'_>, mut start: usize, end: usize, format: Format) -> Self {
+        if format == Format::Compact {
+            // Trim before declaration quota/identity checks, keeping coordinates
+            // in the original physical line. Never charge discarded indentation.
+            start += source
+                .slice(start, end)
+                .chars()
+                .take_while(|c| c.is_whitespace())
+                .count();
+        } else if source.whitespace(0, start) {
             start = 0;
         }
         Self::new(source, vec![(start, end)])
@@ -341,9 +350,13 @@ pub struct SourceText<'a> {
     source_lines: RenderSource,
     raw_offsets: CharacterIndex,
     original_line_characters: Vec<usize>,
+    format: Format,
 }
 impl<'a> SourceText<'a> {
     pub fn new(text: &'a str) -> Self {
+        Self::with_format(text, Format::Grouped)
+    }
+    pub fn with_format(text: &'a str, format: Format) -> Self {
         let mut line_starts = vec![0];
         let mut original_line_characters = vec![0];
         for (character, (byte, value)) in text.char_indices().enumerate() {
@@ -358,6 +371,7 @@ impl<'a> SourceText<'a> {
             source_lines: RenderSource::new(text),
             raw_offsets: CharacterIndex::new(text),
             original_line_characters,
+            format,
         }
     }
 
@@ -408,7 +422,7 @@ impl<'a> SourceText<'a> {
             let end_column = self.column(line - 1, limit);
             lines.push((
                 line,
-                SourceLine::excerpt_view(self.source_lines.line(line - 1), start_column, end_column),
+                SourceLine::excerpt_view(self.source_lines.line(line - 1), start_column, end_column, self.format),
             ));
         }
         let line_clipped = lines.len() > DECLARATION_LINE_LIMIT;
@@ -1096,7 +1110,13 @@ mod complete_tests {
     fn stored_ast_declarations_leave_large_whitespace_gaps_lazy() {
         let physical = format!("class Tiny {{ {}void selected() {{}} }}", " ".repeat(150_000));
         let mut extractor = crate::tags::Extractor::new();
-        let parsed = match extractor.extract_with_declarations("java", "Tiny.java", physical.as_bytes(), true, true) {
+        let parsed = match extractor.extract_with_declarations(
+            "java",
+            "Tiny.java",
+            physical.as_bytes(),
+            Some(Format::Grouped),
+            true,
+        ) {
             Ok(parsed) => parsed,
             Err(crate::tags::ExtractError::File(error) | crate::tags::ExtractError::Limit(error)) => panic!("{error}"),
         };

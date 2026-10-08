@@ -171,10 +171,10 @@ class FixtureCase(unittest.TestCase):
         return {path.relative_to(self.source).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(self.source.rglob("*")) if path.is_file() and not path.is_symlink()}
 
     def rust(self, name, *arguments):
-        return subprocess.run([str(RUST_BINARY), str(self.source), "--output-dir", str(self.base / name), *([] if "--format" in arguments or "--human-readable" in arguments else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8")
+        return subprocess.run([str(RUST_BINARY), str(self.source), "--output-dir", str(self.base / name), *([] if any(arg.split("=", 1)[0] in ("--format", "--human-readable") for arg in arguments) else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8")
 
     def python(self, name, *arguments):
-        return subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.source), "--output-dir", str(self.base / name), *([] if "--format" in arguments or "--human-readable" in arguments else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8", env=python_environment())
+        return subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.source), "--output-dir", str(self.base / name), *([] if any(arg.split("=", 1)[0] in ("--format", "--human-readable") for arg in arguments) else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8", env=python_environment())
 
     def load(self, name, artifact):
         return json.loads((self.base / name / artifact).read_text(encoding="utf-8"))
@@ -288,8 +288,18 @@ class RustParityTests(FixtureCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(self.load(label + "-actual-default", "map.meta.json")["rendering"]["format"], "compact")
 
+    def test_compact_removes_indentation_before_declaration_limits(self):
+        self.source = self.base / "indented-source"
+        self.source.mkdir()
+        self.write("Heavy.java", (" " * 9000 + "class Tiny {\n" + " " * 3000 + "void run(\n" + " " * 3000 + "String value,\n" + " " * 3000 + "int count\n" + " " * 3000 + ") {}\n}\n").encode())
+        for label, flags in (("ranked", []), ("all", ["--all-definitions"])):
+            meta, text = self.assert_same("indented-" + label, ["--format", "compact", "--budget", "256", *flags])
+            self.assertEqual(meta["coverage"]["definitions_in_map"], 2)
+            self.assertEqual(meta["rendering"]["clipped_declarations"], [])
+            self.assertIn("L1: class Tiny {\nL2: void run(\nL3: String value,\nL4: int count\nL5: ) {", text)
+
     def test_selection_contract_rejections_do_not_create_artifacts(self):
-        cases = (["--coverage", "0"], ["--coverage", "nan"], ["--coverage", "inf"], ["--coverage", "101"], ["--max-definitions", "200001"], ["--coverage", "25", "--max-definitions", "3"], ["--all-definitions", "--coverage", "100"], ["--all-definitions", "--max-definitions", "3"], ["--human-readable", "--format", "grouped"])
+        cases = (["--coverage", "0"], ["--coverage", "nan"], ["--coverage", "inf"], ["--coverage", "101"], ["--max-definitions", "200001"], ["--coverage", "25", "--max-definitions", "3"], ["--all-definitions", "--coverage", "100"], ["--all-definitions", "--max-definitions", "3"], ["--human-readable", "--format", "grouped"], ["--human-readable=on"])
         for index, args in enumerate(cases):
             for runner, label in ((self.rust, "rust"), (self.python, "python")):
                 with self.subTest(case=index, program=label):

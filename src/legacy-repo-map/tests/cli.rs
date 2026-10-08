@@ -1881,3 +1881,93 @@ fn definition_cap_is_independent_of_budget_and_skips_unfitting_ranked_candidates
     assert!(metadata["coverage"]["definitions_in_map"].as_u64().unwrap() < 4);
     assert_eq!(metadata["selection"]["selection_limit_reached"], false);
 }
+
+#[test]
+fn compact_clips_after_removing_large_physical_indentation_in_ranked_and_all_modes() {
+    for extra in [vec![], vec!["--all-definitions"]] {
+        let fixture = Fixture::new();
+        fixture.write("Indented.java", &format!("{}class Tiny {{}}\n", " ".repeat(9000)));
+        let before = snapshot(&fixture.source);
+        native_ok(&fixture, &extra);
+        assert_eq!(
+            fixture.map_text(),
+            "# Repository map\n\n## Indented.java\n\nL1: class Tiny {\n\n"
+        );
+        let metadata = fixture.json("map.meta.json");
+        assert_eq!(metadata["coverage"]["definitions_in_map"], 1);
+        assert!(metadata["rendering"]["clipped_declarations"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        assert_eq!(snapshot(&fixture.source), before);
+        let grouped_result = grouped(&fixture, &extra);
+        assert!(!grouped_result.status.success(), "grouped hidden-name guard changed");
+        assert!(String::from_utf8_lossy(&grouped_result.stderr).contains("identifier"));
+    }
+}
+
+#[test]
+fn compact_multiline_parameter_quota_and_exact_budget_exclude_removed_indentation() {
+    let fixture = Fixture::new();
+    let mut source = "class Params {\n    void work(\n".to_string();
+    let mut expected = "# Repository map\n\n## Params.java\n\nL1: class Params {\nL2: void work(\n".to_string();
+    for i in 0..12 {
+        source.push_str(&format!("{}int argument{i:02},\n", " ".repeat(900)));
+        expected.push_str(&format!("L{}: int argument{i:02},\n", i + 3));
+    }
+    source.push_str(&format!(
+        "{}int last\n{} ) {{}}\n}}\n",
+        " ".repeat(900),
+        " ".repeat(900)
+    ));
+    expected.push_str("L15: int last\nL16: ) {\n\n");
+    fixture.write("Params.java", &source);
+    let required = expected.chars().count().div_ceil(4);
+    assert!(required > 64);
+    for extra in [vec![], vec!["--all-definitions"]] {
+        let budget = required.to_string();
+        let mut args = vec!["--budget", &budget];
+        args.extend(extra);
+        native_ok(&fixture, &args);
+        assert_eq!(fixture.map_text(), expected);
+        let metadata = fixture.json("map.meta.json");
+        assert_eq!(metadata["coverage"]["definitions_in_map"], 2);
+        assert_eq!(metadata["estimated_tokens"], required);
+        assert!(metadata["rendering"]["clipped_declarations"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+    }
+    let short = (required - 1).to_string();
+    let rejected = native(&fixture, &["--all-definitions", "--budget", &short]);
+    assert!(!rejected.status.success());
+    assert_eq!(
+        fixture.json("map.meta.json")["failure"]["required_estimated_tokens"],
+        required
+    );
+    grouped_ok(&fixture, &["--all-definitions", "--budget", "8192"]);
+    assert!(!fixture.json("map.meta.json")["rendering"]["clipped_declarations"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn human_readable_rejects_inline_values_before_creating_or_replacing_artifacts() {
+    for flag in [
+        "--human-readable=anything",
+        "--human-readable=true",
+        "--human-readable=",
+    ] {
+        let fresh = Fixture::java();
+        let rejected = native(&fresh, &[flag]);
+        assert!(!rejected.status.success(), "accepted {flag}");
+        assert!(!fresh.output.exists());
+        let existing = Fixture::java();
+        native_ok(&existing, &[]);
+        let before = existing.artifacts();
+        let rejected = native(&existing, &[flag]);
+        assert!(!rejected.status.success(), "accepted {flag}");
+        assert_eq!(existing.artifacts(), before);
+    }
+}
