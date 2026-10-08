@@ -29,7 +29,7 @@ The mapper's repeatable --subtree filter applies before its max_files candidate 
 /verified/legacy-repo-map /repo --subtree core/relevant --subtree modules/active-a --subtree modules/active-b --focus-symbol ExampleService --output-dir /external/task-map --budget 16384
 ```
 
-Choose actual paths from evidence; the example does not assert that every repository has these directories. Keep generation caches/staging external. Export into docs/repo-maps when repository writes are within the task, or use the user's external destination for read-only work. Add an AGENTS.md pointer when those instruction edits are authorized. See [repository maps](repo-map.md) for named export commands and limits.
+Choose actual paths from evidence; the example does not assert that every repository has these directories. Keep generation caches/staging external. Export into docs/repo-maps when repository writes are within the task, or use the user's external destination for read-only work. After saving results, offer an AGENTS.md pointer unless already accepted or declined; follow [saved context](saved-context.md) for triggers, layout and team-sharing rules. See [repository maps](repo-map.md) for named export commands and limits.
 
 Optionally save one --all-definitions index per reusable module with a sufficient explicit budget. Search these indexes for a symbol-to-original-path/line lookup; do not load every full index into context. All-definitions means all captured eligible tags, with query/admission limits still visible. Reserve context for the task, conversation, tools and original bodies before increasing the default 16,384 estimated-token map budget.
 

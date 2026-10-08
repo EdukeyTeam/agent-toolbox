@@ -25,7 +25,7 @@ Do not write machine-specific "ready" or "to do" state into this installed `SKIL
 
 **Report destination:** honor the user's path; otherwise, when repository writes are authorized, save readable results under `<repository>/docs/repo-maps/`, with a descriptive name such as `repo-map.rust.md`. Announce the destination before generation and link the exact saved files afterward. For read-only work, use an authorized external artifact location. Ask only when the destination cannot be inferred, would overwrite existing work, or conflicts with repository instructions. Keep corpus/module names distinct when comparing several maps.
 
-The low-level mappers require an external output/cache directory and use fixed filenames. Generate there, then use `scripts/export_repo_map.py` to save a named report, raw map and evidence sidecars at the chosen destination. Exported reports include coverage, truncation, token estimates and measured elapsed time when supplied. Keep the primary overview and optional complete-definition index in the chosen report directory; the exporter places raw maps/inventory/metadata under its `artifacts` subdirectory. Historical comparisons and review evidence belong there too. Keep private maps local and Git-ignored; verify they are absent from publishable history before pushing. See [repository maps](references/repo-map.md#save-a-named-report) for commands and timing rules. Exclude saved reports from later root scans so generated context does not map itself; do not commit generated maps unless requested or appropriate to the task.
+The low-level mappers require an external output/cache directory and use fixed filenames. Generate there, then use `scripts/export_repo_map.py` to save a named report, raw map and evidence sidecars at the chosen destination. Exported reports include coverage, truncation, token estimates and measured elapsed time when supplied. Keep primary maps and selected source packs in their report directories; put helpers, experiments and supporting evidence in `artifacts/`. For team-shared work, version the primary outputs and necessary provenance within the repository's publication policy. Keep private source out of public history. Follow [saved context](references/saved-context.md) for layout, ignores and sharing, and [repository maps](references/repo-map.md#save-a-named-report) for generation/export commands. Exclude saved reports from later scans so generated context does not map itself.
 
 ## Choose the smallest useful context
 
@@ -50,7 +50,7 @@ Map the relevant subtree when the repository is large. Repeat `--subtree` for on
 
 Read its scope, revision, omitted-definition count and clipping records. The default grouped format provides file/class context and multiline declarations, with reported 80-line/8,000-character snippet bounds. The default map budget is 16,384 estimated tokens. Increase `--budget` for a broader overview, or use `--all-definitions` with a sufficient budget for an index of every captured definition in the selected scope; the latter fails instead of quietly returning a partial index. Neither mode resolves runtime behavior or unsupported constructs.
 
-When repository instruction edits are authorized, add or update one concise pointer in the existing `AGENTS.md` section: name the overview, its scope, when to read it, and the complete index for deeper symbol lookup. Preserve the surrounding instructions. Read relevant original bodies and callers before making changes or writing behavior documentation. Refresh the map and pointer when paths, declarations or examined scope change. See [using the map for the task](references/repo-map.md#use-the-map-for-the-task).
+After saving a map or Repomix pack, offer an `AGENTS.md` pointer unless the user has already accepted or declined it. Prepare concise wording with the actual paths, scope, limits and triggers: architecture, system design, application workflows and overall logic, as well as symbol lookup. Apply already-authorized instruction edits without asking again. Prefer RepoMap for initial navigation and full-code Repomix for implementation context; verify original bodies/callers before edits. Follow [saved context](references/saved-context.md#offer-repository-instructions) for the pointer and refresh rules.
 
 ## Select a workflow
 
@@ -64,7 +64,7 @@ When repository instruction edits are authorized, add or update one concise poin
 | Search private source and existing/generated docs through a local backend | [Private retrieval](references/private-retrieval.md) |
 | Assess a Rust port or binary packaging | [Native tooling](references/native-tooling.md) |
 
-Load only the reference that matches the task. Do not install every optional tool or generate a full documentation set for a small question.
+Load only the reference that matches the task. Before Repomix generation, explain full-code versus lossy structural extraction and independent comment choices; ask a short interview only for unresolved decisions, as described in [Repomix](references/repomix.md#choose-the-pack-before-generation). Do not install every optional tool or generate a full documentation set for a small question.
 
 ## Evidence that another agent can use
 
