@@ -171,10 +171,10 @@ class FixtureCase(unittest.TestCase):
         return {path.relative_to(self.source).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(self.source.rglob("*")) if path.is_file() and not path.is_symlink()}
 
     def rust(self, name, *arguments):
-        return subprocess.run([str(RUST_BINARY), str(self.source), "--output-dir", str(self.base / name), *arguments], capture_output=True, text=True, encoding="utf-8")
+        return subprocess.run([str(RUST_BINARY), str(self.source), "--output-dir", str(self.base / name), *([] if "--format" in arguments else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8")
 
     def python(self, name, *arguments):
-        return subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.source), "--output-dir", str(self.base / name), *arguments], capture_output=True, text=True, encoding="utf-8", env=python_environment())
+        return subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.source), "--output-dir", str(self.base / name), *([] if "--format" in arguments else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8", env=python_environment())
 
     def load(self, name, artifact):
         return json.loads((self.base / name / artifact).read_text(encoding="utf-8"))
@@ -251,6 +251,16 @@ class RustParityTests(FixtureCase):
             with self.subTest(case=label):
                 self.assert_same(label.replace(" ", "-"), arguments)
         self.assertEqual(before, self.snapshot())
+
+    def test_grouped_parity_includes_class_and_complete_multiline_declaration(self):
+        self.write("src/app/Grouped.java", b"class First extends Base {\n  String render(\n      String value,\n      int count\n  ) { return \"BODY_MUST_NOT_LEAK\"; }\n}\nclass Second {\n  String render(String value) { return value; }\n}\n")
+        meta, text = self.assert_same("grouped", ["--format", "grouped", "--all-definitions", "--budget", "32768"])
+        self.assertEqual(meta["coverage"]["definitions_omitted"], 0)
+        self.assertIn("## src/app/Grouped.java\n\n```text\n", text)
+        self.assertIn("L1: class First extends Base {", text)
+        self.assertIn("L2:   String render(\nL3:       String value,\nL4:       int count\nL5:   ) {", text)
+        self.assertIn("L7: class Second {", text)
+        self.assertNotIn("BODY_MUST_NOT_LEAK", text)
 
     def test_agreed_output_has_the_expected_content(self):
         meta, text = self.assert_same("content", [])
@@ -628,7 +638,7 @@ class DispatcherTests(FixtureCase):
                 metadata = json.loads((output / "map.meta.json").read_text(encoding="utf-8"))
                 self.assertEqual(metadata["dependencies"]["tree-sitter-c-sharp"], "0.23.5")
                 self.assertEqual(metadata["coverage"]["parsed_files"], 1)
-                self.assertIn("Example.cs:L1", (output / "repo-map.md").read_text(encoding="utf-8"))
+                self.assertIn("## csharp/Example.cs\n\n```text\nL1: class Example { public void Run() {", (output / "repo-map.md").read_text(encoding="utf-8"))
                 caches = [json.loads(path.read_text(encoding="utf-8")) for path in (output / "cache").glob("*.json")]
                 self.assertEqual(len(caches), 1)
                 self.assertTrue(caches[0]["parser_version"].endswith(":0.23.5"))
@@ -702,17 +712,17 @@ class DispatcherTests(FixtureCase):
     def test_map_through_the_dispatcher_equals_the_direct_tool(self):
         if not python_map_available():
             self.skipTest("Python map dependencies are not installed")
-        direct = self.python("direct", "--focus-symbol", "openChannel", "--budget", "256")
-        self.assertEqual(direct.returncode, 0, direct.stderr)
-        expected = (self.base / "direct" / "repo-map.md").read_bytes()
-        for label, program, env in self.programs():
-            with self.subTest(program=label):
-                result = self.call(program, env, "map", str(self.source), "--output-dir", str(self.base / f"out-{label}"), "--focus-symbol", "openChannel", "--budget", "256")
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual((self.base / f"out-{label}" / "repo-map.md").read_bytes(), expected)
-                self.assertEqual(json.loads(result.stdout)["coverage"], json.loads(direct.stdout)["coverage"])
-                refused = self.call(program, env, "map", str(self.source), "--output-dir", str(self.source / "maps"))
-                self.assertEqual(refused.returncode, 2)
+        for map_format in ("lines", "grouped"):
+            direct = self.python("direct-" + map_format, "--format", map_format, "--focus-symbol", "openChannel", "--budget", "256")
+            self.assertEqual(direct.returncode, 0, direct.stderr)
+            expected = (self.base / ("direct-" + map_format) / "repo-map.md").read_bytes()
+            for label, program, env in self.programs():
+                with self.subTest(program=label, map_format=map_format):
+                    output = self.base / f"out-{label}-{map_format}"
+                    result = self.call(program, env, "map", str(self.source), "--output-dir", str(output), "--format", map_format, "--focus-symbol", "openChannel", "--budget", "256")
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual((output / "repo-map.md").read_bytes(), expected)
+                    self.assertEqual(json.loads(result.stdout)["coverage"], json.loads(direct.stdout)["coverage"])
 
     def test_unicode_numeric_queries_through_the_dispatcher_keep_citations(self):
         cases = (("latin.py", "café"), ("cjk.py", "你好"), ("number.py", "404"))

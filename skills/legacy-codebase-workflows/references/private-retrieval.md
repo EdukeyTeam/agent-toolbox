@@ -1,6 +1,6 @@
 # Optional private code and documentation retrieval
 
-Use retrieval for repeated questions over a framework or documentation set that agents otherwise reread. Index original code as well as existing/generated Markdown; documentation alone may omit the API the task needs. Keep provenance distinct for repository source and separately supplied docs.
+Evaluate retrieval for repeated questions over a framework or documentation set that agents otherwise reread, after comparison with direct search and scoped maps. Index original code as well as existing/generated Markdown; documentation alone may omit the API the task needs. Keep provenance distinct for repository source and separately supplied docs.
 
 The bundled `scripts/context7_backend.py` is a local reference implementation. It uses persistent SQLite FTS5 for lexical retrieval, optional local embeddings for semantic retrieval, reciprocal-rank fusion for hybrid search, and optional symbol/path or local cross-encoder reranking. It is a loopback service, not an authenticated shared production backend. See the [storage ADR](../../../docs/ADR/000-local-code-retrieval-storage.md) in the source repository for the database comparison; the installed skill does not need that ADR to run.
 
@@ -66,7 +66,7 @@ The reranker is pinned to `a09144355adeed5f58c8ed011d209bf8ee5a1fec`. Custom mod
 python /path/to/skill/scripts/context7_backend.py serve --database /path/to/artifacts/framework.sqlite --port 8765
 ```
 
-The tested client is `ctx7` 0.5.13. Use an isolated client configuration with cloud authentication removed and telemetry/update checks disabled where supported. Always provide the local root URL with `--base-url`; it must not include `/api`.
+The tested client is `ctx7` 0.5.13. Keep an isolated client runtime/configuration, preserve HOME/CODEX_HOME and do not edit user authentication. Scope XDG_CONFIG_HOME, XDG_STATE_HOME, XDG_CACHE_HOME and XDG_DATA_HOME to fresh external trial directories; pre-create XDG_CONFIG_HOME/context7/credentials.json containing {} so this pinned client does not migrate/read legacy ~/.context7 credentials. Set CTX7_TELEMETRY_DISABLED=1 and use JSON/noninteractive calls. Installing this pinned client can trigger a Corepack download prompt; handle it explicitly in the isolated setup. Do not silently use cloud credentials or a cloud base URL. Always provide the local root URL with `--base-url`; it must not include `/api`.
 
 ```bash
 ctx7 --base-url http://127.0.0.1:8765 library framework "ExampleService lifecycle" --json
@@ -85,6 +85,8 @@ python /path/to/skill/scripts/context7_backend.py serve --database /path/to/arti
 ```
 
 Without these flags, the stock client uses lexical retrieval. Invalid semantic/reranker defaults fail before binding. Pin and retest the client contract before changing versions. Client compatibility does not establish retrieval quality. No cloud fallback is part of this workflow.
+
+A 2026-10-08 public trial verified actual pinned library/docs calls, source paths/ranges/hashes, a multiline Java signature, HTTP 403 for a hostile Host and HTTP 409 for changed/deleted source/revision. Lexical indexing covered 196 files/966 chunks with no skips. Query wall times were 16.918–19.804 seconds on a WSL Windows mount, including freshness; one byte-identical four-file ext4 snapshot queried in 0.117–0.120 seconds. These are individual scoped compatibility/filesystem observations, not semantic quality or huge-corpus benchmarks. WSL could not resolve the Windows worktree Git pointer and correctly recorded non-git; revision rejection was tested on a disposable native Git fixture. All owned trial servers stopped.
 
 ## Quality observed on jFTP
 

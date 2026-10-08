@@ -9,7 +9,29 @@ permissions:
   contents: read
 
 jobs:
+  workflow-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate workflow expressions with pinned actionlint
+        shell: python
+        run: |
+          import hashlib, io, os, subprocess, tarfile, urllib.request
+          from pathlib import Path
+          url = 'https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz'
+          with urllib.request.urlopen(url, timeout=60) as response:
+              archive = response.read(16 * 1024 * 1024 + 1)
+          assert len(archive) <= 16 * 1024 * 1024, 'actionlint archive exceeds download bound'
+          assert hashlib.sha256(archive).hexdigest() == '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8', 'actionlint archive checksum mismatch'
+          program = Path(os.environ['RUNNER_TEMP']) / 'actionlint-1.7.12'
+          with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as bundle:
+              member = bundle.getmember('actionlint')
+              assert member.isfile(), 'actionlint archive entry must be a regular file'
+              program.write_bytes(bundle.extractfile(member).read())
+          program.chmod(0o755)
+          subprocess.run([str(program), '-no-color', '-shellcheck=', '-pyflakes='], check=True)
   test:
+    needs: workflow-validation
     strategy:
       fail-fast: false
       matrix:
@@ -53,6 +75,7 @@ jobs:
         run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation
 
   semantic-retrieval:
+    needs: workflow-validation
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +116,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_legacy_retrieval.py -v
 
   native-artifacts:
+    needs: workflow-validation
     strategy:
       fail-fast: false
       matrix:
@@ -126,6 +150,19 @@ jobs:
           LEGACY_MAP_DEPS: ${{ runner.temp }}/legacy-map-deps
           LEGACY_BUILD_TOOLS: ${{ runner.temp }}/legacy-build-deps
         run: python -m unittest discover -s tests -p test_legacy_native.py -v
+      - name: Prepare a source-identified per-platform CI install index
+        env:
+          CI_RUN_HEAD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: python
+        run: |
+          import os, shutil, subprocess, sys
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          artifacts, index = root / 'legacy-artifacts', root / 'legacy-ci-index'
+          subprocess.run([sys.executable, 'scripts/create-legacy-release-manifest.py', 'prepare', '--artifact-dir', str(artifacts), '--output-dir', str(index), '--source-commit', os.environ['GITHUB_SHA'], '--ci-run-head-commit', os.environ['CI_RUN_HEAD_COMMIT'], '--ci-run-id', os.environ['GITHUB_RUN_ID']], check=True)
+          shutil.copy2(index / 'legacy-tools-release.json', artifacts / 'legacy-tools-release.json')
+          for path in index.glob('build-manifest.*.json'):
+              shutil.copy2(path, artifacts / path.name)
       - name: Retain reviewable native artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -135,5 +172,7 @@ jobs:
             ${{ runner.temp }}/legacy-artifacts/*.zip
             ${{ runner.temp }}/legacy-artifacts/SHA256SUMS
             ${{ runner.temp }}/legacy-artifacts/build-manifest.json
+            ${{ runner.temp }}/legacy-artifacts/legacy-tools-release.json
+            ${{ runner.temp }}/legacy-artifacts/build-manifest.*.json
           if-no-files-found: error
           retention-days: 14

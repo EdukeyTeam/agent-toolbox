@@ -1,7 +1,9 @@
 //! Tag extraction with the tag queries vendored in the skill. The query text
 //! is compiled into the binary, so nothing is downloaded or read at run time.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+
+use crate::render::{self, Declaration, SourceText};
 
 use tree_sitter::{Language, Parser, Query, QueryCursor, StreamingIterator};
 
@@ -115,6 +117,8 @@ pub struct FileTags {
     /// Sorted by line, kind, name without duplicates.
     pub tags: Vec<Tag>,
     pub has_syntax_errors: bool,
+    /// Ephemeral AST-derived headers; tag identity/ranking stays unchanged.
+    pub declarations: BTreeMap<(usize, String), Declaration>,
 }
 
 struct Loaded {
@@ -122,6 +126,7 @@ struct Loaded {
     query: Query,
     /// Per capture index: definition, reference, or not a name capture.
     capture_kinds: Vec<Option<Kind>>,
+    declaration_captures: Vec<bool>,
 }
 
 /// Lazily compiled parser and query per language.
@@ -161,7 +166,13 @@ fn load(spec: &LanguageSpec) -> Result<Loaded, String> {
             }
         })
         .collect();
+    let declaration_captures = query
+        .capture_names()
+        .iter()
+        .map(|name| name.starts_with("definition."))
+        .collect();
     Ok(Loaded {
+        declaration_captures,
         parser,
         query,
         capture_kinds,
@@ -182,7 +193,19 @@ impl Extractor {
         }
     }
 
+    #[cfg(test)]
     pub fn extract(&mut self, language: &str, path: &str, source: &[u8]) -> Result<FileTags, ExtractError> {
+        self.extract_with_declarations(language, path, source, false, false)
+    }
+
+    pub fn extract_with_declarations(
+        &mut self,
+        language: &str,
+        path: &str,
+        source: &[u8],
+        grouped: bool,
+        all_definitions: bool,
+    ) -> Result<FileTags, ExtractError> {
         let (index, spec) =
             spec_for(language).ok_or_else(|| ExtractError::File(format!("no tag query for {language}")))?;
         let loaded = self.loaded[index].get_or_insert_with(|| load(spec));
@@ -195,20 +218,69 @@ impl Extractor {
         let mut cursor = QueryCursor::new();
         let mut matches = cursor.matches(&loaded.query, tree.root_node(), source);
         let mut found = BTreeSet::new();
+        let text = String::from_utf8_lossy(source);
+        let source_text = (grouped || all_definitions).then(|| SourceText::new(&text));
+        let mut declarations = BTreeMap::new();
+        let mut definition_positions: BTreeMap<(usize, String), BTreeSet<(usize, usize)>> = BTreeMap::new();
         while let Some(found_match) = matches.next() {
             for capture in found_match.captures {
                 let Some(kind) = loaded.capture_kinds[capture.index as usize] else {
                     continue;
                 };
                 let name = String::from_utf8_lossy(&source[capture.node.byte_range()]).into_owned();
+                let line = capture.node.start_position().row + 1;
                 if name.is_empty() || name.chars().count() > policy::MAX_NAME_CHARS {
+                    if all_definitions && kind == Kind::Def {
+                        return Err(ExtractError::Limit(format!(
+                            "definition name at {path}:L{line} exceeds the {}-character name limit; complete mapping cannot silently filter it",
+                            policy::MAX_NAME_CHARS
+                        )));
+                    }
                     continue;
                 }
-                found.insert(Tag {
-                    line: capture.node.start_position().row + 1,
-                    kind,
-                    name,
-                });
+                if all_definitions && kind == Kind::Def {
+                    if !grouped
+                        && !source_text
+                            .as_ref()
+                            .expect("all mode loads source coordinates")
+                            .legacy_identifier_visible(capture.node)
+                    {
+                        return Err(ExtractError::Limit(format!(
+                            "all-definitions cannot show the full identifier at {path}:L{line} within legacy lines' {}-character limit; use --format grouped",
+                            policy::MAX_SNIPPET_CHARS
+                        )));
+                    }
+                    let positions = definition_positions.entry((line, name.clone())).or_default();
+                    positions.insert((capture.node.start_byte(), capture.node.end_byte()));
+                    if positions.len() > 1 {
+                        return Err(ExtractError::Limit(format!(
+                            "ambiguous definition identity at {path}:L{line} for {name:?}: distinct capture positions share the legacy line/name key"
+                        )));
+                    }
+                }
+                if kind == Kind::Def {
+                    if let Some(source_text) = source_text.as_ref().filter(|_| grouped) {
+                        let owner = found_match
+                            .captures
+                            .iter()
+                            .filter(|candidate| {
+                                loaded.declaration_captures[candidate.index as usize]
+                                    && candidate.node.start_byte() <= capture.node.start_byte()
+                                    && candidate.node.end_byte() >= capture.node.end_byte()
+                            })
+                            .min_by_key(|candidate| candidate.node.end_byte() - candidate.node.start_byte())
+                            .map(|candidate| candidate.node)
+                            .unwrap_or_else(|| render::fallback_owner(capture.node));
+                        let key = (line, name.clone());
+                        if !declarations.contains_key(&key) {
+                            let declaration = source_text
+                                .declaration(capture.node, owner)
+                                .map_err(|message| ExtractError::Limit(format!("{path}: {message}")))?;
+                            declarations.insert(key, declaration);
+                        }
+                    }
+                }
+                found.insert(Tag { line, kind, name });
                 if found.len() > policy::MAX_TAGS_PER_FILE {
                     return Err(ExtractError::Limit(format!(
                         "tag limit exceeded in {path}; map a narrower subtree"
@@ -219,6 +291,7 @@ impl Extractor {
         Ok(FileTags {
             tags: found.into_iter().collect(),
             has_syntax_errors: tree.root_node().has_error(),
+            declarations,
         })
     }
 }

@@ -1,16 +1,56 @@
 # Setup and distribution
 
-The tools run in three ways. The first two run the same code and produce identical output; the third is a separate implementation that is checked against them.
+Use the native Rust mapper by default. Start with `setup_native.py status`, then install the pinned package when needed and run the verified program path. Python source and the frozen reference bundle are fallback routes; they share reference code, while native is a separately tested implementation.
 
 | Way | Needs on the machine | Status |
 | --- | --- | --- |
-| Python source, `scripts/repo_map.py` | Python 3.12 to 3.14 and the pinned parser packages | Default. Reference implementation. |
-| Standalone bundle, `legacy-tools` | Bundle; `git` for a git work tree; Windows 10+ with matching VC Redistributable | Same Python tools frozen into a program. Use it where installing Python packages is not possible. |
-| Native binary, `legacy-repo-map` | Binary; optional `git`; Windows 10+ with matching VC Redistributable | Experimental. Repository map only. Read [native tooling](native-tooling.md) first. |
+| Native binary, `legacy-repo-map` | Verified pinned binary; optional `git`; Windows 10+ with matching VC Redistributable | **Preferred/default mapper.** Experimental implementation; known query and platform limits apply. |
+| Python source, `scripts/repo_map.py` | Python 3.12 to 3.14 and the pinned parser packages | Reference fallback for unsupported/blocked native execution, native failure or exact reference comparisons. |
+| Standalone bundle, `legacy-tools` | Bundle; `git` for a git work tree; Windows 10+ with matching VC Redistributable | Frozen reference fallback when parser package installation is unavailable; also supplies auxiliary retrieval tools. |
 
-None of them needs an LLM endpoint, an account or network access at run time. All of them write only to the output directory you name, which must be outside the source repository.
+None of them needs an LLM endpoint or an account to map local source. Generation writes to an external output directory. The separate [report export](repo-map.md#save-a-named-report) helper can then save user-facing maps inside `docs/repo-maps` or a user-selected destination. Downloading dependencies or binaries is explicit setup, not part of offline mapping. Read [binary delivery](distribution.md) for current artifact access, platform selection, readiness and signing limits.
 
-## Python source
+## Native binary
+
+A normal skill install includes `scripts/setup_native.py` and `tool-distribution.json`, not the binary. The installer uses only Python's standard library; no Rust compiler or parser packages are needed. Run status before setup:
+
+```bash
+python /path/to/skill/scripts/setup_native.py status
+```
+
+`ready` returns the verified `program` path. `needs-setup` (exit 1) means the package is missing or no longer verifies; `error` (exit 2), including unsupported platforms, reports the reason. `ready` exits 0. Status does not download anything. Install one pinned platform archive from GitHub Releases:
+
+```bash
+python /path/to/skill/scripts/setup_native.py install
+```
+
+This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests grouped/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. The first pinned `legacy-tools-v0.2.0` release is pending; an unavailable release produces a clear error and does not compile Rust or silently select an old build.
+
+Before release publication, an authenticated `gh` installation can fetch a successful matching CI artifact whose index was produced by the updated test workflow:
+
+```bash
+python /path/to/skill/scripts/setup_native.py install --from-ci <successful-run-id> --expected-source <full-reviewed-build-commit-sha>
+```
+
+The installer verifies successful run status, its run ID/head SHA, the indexed build commit and the package contract. It rejects historical artifacts lacking the new index or carrying version 0.1.0. A PR run normally tests a merge checkout: `--expected-source` must name that reviewed build commit from the index/checkout log, while `ci_run_head_commit` binds the distinct branch head reported by GitHub. Push runs usually share both SHAs. This is an explicit testing route, not “latest.”
+
+For a previously downloaded indexed artifact directory or package/archive plus its release index:
+
+```bash
+python /path/to/skill/scripts/setup_native.py install --local-package /path/to/artifact-directory --expected-source <full-source-sha>
+```
+
+Use `--manifest /path/to/legacy-tools-release.json` only with `--local-package` when the local index is separate. CI and release installs reject that override before fetching or touching the cache, so the authenticated index remains their provenance source. Local dirty-source packages are allowed only as explicit local development evidence; receipts expose `source_dirty`, and those packages cannot be promoted through CI/release aggregation. `--replace` explicitly replaces this version/platform after successful verification; failed verification preserves the prior installation.
+
+`legacy-repo-map` maps locally without Python or a resource download once installed. It remains experimental because parser builds and captured tag sets can differ from the Python reference. If OS policy blocks execution or the platform is unsupported, use isolated Python source. Setup never changes PATH, security policy, quarantine metadata or installed instructions.
+
+```bash
+/path/returned/as/program /path/to/repository --output-dir /path/to/artifacts --budget 16384
+```
+
+## Python fallback
+
+Use this route when the executing OS/CPU is unsupported, approved native delivery is unavailable, host policy blocks execution, native setup/mapping fails, or an exact Python reference comparison is required. Report the native failure and the selected fallback; do not silently claim native output. If comparing behavior, preserve separate staging/report names and the same source revision, scope and budget.
 
 Install the pinned packages into an environment of their own. Do not install them into the legacy application's environment and do not create the environment inside the source repository.
 
@@ -54,12 +94,12 @@ python /path/to/skill/scripts/legacy_tools.py index /path/to/repository --databa
 
 Its commands are `map`, `check-citations`, `index`, `query`, `serve`, `info` and `notices`.
 
-## Standalone bundle
+### Standalone reference fallback
 
 `legacy-tools` is the same `legacy_tools.py` frozen with PyInstaller. It contains a Python runtime, the pinned parser packages for the ten mapped languages, the tag queries, the tool scripts as readable source files and the license texts. Unpack the archive for your platform and run the program inside it:
 
 ```bash
-/path/to/legacy-tools-<platform>/legacy-tools map /path/to/repository --output-dir /path/to/artifacts --budget 4096
+/path/to/legacy-tools-<platform>/legacy-tools map /path/to/repository --output-dir /path/to/artifacts --budget 16384
 ```
 
 ```bash
@@ -70,17 +110,9 @@ Keep the adjacent license and notice files with the program when copying or redi
 
 `info` prints the bundled Python and package versions and the SHA-256 of every bundled script, so you can check a bundle against the skill source it was built from. `notices` prints the attribution and lists the license files.
 
-Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. Take a bundle from the build artifacts of the toolbox repository when its maintainers publish them, or build one from the toolbox source as described below. Check the archive against the `SHA256SUMS` file that is produced with it.
+Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. Current binaries are retained as Actions artifacts by the [toolbox test workflow](https://github.com/EdukeyTeam/agent-toolbox/actions/workflows/test-skills.yml), not automatically installed with this skill. Choose a successful run matching the skill source and follow [binary delivery](distribution.md); do not treat a historical benchmark run as the current installation version. Verify the archive against its accompanying `SHA256SUMS`. The version-pinned native installer and maintainer release workflow are implemented; the first release still needs reviewed publication. CI setup requires an explicit matching source SHA. See [binary delivery](distribution.md) for the exact contract.
 
 The bundle covers lexical retrieval completely. Semantic retrieval is not included: it needs Node.js, the pinned inference package and a downloaded model, set up as described under optional retrieval below, and the optional `sqlite-vec` vector engine is not bundled either.
-
-## Native binary
-
-`legacy-repo-map` takes the same arguments as `repo_map.py` and writes the same three files. It is a single program without a cache or resource files. It is experimental: use it when start-up time matters or nothing else can be installed, and prefer the Python tool or bundle when results must match the reference exactly. Differences are listed in [native tooling](native-tooling.md).
-
-```bash
-/path/to/legacy-repo-map /path/to/repository --output-dir /path/to/artifacts --budget 4096
-```
 
 ## Build the standalone programs
 
@@ -100,7 +132,7 @@ The build fails if PyInstaller picks up a Python package that is not on the help
 
 ## Optional retrieval
 
-Lexical indexing, querying and serving use only the standard library with SQLite FTS5 and work in all three Python-based ways above. For semantic retrieval, create an isolated inference runtime outside the source repository:
+Lexical indexing, querying and serving are separate Python auxiliary tools, available through source or the frozen reference bundle; they use only the standard library with SQLite FTS5. The native mapper does not provide retrieval. For semantic retrieval, create an isolated inference runtime outside the source repository:
 
 1. Copy `scripts/retrieval/package.json`, `pnpm-workspace.yaml` and `pnpm-lock.yaml` into an empty directory.
 2. Run `pnpm install --dir /path/to/inference-runtime --frozen-lockfile` with Node.js 24.
@@ -110,7 +142,7 @@ Only the explicit `index --embed-model` command downloads model files; querying 
 
 The optional vector extension needs both its package and an extension-enabled Python `sqlite3` runtime. If the runtime cannot load extensions, use `--vector-engine stdlib` or explicit `auto` fallback, or a compatible Python build such as Homebrew Python 3.12 on macOS. See [runtime capability notes](private-retrieval.md#evaluate-semantic-retrieval-for-prose-paraphrases).
 
-## Check an installation
+## Check a Python fallback installation
 
 ```bash
 python /path/to/skill/scripts/legacy_tools.py info
