@@ -18,15 +18,15 @@ A normal skill install includes `scripts/setup_native.py` and `tool-distribution
 python /path/to/skill/scripts/setup_native.py status
 ```
 
-`ready` returns the verified `program` path. `needs-setup` (exit 1) means the package is missing or no longer verifies; `error` (exit 2), including unsupported platforms, reports the reason. `ready` exits 0. Status does not download anything. Install one pinned platform archive from GitHub Releases:
+`ready` (exit 0) returns the verified `program` path and `next_action: run`. `needs-setup` (exit 1) reports only that the local cache is missing or no longer verifies, with `next_action: install`; it says nothing about online release availability. Status does not download or write to the cache. Run the pinned prebuilt installer when setup is needed, even if an older policy carries publication or consumer-verification labels. The installer needs no Rust compiler or parser packages. `error` (exit 2), including unsupported platforms, reports the reason:
 
 ```bash
 python /path/to/skill/scripts/setup_native.py install
 ```
 
-This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release has not yet been published, installation produces a clear error and does not compile Rust or silently select an old build.
+This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release cannot be fetched, installation reports the network or publication error without compiling Rust or silently selecting an old build. If status finds an invalid package already at this version/platform, inspect its reason and rerun installation with explicit `--replace` after resolving the cause.
 
-Before release publication, an authenticated `gh` installation can fetch a successful matching CI artifact whose index was produced by the updated test workflow:
+An authenticated `gh` installation can instead fetch a successful matching CI artifact whose index was produced by the test workflow:
 
 ```bash
 python /path/to/skill/scripts/setup_native.py install --from-ci <successful-run-id> --expected-source <full-reviewed-build-commit-sha>
@@ -110,7 +110,7 @@ Keep the adjacent license and notice files with the program when copying or redi
 
 `info` prints the bundled Python and package versions and the SHA-256 of every bundled script, so you can check a bundle against the skill source it was built from. `notices` prints the attribution and lists the license files.
 
-Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. Current binaries are retained as Actions artifacts by the [toolbox test workflow](https://github.com/EdukeyTeam/agent-toolbox/actions/workflows/test-skills.yml), not automatically installed with this skill. Choose a successful run matching the skill source and follow [binary delivery](distribution.md); do not treat a historical benchmark run as the current installation version. Verify the archive against its accompanying `SHA256SUMS`. The version-pinned native installer and maintainer release workflow are implemented; the first release still needs reviewed publication. CI setup requires an explicit matching source SHA. See [binary delivery](distribution.md) for the exact contract.
+Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. The [toolbox test workflow](https://github.com/EdukeyTeam/agent-toolbox/actions/workflows/test-skills.yml) retains build artifacts, which are not automatically installed with this skill. Choose a successful run matching the skill source and follow [binary delivery](distribution.md); do not treat a historical benchmark run as the current installation version. Verify the archive against its accompanying `SHA256SUMS`. CI setup requires an explicit matching source SHA. See [binary delivery](distribution.md) for the exact contract.
 
 The bundle covers lexical retrieval completely. Semantic retrieval is not included: it needs Node.js, the pinned inference package and a downloaded model, set up as described under optional retrieval below, and the optional `sqlite-vec` vector engine is not bundled either.
 
