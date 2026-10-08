@@ -633,3 +633,228 @@ impl Grouped {
             .flat_map(|(index, file)| file.clipped.iter().map(move |clip| (*index, clip)))
     }
 }
+
+#[derive(Clone)]
+struct CountedLine {
+    source: Rc<LineContent>,
+    ranges: Vec<(usize, usize)>,
+}
+impl CountedLine {
+    fn from_line(line: &SourceLine) -> Self {
+        Self {
+            source: line.source.clone(),
+            ranges: line.ranges.clone(),
+        }
+    }
+    fn merge(&mut self, line: &SourceLine) {
+        debug_assert_eq!(self.source.source, line.source.source);
+        let mut inputs = self.ranges.clone();
+        inputs.extend(&line.ranges);
+        inputs.sort_unstable();
+        self.ranges.clear();
+        for (start, end) in inputs {
+            if let Some(previous) = self.ranges.last_mut() {
+                if start <= previous.1 || self.source.whitespace(previous.1, start) {
+                    previous.1 = previous.1.max(end);
+                    continue;
+                }
+            }
+            self.ranges.push((start, end));
+        }
+    }
+    fn characters(&self) -> usize {
+        let mut count = 0;
+        let mut previous = None;
+        for (start, end) in &self.ranges {
+            count += end - start;
+            if let Some(previous) = previous {
+                count += if self.source.whitespace(previous, *start) {
+                    start - previous
+                } else {
+                    " … ".chars().count()
+                };
+            } else if *start > 0 {
+                count += " … ".chars().count();
+            }
+            previous = Some(*end);
+        }
+        count
+    }
+    fn append(&self, text: &mut String) {
+        let mut previous = None;
+        for (start, end) in &self.ranges {
+            if let Some(previous) = previous {
+                if self.source.whitespace(previous, *start) {
+                    text.push_str(self.source.slice(previous, *start));
+                } else {
+                    text.push_str(" … ");
+                }
+            } else if *start > 0 {
+                text.push_str(" … ");
+            }
+            text.push_str(self.source.slice(*start, *end));
+            previous = Some(*end);
+        }
+    }
+}
+
+pub struct CompleteGrouped {
+    pub text: Option<String>,
+    pub characters: usize,
+    pub clipped: Vec<(usize, Clipping)>,
+    #[cfg(test)]
+    peak_retained_characters: usize,
+}
+
+impl Grouped {
+    /// Count/merge one file's ranges at a time, without copying source payloads.
+    /// Output is retained only while it fits the declared character budget.
+    /// After overflow, discard it and keep counting for an exact diagnostic.
+    pub fn complete<'a>(
+        paths: &[&str],
+        declarations: impl IntoIterator<Item = (usize, &'a Declaration)>,
+        limit: usize,
+    ) -> CompleteGrouped {
+        let mut by_file: BTreeMap<usize, Vec<&Declaration>> = BTreeMap::new();
+        for (index, declaration) in declarations {
+            by_file.entry(index).or_default().push(declaration);
+        }
+        let mut result = CompleteGrouped {
+            text: (HEADER.chars().count() <= limit).then(|| String::from(HEADER)),
+            characters: HEADER.chars().count(),
+            clipped: Vec::new(),
+            #[cfg(test)]
+            peak_retained_characters: if HEADER.chars().count() <= limit {
+                HEADER.chars().count()
+            } else {
+                0
+            },
+        };
+        for (index, declarations) in by_file {
+            let mut lines: BTreeMap<usize, CountedLine> = BTreeMap::new();
+            let mut clipping = BTreeSet::new();
+            for declaration in declarations {
+                for (number, source) in &declaration.lines {
+                    if let Some(existing) = lines.get_mut(number) {
+                        existing.merge(source);
+                    } else {
+                        lines.insert(*number, CountedLine::from_line(source));
+                    }
+                }
+                clipping.extend(declaration.clipped.iter().cloned());
+            }
+            let heading = format!("## {}\n\n\x60\x60\x60text\n", paths[index]);
+            result.characters += heading.chars().count() + "\x60\x60\x60\n\n".chars().count();
+            let mut previous = None;
+            for (number, source) in &lines {
+                if previous.is_some_and(|n| *number > n + 1) {
+                    result.characters += "  ...\n".len();
+                }
+                result.characters += format!("L{number}: ").len() + source.characters() + 1;
+                previous = Some(*number);
+            }
+            for clip in &clipping {
+                result.characters += clip.marker().chars().count();
+            }
+            if result.characters > limit {
+                result.text = None;
+            }
+            if let Some(text) = result.text.as_mut() {
+                text.push_str(&heading);
+                let mut previous = None;
+                for (number, source) in &lines {
+                    if previous.is_some_and(|n| *number > n + 1) {
+                        text.push_str("  ...\n");
+                    }
+                    text.push_str(&format!("L{number}: "));
+                    source.append(text);
+                    text.push('\n');
+                    previous = Some(*number);
+                }
+                for clip in &clipping {
+                    text.push_str(&clip.marker());
+                }
+                text.push_str("\x60\x60\x60\n\n");
+                debug_assert_eq!(text.chars().count(), result.characters);
+                #[cfg(test)]
+                {
+                    result.peak_retained_characters = result.characters;
+                }
+            }
+            result.clipped.extend(clipping.into_iter().map(|clip| (index, clip)));
+        }
+        result
+    }
+}
+
+#[cfg(test)]
+mod complete_tests {
+    use super::*;
+
+    #[test]
+    fn large_complete_rejection_counts_exactly_without_retaining_oversized_output() {
+        let paths = ["src/Śervice0.py", "src/Śervice1.py", "src/Śervice2.py"];
+        let mut declarations = Vec::new();
+        for file in 0..3 {
+            let context = SourceLine::excerpt(Rc::new(LineContent::new("class Shared:")), 0, 13);
+            for method in 0..120 {
+                let source = format!("    def operation{method:03}({}value):", " ".repeat(3000));
+                let length = source.chars().count();
+                let fragment = SourceLine::excerpt(Rc::new(LineContent::new(&source)), 4, length);
+                let mut declaration = Declaration::default();
+                declaration.lines.insert(1, context.clone());
+                declaration.lines.insert(method * 2 + 2, fragment);
+                declarations.push((file, declaration));
+            }
+        }
+        // Unbounded reference rendering is intentional only in this test,
+        // outside the measured production complete-mode budget path.
+        let mut reference = Grouped::new();
+        for (file, declaration) in &declarations {
+            assert!(reference.add(*file, paths[*file], declaration, usize::MAX));
+        }
+        let expected = reference.render(&paths);
+        let required = expected.chars().count();
+        let rejected = Grouped::complete(&paths, declarations.iter().map(|(file, d)| (*file, d)), 256);
+        assert!(rejected.text.is_none());
+        assert_eq!(rejected.characters, required);
+        assert!(rejected.peak_retained_characters <= 256);
+        let exact = Grouped::complete(
+            &paths,
+            declarations.iter().map(|(file, d)| (*file, d)),
+            required.div_ceil(4) * 4,
+        );
+        assert_eq!(exact.text.as_deref(), Some(expected.as_str()));
+        assert_eq!(exact.characters, required);
+        assert!(exact.peak_retained_characters <= required.div_ceil(4) * 4);
+    }
+
+    #[test]
+    fn complete_count_deduplicates_clips_and_merges_inline_unicode_ranges_before_admission() {
+        let source = Rc::new(LineContent::new("α.β"));
+        let mut pieces = Vec::new();
+        for range in [(0, 1), (2, 3), (1, 2)] {
+            let mut declaration = Declaration::default();
+            declaration
+                .lines
+                .insert(1, SourceLine::excerpt(source.clone(), range.0, range.1));
+            declaration.clipped.insert(Clipping {
+                line: 1,
+                start_line: 1,
+                end_line: 91,
+                reason: "line limit".to_string(),
+            });
+            pieces.push(declaration);
+        }
+        let paths = ["Śhared.py"];
+        let expected = format!("{HEADER}## Śhared.py\n\n\x60\x60\x60text\nL1: α.β\n  ... [declaration clipped: L1-L91; line limit]\n\x60\x60\x60\n\n");
+        let complete = Grouped::complete(
+            &paths,
+            pieces.iter().map(|declaration| (0, declaration)),
+            expected.chars().count(),
+        );
+        assert_eq!(complete.text.as_deref(), Some(expected.as_str()));
+        assert_eq!(complete.characters, expected.chars().count());
+        assert_eq!(complete.clipped.len(), 1);
+    }
+}

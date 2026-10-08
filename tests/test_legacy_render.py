@@ -358,5 +358,70 @@ class Second:
         self.assertEqual(reads, {"a": 2, "b": 1, "huge": 2})
 
 
+    def test_complete_grouped_counts_large_rejection_without_rendering_oversized_files(self):
+        import math
+        import repo_render
+        ranked = []
+        sources = {}
+        for file_number in range(3):
+            path = f"src/Śervice{file_number}.py"
+            lines = ["class Shared:"]
+            for number in range(120):
+                line = len(lines) + 1
+                declaration = f"    def function_{number:03}(" + " " * 3000 + "value):"
+                lines.extend([declaration, "        return value"])
+                ranked.append({"path": path, "name": f"function_{number:03}", "line": line, "kind": "def",
+                               "declaration_spans": [
+                                   {"line": line, "start_line": line, "end_line": line, "start_column": 4, "end_column": len(declaration)},
+                                   {"line": 1, "start_line": 1, "end_line": 1, "start_column": 0, "end_column": len(lines[0])},
+                               ]})
+            sources[path] = lines
+        full, included, _ = repo_render.render_grouped(ranked, sources.__getitem__, 1_000_000, all_definitions=True)
+        self.assertEqual(len(included), 360)
+        required = math.ceil(len(full) / 4)
+        self.assertEqual(full.count("class Shared:"), 3)
+        rendered_sizes = []
+        original_render = repo_render._file_text
+
+        def measured_file(*args):
+            text = original_render(*args)
+            rendered_sizes.append(len(text))
+            return text
+
+        with patch("repo_render._file_text", side_effect=measured_file):
+            with self.assertRaises(repo_render.BudgetExceeded) as failure:
+                repo_render.render_grouped(ranked, sources.__getitem__, 64, all_definitions=True)
+        self.assertEqual(failure.exception.required_estimated_tokens, required)
+        self.assertLessEqual(max(rendered_sizes, default=0), 64 * 4,
+                             "rejected complete output was rendered despite the configured bound")
+        exact, exact_included, _ = repo_render.render_grouped(ranked, sources.__getitem__, required, all_definitions=True)
+        self.assertEqual(exact, full)
+        self.assertEqual(exact_included, included)
+
+    def test_complete_legacy_lines_keeps_exact_budget_diagnostic_after_overflow(self):
+        self.write("functions.py", "".join(f"def function_{number:03}(" + " " * 300 + "value): return value\n" for number in range(80)))
+        full, full_text = self.map(all_definitions=True, map_format="lines", budget=16384)
+        required = full["estimated_tokens"]
+        with self.assertRaisesRegex(ValueError, "requires.*budget"):
+            self.map(all_definitions=True, map_format="lines", budget=64)
+        failed = json.loads((self.out / "map.meta.json").read_text())
+        self.assertEqual(failed["failure"]["required_estimated_tokens"], required)
+        exact, exact_text = self.map(all_definitions=True, map_format="lines", budget=required)
+        self.assertEqual(exact_text, full_text)
+        self.assertEqual(exact["coverage"]["definitions_omitted"], 0)
+
+    def test_all_definitions_inventory_only_is_rejected_before_artifacts(self):
+        self.write("sample.py", "def selected():\n    pass\n")
+        with self.assertRaisesRegex(ValueError, "all-definitions.*inventory-only|inventory-only.*all-definitions"):
+            self.map(all_definitions=True, inventory_only=True)
+        self.assertFalse(self.out.exists())
+        result = subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.repo),
+                                 "--output-dir", str(self.out), "--all-definitions", "--inventory-only"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertFalse(self.out.exists())
+
+
+
 if __name__ == "__main__":
     unittest.main()

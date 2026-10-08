@@ -710,6 +710,8 @@ fn run(arguments: Arguments) -> Result<String, String> {
 
     let mut map_text = String::from(HEADER);
     let mut remaining = (budget * 4).saturating_sub(HEADER.chars().count());
+    let mut line_characters = HEADER.chars().count();
+    let mut line_output_overflowed = false;
     let mut included = 0usize;
     let mut included_lines: std::collections::HashSet<(usize, usize)> = Default::default();
     let mut verified_sources = std::collections::HashSet::new();
@@ -751,8 +753,11 @@ fn run(arguments: Arguments) -> Result<String, String> {
                 unfinished("failed", Some(&("rendering", message.clone())))?;
                 return Err(message);
             };
-            let limit = if all_definitions { usize::MAX } else { budget * 4 };
-            if grouped.add(definition.file, &file.path, declaration, limit) {
+            if all_definitions {
+                // Admission is complete-mode's exact per-file counting pass below;
+                // never accumulate an unbounded map in the ranked renderer.
+                included += 1;
+            } else if grouped.add(definition.file, &file.path, declaration, budget * 4) {
                 included += 1;
             }
         } else {
@@ -764,16 +769,47 @@ fn run(arguments: Arguments) -> Result<String, String> {
             let line = format!("{}:L{}: {}\n", file.path, definition.line, snippet);
             let length = line.chars().count();
             if all_definitions || length <= remaining {
-                map_text.push_str(&line);
+                line_characters += length;
+                if all_definitions && line_characters > budget * 4 {
+                    line_output_overflowed = true;
+                    map_text.clear();
+                    map_text.shrink_to_fit();
+                } else if !line_output_overflowed {
+                    map_text.push_str(&line);
+                }
                 remaining = remaining.saturating_sub(length);
                 included += 1;
                 included_lines.insert((definition.file, definition.line));
             }
         }
     }
+    let paths: Vec<&str> = parsed.iter().map(|file| file.path.as_str()).collect();
+    let complete_grouped = if map_format == "grouped" && all_definitions {
+        Some(render::Grouped::complete(
+            &paths,
+            ranked.iter().map(|definition| {
+                let key = (definition.line, definition.name.to_string());
+                (
+                    definition.file,
+                    parsed[definition.file]
+                        .declarations
+                        .get(&key)
+                        .expect("declaration was validated in the rendering loop"),
+                )
+            }),
+            budget * 4,
+        ))
+    } else {
+        None
+    };
     let clipped_declarations: Vec<Value> = if map_format == "grouped" {
-        grouped
-            .clips()
+        let clips: Vec<_> = if let Some(complete) = &complete_grouped {
+            complete.clipped.iter().map(|(file, clip)| (*file, clip)).collect()
+        } else {
+            grouped.clips().collect()
+        };
+        clips
+            .into_iter()
             .map(|(file, clip)| {
                 json!({
                     "path": parsed[file].path, "line": clip.line, "start_line": clip.start_line,
@@ -784,21 +820,20 @@ fn run(arguments: Arguments) -> Result<String, String> {
     } else {
         Vec::new()
     };
-    if map_format == "grouped" {
-        let paths: Vec<&str> = parsed.iter().map(|file| file.path.as_str()).collect();
-        map_text = grouped.render(&paths);
-        remaining = (budget * 4).saturating_sub(map_text.chars().count());
-    }
-    let required_tokens = if map_format == "grouped" {
+    let required_tokens = if let Some(complete) = &complete_grouped {
+        complete.characters.div_ceil(4)
+    } else if map_format == "grouped" {
         grouped.tokens()
     } else {
-        map_text.chars().count().div_ceil(4)
+        line_characters.div_ceil(4)
     };
     if all_definitions && required_tokens > budget {
         let message = format!("--all-definitions requires {required_tokens} estimated tokens; requested --budget {budget}. Increase --budget to {required_tokens} (maximum {}) or narrow --subtree.", policy::MAX_BUDGET);
         let mut extra = provenance.clone();
-        extra["failure"] = json!({"stage": "rendering", "message": message});
-        extra["required_tokens"] = json!(required_tokens);
+        extra["failure"] = json!({
+            "stage": "rendering", "message": message,
+            "required_estimated_tokens": required_tokens,
+        });
         extra["rendering"] = json!({
             "format": map_format,
             "declaration_line_limit": render::DECLARATION_LINE_LIMIT,
@@ -811,6 +846,16 @@ fn run(arguments: Arguments) -> Result<String, String> {
             &format!("{}\n", pretty(&partial("failed", extra))),
         )?;
         return Err(message);
+    }
+    if map_format == "grouped" {
+        map_text = if let Some(complete) = complete_grouped {
+            complete
+                .text
+                .expect("a successful complete budget count retains its bounded output")
+        } else {
+            grouped.render(&paths)
+        };
+        remaining = (budget * 4).saturating_sub(map_text.chars().count());
     }
     if included == 0 && EMPTY_MESSAGE.chars().count() <= remaining {
         map_text.push_str(EMPTY_MESSAGE);

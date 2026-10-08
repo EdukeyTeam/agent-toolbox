@@ -224,6 +224,8 @@ def generate(root: str | Path, output_dir: str | Path, *, budget: int = 16_384, 
         raise ValueError(f"budget must be 64..{MAX_BUDGET} estimated tokens")
     if map_format not in ("grouped", "lines"):
         raise ValueError("format must be grouped or lines")
+    if all_definitions and inventory_only:
+        raise ValueError("--all-definitions cannot be combined with --inventory-only")
     for path in [*subtrees, *focus_files]:
         if Path(path).is_absolute() or ".." in Path(path).parts:
             raise ValueError(f"focus/subtree path must be relative: {path}")

@@ -248,6 +248,17 @@ class LineFragments:
     def contains(self, start, end):
         return any(first <= start and last >= end for first, last in self.intervals)
 
+    def rendered_characters(self):
+        characters = self.characters()
+        previous = None
+        for start, end in self.intervals:
+            if previous is None and start:
+                characters += len(" … ")
+            elif previous is not None:
+                characters += start - previous if self.source[previous:start].isspace() else len(" … ")
+            previous = end
+        return characters
+
     def text(self):
         chunks = []
         previous = None
@@ -318,7 +329,68 @@ def _file_text(path, lines, clipping):
     return "".join(result)
 
 
+def _file_characters(path, lines, clipping):
+    """Count the exact Markdown without creating declaration/output strings."""
+    characters = len(f"## {path}\n\n```text\n") + len("```\n\n")
+    previous = None
+    for number, snippet in sorted(lines.items()):
+        if previous is not None and number > previous + 1:
+            characters += len("  ...\n")
+        characters += len(f"L{number}: ") + snippet.rendered_characters() + 1
+        previous = number
+    for record in clipping.values():
+        characters += len(f"  ... [declaration clipped: L{record['start_line']}-L{record['end_line']}; {record['reason']}]\n")
+    return characters
+
+
+def _render_complete_grouped(ranked, source_lines, budget):
+    # One file's ranges at a time; sanitized source is held only by these
+    # transient fragments and the independently byte-bounded source cache.
+    # Retained output never exceeds the configured character budget, even when
+    # an exact required-token diagnostic must count every remaining definition.
+    ranked = list(ranked)
+    by_file = defaultdict(list)
+    for tag in ranked:
+        by_file[tag["path"]].append(tag)
+    chunks = [HEADER]
+    retained_records = []
+    total_characters = len(HEADER)
+    limit = budget * 4
+    overflowing = False
+    for path, tags in sorted(by_file.items()):
+        original_lines = source_lines(path)
+        selected = {}
+        clipping = {}
+        for tag in tags:
+            for span in tag["declaration_spans"]:
+                snippets, record = _clip_span(span, original_lines, path)
+                for number, snippet in snippets.items():
+                    selected[number] = selected[number].merge(snippet) if number in selected else snippet
+                if record:
+                    clipping[_record_key(record)] = record
+        total_characters += _file_characters(path, selected, clipping)
+        if total_characters > limit:
+            overflowing = True
+            chunks.clear()
+            retained_records.clear()
+        elif not overflowing:
+            chunks.append(_file_text(path, selected, clipping))
+            retained_records.extend(clipping.values())
+        # Do not keep a completed file's source ranges while counting the next.
+        selected.clear()
+        clipping.clear()
+    if not ranked and total_characters + len(EMPTY_MESSAGE) <= limit:
+        chunks.append(EMPTY_MESSAGE)
+        total_characters += len(EMPTY_MESSAGE)
+    required = math.ceil(total_characters / 4)
+    if required > budget:
+        raise BudgetExceeded(required, budget)
+    return "".join(chunks), ranked, sorted(retained_records, key=_record_key)
+
+
 def render_grouped(ranked, source_lines, budget, *, all_definitions=False):
+    if all_definitions:
+        return _render_complete_grouped(ranked, source_lines, budget)
     files = {}
     clipping = {}
     costs = {}
@@ -335,22 +407,13 @@ def render_grouped(ranked, source_lines, budget, *, all_definitions=False):
                 additions[line] = additions[line].merge(snippet) if line in additions else snippet
             if record:
                 records[_record_key(record)] = record
-        if all_definitions:
-            # All-mode has no admission decisions: merge once and render once,
-            # avoiding repeatedly copying/rendering a growing entire file.
-            selected = files.setdefault(path, {})
-            for line, snippet in additions.items():
-                selected[line] = selected[line].merge(snippet) if line in selected else snippet
-            clipping.setdefault(path, {}).update(records)
-            included.append(tag)
-            continue
         candidate = dict(files.get(path, {}))
         for line, snippet in additions.items():
             candidate[line] = candidate[line].merge(snippet) if line in candidate else snippet
         candidate_records = {**clipping.get(path, {}), **records}
         candidate_cost = len(_file_text(path, candidate, candidate_records))
         new_total = total_characters - costs.get(path, 0) + candidate_cost
-        if all_definitions or new_total <= budget * 4:
+        if new_total <= budget * 4:
             files[path] = candidate
             clipping[path] = candidate_records
             costs[path] = candidate_cost
@@ -359,15 +422,14 @@ def render_grouped(ranked, source_lines, budget, *, all_definitions=False):
     text = HEADER + "".join(_file_text(path, files[path], clipping[path]) for path in sorted(files))
     if not included and len(text) + len(EMPTY_MESSAGE) <= budget * 4:
         text += EMPTY_MESSAGE
-    required = math.ceil(len(text) / 4)
-    if all_definitions and required > budget:
-        raise BudgetExceeded(required, budget)
     records = sorted((record for per_file in clipping.values() for record in per_file.values()), key=_record_key)
     return text, included, records
 
 
 def render_lines(ranked, source_lines, budget, *, all_definitions=False):
     chunks = [HEADER]
+    total_characters = len(HEADER)
+    overflowing = False
     remaining = budget * 4 - len(HEADER)
     included = []
     seen = set()
@@ -390,16 +452,22 @@ def render_lines(ranked, source_lines, budget, *, all_definitions=False):
         snippet = sanitize(lines[tag["line"] - 1]).strip()
         line = f"{tag['path']}:L{tag['line']}: {snippet[:240]}\n"
         if all_definitions or len(line) <= remaining:
-            chunks.append(line)
+            total_characters += len(line)
+            if all_definitions and total_characters > budget * 4:
+                overflowing = True
+                chunks.clear()
+            elif not overflowing:
+                chunks.append(line)
             remaining -= len(line)
             included.append(tag)
             seen.add(key)
     if not included and len(EMPTY_MESSAGE) <= remaining:
         chunks.append(EMPTY_MESSAGE)
-    text = "".join(chunks)
-    required = math.ceil(len(text) / 4)
+        total_characters += len(EMPTY_MESSAGE)
+    required = math.ceil(total_characters / 4)
     if all_definitions and required > budget:
         raise BudgetExceeded(required, budget)
+    text = "".join(chunks)
     return text, included, []
 
 

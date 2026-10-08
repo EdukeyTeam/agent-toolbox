@@ -1377,6 +1377,8 @@ fn all_definitions_fails_instead_of_silently_using_a_partial_budget() {
     let failed = fixture.json("map.meta.json");
     assert_eq!(failed["status"], "failed");
     assert_eq!(failed["selection"]["mode"], "all-definitions");
+    assert!(failed["failure"]["required_estimated_tokens"].is_u64());
+    assert!(failed.get("required_tokens").is_none());
     grouped_ok(&fixture, &["--all-definitions", "--budget", "2048"]);
     let complete = fixture.json("map.meta.json");
     assert_eq!(complete["coverage"]["definitions_found"], 21);
@@ -1575,4 +1577,45 @@ fn all_legacy_lines_rejects_identifiers_hidden_by_snippet_character_clipping() {
     grouped_ok(&fixture, &["--all-definitions"]);
     assert!(fixture.map_text().contains(&name));
     assert_eq!(fixture.json("map.meta.json")["coverage"]["definitions_in_map"], 1);
+}
+
+#[test]
+fn all_definitions_large_failure_keeps_exact_diagnostic_and_boundary_bytes() {
+    let fixture = Fixture::new();
+    for file in 0..3 {
+        let mut source = format!("class Service{file} {{\n");
+        for method in 0..120 {
+            source.push_str(&format!(
+                "    void operation{method:03}({}String value) {{}}\n",
+                " ".repeat(3000)
+            ));
+        }
+        source.push_str("}\n");
+        fixture.write(&format!("src/Service{file}.java"), &source);
+    }
+    for format in ["grouped", "lines"] {
+        let full = grouped_ok(
+            &fixture,
+            &["--format", format, "--all-definitions", "--budget", "1000000"],
+        );
+        let bytes = fs::read(fixture.output.join("repo-map.md")).unwrap();
+        let required = full["estimated_tokens"].as_u64().unwrap().to_string();
+        let failed = grouped(&fixture, &["--format", format, "--all-definitions", "--budget", "64"]);
+        assert!(!failed.status.success());
+        let metadata = fixture.json("map.meta.json");
+        assert_eq!(metadata["failure"]["stage"], "rendering");
+        assert_eq!(
+            metadata["failure"]["required_estimated_tokens"],
+            full["estimated_tokens"]
+        );
+        assert!(metadata.get("required_tokens").is_none());
+        assert!(!fixture.map_text().contains("operation"));
+        let exact = grouped_ok(
+            &fixture,
+            &["--format", format, "--all-definitions", "--budget", &required],
+        );
+        assert_eq!(exact["coverage"]["definitions_omitted"], 0);
+        assert_eq!(exact["coverage"]["definitions_in_map"], 363);
+        assert_eq!(fs::read(fixture.output.join("repo-map.md")).unwrap(), bytes);
+    }
 }
