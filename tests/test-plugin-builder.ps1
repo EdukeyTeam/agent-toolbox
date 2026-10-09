@@ -71,3 +71,6 @@ finally {
     }
     if (Test-Path -LiteralPath $fixtureRoot) { Remove-Item -LiteralPath $fixtureRoot -Recurse -Force }
 }
+
+# Expected failures in child builders must not become the CI shell exit status.
+exit 0
