@@ -74,6 +74,6 @@ For Codex and other agents, the skills CLI command above installs the skills dir
 
 ## Contribute
 
-Skills live in `skills/<name>/`. Open a pull request for a new skill or a change to an existing one. Include tests for executable behavior and describe a realistic manual trial for instruction-only skills. The [test workflow](.github/workflows/test-skills.yml) checks pull requests; [AGENTS.md](AGENTS.md) has the contribution rules.
+Skills live in `skills/<name>/`. Open a pull request for a new skill or a change to an existing one. Include tests for executable behavior and describe a realistic manual trial for instruction-only skills. The [test workflow](.github/workflows/test-skills.yml) selects checks by [changed dependencies](docs/ci.md); [AGENTS.md](AGENTS.md) has the contribution rules.
 
 Brand assets extracted from other sites may be licensed. Check usage rights before reusing or redistributing them.

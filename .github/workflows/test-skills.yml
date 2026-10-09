@@ -4,12 +4,48 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: test-skills-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.changes.outputs.node }}
+      python: ${{ steps.changes.outputs.python }}
+      semantic: ${{ steps.changes.outputs.semantic }}
+      native: ${{ steps.changes.outputs.native }}
+      package: ${{ steps.changes.outputs.package }}
+      workflow: ${{ steps.changes.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Select validation from changed dependencies
+        id: changes
+        run: node scripts/ci-changes.cjs
+      - run: npm ci
+      - name: Run Node behavior and structure tests
+        if: steps.changes.outputs.node == 'true'
+        run: npm test
+      - name: Check skill metadata and plugin manifests
+        if: steps.changes.outputs.node != 'true'
+        run: node --test tests/skill-structure.test.cjs tests/plugin-manifests.test.cjs
+
   workflow-validation:
+    needs: checks
+    if: needs.checks.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -31,7 +67,8 @@ jobs:
           program.chmod(0o755)
           subprocess.run([str(program), '-no-color', '-shellcheck=', '-pyflakes='], check=True)
   test:
-    needs: workflow-validation
+    needs: checks
+    if: needs.checks.outputs.python == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -47,8 +84,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
-      - run: npm ci
-      - run: npm test
       - name: Install local map dependencies
         run: python -m pip install -r skills/legacy-codebase-workflows/requirements-map.txt
       - name: Install optional vector adapter on each platform
@@ -69,13 +104,10 @@ jobs:
           "$(brew --prefix python@3.12)/bin/python3.12" -m venv "$RUNNER_TEMP/legacy-vector-venv"
           "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m pip install -r skills/legacy-codebase-workflows/requirements-map.txt -r skills/legacy-codebase-workflows/scripts/requirements-retrieval.txt
           "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m unittest discover -s tests -p test_legacy_retrieval.py -v
-      - name: Build and verify Claude plugin ZIP
-        if: runner.os == 'Linux' && matrix.python == '3.12'
-        shell: pwsh
-        run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation
 
   semantic-retrieval:
-    needs: workflow-validation
+    needs: checks
+    if: needs.checks.outputs.semantic == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -116,7 +148,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_legacy_retrieval.py -v
 
   native-artifacts:
-    needs: workflow-validation
+    needs: checks
+    if: needs.checks.outputs.native == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -176,3 +209,31 @@ jobs:
             ${{ runner.temp }}/legacy-artifacts/build-manifest.*.json
           if-no-files-found: error
           retention-days: 14
+
+  plugin-package:
+    needs: checks
+    if: needs.checks.outputs.package == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Build and verify Claude plugin ZIP
+        shell: pwsh
+        run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation
+
+  ci-status:
+    needs: [checks, workflow-validation, test, semantic-retrieval, native-artifacts, plugin-package]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Require all selected jobs to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: node scripts/ci-changes.cjs --check-status
