@@ -195,7 +195,7 @@ impl Extractor {
 
     #[cfg(test)]
     pub fn extract(&mut self, language: &str, path: &str, source: &[u8]) -> Result<FileTags, ExtractError> {
-        self.extract_with_declarations(language, path, source, false, false)
+        self.extract_with_declarations(language, path, source, None, false)
     }
 
     pub fn extract_with_declarations(
@@ -203,7 +203,7 @@ impl Extractor {
         language: &str,
         path: &str,
         source: &[u8],
-        grouped: bool,
+        format: Option<render::Format>,
         all_definitions: bool,
     ) -> Result<FileTags, ExtractError> {
         let (index, spec) =
@@ -219,7 +219,10 @@ impl Extractor {
         let mut matches = cursor.matches(&loaded.query, tree.root_node(), source);
         let mut found = BTreeSet::new();
         let text = String::from_utf8_lossy(source);
-        let source_text = (grouped || all_definitions).then(|| SourceText::new(&text));
+        let source_text = (format.is_some() || all_definitions).then(|| match format {
+            Some(render::Format::Compact) => SourceText::with_format(&text, render::Format::Compact),
+            _ => SourceText::new(&text),
+        });
         let mut declarations = BTreeMap::new();
         let mut definition_positions: BTreeMap<(usize, String), BTreeSet<(usize, usize)>> = BTreeMap::new();
         while let Some(found_match) = matches.next() {
@@ -239,7 +242,7 @@ impl Extractor {
                     continue;
                 }
                 if all_definitions && kind == Kind::Def {
-                    if !grouped
+                    if format.is_none()
                         && !source_text
                             .as_ref()
                             .expect("all mode loads source coordinates")
@@ -259,7 +262,7 @@ impl Extractor {
                     }
                 }
                 if kind == Kind::Def {
-                    if let Some(source_text) = source_text.as_ref().filter(|_| grouped) {
+                    if let Some(source_text) = source_text.as_ref().filter(|_| format.is_some()) {
                         let owner = found_match
                             .captures
                             .iter()

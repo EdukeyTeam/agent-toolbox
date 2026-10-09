@@ -249,18 +249,19 @@ class LineFragments:
     value: str
     intervals: tuple[tuple[int, int], ...]
     payloads: tuple[tuple[int, int], ...]
+    compact: bool = False
 
     @classmethod
-    def _from_source(cls, source, intervals):
+    def _from_source(cls, source, intervals, *, compact=False):
         chunks = []
         payloads = []
         length = 0
         previous = None
         for start, end in intervals:
             if previous is None and start:
-                separator = " … "
+                separator = "" if compact and _whitespace_range(source, 0, start) else " … "
             elif previous is not None:
-                separator = sanitize(source[previous:start]) if _whitespace_range(source, previous, start) else " … "
+                separator = (" " if compact else sanitize(source[previous:start])) if _whitespace_range(source, previous, start) else " … "
             else:
                 separator = ""
             chunks.append(separator)
@@ -270,25 +271,28 @@ class LineFragments:
             chunks.append(payload)
             length += len(payload)
             previous = end
-        return cls("".join(chunks), tuple(intervals), tuple(payloads))
+        return cls("".join(chunks), tuple(intervals), tuple(payloads), compact)
 
     @classmethod
-    def excerpt(cls, source, start, end):
+    def excerpt(cls, source, start, end, *, compact=False):
         # Sanitization preserves character coordinates. Do not sanitize/copy
         # the unrelated physical-line body merely to excerpt a short header.
-        if start and _whitespace_range(source, 0, start):
+        if compact:
+            while start < end and (source[start].isspace() or contains_control_characters(source[start])):
+                start += 1
+        elif start and _whitespace_range(source, 0, start):
             start = 0
-        return cls._from_source(source, ((start, end),))
+        return cls._from_source(source, ((start, end),), compact=compact)
 
     def merge(self, other, source):
         ranges = []
         for start, end in sorted((*self.intervals, *other.intervals)):
             whitespace = ranges and _whitespace_range(source, ranges[-1][1], start)
-            if ranges and (start <= ranges[-1][1] or whitespace):
+            if ranges and (start <= ranges[-1][1] or (whitespace and not self.compact)):
                 ranges[-1] = (ranges[-1][0], max(ranges[-1][1], end))
             else:
                 ranges.append((start, end))
-        return LineFragments._from_source(source, ranges)
+        return LineFragments._from_source(source, ranges, compact=self.compact)
 
     def characters(self):
         return sum(end - start for start, end in self.intervals)
@@ -302,7 +306,7 @@ class LineFragments:
         for (start, end), (first, last) in zip(self.intervals, self.payloads):
             taken = min(available, end - start)
             if taken or start == end:
-                separator = self.value[previous_end:first] if previous_end is not None else " … " if start else ""
+                separator = self.value[previous_end:first] if previous_end is not None else self.value[:first]
                 chunks.append(separator)
                 length += len(separator)
                 payload = self.value[first:first + taken]
@@ -312,7 +316,7 @@ class LineFragments:
                 ranges.append((start, start + taken))
                 previous_end = last
             available -= taken
-        return LineFragments("".join(chunks), tuple(ranges), tuple(payloads))
+        return LineFragments("".join(chunks), tuple(ranges), tuple(payloads), self.compact)
 
     def contains(self, start, end):
         return any(first <= start and last >= end for first, last in self.intervals)
@@ -324,7 +328,7 @@ class LineFragments:
         return self.value
 
 
-def _clip_span(span, source_lines, path):
+def _clip_span(span, source_lines, path, *, compact=False):
     start, end = span["start_line"], span["end_line"]
     if start < 1 or end > len(source_lines) or end < start:
         raise ValueError(f"source span vanished while rendering: {path}")
@@ -338,7 +342,7 @@ def _clip_span(span, source_lines, path):
     for number in retained:
         first = span["start_column"] if number == start else 0
         last = span["end_column"] if number == end else len(source_lines[number - 1])
-        prepared[number] = LineFragments.excerpt(source_lines[number - 1], first, last)
+        prepared[number] = LineFragments.excerpt(source_lines[number - 1], first, last, compact=compact)
     snippets = {}
     characters_left = DECLARATION_CHARACTER_LIMIT
     character_clipped = False
@@ -367,26 +371,26 @@ def _record_key(record):
     return (record["path"], record["line"], record["start_line"], record["end_line"], record["reason"])
 
 
-def _file_text(path, lines, clipping):
-    result = [f"## {path}\n\n```text\n"]
+def _file_text(path, lines, clipping, *, compact=False):
+    result = [f"## {path}\n\n" if compact else f"## {path}\n\n```text\n"]
     previous = None
     for number, snippet in sorted(lines.items()):
-        if previous is not None and number > previous + 1:
+        if not compact and previous is not None and number > previous + 1:
             result.append("  ...\n")
         result.append(f"L{number}: {snippet.text()}\n")
         previous = number
     for record in sorted(clipping.values(), key=_record_key):
         result.append(f"  ... [declaration clipped: L{record['start_line']}-L{record['end_line']}; {record['reason']}]\n")
-    result.append("```\n\n")
+    result.append("\n" if compact else "```\n\n")
     return "".join(result)
 
 
-def _file_characters(path, lines, clipping):
+def _file_characters(path, lines, clipping, *, compact=False):
     """Count the exact Markdown without creating declaration/output strings."""
-    characters = len(f"## {path}\n\n```text\n") + len("```\n\n")
+    characters = len(f"## {path}\n\n") + 1 if compact else len(f"## {path}\n\n```text\n") + len("```\n\n")
     previous = None
     for number, snippet in sorted(lines.items()):
-        if previous is not None and number > previous + 1:
+        if not compact and previous is not None and number > previous + 1:
             characters += len("  ...\n")
         characters += len(f"L{number}: ") + snippet.rendered_characters() + 1
         previous = number
@@ -395,7 +399,7 @@ def _file_characters(path, lines, clipping):
     return characters
 
 
-def _render_complete_grouped(ranked, source_lines, budget):
+def _render_complete_grouped(ranked, source_lines, budget, *, compact=False):
     # One file's ranges at a time; sanitized source is held only by these
     # transient fragments and the independently byte-bounded source cache.
     # Retained output never exceeds the configured character budget, even when
@@ -415,18 +419,18 @@ def _render_complete_grouped(ranked, source_lines, budget):
         clipping = {}
         for tag in tags:
             for span in tag["declaration_spans"]:
-                snippets, record = _clip_span(span, original_lines, path)
+                snippets, record = _clip_span(span, original_lines, path, compact=compact)
                 for number, snippet in snippets.items():
                     selected[number] = selected[number].merge(snippet, original_lines[number - 1]) if number in selected else snippet
                 if record:
                     clipping[_record_key(record)] = record
-        total_characters += _file_characters(path, selected, clipping)
+        total_characters += _file_characters(path, selected, clipping, compact=compact)
         if total_characters > limit:
             overflowing = True
             chunks.clear()
             retained_records.clear()
         elif not overflowing:
-            chunks.append(_file_text(path, selected, clipping))
+            chunks.append(_file_text(path, selected, clipping, compact=True) if compact else _file_text(path, selected, clipping))
             retained_records.extend(clipping.values())
         # Do not keep a completed file's source ranges while counting the next.
         selected.clear()
@@ -440,21 +444,23 @@ def _render_complete_grouped(ranked, source_lines, budget):
     return "".join(chunks), ranked, sorted(retained_records, key=_record_key)
 
 
-def render_grouped(ranked, source_lines, budget, *, all_definitions=False):
+def render_grouped(ranked, source_lines, budget, *, all_definitions=False, max_definitions=None, compact=False):
     if all_definitions:
-        return _render_complete_grouped(ranked, source_lines, budget)
+        return _render_complete_grouped(ranked, source_lines, budget, compact=compact)
     files = {}
     clipping = {}
     costs = {}
     included = []
     total_characters = len(HEADER)
     for tag in ranked:
+        if max_definitions is not None and len(included) >= max_definitions:
+            break
         path = tag["path"]
         original_lines = source_lines(path)
         additions = {}
         records = {}
         for span in tag["declaration_spans"]:
-            snippets, record = _clip_span(span, original_lines, path)
+            snippets, record = _clip_span(span, original_lines, path, compact=compact)
             for line, snippet in snippets.items():
                 additions[line] = additions[line].merge(snippet, original_lines[line - 1]) if line in additions else snippet
             if record:
@@ -463,7 +469,7 @@ def render_grouped(ranked, source_lines, budget, *, all_definitions=False):
         for line, snippet in additions.items():
             candidate[line] = candidate[line].merge(snippet, original_lines[line - 1]) if line in candidate else snippet
         candidate_records = {**clipping.get(path, {}), **records}
-        candidate_cost = len(_file_text(path, candidate, candidate_records))
+        candidate_cost = _file_characters(path, candidate, candidate_records, compact=compact)
         new_total = total_characters - costs.get(path, 0) + candidate_cost
         if new_total <= budget * 4:
             files[path] = candidate
@@ -471,14 +477,18 @@ def render_grouped(ranked, source_lines, budget, *, all_definitions=False):
             costs[path] = candidate_cost
             total_characters = new_total
             included.append(tag)
-    text = HEADER + "".join(_file_text(path, files[path], clipping[path]) for path in sorted(files))
+    text = HEADER + "".join(_file_text(path, files[path], clipping[path], compact=True) if compact else _file_text(path, files[path], clipping[path]) for path in sorted(files))
     if not included and len(text) + len(EMPTY_MESSAGE) <= budget * 4:
         text += EMPTY_MESSAGE
     records = sorted((record for per_file in clipping.values() for record in per_file.values()), key=_record_key)
     return text, included, records
 
 
-def render_lines(ranked, source_lines, budget, *, all_definitions=False):
+def render_compact(ranked, source_lines, budget, *, all_definitions=False, max_definitions=None):
+    return render_grouped(ranked, source_lines, budget, all_definitions=all_definitions, max_definitions=max_definitions, compact=True)
+
+
+def render_lines(ranked, source_lines, budget, *, all_definitions=False, max_definitions=None):
     chunks = [HEADER]
     total_characters = len(HEADER)
     overflowing = False
@@ -486,6 +496,8 @@ def render_lines(ranked, source_lines, budget, *, all_definitions=False):
     included = []
     seen = set()
     for tag in ranked:
+        if max_definitions is not None and len(included) >= max_definitions:
+            break
         key = (tag["path"], tag["line"])
         if all_definitions:
             identity = tag["declaration_spans"][0]["identity"]
@@ -525,7 +537,9 @@ def render_lines(ranked, source_lines, budget, *, all_definitions=False):
 
 def rendering_metadata(map_format, clipping=()):
     return {
-        "format": map_format, "declaration_line_limit": DECLARATION_LINE_LIMIT,
+        "format": map_format,
+        "whitespace": ("leading whitespace removed, including multiline literal lines; declaration sketch, not verbatim source" if map_format == "compact" else "source indentation preserved" if map_format == "grouped" else "source line stripped; legacy 240-character snippet"),
+        "declaration_line_limit": DECLARATION_LINE_LIMIT,
         "declaration_character_limit": DECLARATION_CHARACTER_LIMIT,
         "clipped_declarations": list(clipping),
     }

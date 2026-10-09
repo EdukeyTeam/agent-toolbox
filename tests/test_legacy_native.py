@@ -171,10 +171,10 @@ class FixtureCase(unittest.TestCase):
         return {path.relative_to(self.source).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(self.source.rglob("*")) if path.is_file() and not path.is_symlink()}
 
     def rust(self, name, *arguments):
-        return subprocess.run([str(RUST_BINARY), str(self.source), "--output-dir", str(self.base / name), *([] if "--format" in arguments else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8")
+        return subprocess.run([str(RUST_BINARY), str(self.source), "--output-dir", str(self.base / name), *([] if any(arg.split("=", 1)[0] in ("--format", "--human-readable") for arg in arguments) else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8")
 
     def python(self, name, *arguments):
-        return subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.source), "--output-dir", str(self.base / name), *([] if "--format" in arguments else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8", env=python_environment())
+        return subprocess.run([sys.executable, str(SCRIPTS / "repo_map.py"), str(self.source), "--output-dir", str(self.base / name), *([] if any(arg.split("=", 1)[0] in ("--format", "--human-readable") for arg in arguments) else ["--format", "lines"]), *arguments], capture_output=True, text=True, encoding="utf-8", env=python_environment())
 
     def load(self, name, artifact):
         return json.loads((self.base / name / artifact).read_text(encoding="utf-8"))
@@ -202,7 +202,7 @@ class RustParityTests(FixtureCase):
         for key in ("files", "skipped", "fingerprint", "totals", "git", "revision", "dirty", "git_notes"):
             self.assertEqual(rust_inventory[key], python_inventory[key], f"{label}: inventory {key}")
         rust_meta, python_meta = self.load(f"rust-{label}", "map.meta.json"), self.load(f"python-{label}", "map.meta.json")
-        for key in ("status", "coverage", "inventory_summary", "truncated", "estimated_tokens", "estimator", "map_sha256", "working_copy_fingerprint", "fingerprint_scope", "descriptors", "unsupported_languages", "selection", "skipped", "parse_failures"):
+        for key in ("status", "coverage", "inventory_summary", "truncated", "estimated_tokens", "estimator", "map_sha256", "working_copy_fingerprint", "fingerprint_scope", "descriptors", "unsupported_languages", "selection", "skipped", "parse_failures", "rendering"):
             self.assertEqual(rust_meta[key], python_meta[key], f"{label}: metadata {key}")
         self.assertEqual(json.loads(rust.stdout), {**json.loads(python.stdout), "map": str(self.base / f"rust-{label}" / "repo-map.md"), "metadata": str(self.base / f"rust-{label}" / "map.meta.json")})
         return rust_meta, rust_map.decode("utf-8")
@@ -261,6 +261,52 @@ class RustParityTests(FixtureCase):
         self.assertIn("L2:   String render(\nL3:       String value,\nL4:       int count\nL5:   ) {", text)
         self.assertIn("L7: class Second {", text)
         self.assertNotIn("BODY_MUST_NOT_LEAK", text)
+
+    def test_compact_default_and_selection_caps_match_reference(self):
+        for label, args in (
+            ("compact", ["--format", "compact"]),
+            ("coverage", ["--format", "compact", "--coverage", "25"]),
+            ("subnormal", ["--format", "compact", "--coverage", "5e-324"]),
+            ("count", ["--format", "compact", "--max-definitions", "3"]),
+            ("human", ["--human-readable"]),
+        ):
+            with self.subTest(case=label):
+                meta, text = self.assert_same(label, args)
+                selected = meta["coverage"]["definitions_in_map"]
+                found = meta["coverage"]["definitions_found"]
+                self.assertLessEqual(selected, meta["selection"]["effective_max_definitions"])
+                self.assertEqual(meta["selection"]["coverage_percent"], selected * 100.0 / found)
+                if label == "subnormal":
+                    self.assertEqual(selected, 1)
+                if label != "human":
+                    self.assertNotIn("```text", text)
+                    self.assertNotIn("  ...\n", text)
+        for program, label, env in ((RUST_BINARY, "rust", os.environ), (sys.executable, "python", python_environment())):
+            command = [str(program)] + ([str(SCRIPTS / "repo_map.py")] if label == "python" else [])
+            output = self.base / (label + "-actual-default")
+            result = subprocess.run([*command, str(self.source), "--output-dir", str(output)], capture_output=True, text=True, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(self.load(label + "-actual-default", "map.meta.json")["rendering"]["format"], "compact")
+
+    def test_compact_removes_indentation_before_declaration_limits(self):
+        self.source = self.base / "indented-source"
+        self.source.mkdir()
+        self.write("Heavy.java", (" " * 9000 + "class Tiny {\n" + " " * 3000 + "void run(\n" + " " * 3000 + "String value,\n" + " " * 3000 + "int count\n" + " " * 3000 + ") {}\n}\n").encode())
+        for label, flags in (("ranked", []), ("all", ["--all-definitions"])):
+            meta, text = self.assert_same("indented-" + label, ["--format", "compact", "--budget", "256", *flags])
+            self.assertEqual(meta["coverage"]["definitions_in_map"], 2)
+            self.assertEqual(meta["rendering"]["clipped_declarations"], [])
+            self.assertIn("L1: class Tiny {\nL2: void run(\nL3: String value,\nL4: int count\nL5: ) {", text)
+
+    def test_selection_contract_rejections_do_not_create_artifacts(self):
+        cases = (["--coverage", "0"], ["--coverage", "nan"], ["--coverage", "inf"], ["--coverage", "101"], ["--max-definitions", "200001"], ["--coverage", "25", "--max-definitions", "3"], ["--all-definitions", "--coverage", "100"], ["--all-definitions", "--max-definitions", "3"], ["--human-readable", "--format", "grouped"], ["--human-readable=on"])
+        for index, args in enumerate(cases):
+            for runner, label in ((self.rust, "rust"), (self.python, "python")):
+                with self.subTest(case=index, program=label):
+                    name = f"invalid-selection-{label}-{index}"
+                    result = runner(name, *args)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertFalse((self.base / name).exists())
 
     def test_agreed_output_has_the_expected_content(self):
         meta, text = self.assert_same("content", [])
@@ -638,7 +684,7 @@ class DispatcherTests(FixtureCase):
                 metadata = json.loads((output / "map.meta.json").read_text(encoding="utf-8"))
                 self.assertEqual(metadata["dependencies"]["tree-sitter-c-sharp"], "0.23.5")
                 self.assertEqual(metadata["coverage"]["parsed_files"], 1)
-                self.assertIn("## csharp/Example.cs\n\n```text\nL1: class Example { public void Run() {", (output / "repo-map.md").read_text(encoding="utf-8"))
+                self.assertIn("## csharp/Example.cs\n\nL1: class Example { public void Run() {", (output / "repo-map.md").read_text(encoding="utf-8"))
                 caches = [json.loads(path.read_text(encoding="utf-8")) for path in (output / "cache").glob("*.json")]
                 self.assertEqual(len(caches), 1)
                 self.assertTrue(caches[0]["parser_version"].endswith(":0.23.5"))
