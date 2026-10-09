@@ -13,7 +13,7 @@ Validation uses separate workflows with GitHub's built-in `paths` filters. GitHu
 | [Plugin package](../.github/workflows/test-plugin.yml) | Any skill payload, plugin manifests, root license or ZIP builder changes. Skill Markdown is packaged, so its changes need this inexpensive Linux packaging check. |
 | [Workflow validation](../.github/workflows/validate-workflows.yml) | Workflow YAML or path-filter regression tests change. Uses checksum-pinned actionlint. |
 
-Each workflow also includes its own YAML, `.gitattributes` and `.gitignore`. The same ordered pattern list is shared by its PR and main-push triggers using a YAML anchor. `*` and `**` are glob patterns; an ordered `!` entry excludes a path. When at least one changed path remains included, the workflow runs. Shared inputs appear in every workflow that depends on them.
+Each workflow also includes its own YAML. A root `.gitignore` change alone starts no validation. Only Python and native validation include `.gitattributes`: its current rules preserve the exact vendor/license bytes checked against provenance manifests. If attribute rules expand to other runtime inputs, update the affected workflow filters. The same ordered pattern list is shared by its PR and main-push triggers using a YAML anchor. `*` and `**` are glob patterns; an ordered `!` entry excludes a path. When at least one changed path remains included, the workflow runs. Shared inputs appear in every workflow that depends on them.
 
 Typical cases:
 
@@ -30,7 +30,9 @@ Do not exclude all Markdown: runtime templates and bundled notices/licenses are 
 
 PR filters use GitHub's complete three-dot comparison, so code changes remain included when a later commit changes only docs. Main pushes use a two-dot comparison. These are GitHub-native comparisons, not custom Git diff logic. Each workflow can be dispatched manually to run its complete suite; dispatch the individual workflows when full validation is needed.
 
-New commits cancel superseded runs of the same workflow/PR. Concurrency includes the workflow name so independent suites cannot cancel one another. Main runs are not cancelled. The native release workflow retains its existing tag/manual publication triggers.
+GitHub evaluates at most the first 3,000 changed files for path filters. A larger PR can omit a relevant suite if its matching file falls outside that list. For such PRs, split the changes into smaller PRs or manually dispatch all six validation workflows on the PR's head branch (`gh workflow run <workflow-file> --ref <head-branch>`). Check that each run's head SHA equals the current PR head; a dispatch on `main` does not validate the PR. This is an explicit manual safeguard, not an automatic fallback router.
+
+New commits cancel superseded runs of the same workflow/PR. Concurrency includes the workflow name so independent suites cannot cancel one another. Running main workflows are not cancelled by newer commits. The native release workflow retains its existing tag/manual publication triggers.
 
 Native CI artifacts now come from `test-native.yml`. A documentation-only PR creates no new native artifacts; use a successful native run matching the explicit source SHA for `setup_native.py install --from-ci`.
 

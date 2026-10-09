@@ -12,8 +12,6 @@ on:
       - '!skills/legacy-codebase-workflows/scripts/legacy_tools.py'
       - 'tests/test_legacy_retrieval.py'
       - '.github/workflows/test-semantic.yml'
-      - '.gitattributes'
-      - '.gitignore'
   push:
     branches: [main]
     paths: *paths

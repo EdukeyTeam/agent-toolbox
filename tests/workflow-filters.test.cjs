@@ -62,7 +62,10 @@ const cases = [
   ['release index helper', ['scripts/create-legacy-release-manifest.py'], ['native', 'python']],
   ['distribution policy', [legacy + 'tool-distribution.json'], ['native', 'package', 'python']],
   ['embedded license', ['src/legacy-repo-map/licenses/manifest.json'], ['native']],
-  ['Git checkout policy', ['.gitattributes', '.gitignore'], ['native', 'node', 'package', 'python', 'semantic', 'workflow']],
+  ['root Git ignore rules', ['.gitignore'], []],
+  ['vendor checkout attributes', ['.gitattributes'], ['native', 'python']],
+  ['ignore rules with documentation', ['.gitignore', 'README.md'], []],
+  ['ignore rules with Rust code', ['.gitignore', 'src/legacy-repo-map/src/main.rs'], ['native']],
   ['irrelevant root assets', ['assets/logo.png'], []],
   ['mixed docs and Rust', ['docs/ci.md', 'src/legacy-repo-map/src/main.rs'], ['native']],
 ];

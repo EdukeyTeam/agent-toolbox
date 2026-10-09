@@ -12,8 +12,8 @@ on:
       - 'scripts/create-legacy-release-manifest.py'
       - 'tests/test_legacy_*.py'
       - '.github/workflows/test-python.yml'
+      # Vendor/license provenance checks depend on checkout bytes.
       - '.gitattributes'
-      - '.gitignore'
   push:
     branches: [main]
     paths: *paths

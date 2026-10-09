@@ -16,8 +16,8 @@ on:
       - 'LICENSE'
       - '.github/workflows/release-legacy-tools.yml'
       - '.github/workflows/test-native.yml'
+      # Vendor/license provenance checks depend on checkout bytes.
       - '.gitattributes'
-      - '.gitignore'
   push:
     branches: [main]
     paths: *paths

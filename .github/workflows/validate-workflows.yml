@@ -5,8 +5,6 @@ on:
     paths: &paths
       - '.github/workflows/**'
       - 'tests/workflow-filters.test.cjs'
-      - '.gitattributes'
-      - '.gitignore'
   push:
     branches: [main]
     paths: *paths

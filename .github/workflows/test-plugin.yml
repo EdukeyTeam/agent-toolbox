@@ -9,8 +9,6 @@ on:
       - 'scripts/build-claude-plugin.ps1'
       - 'LICENSE'
       - '.github/workflows/test-plugin.yml'
-      - '.gitattributes'
-      - '.gitignore'
   push:
     branches: [main]
     paths: *paths

@@ -14,8 +14,6 @@ on:
       - 'plugin.json'
       - '.claude-plugin/**'
       - '.github/workflows/**'
-      - '.gitattributes'
-      - '.gitignore'
   push:
     branches: [main]
     paths: *paths
