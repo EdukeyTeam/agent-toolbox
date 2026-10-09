@@ -1,19 +1,14 @@
-name: Test skills
+name: Test plugin package
 
 on:
   pull_request:
     paths: &paths
       - 'skills/**'
-      - '!skills/*/references/**'
-      - '!skills/legacy-codebase-workflows/**'
-      - 'skills/legacy-codebase-workflows/SKILL.md'
-      - 'tests/**/*.test.cjs'
-      - 'tests/**/*.test.js'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'plugin.json'
       - '.claude-plugin/**'
-      - '.github/workflows/**'
+      - 'plugin.json'
+      - 'scripts/build-claude-plugin.ps1'
+      - 'LICENSE'
+      - '.github/workflows/test-plugin.yml'
       - '.gitattributes'
       - '.gitignore'
   push:
@@ -29,15 +24,12 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
+  plugin-package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npm test
+      - name: Build and verify Claude plugin ZIP
+        shell: pwsh
+        run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation

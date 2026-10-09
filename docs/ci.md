@@ -1,49 +1,41 @@
 # Continuous integration scope
 
-`Test skills` starts on pull-request opening, reopening and new commits, on pushes to `main`, and on manual dispatch. A changed-path router then selects jobs. A title/body edit alone does not trigger the default PR event types.
+Validation uses separate workflows with GitHub's built-in `paths` filters. GitHub decides whether to create a run before allocating a runner: documentation-only changes outside packaged skills start no validation workflow. There is no changed-file script, preliminary routing job or aggregate completion job.
 
-## Jobs and their inputs
+## Workflows and their inputs
 
-| Job | Run when |
+| Workflow | Run when |
 |---|---|
-| `checks` | Always: determine scope, install the small Node test dependency, validate skill frontmatter/plugin manifests. Run all Node behavior tests only when their code, runtime templates, manifests, dependencies or tests change. |
-| `workflow-validation` | Workflow YAML or CI routing changes. Uses pinned actionlint. |
-| `test` (3 OS x 3 Python versions) | Legacy Python scripts/tests, parser/vendor inputs, distribution policy, bundled notices or standalone-build/release-index helpers change. Node tests no longer run nine times here. |
-| `semantic-retrieval` (Linux/Windows) | Retrieval backend, shared discovery/inference helpers, runtime files/locks, vector dependencies or retrieval tests change. New shared Python helpers conservatively select this job until classified. |
-| `native-artifacts` (3 OS) | Rust code/locks/embedded notices, bundled Python scripts/runtime/vendor files/licenses, parser requirements, distribution policy, standalone-build/release-index helpers, native tests or the release workflow change. |
-| `plugin-package` (Linux) | Any skill payload, plugin manifest or ZIP-builder change. Skill Markdown is copied into the plugin, so documentation changes still need this inexpensive packaging check. |
-| `ci-status` | Always: require `checks` and every selected job to succeed. Unselected jobs may be skipped; failed, cancelled or missing selected jobs fail this status. |
+| [Node tests](../.github/workflows/test-skills.yml) | Skill metadata, non-legacy skill runtime code/assets, Node tests/dependencies, plugin manifests or workflow configuration changes. Runs once on Linux. Skill references and legacy runtime inputs are excluded. |
+| [Legacy Python](../.github/workflows/test-python.yml) | Legacy runtime/vendor/parser/distribution inputs, Python tests or standalone-build/release-index helpers change. Preserves the three-OS, three-Python-version matrix. Skill instructions, references and intake templates are excluded. |
+| [Semantic retrieval](../.github/workflows/test-semantic.yml) | Retrieval scripts/runtime/locks, shared discovery/inference helpers or retrieval tests change. Mapper-only scripts are excluded. Preserves real Linux/Windows inference checks. |
+| [Native artifacts](../.github/workflows/test-native.yml) | Rust code/locks/embedded notices, bundled legacy runtime/vendor/license/distribution inputs, standalone builders, native tests or the native release workflow change. Preserves three-platform builds and artifact retention. Contributor README, skill instructions, references and intake templates are excluded. |
+| [Plugin package](../.github/workflows/test-plugin.yml) | Any skill payload, plugin manifests, root license or ZIP builder changes. Skill Markdown is packaged, so its changes need this inexpensive Linux packaging check. |
+| [Workflow validation](../.github/workflows/validate-workflows.yml) | Workflow YAML or path-filter regression tests change. Uses checksum-pinned actionlint. |
 
-Routing lives in [ci-changes.cjs](../scripts/ci-changes.cjs), with [behavioral tests](../tests/ci-changes.test.cjs). Update its dependency rules when adding test/runtime inputs. Test-workflow/router changes, unknown source inputs and uncertain comparisons select all jobs. The separate native release workflow still runs only for its existing tag/manual publication events; this change does not alter publication.
+Each workflow also includes its own YAML, `.gitattributes` and `.gitignore`. The same ordered pattern list is shared by its PR and main-push triggers using a YAML anchor. `*` and `**` are glob patterns; an ordered `!` entry excludes a path. When at least one changed path remains included, the workflow runs. Shared inputs appear in every workflow that depends on them.
 
 Typical cases:
 
-- Root/repository documentation: `checks` and `ci-status`, two Linux jobs.
-- Skill instructions/references: those two plus `plugin-package`, three Linux jobs. No Python matrix, embedding downloads or native compilation.
-- Rust-only changes: the baseline plus three native builds; no Python-version matrix or embedding downloads.
-- Mapper-only Python: baseline plus Python/native validation and plugin packaging; no real semantic inference unless a shared retrieval dependency changes.
-- CI routing/test-workflow changes: full validation of the newly wired pipeline.
+- Root/repository documentation (`README.md`, `AGENTS.md`, `docs/**`): no validation runs.
+- Skill `SKILL.md`: one Node metadata/behavior run plus one plugin packaging run.
+- Skill references or legacy intake templates: plugin packaging only.
+- Runtime Markdown templates under `skills/write-agents-md/assets/`: Node tests and plugin packaging.
+- Rust-only code changes: three native builds; no Python matrix or embedding downloads.
+- Mapper-only Python changes: Python/native validation and plugin packaging; no real semantic inference.
 
-File extension alone is insufficient. A Markdown runtime template under `skills/write-agents-md/assets/` feeds Node tests; `THIRD_PARTY.md` and vendor documentation/notices are bundled into native artifacts. They select the corresponding tests even though they are Markdown.
+Do not exclude all Markdown: runtime templates and bundled notices/licenses are genuine inputs. Add new executable/input directories to their dependent workflow filters in the same change. Positive inclusion lists deliberately do not run for unrelated files; the old fallback that tested every unknown path has been removed.
 
-## Comparison and completion rules
+## Runs and verification
 
-Pull requests use the complete three-dot base/head comparison against the merge base. A PR containing code changes still runs their tests when its latest commit changes only docs; otherwise an earlier failing code commit could receive a green result without being checked. Main pushes use the event's before/after two-dot comparison, including every commit in the push.
+PR filters use GitHub's complete three-dot comparison, so code changes remain included when a later commit changes only docs. Main pushes use a two-dot comparison. These are GitHub-native comparisons, not custom Git diff logic. Each workflow can be dispatched manually to run its complete suite; dispatch the individual workflows when full validation is needed.
 
-The checkout includes full history. Git's NUL-separated diff includes deleted paths and both sides of renames without REST pagination or the workflow path-filter 300-file limit. Initial/force pushes with missing history, malformed event data or unknown events fall back to all checks. Manual dispatch deliberately runs everything. All emitted outputs are Boolean flags, not shell-interpolated filenames.
+New commits cancel superseded runs of the same workflow/PR. Concurrency includes the workflow name so independent suites cannot cancel one another. Main runs are not cancelled. The native release workflow retains its existing tag/manual publication triggers.
 
-Job-level conditions skip unnecessary work without suppressing the whole workflow. `ci-status` provides a stable completion check; if required-status rules are configured later, use that aggregate rather than every matrix instance. Repository protection settings are not changed by this workflow update.
+Native CI artifacts now come from `test-native.yml`. A documentation-only PR creates no new native artifacts; use a successful native run matching the explicit source SHA for `setup_native.py install --from-ci`.
 
-A newer commit cancels superseded runs of the same PR. Main runs are not cancelled. Selected groups/counts appear in the job summary. Generation of native CI artifacts happens only when native validation is selected; a docs-only run is not a source for `setup_native.py install --from-ci` packages.
+The repository currently has no required-status protection or rulesets. If those are introduced, account for workflows omitted by path filters: requiring their checks unconditionally can leave docs-only PRs pending. This change does not alter protection settings.
 
-Run locally after changing routing:
+Validate changes with `npm ci`, `npm test` and the workflow's pinned actionlint version. [Path-filter regression tests](../tests/workflow-filters.test.cjs) cover skipped documentation, required shared inputs, ordered exclusions, PR/push consistency and manual runs. They check configuration locally; GitHub remains responsible for creating runs. Verify CI at the current PR head SHA before merging.
 
-```bash
-npm ci
-```
-
-```bash
-npm test
-```
-
-Validate the resulting workflow with the pinned actionlint version used in the workflow. On GitHub, bind results to the current PR head SHA; previous-run success is not evidence for new changes.
+References: [GitHub path filters and diff behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore), [YAML anchors](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations#yaml-anchors-and-aliases).

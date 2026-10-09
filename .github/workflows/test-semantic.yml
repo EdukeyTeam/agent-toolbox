@@ -1,0 +1,68 @@
+name: Test semantic retrieval
+
+on:
+  pull_request:
+    paths: &paths
+      - 'skills/legacy-codebase-workflows/scripts/**'
+      - '!skills/legacy-codebase-workflows/scripts/repo_map.py'
+      - '!skills/legacy-codebase-workflows/scripts/repo_render.py'
+      - '!skills/legacy-codebase-workflows/scripts/export_repo_map.py'
+      - '!skills/legacy-codebase-workflows/scripts/setup_native.py'
+      - '!skills/legacy-codebase-workflows/scripts/check_citations.py'
+      - '!skills/legacy-codebase-workflows/scripts/legacy_tools.py'
+      - 'tests/test_legacy_retrieval.py'
+      - '.github/workflows/test-semantic.yml'
+      - '.gitattributes'
+      - '.gitignore'
+  push:
+    branches: [main]
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  semantic-retrieval:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '12.4.1'
+      - name: Prepare optional inference runtime
+        shell: bash
+        run: |
+          legacy_temp="${RUNNER_TEMP//\\//}"
+          mkdir -p "$legacy_temp/legacy-inference"
+          cp skills/legacy-codebase-workflows/scripts/retrieval/package.json skills/legacy-codebase-workflows/scripts/retrieval/pnpm-lock.yaml skills/legacy-codebase-workflows/scripts/retrieval/pnpm-workspace.yaml "$legacy_temp/legacy-inference/"
+          pnpm install --dir "$legacy_temp/legacy-inference" --frozen-lockfile
+      - name: Install optional vector adapter and pinned Context7 client
+        shell: bash
+        run: |
+          legacy_temp="${RUNNER_TEMP//\\//}"
+          python -m pip install -r skills/legacy-codebase-workflows/scripts/requirements-retrieval.txt
+          mkdir -p "$legacy_temp/ctx7-cli"
+          printf '{"private":true,"dependencies":{"ctx7":"0.5.13"}}\n' > "$legacy_temp/ctx7-cli/package.json"
+          pnpm install --dir "$legacy_temp/ctx7-cli" --ignore-scripts
+      - name: Test actual local embeddings and hybrid retrieval
+        env:
+          LEGACY_REQUIRE_SQLITE_VEC: '1'
+          LEGACY_RETRIEVAL_TEST_RUNTIME: ${{ runner.temp }}/legacy-inference
+          LEGACY_RETRIEVAL_TEST_CACHE: ${{ runner.temp }}/legacy-model-cache
+          LEGACY_CTX7_CLI: ${{ runner.temp }}/ctx7-cli/node_modules/ctx7/dist/index.js
+        run: python -m unittest discover -s tests -p test_legacy_retrieval.py -v
