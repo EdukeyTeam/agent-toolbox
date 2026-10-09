@@ -1,0 +1,37 @@
+name: Test plugin package
+
+on:
+  pull_request:
+    paths: &paths
+      - 'skills/**'
+      - '.claude-plugin/**'
+      - 'plugin.json'
+      - 'scripts/build-claude-plugin.ps1'
+      - 'tests/test-plugin-builder.ps1'
+      - 'LICENSE'
+      - '.github/workflows/test-plugin.yml'
+  push:
+    branches: [main]
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plugin-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Test plugin builder validation
+        shell: pwsh
+        run: ./tests/test-plugin-builder.ps1
+      - name: Build and verify Claude plugin ZIP
+        shell: pwsh
+        run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation

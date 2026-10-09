@@ -1,0 +1,41 @@
+name: Validate workflows
+
+on:
+  pull_request:
+    paths: &paths
+      - '.github/workflows/**'
+      - 'tests/workflow-filters.test.cjs'
+  push:
+    branches: [main]
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  workflow-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate workflow expressions with pinned actionlint
+        shell: python
+        run: |
+          import hashlib, io, os, subprocess, tarfile, urllib.request
+          from pathlib import Path
+          url = 'https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz'
+          with urllib.request.urlopen(url, timeout=60) as response:
+              archive = response.read(16 * 1024 * 1024 + 1)
+          assert len(archive) <= 16 * 1024 * 1024, 'actionlint archive exceeds download bound'
+          assert hashlib.sha256(archive).hexdigest() == '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8', 'actionlint archive checksum mismatch'
+          program = Path(os.environ['RUNNER_TEMP']) / 'actionlint-1.7.12'
+          with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as bundle:
+              member = bundle.getmember('actionlint')
+              assert member.isfile(), 'actionlint archive entry must be a regular file'
+              program.write_bytes(bundle.extractfile(member).read())
+          program.chmod(0o755)
+          subprocess.run([str(program), '-no-color', '-shellcheck=', '-pyflakes='], check=True)
