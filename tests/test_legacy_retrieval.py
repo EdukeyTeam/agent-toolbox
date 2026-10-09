@@ -111,6 +111,34 @@ class RetrievalTests(unittest.TestCase):
                     backend.index(self.root, database, "/local/billing", self.docs, None, None)
                 self.assertEqual(database.read_bytes(), before)
 
+    def test_git_metadata_does_not_consume_open_protocol_stdin(self):
+        # Run a real stdin-reading subprocess while the parent's MCP-like pipe
+        # stays open. Inherited stdin would block; DEVNULL must produce EOF.
+        program = (
+            "import importlib.util,pathlib,subprocess,sys;"
+            f"p=pathlib.Path({str(SCRIPT.parent / 'repo_files.py')!r});"
+            "s=importlib.util.spec_from_file_location('inventory',p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+            "real=subprocess.run\n"
+            "def reader(*args,**kwargs):\n"
+            " kwargs['timeout']=2\n"
+            " return real([sys.executable,'-c','import sys;sys.stdin.read();print(\"eof\")'],**kwargs)\n"
+            "m.subprocess.run=reader\n"
+            "r=m._git(pathlib.Path('.'),'rev-parse');assert r.stdout.strip()==b'eof';print('detached',flush=True)\n"
+        )
+        proc = subprocess.Popen([sys.executable, "-c", program], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=self.root)
+        try:
+            proc.stdin.write(b"protocol remains open\n")
+            proc.stdin.flush()
+            proc.wait(timeout=8)
+            self.assertEqual(proc.returncode, 0, proc.stderr.read().decode())
+            self.assertEqual(proc.stdout.read().strip(), b"detached")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            for stream in (proc.stdin, proc.stdout, proc.stderr):
+                stream.close()
+
     def test_exclusions_are_saved_reapplied_and_scope_changes_incremental(self):
         (self.root / "generated").mkdir()
         (self.root / "generated/asset.js").write_text("obsolete generated content", encoding="utf-8")

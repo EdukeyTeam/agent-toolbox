@@ -40,7 +40,9 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
         env.pop("GIT_LITERAL_PATHSPECS", None)  # This command accepts literal filenames, not pathspecs.
     command = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), *args]
     try:
-        return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, check=False)
+        return subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, check=False, timeout=10)
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("Git metadata command timed out") from exc
     except FileNotFoundError:
         return subprocess.CompletedProcess(command, 127, stdout=b"", stderr=b"")
 
@@ -159,7 +161,7 @@ def _candidates(root: Path, git_repo: bool, subtrees, *, max_discovery_entries=N
         args = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"]
         if subtrees:
             args.extend(["--", *subtrees])
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
+        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
         try:
             buffer = b""
             seen = set()
