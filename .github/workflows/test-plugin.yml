@@ -7,6 +7,7 @@ on:
       - '.claude-plugin/**'
       - 'plugin.json'
       - 'scripts/build-claude-plugin.ps1'
+      - 'tests/test-plugin-builder.ps1'
       - 'LICENSE'
       - '.github/workflows/test-plugin.yml'
   push:
@@ -28,6 +29,9 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - name: Test plugin builder validation
+        shell: pwsh
+        run: ./tests/test-plugin-builder.ps1
       - name: Build and verify Claude plugin ZIP
         shell: pwsh
         run: ./scripts/build-claude-plugin.ps1 -OutputDirectory $env:RUNNER_TEMP -SkipClaudeValidation

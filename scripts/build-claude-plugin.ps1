@@ -69,7 +69,6 @@ $OutputDirectory = (Resolve-Path -LiteralPath $OutputDirectory).Path
 
 $skillNames = @(
     Get-ChildItem -LiteralPath $SkillsRoot -Directory |
-        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'SKILL.md') -PathType Leaf } |
         ForEach-Object { $_.Name } | Sort-Object
 )
 if ($skillNames.Count -eq 0) { throw "Plugin '$PluginName' has no skills under skills/." }
