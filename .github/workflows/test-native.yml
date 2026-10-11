@@ -1,0 +1,93 @@
+name: Test native artifacts
+
+on:
+  pull_request:
+    paths: &paths
+      - 'src/legacy-repo-map/**'
+      - '!src/legacy-repo-map/README.md'
+      - 'skills/legacy-codebase-workflows/**'
+      - '!skills/legacy-codebase-workflows/SKILL.md'
+      - '!skills/legacy-codebase-workflows/README.md'
+      - '!skills/legacy-codebase-workflows/references/**'
+      - '!skills/legacy-codebase-workflows/templates/**'
+      - 'scripts/build-legacy-tools.py'
+      - 'scripts/create-legacy-release-manifest.py'
+      - 'tests/test_legacy_native.py'
+      - 'LICENSE'
+      - '.github/workflows/release-legacy-tools.yml'
+      - '.github/workflows/test-native.yml'
+      # Vendor/license provenance checks depend on checkout bytes.
+      - '.gitattributes'
+  push:
+    branches: [main]
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  native-artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/../legacy-cargo-target
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test native repository mapper
+        run: cargo test --locked --manifest-path src/legacy-repo-map/Cargo.toml
+      - name: Build standalone tools with licenses and smoke checks
+        run: python scripts/build-legacy-tools.py --output-dir "${{ runner.temp }}/legacy-artifacts" --deps-dir "${{ runner.temp }}/legacy-map-deps" --tools-dir "${{ runner.temp }}/legacy-build-deps" --install --prepare-host-licenses --require-parity
+      - name: Locate host-specific binaries
+        shell: python
+        run: |
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "legacy-artifacts"
+          manifest = json.loads((root / "build-manifest.json").read_text())
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+              for artifact in manifest["artifacts"]:
+                  key = "LEGACY_TOOLS_BIN" if artifact["artifact"].startswith("legacy-tools-") else "LEGACY_REPO_MAP_BIN"
+                  output.write(f"{key}={root / artifact['artifact'] / artifact['program']}\n")
+      - name: Test actual binaries against the Python source
+        env:
+          LEGACY_MAP_DEPS: ${{ runner.temp }}/legacy-map-deps
+          LEGACY_BUILD_TOOLS: ${{ runner.temp }}/legacy-build-deps
+        run: python -m unittest discover -s tests -p test_legacy_native.py -v
+      - name: Prepare a source-identified per-platform CI install index
+        env:
+          CI_RUN_HEAD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: python
+        run: |
+          import os, shutil, subprocess, sys
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          artifacts, index = root / 'legacy-artifacts', root / 'legacy-ci-index'
+          subprocess.run([sys.executable, 'scripts/create-legacy-release-manifest.py', 'prepare', '--artifact-dir', str(artifacts), '--output-dir', str(index), '--source-commit', os.environ['GITHUB_SHA'], '--ci-run-head-commit', os.environ['CI_RUN_HEAD_COMMIT'], '--ci-run-id', os.environ['GITHUB_RUN_ID']], check=True)
+          shutil.copy2(index / 'legacy-tools-release.json', artifacts / 'legacy-tools-release.json')
+          for path in index.glob('build-manifest.*.json'):
+              shutil.copy2(path, artifacts / path.name)
+      - name: Retain reviewable native artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: legacy-tools-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/legacy-artifacts/*.tar.gz
+            ${{ runner.temp }}/legacy-artifacts/*.zip
+            ${{ runner.temp }}/legacy-artifacts/SHA256SUMS
+            ${{ runner.temp }}/legacy-artifacts/build-manifest.json
+            ${{ runner.temp }}/legacy-artifacts/legacy-tools-release.json
+            ${{ runner.temp }}/legacy-artifacts/build-manifest.*.json
+          if-no-files-found: error
+          retention-days: 14
