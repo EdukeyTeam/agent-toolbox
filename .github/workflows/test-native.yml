@@ -22,6 +22,11 @@ on:
     branches: [main]
     paths: *paths
   workflow_dispatch:
+    inputs:
+      include_macos:
+        description: Also run the macOS jobs (macOS minutes cost ten times the Linux rate)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -35,7 +40,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+# macOS is opt-in (ten times the Linux rate): a manual run with include_macos, or repository variable TEST_MACOS=true.
+        os: ${{ fromJSON((vars.TEST_MACOS == 'true' || inputs.include_macos == true) && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest","windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/../legacy-cargo-target
