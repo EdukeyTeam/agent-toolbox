@@ -7,9 +7,9 @@ Validation uses separate workflows with GitHub's built-in `paths` filters. GitHu
 | Workflow | Run when |
 |---|---|
 | [Node tests](../.github/workflows/test-skills.yml) | Skill metadata, non-legacy skill runtime code/assets, Node tests/dependencies, plugin manifests or workflow configuration changes. Runs once on Linux. Skill references and legacy runtime inputs are excluded. |
-| [Legacy Python](../.github/workflows/test-python.yml) | Legacy runtime/vendor/parser/distribution inputs, Python tests or standalone-build/release-index helpers change. Preserves the three-OS, three-Python-version matrix. Skill instructions, references and intake templates are excluded. |
+| [Legacy Python](../.github/workflows/test-python.yml) | Legacy runtime/vendor/parser/distribution inputs, Python tests or standalone-build/release-index helpers change. Runs the three-Python-version matrix on Linux and Windows; macOS is opt-in (a manual run with `include_macos`, or the repository variable `TEST_MACOS=true`). Skill instructions, references and intake templates are excluded. |
 | [Semantic retrieval](../.github/workflows/test-semantic.yml) | Retrieval scripts/runtime/locks, shared discovery/inference helpers or retrieval tests change. Mapper-only scripts are excluded. Preserves real Linux/Windows inference checks. |
-| [Native artifacts](../.github/workflows/test-native.yml) | Rust code/locks/embedded notices, bundled legacy runtime/vendor/license/distribution inputs, standalone builders, native tests or the native release workflow change. Preserves three-platform builds and artifact retention. Contributor README, skill instructions, references and intake templates are excluded. |
+| [Native artifacts](../.github/workflows/test-native.yml) | Rust code/locks/embedded notices, bundled legacy runtime/vendor/license/distribution inputs, standalone builders, native tests or the native release workflow change. Builds on Linux and Windows and keeps artifact retention; the macOS build is opt-in the same way (`include_macos` or `TEST_MACOS=true`). The release workflow still builds all three platforms. Contributor README, skill instructions, references and intake templates are excluded. |
 | [Plugin package](../.github/workflows/test-plugin.yml) | Any skill payload, plugin manifests, root license, ZIP builder or its regression tests change. Skill Markdown is packaged, so its changes need this inexpensive Linux packaging check. The builder rejects every skill folder without `SKILL.md`; reference-only additions therefore cannot silently bypass entrypoint validation. |
 | [Workflow validation](../.github/workflows/validate-workflows.yml) | Workflow YAML or path-filter regression tests change. Uses checksum-pinned actionlint. |
 
@@ -21,7 +21,7 @@ Typical cases:
 - Skill `SKILL.md`: one Node metadata/behavior run plus one plugin packaging run.
 - Skill references or legacy intake templates: plugin packaging only.
 - Runtime Markdown templates under `skills/write-agents-md/assets/`: Node tests and plugin packaging.
-- Rust-only code changes: three native builds; no Python matrix or embedding downloads.
+- Rust-only code changes: two native builds (three with the macOS opt-in); no Python matrix or embedding downloads.
 - Mapper-only Python changes: Python/native validation and plugin packaging; no real semantic inference.
 
 Do not exclude all Markdown: runtime templates and bundled notices/licenses are genuine inputs. Add new executable/input directories to their dependent workflow filters in the same change. Positive inclusion lists deliberately do not run for unrelated files; the old fallback that tested every unknown path has been removed.
