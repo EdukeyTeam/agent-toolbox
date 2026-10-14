@@ -54,7 +54,7 @@ The read script blanks fields whose names mark them as secrets, but it cannot re
 export CLOUDFLARE_OUTPUT_FILTER="$HOME/bin/redact"
 ```
 
-On Windows, set it as a user environment variable (`setx CLOUDFLARE_OUTPUT_FILTER "C:\Tools\redact.exe"`). If the filter is set but fails, the response is not printed at all, so a broken filter never lets an unfiltered secret through.
+`export` sets it for the current shell only; add the line to your shell profile (`~/.bashrc`, `~/.zshrc`) to keep it. On Windows, `setx CLOUDFLARE_OUTPUT_FILTER "C:\Tools\redact.exe"` stores it for programs started afterwards, so restart the terminal and the agent; for the current PowerShell session also run `$env:CLOUDFLARE_OUTPUT_FILTER = "C:\Tools\redact.exe"`. Until an agent is restarted it does not see the setting, and its reads stay unfiltered. If the filter is set but fails, the response is not printed at all, so a broken filter never lets an unfiltered secret through.
 
 ## Optional: let the agent apply approved changes
 
