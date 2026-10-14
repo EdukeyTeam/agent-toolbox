@@ -137,6 +137,9 @@ test('cookie and header values in rule expressions are masked by default', async
     'http.request.headers["x-key"][0] eq r#"abc123"#',
     'http.request.headers["x-key"][0] eq r#"abc123"quoted"#',
     'http.request.cookies["sid"][0] in {r"abc123" "def456"}',
+    'http.request.headers["x-key"][0] eq r####"abc123"#"####',
+    'http.request.headers["x-key"][0] in {r"abc}123" "def456"}',
+    'http.request.headers["x-key"][0] eq "abc\\"123"',
   ]) {
     const masked = maskExpression(expression);
     assert.doesNotMatch(masked, /abc123|def456/, expression);
@@ -333,6 +336,18 @@ test('cf-apply accepts successful answers without the standard envelope', async 
   const { fetchImpl } = fakeFetch(() => ({ body: {} }));
   assert.equal(await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), 0);
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).api_success, true);
+});
+
+test('cf-apply hides listed values in the summary it prints before sending', async t => {
+  const { applyMain } = await load('cf-apply.mjs');
+  const { dir, env } = workspace(t, { write: true });
+  const listed = 'shared-key-0123456789';
+  fs.writeFileSync(path.join(dir, 'redact.txt'), `${listed}\n`);
+  const file = stage(dir, change({ summary: `Rotate ${listed}`, blast_radius: `rules using ${listed}` }));
+  const { fetchImpl } = fakeFetch();
+  const stdout = sink();
+  assert.equal(await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout }), 0);
+  assert.doesNotMatch(stdout.text(), new RegExp(listed));
 });
 
 test('cf-apply records a rejected change and exits non-zero', async t => {

@@ -119,32 +119,78 @@ export function resolveApiUrl(input, accountId = '') {
 // with (a bypass cookie, a shared header key). Those literals are replaced with a short
 // fingerprint, so an agent can still tell whether two rules use the same value without seeing
 // it. Other text in an expression (paths, hosts, user agents) is left alone.
-// A quoted string, or a raw string r"...", r#"..."# and so on (up to three #, which covers
-// any realistic rule).
-const STRING = String.raw`(?:"(?:[^"\\]|\\.)*"|r###"[\s\S]*?"###|r##"[\s\S]*?"##|r#"[\s\S]*?"#|r"[^"]*")`;
-const SECRET_FIELD = String.raw`(?:http\.cookie|http\.request\.(?:cookies|headers)\[\s*${STRING}\s*\](?:\[(?:\d+|\*)\])?)`;
-const COMPARE = String.raw`(?:\s+(?:contains|eq|ne|matches|wildcard|strict\s+wildcard)\s+|\s*(?:==|!=|~)\s*)`;
-const SECRET_COMPARISON = new RegExp(String.raw`(${SECRET_FIELD})(${COMPARE})(${STRING})`, 'g');
-const SECRET_SET = new RegExp(String.raw`(${SECRET_FIELD})(\s+in\s+)\{([^}]*)\}`, 'g');
+const NAME = String.raw`(?:"(?:[^"\\]|\\.)*"|r#*"[^"]*"#*)`;
+const SECRET_FIELD = String.raw`(?:http\.cookie|http\.request\.(?:cookies|headers)\[\s*${NAME}\s*\](?:\[(?:\d+|\*)\])?)`;
+const BEFORE_COMPARED_VALUE = new RegExp(String.raw`(${SECRET_FIELD})(?:\s+(?:contains|eq|ne|matches|wildcard|strict\s+wildcard)\s+|\s*(?:==|!=|~)\s*)$`);
+const BEFORE_SET = new RegExp(String.raw`(${SECRET_FIELD})\s+in\s*$`);
 const EXPRESSION_KEY = /expression$/i;
 
 export const fingerprint = text => `[redacted:${createHash('sha256').update(text).digest('hex').slice(0, 4)}]`;
 
-function maskLiteral(field, literal) {
-  // Keep the delimiters ("..." or r#"..."#) and replace only what is between them.
-  const [, open, inner, close] = literal.match(/^(r#*"|")([\s\S]*)("#*)$/);
-  if (field === 'http.cookie' && inner.includes('=')) {
-    // "name=value; other=value": keep the cookie names, hide the values.
-    return `${open}${inner.replace(/=([^;]+)/g, (_, cookieValue) => `=${fingerprint(cookieValue.trim())}`)}${close}`;
+// Finds every string literal the way the rules language reads them: "..." with backslash
+// escapes, and raw strings r"...", r#"..."#, r##"..."## and so on, closed only by a quote
+// followed by the same number of #. Also records, for each literal, the inline set { ... }
+// it sits in, so braces inside a literal never end a set.
+function scanLiterals(expression) {
+  const literals = [];
+  let setStart = -1;
+  for (let i = 0; i < expression.length; i += 1) {
+    const char = expression[i];
+    let open = null;
+    if (char === '"') {
+      open = '"';
+    } else if (char === 'r' && !/[\w.]/.test(expression[i - 1] ?? '')) {
+      open = /^r#*"/.exec(expression.slice(i, i + 260))?.[0] ?? null;
+    }
+    if (open) {
+      const contentStart = i + open.length;
+      let end;
+      let close;
+      if (open === '"') {
+        let j = contentStart;
+        while (j < expression.length && expression[j] !== '"') j += expression[j] === '\\' ? 2 : 1;
+        end = j;
+        close = '"';
+      } else {
+        close = `"${'#'.repeat(open.length - 2)}`;
+        end = expression.indexOf(close, contentStart);
+        if (end === -1) end = expression.length;
+      }
+      literals.push({ start: i, contentStart, contentEnd: end, end: end + close.length, open, close, setStart });
+      i = end + close.length - 1;
+    } else if (char === '{') {
+      setStart = i;
+    } else if (char === '}') {
+      setStart = -1;
+    }
   }
-  return inner === '' ? literal : `${open}${fingerprint(inner)}${close}`;
+  return literals;
+}
+
+function maskContent(field, content) {
+  if (content === '') return content;
+  if (field === 'http.cookie' && content.includes('=')) {
+    // "name=value; other=value": keep the cookie names, hide the values.
+    return content.replace(/=([^;]+)/g, (_, cookieValue) => `=${fingerprint(cookieValue.trim())}`);
+  }
+  return fingerprint(content);
 }
 
 export function maskExpression(expression) {
-  return expression
-    .replace(SECRET_COMPARISON, (_, field, operator, literal) => `${field}${operator}${maskLiteral(field, literal)}`)
-    .replace(SECRET_SET, (_, field, operator, members) =>
-      `${field}${operator}{${members.replace(new RegExp(STRING, 'g'), literal => maskLiteral(field, literal))}}`);
+  let output = '';
+  let copied = 0;
+  for (const literal of scanLiterals(expression)) {
+    const before = expression.slice(0, literal.start);
+    const compared = BEFORE_COMPARED_VALUE.exec(before);
+    const inSet = literal.setStart >= 0 ? BEFORE_SET.exec(expression.slice(0, literal.setStart)) : null;
+    const field = (compared ?? inSet)?.[1];
+    if (!field) continue;
+    const content = expression.slice(literal.contentStart, literal.contentEnd);
+    const fieldName = field.startsWith('http.cookie') ? 'http.cookie' : field;
+    output += expression.slice(copied, literal.contentStart) + maskContent(fieldName, content);
+    copied = literal.contentEnd;
+  }
+  return output + expression.slice(copied);
 }
 
 // Blanks values whose field NAME suggests a secret, masks cookie and header values inside rule

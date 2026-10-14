@@ -175,9 +175,10 @@ async function applyLocked(file, {
   }
 
   await refuseNsRecords({ method, url, body, token: tokens.CF_TOKEN_WRITE, fetchImpl });
-
-  stdout.write(`Cloudflare change: ${change.summary}\n  category: ${change.category}\n  blast radius: ${change.blast_radius}\n  ${method} ${url}\n`);
+  // Load every value that must never be printed before printing anything about the change.
   const secrets = secretValues(tokens, env);
+
+  stdout.write(redact(`Cloudflare change: ${change.summary}\n  category: ${change.category}\n  blast radius: ${change.blast_radius}\n  ${method} ${url}\n`, secrets));
   const record = outcome => {
     const stamped = { ...change, applied_at: now().toISOString(), ...outcome };
     const temporary = `${file}.tmp`;
