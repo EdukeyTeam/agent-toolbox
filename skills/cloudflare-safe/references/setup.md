@@ -46,6 +46,16 @@ The skill tells the agent never to open the credentials file. Back that up with 
 
 Other agents have equivalent ignore or deny settings; use them for the same path.
 
+## Optional: filter the output
+
+The read script blanks fields whose names mark them as secrets, but it cannot recognise a secret inside ordinary text, such as a cookie value written into a WAF rule expression. If you have a tool that can, point `CLOUDFLARE_OUTPUT_FILTER` at it: a shell command that reads the response on standard input and writes the filtered text to standard output. The scripts then pipe everything they print from the API through it.
+
+```bash
+export CLOUDFLARE_OUTPUT_FILTER="$HOME/bin/redact"
+```
+
+On Windows, set it as a user environment variable (`setx CLOUDFLARE_OUTPUT_FILTER "C:\Tools\redact.exe"`). If the filter is set but fails, the response is not printed at all, so a broken filter never lets an unfiltered secret through.
+
 ## Optional: let the agent apply approved changes
 
 Skip this unless you have decided you want it. With only a read token, the worst a confused or manipulated agent can do is read your configuration.

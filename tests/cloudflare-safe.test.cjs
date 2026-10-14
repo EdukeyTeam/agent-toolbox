@@ -371,6 +371,44 @@ test('cf-apply treats a response that breaks off, or any unexpected error, as an
   }
 });
 
+test('the output filter is applied when set and fails closed', async t => {
+  const { readMain } = await load('cf-read.mjs');
+  const { dir, env } = workspace(t);
+  const upper = path.join(dir, 'upper.cjs');
+  fs.writeFileSync(upper, "let s = ''; process.stdin.on('data', d => { s += d; }).on('end', () => process.stdout.write(s.toUpperCase()));");
+  const broken = path.join(dir, 'broken.cjs');
+  fs.writeFileSync(broken, 'process.exit(3);');
+  const filter = script => `"${process.execPath}" "${script}"`;
+  const { fetchImpl } = fakeFetch(() => ({ body: { success: true, errors: [], result: { name: 'example.com' } } }));
+
+  const plain = sink();
+  await readMain({ argv: ['zones'], env, fetchImpl, stdout: plain });
+  assert.match(plain.text(), /example\.com/);
+
+  const filtered = sink();
+  await readMain({ argv: ['zones'], env: { ...env, CLOUDFLARE_OUTPUT_FILTER: filter(upper) }, fetchImpl, stdout: filtered });
+  assert.match(filtered.text(), /EXAMPLE\.COM/);
+
+  const withheld = sink();
+  await assert.rejects(readMain({ argv: ['zones'], env: { ...env, CLOUDFLARE_OUTPUT_FILTER: filter(broken) }, fetchImpl, stdout: withheld }), { exitCode: 9 });
+  assert.equal(withheld.text(), '');
+});
+
+test('cf-apply still records an applied change when the output filter fails', async t => {
+  const { applyMain } = await load('cf-apply.mjs');
+  const { dir, env } = workspace(t, { write: true });
+  const broken = path.join(dir, 'broken.cjs');
+  fs.writeFileSync(broken, 'process.exit(3);');
+  const file = stage(dir, change());
+  const { fetchImpl } = fakeFetch(() => ({ body: { success: true, errors: [], result: { id: 'rec1' } } }));
+  const stdout = sink();
+  const filterEnv = { ...env, CLOUDFLARE_OUTPUT_FILTER: `"${process.execPath}" "${broken}"` };
+  assert.equal(await applyMain({ argv: [file, '--approved'], env: filterEnv, fetchImpl, stdout }), 0);
+  assert.match(stdout.text(), /response withheld/);
+  assert.doesNotMatch(stdout.text(), /rec1/);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).api_success, true);
+});
+
 test('setup input rules', async () => {
   const { checkAccountId, checkToken, mergeAnswer } = await load('setup-tokens.mjs');
   assert.equal(checkAccountId(ACCOUNT), null);
