@@ -9,7 +9,7 @@
 //
 // The token is sent only to api.cloudflare.com and is never printed.
 // Exit codes: 0 success, 1 API error, 2 usage, 3 credentials file missing, 4 token missing.
-import { CliError, callApi, formatBody, isMain, loadTokens, resolveApiUrl, runCli } from './lib.mjs';
+import { CliError, callApi, formatBody, isMain, loadTokens, resolveApiUrl, runCli, secretValues } from './lib.mjs';
 
 const USAGE = `Usage: node cf-read.mjs <api-path>
        node cf-read.mjs verify
@@ -59,7 +59,7 @@ export async function readMain({
     result = await callApi({ url: resolveApiUrl(target, accountId), token, fetchImpl });
   }
 
-  stdout.write(`${formatBody(result, [tokens.CF_TOKEN_READ, tokens.CF_TOKEN_WRITE])}\n`);
+  stdout.write(`${formatBody(result, secretValues(tokens, env))}\n`);
   const failed = !result.ok || result.json?.success === false || (Array.isArray(result.json?.errors) && result.json.errors.length > 0);
   if (failed) throw new CliError(`Cloudflare API returned HTTP ${result.status}.`, 1);
   return 0;

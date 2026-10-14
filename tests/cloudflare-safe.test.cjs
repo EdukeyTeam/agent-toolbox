@@ -92,13 +92,70 @@ test('API paths resolve only to the Cloudflare API', async () => {
 });
 
 test('redaction hides secret-named fields and stored tokens, and keeps ordinary values', async () => {
-  const { redact } = await load('lib.mjs');
+  const { redact, fingerprint } = await load('lib.mjs');
   const output = redact({
     result: [{ id: 'ssl', value: 'full', client_secret: 'abc', tunnel_token: 'def', note: `leaked ${READ}` }],
   }, [READ, '']);
   assert.deepEqual(output, {
-    result: [{ id: 'ssl', value: 'full', client_secret: '[redacted]', tunnel_token: '[redacted]', note: 'leaked [redacted]' }],
+    result: [{ id: 'ssl', value: 'full', client_secret: '[redacted]', tunnel_token: '[redacted]', note: `leaked ${fingerprint(READ)}` }],
   });
+});
+
+test('values listed in redact.txt are hidden wherever they appear', async t => {
+  const { readMain } = await load('cf-read.mjs');
+  const { fingerprint, loadRedactValues } = await load('lib.mjs');
+  const { dir, env } = workspace(t);
+  const listed = 'shared-key-0123456789';
+  fs.writeFileSync(path.join(dir, 'redact.txt'), `# comment\r\n${listed}\r\nshort\r\n\r\n`);
+  assert.deepEqual(loadRedactValues(env), [listed]);
+
+  const { fetchImpl } = fakeFetch(() => ({ body: { success: true, errors: [], result: [{ description: `uses ${listed}`, expression: `http.host eq "${listed}"` }] } }));
+  const stdout = sink();
+  await readMain({ argv: ['zones'], env, fetchImpl, stdout });
+  assert.doesNotMatch(stdout.text(), new RegExp(listed));
+  assert.equal(stdout.text().split(fingerprint(listed)).length - 1, 2);
+
+  const other = path.join(dir, 'elsewhere.txt');
+  fs.writeFileSync(other, 'another-value-0123\n');
+  assert.deepEqual(loadRedactValues({ ...env, CLOUDFLARE_REDACT_FILE: other }), ['another-value-0123']);
+  assert.deepEqual(loadRedactValues({ ...env, CLOUDFLARE_REDACT_FILE: path.join(dir, 'missing.txt') }), []);
+});
+
+test('cookie and header values in rule expressions are masked by default', async () => {
+  const { maskExpression, redact } = await load('lib.mjs');
+  const cookie = maskExpression('http.cookie contains "bypass=S3cretValue-123" and starts_with(http.request.uri.path, "/admin")');
+  assert.doesNotMatch(cookie, /S3cretValue/);
+  assert.match(cookie, /http\.cookie contains "bypass=\[redacted:[0-9a-f]{4}\]"/);
+  assert.match(cookie, /"\/admin"/);
+
+  for (const expression of [
+    'http.request.headers["x-api-key"][0] eq "abc123"',
+    'any(http.request.headers["x-key"][*] == "abc123")',
+    'http.request.cookies["sid"][0] in {"abc123" "def456"}',
+    'http.cookie contains "abc123"',
+    'http.cookie contains r"bypass=abc123"',
+    'http.request.headers["x-key"][0] eq r#"abc123"#',
+    'http.request.headers["x-key"][0] eq r#"abc123"quoted"#',
+    'http.request.cookies["sid"][0] in {r"abc123" "def456"}',
+    'http.request.headers["x-key"][0] eq r####"abc123"#"####',
+    'http.request.headers["x-key"][0] in {r"abc}123" "def456"}',
+    'http.request.headers["x-key"][0] eq "abc\\"123"',
+  ]) {
+    const masked = maskExpression(expression);
+    assert.doesNotMatch(masked, /abc123|def456/, expression);
+    assert.match(masked, /\[redacted:[0-9a-f]{4}\]/, expression);
+  }
+
+  const untouched = '(http.host eq "example.com" and http.request.uri.path eq "/login") or lower(http.user_agent) contains "bingbot"';
+  assert.equal(maskExpression(untouched), untouched);
+
+  const same = maskExpression('http.cookie contains "a=VALUE1"').match(/\[redacted:[0-9a-f]{4}\]/)[0];
+  assert.equal(maskExpression('http.cookie contains "b=VALUE1"').match(/\[redacted:[0-9a-f]{4}\]/)[0], same);
+  assert.notEqual(maskExpression('http.cookie contains "a=VALUE2"').match(/\[redacted:[0-9a-f]{4}\]/)[0], same);
+
+  const ruleset = redact({ result: { rules: [{ description: 'cookie bypass=VALUE1 note', expression: 'http.cookie contains "bypass=VALUE1"' }] } });
+  assert.equal(ruleset.result.rules[0].description, 'cookie bypass=VALUE1 note');
+  assert.doesNotMatch(ruleset.result.rules[0].expression, /VALUE1/);
 });
 
 test('cf-read sends a GET with the read token and prints the response', async t => {
@@ -262,6 +319,35 @@ test('cf-apply sends an approved change once and records the outcome', async t =
 
   await assert.rejects(applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), { exitCode: 2 });
   assert.equal(calls.length, 1);
+});
+
+test('cf-apply accepts successful answers without the standard envelope', async t => {
+  const { applyMain, apiConfirmed } = await load('cf-apply.mjs');
+  const answer = (status, text) => ({ status, ok: status >= 200 && status < 300, text, json: (() => { try { return JSON.parse(text); } catch { return undefined; } })() });
+  assert.equal(apiConfirmed(answer(200, '{}')), true);
+  assert.equal(apiConfirmed(answer(204, '')), true);
+  assert.equal(apiConfirmed(answer(200, '{"success":true,"result":{}}')), true);
+  assert.equal(apiConfirmed(answer(200, '{"success":false,"errors":[{"code":1}]}')), false);
+  assert.equal(apiConfirmed(answer(200, '<html>not json</html>')), false);
+  assert.equal(apiConfirmed(answer(404, '{}')), false);
+
+  const { dir, env } = workspace(t, { write: true });
+  const file = stage(dir, change({ apply_command: { method: 'DELETE', url: `${API}zones/${ZONE}/rulesets/abc/rules/def`, body: null } }));
+  const { fetchImpl } = fakeFetch(() => ({ body: {} }));
+  assert.equal(await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), 0);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).api_success, true);
+});
+
+test('cf-apply hides listed values in the summary it prints before sending', async t => {
+  const { applyMain } = await load('cf-apply.mjs');
+  const { dir, env } = workspace(t, { write: true });
+  const listed = 'shared-key-0123456789';
+  fs.writeFileSync(path.join(dir, 'redact.txt'), `${listed}\n`);
+  const file = stage(dir, change({ summary: `Rotate ${listed}`, blast_radius: `rules using ${listed}` }));
+  const { fetchImpl } = fakeFetch();
+  const stdout = sink();
+  assert.equal(await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout }), 0);
+  assert.doesNotMatch(stdout.text(), new RegExp(listed));
 });
 
 test('cf-apply records a rejected change and exits non-zero', async t => {

@@ -1,4 +1,5 @@
 // Shared helpers for the cloudflare-safe scripts. No dependencies; Node.js 18+.
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -50,6 +51,34 @@ export function serializeTokens(tokens) {
   return `${lines.join('\n')}\n`;
 }
 
+// Optional list of extra values the scripts must never print: one value per line, '#' for
+// comments, in redact.txt next to the credentials file (or CLOUDFLARE_REDACT_FILE). Values
+// shorter than 8 characters are ignored, because masking them would garble ordinary output.
+export function redactFilePath(env = process.env) {
+  if (env.CLOUDFLARE_REDACT_FILE) return path.resolve(env.CLOUDFLARE_REDACT_FILE);
+  return path.join(path.dirname(tokensFilePath(env)), 'redact.txt');
+}
+
+export function loadRedactValues(env = process.env) {
+  const file = redactFilePath(env);
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    // The user asked for these values to be hidden; printing without them would leak them.
+    throw new CliError(`Cannot read the redaction list ${file} (${error.code}), so nothing was printed.`, 3);
+  }
+  return text.replace(/^\uFEFF/, '').split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length >= 8 && !line.startsWith('#'));
+}
+
+// Every value the output must never contain: the stored tokens plus the optional list.
+export function secretValues(tokens, env = process.env) {
+  return [tokens.CF_TOKEN_READ, tokens.CF_TOKEN_WRITE, ...loadRedactValues(env)];
+}
+
 export function loadTokens(env = process.env) {
   const file = tokensFilePath(env);
   let text;
@@ -86,18 +115,100 @@ export function resolveApiUrl(input, accountId = '') {
   return url;
 }
 
-// Blanks values whose field NAME suggests a secret. It cannot see a secret embedded in an
-// ordinary string such as a rule expression; SKILL.md tells the agent how to handle that.
-export function redact(value, tokenValues = []) {
-  const secrets = tokenValues.filter(token => typeof token === 'string' && token.length >= 8);
-  const scrub = text => secrets.reduce((result, secret) => result.split(secret).join(REDACTED), text);
+// Rule expressions often hold a secret as the value a cookie or request header is compared
+// with (a bypass cookie, a shared header key). Those literals are replaced with a short
+// fingerprint, so an agent can still tell whether two rules use the same value without seeing
+// it. Other text in an expression (paths, hosts, user agents) is left alone.
+const NAME = String.raw`(?:"(?:[^"\\]|\\.)*"|r#*"[^"]*"#*)`;
+const SECRET_FIELD = String.raw`(?:http\.cookie|http\.request\.(?:cookies|headers)\[\s*${NAME}\s*\](?:\[(?:\d+|\*)\])?)`;
+const BEFORE_COMPARED_VALUE = new RegExp(String.raw`(${SECRET_FIELD})(?:\s+(?:contains|eq|ne|matches|wildcard|strict\s+wildcard)\s+|\s*(?:==|!=|~)\s*)$`);
+const BEFORE_SET = new RegExp(String.raw`(${SECRET_FIELD})\s+in\s*$`);
+const EXPRESSION_KEY = /expression$/i;
+
+export const fingerprint = text => `[redacted:${createHash('sha256').update(text).digest('hex').slice(0, 4)}]`;
+
+// Finds every string literal the way the rules language reads them: "..." with backslash
+// escapes, and raw strings r"...", r#"..."#, r##"..."## and so on, closed only by a quote
+// followed by the same number of #. Also records, for each literal, the inline set { ... }
+// it sits in, so braces inside a literal never end a set.
+function scanLiterals(expression) {
+  const literals = [];
+  let setStart = -1;
+  for (let i = 0; i < expression.length; i += 1) {
+    const char = expression[i];
+    let open = null;
+    if (char === '"') {
+      open = '"';
+    } else if (char === 'r' && !/[\w.]/.test(expression[i - 1] ?? '')) {
+      open = /^r#*"/.exec(expression.slice(i, i + 260))?.[0] ?? null;
+    }
+    if (open) {
+      const contentStart = i + open.length;
+      let end;
+      let close;
+      if (open === '"') {
+        let j = contentStart;
+        while (j < expression.length && expression[j] !== '"') j += expression[j] === '\\' ? 2 : 1;
+        end = j;
+        close = '"';
+      } else {
+        close = `"${'#'.repeat(open.length - 2)}`;
+        end = expression.indexOf(close, contentStart);
+        if (end === -1) end = expression.length;
+      }
+      literals.push({ start: i, contentStart, contentEnd: end, end: end + close.length, open, close, setStart });
+      i = end + close.length - 1;
+    } else if (char === '{') {
+      setStart = i;
+    } else if (char === '}') {
+      setStart = -1;
+    }
+  }
+  return literals;
+}
+
+function maskContent(field, content) {
+  if (content === '') return content;
+  if (field === 'http.cookie' && content.includes('=')) {
+    // "name=value; other=value": keep the cookie names, hide the values.
+    return content.replace(/=([^;]+)/g, (_, cookieValue) => `=${fingerprint(cookieValue.trim())}`);
+  }
+  return fingerprint(content);
+}
+
+export function maskExpression(expression) {
+  let output = '';
+  let copied = 0;
+  for (const literal of scanLiterals(expression)) {
+    const before = expression.slice(0, literal.start);
+    const compared = BEFORE_COMPARED_VALUE.exec(before);
+    const inSet = literal.setStart >= 0 ? BEFORE_SET.exec(expression.slice(0, literal.setStart)) : null;
+    const field = (compared ?? inSet)?.[1];
+    if (!field) continue;
+    const content = expression.slice(literal.contentStart, literal.contentEnd);
+    const fieldName = field.startsWith('http.cookie') ? 'http.cookie' : field;
+    output += expression.slice(copied, literal.contentStart) + maskContent(fieldName, content);
+    copied = literal.contentEnd;
+  }
+  return output + expression.slice(copied);
+}
+
+// Blanks values whose field NAME suggests a secret, masks cookie and header values inside rule
+// expressions, and replaces every known secret value (stored tokens and the optional redaction
+// list) wherever it appears. Anything else it cannot recognise; SKILL.md covers that case.
+export function redact(value, secretList = []) {
+  // Longest first, so a value that contains another one is hidden as a whole.
+  const secrets = [...new Set(secretList.filter(secret => typeof secret === 'string' && secret.length >= 8))]
+    .sort((a, b) => b.length - a.length);
+  const scrub = text => secrets.reduce((result, secret) => result.split(secret).join(fingerprint(secret)), text);
   const walk = (node, key) => {
     if (Array.isArray(node)) return node.map(item => walk(item, key));
     if (node && typeof node === 'object') {
       return Object.fromEntries(Object.entries(node).map(([name, child]) => [name, walk(child, name)]));
     }
     if (typeof node === 'string') {
-      return key !== undefined && SENSITIVE_KEY.test(key) && node !== '' ? REDACTED : scrub(node);
+      if (key !== undefined && SENSITIVE_KEY.test(key) && node !== '') return REDACTED;
+      return scrub(key !== undefined && EXPRESSION_KEY.test(key) ? maskExpression(node) : node);
     }
     return node;
   };
@@ -126,9 +237,9 @@ export async function callApi({ url, method = 'GET', token, body, fetchImpl = gl
   return { status: response.status, ok: response.ok, text, json };
 }
 
-export function formatBody(result, tokenValues) {
-  if (result.json === undefined) return redact(result.text, tokenValues);
-  return JSON.stringify(redact(result.json, tokenValues), null, 2);
+export function formatBody(result, secretList) {
+  if (result.json === undefined) return redact(result.text, secretList);
+  return JSON.stringify(redact(result.json, secretList), null, 2);
 }
 
 // True when the module is the script being run. Resolves symlinks, because installed

@@ -46,6 +46,16 @@ The skill tells the agent never to open the credentials file. Back that up with 
 
 Other agents have equivalent ignore or deny settings; use them for the same path.
 
+## Optional: more values to hide
+
+The scripts already hide your tokens, fields with secret-looking names, and values compared with cookies or headers in rules. If your configuration contains another secret the scripts cannot recognise, such as a shared key written into a rule description, list it so the scripts never print it:
+
+1. Create `redact.txt` in the same folder as `tokens.env` (`~/.config/cloudflare/redact.txt`; on Windows `C:\Users\<you>\.config\cloudflare\redact.txt`), or set `CLOUDFLARE_REDACT_FILE` to another path.
+2. Put one value per line, in your own text editor. Lines starting with `#` are comments; values shorter than 8 characters are ignored.
+3. Keep it private like `tokens.env`: on Linux and macOS run `chmod 600` on it.
+
+Each listed value is shown as a short tag such as `[redacted:3f9a]`, the same tag every time, so the agent can tell where the value is used without seeing it. Do not let the agent create or edit this file. The deny rule in the next section covers it when it sits next to `tokens.env`; if you keep it elsewhere, deny that path too. If the file exists but cannot be read, the scripts print nothing rather than risk printing a listed value.
+
 ## Optional: let the agent apply approved changes
 
 Skip this unless you have decided you want it. With only a read token, the worst a confused or manipulated agent can do is read your configuration.
