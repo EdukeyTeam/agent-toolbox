@@ -115,6 +115,16 @@ async function refuseNsRecords({ method, url, body, token, fetchImpl }) {
   }
 }
 
+// Most endpoints answer with a { success, errors, result } envelope, and that envelope decides.
+// A 2xx answer without one (an empty body, or {} as some endpoints document) is a success too.
+// A 2xx answer that is not JSON at all is not treated as confirmation.
+export function apiConfirmed(result) {
+  if (!result.ok) return false;
+  const body = result.json;
+  if (body && typeof body === 'object' && !Array.isArray(body) && 'success' in body) return body.success === true;
+  return body !== undefined || result.text.trim() === '';
+}
+
 export async function applyMain(options = {}) {
   const file = (options.argv ?? process.argv.slice(2)).find(arg => !arg.startsWith('--'));
   if (!file) throw new CliError(USAGE, 2);
@@ -188,7 +198,7 @@ async function applyLocked(file, {
     record({ http_status: null, api_success: null, result: redact(String(error.message), secrets) });
     throw new CliError(`${error.message}\nNo complete response was received, so the change may or may not have been applied. Recorded in ${file}. Read the current state before staging a new change.`, 6);
   }
-  const success = result.ok && result.json?.success === true;
+  const success = apiConfirmed(result);
   const stamped = record({
     http_status: result.status,
     api_success: success,

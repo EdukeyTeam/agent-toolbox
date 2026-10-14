@@ -264,6 +264,23 @@ test('cf-apply sends an approved change once and records the outcome', async t =
   assert.equal(calls.length, 1);
 });
 
+test('cf-apply accepts successful answers without the standard envelope', async t => {
+  const { applyMain, apiConfirmed } = await load('cf-apply.mjs');
+  const answer = (status, text) => ({ status, ok: status >= 200 && status < 300, text, json: (() => { try { return JSON.parse(text); } catch { return undefined; } })() });
+  assert.equal(apiConfirmed(answer(200, '{}')), true);
+  assert.equal(apiConfirmed(answer(204, '')), true);
+  assert.equal(apiConfirmed(answer(200, '{"success":true,"result":{}}')), true);
+  assert.equal(apiConfirmed(answer(200, '{"success":false,"errors":[{"code":1}]}')), false);
+  assert.equal(apiConfirmed(answer(200, '<html>not json</html>')), false);
+  assert.equal(apiConfirmed(answer(404, '{}')), false);
+
+  const { dir, env } = workspace(t, { write: true });
+  const file = stage(dir, change({ apply_command: { method: 'DELETE', url: `${API}zones/${ZONE}/rulesets/abc/rules/def`, body: null } }));
+  const { fetchImpl } = fakeFetch(() => ({ body: {} }));
+  assert.equal(await applyMain({ argv: [file, '--approved'], env, fetchImpl, stdout: sink() }), 0);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).api_success, true);
+});
+
 test('cf-apply records a rejected change and exits non-zero', async t => {
   const { applyMain } = await load('cf-apply.mjs');
   const { dir, env } = workspace(t, { write: true });
