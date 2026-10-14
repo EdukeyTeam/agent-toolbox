@@ -1,4 +1,5 @@
 // Shared helpers for the cloudflare-safe scripts. No dependencies; Node.js 18+.
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -86,8 +87,38 @@ export function resolveApiUrl(input, accountId = '') {
   return url;
 }
 
-// Blanks values whose field NAME suggests a secret. It cannot see a secret embedded in an
-// ordinary string such as a rule expression; SKILL.md tells the agent how to handle that.
+// Rule expressions often hold a secret as the value a cookie or request header is compared
+// with (a bypass cookie, a shared header key). Those literals are replaced with a short
+// fingerprint, so an agent can still tell whether two rules use the same value without seeing
+// it. Other text in an expression (paths, hosts, user agents) is left alone.
+const STRING = String.raw`"(?:[^"\\]|\\.)*"`;
+const SECRET_FIELD = String.raw`(?:http\.cookie|http\.request\.(?:cookies|headers)\[\s*${STRING}\s*\](?:\[(?:\d+|\*)\])?)`;
+const COMPARE = String.raw`(?:\s+(?:contains|eq|ne|matches|wildcard|strict\s+wildcard)\s+|\s*(?:==|!=|~)\s*)`;
+const SECRET_COMPARISON = new RegExp(String.raw`(${SECRET_FIELD})(${COMPARE})(${STRING})`, 'g');
+const SECRET_SET = new RegExp(String.raw`(${SECRET_FIELD})(\s+in\s+)\{([^}]*)\}`, 'g');
+const EXPRESSION_KEY = /expression$/i;
+
+const fingerprint = text => `[redacted:${createHash('sha256').update(text).digest('hex').slice(0, 4)}]`;
+
+function maskLiteral(field, literal) {
+  const inner = literal.slice(1, -1);
+  if (field === 'http.cookie' && inner.includes('=')) {
+    // "name=value; other=value": keep the cookie names, hide the values.
+    return `"${inner.replace(/=([^;]+)/g, (_, cookieValue) => `=${fingerprint(cookieValue.trim())}`)}"`;
+  }
+  return inner === '' ? literal : `"${fingerprint(inner)}"`;
+}
+
+export function maskExpression(expression) {
+  return expression
+    .replace(SECRET_COMPARISON, (_, field, operator, literal) => `${field}${operator}${maskLiteral(field, literal)}`)
+    .replace(SECRET_SET, (_, field, operator, members) =>
+      `${field}${operator}{${members.replace(new RegExp(STRING, 'g'), literal => maskLiteral(field, literal))}}`);
+}
+
+// Blanks values whose field NAME suggests a secret, masks cookie and header values inside rule
+// expressions, and removes any stored token. It cannot recognise a secret written into other
+// ordinary text; SKILL.md tells the agent how to handle that.
 export function redact(value, tokenValues = []) {
   const secrets = tokenValues.filter(token => typeof token === 'string' && token.length >= 8);
   const scrub = text => secrets.reduce((result, secret) => result.split(secret).join(REDACTED), text);
@@ -97,7 +128,8 @@ export function redact(value, tokenValues = []) {
       return Object.fromEntries(Object.entries(node).map(([name, child]) => [name, walk(child, name)]));
     }
     if (typeof node === 'string') {
-      return key !== undefined && SENSITIVE_KEY.test(key) && node !== '' ? REDACTED : scrub(node);
+      if (key !== undefined && SENSITIVE_KEY.test(key) && node !== '') return REDACTED;
+      return scrub(key !== undefined && EXPRESSION_KEY.test(key) ? maskExpression(node) : node);
     }
     return node;
   };

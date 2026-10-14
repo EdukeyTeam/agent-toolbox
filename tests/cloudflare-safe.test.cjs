@@ -101,6 +101,36 @@ test('redaction hides secret-named fields and stored tokens, and keeps ordinary 
   });
 });
 
+test('cookie and header values in rule expressions are masked by default', async () => {
+  const { maskExpression, redact } = await load('lib.mjs');
+  const cookie = maskExpression('http.cookie contains "bypass=S3cretValue-123" and starts_with(http.request.uri.path, "/admin")');
+  assert.doesNotMatch(cookie, /S3cretValue/);
+  assert.match(cookie, /http\.cookie contains "bypass=\[redacted:[0-9a-f]{4}\]"/);
+  assert.match(cookie, /"\/admin"/);
+
+  for (const expression of [
+    'http.request.headers["x-api-key"][0] eq "abc123"',
+    'any(http.request.headers["x-key"][*] == "abc123")',
+    'http.request.cookies["sid"][0] in {"abc123" "def456"}',
+    'http.cookie contains "abc123"',
+  ]) {
+    const masked = maskExpression(expression);
+    assert.doesNotMatch(masked, /abc123|def456/, expression);
+    assert.match(masked, /\[redacted:[0-9a-f]{4}\]/, expression);
+  }
+
+  const untouched = '(http.host eq "example.com" and http.request.uri.path eq "/login") or lower(http.user_agent) contains "bingbot"';
+  assert.equal(maskExpression(untouched), untouched);
+
+  const same = maskExpression('http.cookie contains "a=VALUE1"').match(/\[redacted:[0-9a-f]{4}\]/)[0];
+  assert.equal(maskExpression('http.cookie contains "b=VALUE1"').match(/\[redacted:[0-9a-f]{4}\]/)[0], same);
+  assert.notEqual(maskExpression('http.cookie contains "a=VALUE2"').match(/\[redacted:[0-9a-f]{4}\]/)[0], same);
+
+  const ruleset = redact({ result: { rules: [{ description: 'cookie bypass=VALUE1 note', expression: 'http.cookie contains "bypass=VALUE1"' }] } });
+  assert.equal(ruleset.result.rules[0].description, 'cookie bypass=VALUE1 note');
+  assert.doesNotMatch(ruleset.result.rules[0].expression, /VALUE1/);
+});
+
 test('cf-read sends a GET with the read token and prints the response', async t => {
   const { readMain } = await load('cf-read.mjs');
   const { env } = workspace(t, { write: true });

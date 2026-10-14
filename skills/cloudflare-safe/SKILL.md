@@ -33,7 +33,7 @@ node "<skill-dir>/scripts/cf-read.mjs" <api-path>
 
 Reads need no approval. Look up paths you do not know in the [Cloudflare API reference](https://developers.cloudflare.com/api/) rather than guessing. Report the values the API returned, not a paraphrase of them.
 
-The script blanks fields whose names mark them as secrets, but it cannot recognise a secret inside ordinary text, such as a bypass header value written into a rule expression. If you see one in the output, do not repeat it in your reply or in any file.
+The script blanks fields whose names mark them as secrets, and in rule expressions it replaces any value compared with a cookie or request header by a short fingerprint such as `[redacted:3f9a]`; equal values get the same fingerprint, so you can still tell whether two rules use the same value. It cannot recognise a secret written into other text. If you see one in the output, do not repeat it in your reply or in any file.
 
 When a read fails:
 
