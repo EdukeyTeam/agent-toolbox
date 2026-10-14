@@ -51,6 +51,34 @@ export function serializeTokens(tokens) {
   return `${lines.join('\n')}\n`;
 }
 
+// Optional list of extra values the scripts must never print: one value per line, '#' for
+// comments, in redact.txt next to the credentials file (or CLOUDFLARE_REDACT_FILE). Values
+// shorter than 8 characters are ignored, because masking them would garble ordinary output.
+export function redactFilePath(env = process.env) {
+  if (env.CLOUDFLARE_REDACT_FILE) return path.resolve(env.CLOUDFLARE_REDACT_FILE);
+  return path.join(path.dirname(tokensFilePath(env)), 'redact.txt');
+}
+
+export function loadRedactValues(env = process.env) {
+  const file = redactFilePath(env);
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    // The user asked for these values to be hidden; printing without them would leak them.
+    throw new CliError(`Cannot read the redaction list ${file} (${error.code}), so nothing was printed.`, 3);
+  }
+  return text.replace(/^\uFEFF/, '').split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length >= 8 && !line.startsWith('#'));
+}
+
+// Every value the output must never contain: the stored tokens plus the optional list.
+export function secretValues(tokens, env = process.env) {
+  return [tokens.CF_TOKEN_READ, tokens.CF_TOKEN_WRITE, ...loadRedactValues(env)];
+}
+
 export function loadTokens(env = process.env) {
   const file = tokensFilePath(env);
   let text;
@@ -91,22 +119,25 @@ export function resolveApiUrl(input, accountId = '') {
 // with (a bypass cookie, a shared header key). Those literals are replaced with a short
 // fingerprint, so an agent can still tell whether two rules use the same value without seeing
 // it. Other text in an expression (paths, hosts, user agents) is left alone.
-const STRING = String.raw`"(?:[^"\\]|\\.)*"`;
+// A quoted string, or a raw string r"...", r#"..."# and so on (up to three #, which covers
+// any realistic rule).
+const STRING = String.raw`(?:"(?:[^"\\]|\\.)*"|r###"[\s\S]*?"###|r##"[\s\S]*?"##|r#"[\s\S]*?"#|r"[^"]*")`;
 const SECRET_FIELD = String.raw`(?:http\.cookie|http\.request\.(?:cookies|headers)\[\s*${STRING}\s*\](?:\[(?:\d+|\*)\])?)`;
 const COMPARE = String.raw`(?:\s+(?:contains|eq|ne|matches|wildcard|strict\s+wildcard)\s+|\s*(?:==|!=|~)\s*)`;
 const SECRET_COMPARISON = new RegExp(String.raw`(${SECRET_FIELD})(${COMPARE})(${STRING})`, 'g');
 const SECRET_SET = new RegExp(String.raw`(${SECRET_FIELD})(\s+in\s+)\{([^}]*)\}`, 'g');
 const EXPRESSION_KEY = /expression$/i;
 
-const fingerprint = text => `[redacted:${createHash('sha256').update(text).digest('hex').slice(0, 4)}]`;
+export const fingerprint = text => `[redacted:${createHash('sha256').update(text).digest('hex').slice(0, 4)}]`;
 
 function maskLiteral(field, literal) {
-  const inner = literal.slice(1, -1);
+  // Keep the delimiters ("..." or r#"..."#) and replace only what is between them.
+  const [, open, inner, close] = literal.match(/^(r#*"|")([\s\S]*)("#*)$/);
   if (field === 'http.cookie' && inner.includes('=')) {
     // "name=value; other=value": keep the cookie names, hide the values.
-    return `"${inner.replace(/=([^;]+)/g, (_, cookieValue) => `=${fingerprint(cookieValue.trim())}`)}"`;
+    return `${open}${inner.replace(/=([^;]+)/g, (_, cookieValue) => `=${fingerprint(cookieValue.trim())}`)}${close}`;
   }
-  return inner === '' ? literal : `"${fingerprint(inner)}"`;
+  return inner === '' ? literal : `${open}${fingerprint(inner)}${close}`;
 }
 
 export function maskExpression(expression) {
@@ -117,11 +148,13 @@ export function maskExpression(expression) {
 }
 
 // Blanks values whose field NAME suggests a secret, masks cookie and header values inside rule
-// expressions, and removes any stored token. It cannot recognise a secret written into other
-// ordinary text; SKILL.md tells the agent how to handle that.
-export function redact(value, tokenValues = []) {
-  const secrets = tokenValues.filter(token => typeof token === 'string' && token.length >= 8);
-  const scrub = text => secrets.reduce((result, secret) => result.split(secret).join(REDACTED), text);
+// expressions, and replaces every known secret value (stored tokens and the optional redaction
+// list) wherever it appears. Anything else it cannot recognise; SKILL.md covers that case.
+export function redact(value, secretList = []) {
+  // Longest first, so a value that contains another one is hidden as a whole.
+  const secrets = [...new Set(secretList.filter(secret => typeof secret === 'string' && secret.length >= 8))]
+    .sort((a, b) => b.length - a.length);
+  const scrub = text => secrets.reduce((result, secret) => result.split(secret).join(fingerprint(secret)), text);
   const walk = (node, key) => {
     if (Array.isArray(node)) return node.map(item => walk(item, key));
     if (node && typeof node === 'object') {
@@ -158,9 +191,9 @@ export async function callApi({ url, method = 'GET', token, body, fetchImpl = gl
   return { status: response.status, ok: response.ok, text, json };
 }
 
-export function formatBody(result, tokenValues) {
-  if (result.json === undefined) return redact(result.text, tokenValues);
-  return JSON.stringify(redact(result.json, tokenValues), null, 2);
+export function formatBody(result, secretList) {
+  if (result.json === undefined) return redact(result.text, secretList);
+  return JSON.stringify(redact(result.json, secretList), null, 2);
 }
 
 // True when the module is the script being run. Resolves symlinks, because installed

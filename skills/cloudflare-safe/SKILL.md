@@ -11,7 +11,7 @@ They need Node.js 18 or newer and nothing else, and run the same on Linux, macOS
 
 ## Credentials: check that the file exists, never read it
 
-The credentials live in `~/.config/cloudflare/tokens.env` (or the path in `CLOUDFLARE_TOKENS_FILE`).
+The credentials live in `~/.config/cloudflare/tokens.env` (or the path in `CLOUDFLARE_TOKENS_FILE`). The user may keep a list of extra values to hide in `redact.txt` next to it; treat that file exactly like the credentials file.
 
 - You may check that the file exists. Never open, print, search, copy or edit it, by any tool, and never run a command that would display its contents.
 - Never ask the user to paste a token into the chat, and never put one in a command, file or log. If the user pastes one anyway, tell them to revoke it in the dashboard and create a new one.
@@ -33,7 +33,7 @@ node "<skill-dir>/scripts/cf-read.mjs" <api-path>
 
 Reads need no approval. Look up paths you do not know in the [Cloudflare API reference](https://developers.cloudflare.com/api/) rather than guessing. Report the values the API returned, not a paraphrase of them.
 
-The script blanks fields whose names mark them as secrets, and in rule expressions it replaces any value compared with a cookie or request header by a short fingerprint such as `[redacted:3f9a]`; equal values get the same fingerprint, so you can still tell whether two rules use the same value. It cannot recognise a secret written into other text. If you see one in the output, do not repeat it in your reply or in any file.
+The script blanks fields whose names mark them as secrets, and in rule expressions it replaces any value compared with a cookie or request header by a short fingerprint such as `[redacted:3f9a]`; equal values get the same fingerprint, so you can still tell whether two rules use the same value. It also hides the stored tokens and every value the user listed in `redact.txt`, wherever they appear. Anything else it cannot recognise. If you see one in the output, do not repeat it in your reply or in any file.
 
 When a read fails:
 

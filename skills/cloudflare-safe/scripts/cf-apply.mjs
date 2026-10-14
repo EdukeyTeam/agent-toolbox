@@ -14,7 +14,7 @@
 // 4 not approved, 6 write token missing or no response received, 7 API rejected the change,
 // 8 prohibited operation, or a DNS record whose type could not be checked.
 import fs from 'node:fs';
-import { API_PREFIX, CliError, callApi, isMain, loadTokens, redact, resolveApiUrl, runCli } from './lib.mjs';
+import { API_PREFIX, CliError, callApi, isMain, loadTokens, redact, resolveApiUrl, runCli, secretValues } from './lib.mjs';
 
 const USAGE = 'Usage: node cf-apply.mjs <change-file.json> --approved';
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
@@ -177,7 +177,7 @@ async function applyLocked(file, {
   await refuseNsRecords({ method, url, body, token: tokens.CF_TOKEN_WRITE, fetchImpl });
 
   stdout.write(`Cloudflare change: ${change.summary}\n  category: ${change.category}\n  blast radius: ${change.blast_radius}\n  ${method} ${url}\n`);
-  const secrets = [tokens.CF_TOKEN_READ, tokens.CF_TOKEN_WRITE];
+  const secrets = secretValues(tokens, env);
   const record = outcome => {
     const stamped = { ...change, applied_at: now().toISOString(), ...outcome };
     const temporary = `${file}.tmp`;

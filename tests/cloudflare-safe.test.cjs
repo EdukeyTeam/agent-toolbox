@@ -92,13 +92,33 @@ test('API paths resolve only to the Cloudflare API', async () => {
 });
 
 test('redaction hides secret-named fields and stored tokens, and keeps ordinary values', async () => {
-  const { redact } = await load('lib.mjs');
+  const { redact, fingerprint } = await load('lib.mjs');
   const output = redact({
     result: [{ id: 'ssl', value: 'full', client_secret: 'abc', tunnel_token: 'def', note: `leaked ${READ}` }],
   }, [READ, '']);
   assert.deepEqual(output, {
-    result: [{ id: 'ssl', value: 'full', client_secret: '[redacted]', tunnel_token: '[redacted]', note: 'leaked [redacted]' }],
+    result: [{ id: 'ssl', value: 'full', client_secret: '[redacted]', tunnel_token: '[redacted]', note: `leaked ${fingerprint(READ)}` }],
   });
+});
+
+test('values listed in redact.txt are hidden wherever they appear', async t => {
+  const { readMain } = await load('cf-read.mjs');
+  const { fingerprint, loadRedactValues } = await load('lib.mjs');
+  const { dir, env } = workspace(t);
+  const listed = 'shared-key-0123456789';
+  fs.writeFileSync(path.join(dir, 'redact.txt'), `# comment\r\n${listed}\r\nshort\r\n\r\n`);
+  assert.deepEqual(loadRedactValues(env), [listed]);
+
+  const { fetchImpl } = fakeFetch(() => ({ body: { success: true, errors: [], result: [{ description: `uses ${listed}`, expression: `http.host eq "${listed}"` }] } }));
+  const stdout = sink();
+  await readMain({ argv: ['zones'], env, fetchImpl, stdout });
+  assert.doesNotMatch(stdout.text(), new RegExp(listed));
+  assert.equal(stdout.text().split(fingerprint(listed)).length - 1, 2);
+
+  const other = path.join(dir, 'elsewhere.txt');
+  fs.writeFileSync(other, 'another-value-0123\n');
+  assert.deepEqual(loadRedactValues({ ...env, CLOUDFLARE_REDACT_FILE: other }), ['another-value-0123']);
+  assert.deepEqual(loadRedactValues({ ...env, CLOUDFLARE_REDACT_FILE: path.join(dir, 'missing.txt') }), []);
 });
 
 test('cookie and header values in rule expressions are masked by default', async () => {
@@ -113,6 +133,10 @@ test('cookie and header values in rule expressions are masked by default', async
     'any(http.request.headers["x-key"][*] == "abc123")',
     'http.request.cookies["sid"][0] in {"abc123" "def456"}',
     'http.cookie contains "abc123"',
+    'http.cookie contains r"bypass=abc123"',
+    'http.request.headers["x-key"][0] eq r#"abc123"#',
+    'http.request.headers["x-key"][0] eq r#"abc123"quoted"#',
+    'http.request.cookies["sid"][0] in {r"abc123" "def456"}',
   ]) {
     const masked = maskExpression(expression);
     assert.doesNotMatch(masked, /abc123|def456/, expression);
