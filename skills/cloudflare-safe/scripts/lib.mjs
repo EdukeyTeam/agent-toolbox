@@ -1,5 +1,4 @@
 // Shared helpers for the cloudflare-safe scripts. No dependencies; Node.js 18+.
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -125,22 +124,6 @@ export async function callApi({ url, method = 'GET', token, body, fetchImpl = gl
   let json;
   try { json = JSON.parse(text); } catch { json = undefined; }
   return { status: response.status, ok: response.ok, text, json };
-}
-
-// Optional user-supplied filter for everything printed from an API response, for example a
-// secret redactor that also recognises values inside rule expressions. Set
-// CLOUDFLARE_OUTPUT_FILTER to a shell command that reads stdin and writes stdout. When it is
-// set but fails, the output is withheld: printing it unfiltered could leak exactly what the
-// filter exists to catch.
-export function applyOutputFilter(text, env = process.env, run = spawnSync) {
-  const command = env.CLOUDFLARE_OUTPUT_FILTER?.trim();
-  if (!command) return text;
-  const result = run(command, { input: text, shell: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  if (result.error || result.status !== 0) {
-    const reason = result.error?.message || `exit code ${result.status}`;
-    throw new CliError(`The output filter in CLOUDFLARE_OUTPUT_FILTER failed (${reason}), so the response was not printed.`, 9);
-  }
-  return result.stdout;
 }
 
 export function formatBody(result, tokenValues) {

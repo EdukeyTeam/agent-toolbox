@@ -33,7 +33,7 @@ node "<skill-dir>/scripts/cf-read.mjs" <api-path>
 
 Reads need no approval. Look up paths you do not know in the [Cloudflare API reference](https://developers.cloudflare.com/api/) rather than guessing. Report the values the API returned, not a paraphrase of them.
 
-The script blanks fields whose names mark them as secrets, but it cannot recognise a secret inside ordinary text, such as a bypass header value written into a rule expression. If you see one in the output, do not repeat it in your reply or in any file. When the user has set `CLOUDFLARE_OUTPUT_FILTER` (see the [setup guide](references/setup.md)), the scripts pipe what they print through that filter; if it fails they print nothing, so tell the user rather than reading the response another way.
+The script blanks fields whose names mark them as secrets, but it cannot recognise a secret inside ordinary text, such as a bypass header value written into a rule expression. If you see one in the output, do not repeat it in your reply or in any file.
 
 When a read fails:
 

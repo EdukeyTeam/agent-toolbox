@@ -14,7 +14,7 @@
 // 4 not approved, 6 write token missing or no response received, 7 API rejected the change,
 // 8 prohibited operation, or a DNS record whose type could not be checked.
 import fs from 'node:fs';
-import { API_PREFIX, CliError, applyOutputFilter, callApi, isMain, loadTokens, redact, resolveApiUrl, runCli } from './lib.mjs';
+import { API_PREFIX, CliError, callApi, isMain, loadTokens, redact, resolveApiUrl, runCli } from './lib.mjs';
 
 const USAGE = 'Usage: node cf-apply.mjs <change-file.json> --approved';
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
@@ -205,16 +205,7 @@ async function applyLocked(file, {
     result: result.json === undefined ? redact(result.text, secrets) : redact(result.json, secrets),
   });
 
-  // The change has already been sent, so a failing filter withholds the response but does
-  // not turn the run into an error.
-  let shown;
-  try {
-    shown = applyOutputFilter(`${JSON.stringify(stamped.result, null, 2)}\n`, env);
-  } catch (error) {
-    if (!(error instanceof CliError)) throw error;
-    shown = `(response withheld: ${error.message} It is recorded in ${file}.)\n`;
-  }
-  stdout.write(`  HTTP ${result.status}\n${shown}`);
+  stdout.write(`  HTTP ${result.status}\n${JSON.stringify(stamped.result, null, 2)}\n`);
   if (!success) {
     throw new CliError(`The API did not confirm the change. Outcome recorded in ${file}. Check the current state before retrying, and use the "rollback" field if something changed.`, 7);
   }
