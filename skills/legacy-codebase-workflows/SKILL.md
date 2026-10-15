@@ -61,6 +61,7 @@ After saving a map or Repomix pack, offer an `AGENTS.md` pointer unless the user
 | Need | Read |
 | --- | --- |
 | Understand behavior, an internal framework, or write useful documentation | [Investigation and documentation](references/investigation.md) |
+| Document existing application architecture with source-checked Mermaid/UML views | [Architecture diagrams](references/architecture-diagrams.md) |
 | Use inexpensive workers to cover independent modules | [Workers and verification](references/workers.md) |
 | Diagnose startup, add characterization tests, implement a feature, or modernize | [Changes and modernization](references/changes.md) |
 | Choose context for small, medium, large or huge scopes; ask missing intake questions | [Scale and intake](references/scale-and-intake.md) |
