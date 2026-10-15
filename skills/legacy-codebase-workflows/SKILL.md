@@ -66,6 +66,7 @@ After saving a map or Repomix pack, offer an `AGENTS.md` pointer unless the user
 | Choose context for small, medium, large or huge scopes; ask missing intake questions | [Scale and intake](references/scale-and-intake.md) |
 | Pack a selected code slice with Repomix | [Repomix](references/repomix.md) |
 | Search private source and existing/generated docs through a local backend | [Private retrieval](references/private-retrieval.md) |
+| Repeated cross-file callers or impact questions | [Code graphs](references/code-graphs.md) |
 | Assess a Rust port or binary packaging | [Native tooling](references/native-tooling.md) |
 
 Load only the reference that matches the task. Before Repomix generation, explain full-code versus lossy structural extraction and independent comment choices; ask a short interview only for unresolved decisions, as described in [Repomix](references/repomix.md#choose-the-pack-before-generation). Do not install every optional tool or generate a full documentation set for a small question.
