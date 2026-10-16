@@ -20,7 +20,7 @@ A statement belongs in AGENTS.md only when it passes all three tests:
 
 A statement failing audience goes in a task-specific **skill**. Detailed explanations/evidence go in documentation; execution state goes in the project tracker. A stable documentation entry point can stay in AGENTS.md; a task-by-task document/skill catalog cannot. Do not invent skill names or create additional skills without authorization.
 
-TDD, verification, commit policy, and honest completion are standing obligations for every contributor. They may distinguish runtime from documentation work without becoming scenario runbooks. Keep those obligations; put commands, fixture recipes, particular flows and recovery procedures in skills.
+TDD, the seven-step Manual QA procedure, fresh endpoint captures, verification, commit policy, and honest completion are standing obligations for every contributor. They distinguish runtime from documentation work without becoming scenario runbooks. Keep those quality gates in AGENTS.md; put commands, fixture recipes, particular flows and recovery procedures in skills.
 
 ## Select the relevant workflow
 
@@ -46,11 +46,11 @@ These are the two canonical templates. They preserve the user's TDD and commit w
 
 ## Non-negotiable testing policy
 
-Preserve the seven TDD steps and test-layer definitions. **E2E and Manual QA use the fully working application with zero mocks**, including real LLM calls, supporting services and persisted results. Unit/integration tests may isolate dependencies when useful. Before each creation/refresh of an endpoint mock, make a fresh real endpoint/database query and save the complete response verbatim to a file; derive the mock from that file, never documentation or invented objects. Use synthetic authorized test data; never commit private responses or credentials. Read [the endpoint mock policy](references/endpoint-mocks.md) when adapting that contract. Missing access/budget blocks required real checks, not permission to fake a pass.
+Preserve the seven TDD steps, seven Manual QA steps and test-layer definitions. **E2E and Manual QA use the fully working application with zero mocks**, including real LLM calls, supporting services and persisted results. Unit/integration tests may isolate dependencies when useful. Before each creation/refresh of an endpoint or database mock, make a fresh real query in the authorized local/test environment and save the complete response verbatim to a file; derive the mock from that file, never documentation or invented objects. Record provenance separately without secrets; existing fixtures do not replace a fresh capture. Outdated documentation can produce mocks whose request/response shapes differ from the real endpoint. Use synthetic authorized test data; never commit private responses or credentials. Read [the endpoint mock policy](references/endpoint-mocks.md) when adapting that contract. Missing access/budget blocks mock creation/refresh and required real checks, not permission to fake a pass.
 
 ## Size and scope
 
-Aim for **200–400 words at root** and **40–120 words nested**, smaller when fewer invariants exist. These are review targets, not permission to weaken requirements or add filler.
+Aim for **550-800 words at root** and **40-120 words nested**, smaller when fewer invariants exist. The root budget accommodates the seven-step Manual QA procedure and explicit fresh-capture mock policy alongside unchanged TDD/commit gates; 200-400 words would compress away required checks. These are review targets, not permission to weaken requirements or add filler.
 
 Keep root to purpose/scope, agreed language policy, non-obvious universal constraints, one documentation entry point, and shared quality/commit/completion gates. Nested files need distinct folder-wide rules; do not create one for every standard source/test/resources directory.
 

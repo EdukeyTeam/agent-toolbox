@@ -33,7 +33,15 @@ If the area has no suitable test infrastructure yet, add it as part of the task 
 
 ### Manual QA
 
-Use **{{WEB_QA_METHOD}}** on the real app: affected flows, changed-screen screenshots, agreed visual/language checks and browser/server errors. Report evidence; missing access is blocked.
+Required for every task affecting the running application:
+
+1. Start the real app with its verified command and authorized local/test configuration, using isolated synthetic state without changing personal data. Confirm startup separately from compilation/build and tests.
+2. Exercise the complete affected flow with synthetic inputs, including success, cancellation and relevant error paths. Verify actual outputs, state changes and persisted results, not success messages alone.
+3. Use **{{WEB_QA_METHOD}}** in a real browser. Check responsiveness, focus, keyboard navigation and affected page transitions.
+4. For packaging changes, also launch the packaged build outside the IDE with its supported launcher; verify runtime resources and dependencies.
+5. Capture each changed screen and relevant state in `{{SCREENSHOTS_PATH}}`. Inspect browser console, server and other runtime logs for errors.
+6. Check UI text against agreed language/localization requirements and visual changes against approved references or existing UI conventions.
+7. Report steps, environment and evidence; fix failures before committing. If browser access, a service or another prerequisite is unavailable, state exactly what remains unverified. The runtime task is incomplete until required Manual QA passes.
 
 ### Test Strategy
 
@@ -43,7 +51,11 @@ Use **{{WEB_QA_METHOD}}** on the real app: affected flows, changed-screen screen
 | Integration | Mocks allowed when useful; endpoint fixtures require a fresh real response |
 | E2E and Manual QA | **Zero mocks; fully working real stack, including real LLM calls** |
 
-Endpoint mocks must use a complete response saved verbatim from a fresh real query; never invent objects from documentation. Use synthetic test data; never commit private responses or credentials. Missing access or budget blocks a required real check.
+#### Endpoint and database mocks
+
+Before creating or refreshing any unit/integration endpoint or database mock, make a fresh real query in the authorized local/test environment. Save the complete response verbatim to a file, then derive the mock from that capture, never documentation or invented objects. Record provenance separately without secrets. Existing fixtures do not replace a fresh capture.
+
+Documentation can be outdated: invented request/response shapes can pass mocked tests while failing against the real endpoint. Use synthetic authorized data; never commit private responses or credentials. Missing access or authorized budget blocks mock creation/refresh and required real checks.
 
 ### Verification
 
