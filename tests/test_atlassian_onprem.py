@@ -210,6 +210,18 @@ class AtlassianTests(unittest.TestCase):
             self.assertNotIn(TOKEN, result.stderr)
             self.assertNotIn(OTHER_TOKEN, result.stderr)
 
+    def test_error_body_secret_fields_are_redacted(self):
+        body = {"errors": [{"message": "denied", "password": "unknown-error-secret"}],
+                "apiKey": "unknown-api-key", "detail": {"session_token": "unknown-session"}}
+        self.responses["/jira/rest/api/2/myself"] = (403, body, {})
+        result = self.cli("jira", "GET", "/rest/api/2/myself")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("HTTP 403", result.stderr)
+        self.assertIn("denied", result.stderr)
+        for value in ["unknown-error-secret", "unknown-api-key", "unknown-session"]:
+            self.assertNotIn(value, result.stderr)
+        self.assertIn("[redacted]", result.stderr)
+
     def test_numeric_password_redaction_preserves_json(self):
         self.config['JIRA_TOKEN'] = '12345'
         self.save()

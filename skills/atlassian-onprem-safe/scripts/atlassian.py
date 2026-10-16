@@ -59,6 +59,22 @@ class Redactor:
         return scrubbed if encoded != scrubbed else value
 
 
+def scrub_secret_fields(value):
+    if isinstance(value, dict):
+        return {k: '[redacted]' if SENSITIVE.search(str(k)) else scrub_secret_fields(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [scrub_secret_fields(v) for v in value]
+    return value
+
+
+def scrub_error_body(text):
+    """Apply secret-key filtering to JSON error bodies; configured values are redacted later."""
+    try:
+        return json.dumps(scrub_secret_fields(json.loads(text)), ensure_ascii=True)
+    except ValueError:
+        return text
+
+
 def config_path():
     profile = os.environ.get('ATLASSIAN_PROFILE', '')
     if profile and not re.fullmatch(r'[A-Za-z0-9_-]{1,40}', profile):
@@ -200,7 +216,7 @@ class Client:
             with exc:
                 raw_error = exc.read(MAX_BODY + 1)
             # Never print a partial secret cut off by a response-size bound.
-            text = 'Error body exceeds safety limit; body omitted.' if len(raw_error) > MAX_BODY else raw_error.decode('utf-8', errors='replace')
+            text = 'Error body exceeds safety limit; body omitted.' if len(raw_error) > MAX_BODY else scrub_error_body(raw_error.decode('utf-8', errors='replace'))
             raise SafeError(f'HTTP {exc.code}: {text}') from None
         except (URLError, TimeoutError, OSError, ValueError, HTTPException):
             suffix = ' The write outcome is uncertain; read the current state before retrying.' if method != 'GET' else ''
