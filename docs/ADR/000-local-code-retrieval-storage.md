@@ -1,5 +1,7 @@
 # ADR: Local code retrieval storage - Main Architecture
 
+**Supersedes / relates:** [ADR 002: Local Code and Documentation Retrieval Engine](002-local-retrieval-engine.md) retains decisions 1-3's single SQLite file, float32 vector side table and optional sqlite-vec design, and specifies format 8, multi-library retrieval, new chunking/search/assembly and refresh behavior; it supersedes conflicting format-7 behavior below. These storage measurements remain historical.
+
 **Date:** 2026-10-07
 **Status:** Accepted pending PR review for decisions 2 and 3. Their format-6 storage layout is implemented and passes platform CI; index format 7 adds configurable source-faithful chunking without changing that layout. The comparison measurements below predate this implementation.
 **PRD:** None. This ADR belongs to the optional private-retrieval workflow of the `legacy-codebase-workflows` skill: [skill entrypoint](../../skills/legacy-codebase-workflows/SKILL.md), [private retrieval reference](../../skills/legacy-codebase-workflows/references/private-retrieval.md), [backend script](../../skills/legacy-codebase-workflows/scripts/context7_backend.py).
