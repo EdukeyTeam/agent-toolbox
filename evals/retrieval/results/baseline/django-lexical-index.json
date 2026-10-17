@@ -1,0 +1,55 @@
+{
+  "corpus": "django",
+  "mode": "lexical",
+  "command": [
+    "/usr/bin/python3",
+    "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "index",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/django",
+    "--database",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/django-lexical.sqlite",
+    "--library-id",
+    "/eval/django",
+    "--docs-root",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/django/docs"
+  ],
+  "seconds": 11.93745983298868,
+  "exit_code": 0,
+  "stderr": "",
+  "database_bytes": 71974912,
+  "index": {
+    "libraryId": "/eval/django",
+    "revision": "d430084791a61b31cecec132bce3dca19194f7f2",
+    "corpusId": "2cb672d63fe5ae64d8e9f2e05726c687b5141566566b0f1d6dd8288e679ae6eb",
+    "files": 3484,
+    "chunks": 23597,
+    "chunkChars": 1200,
+    "oversizedChunks": 9,
+    "changed": 3484,
+    "deleted": 0,
+    "skippedCount": 3,
+    "skipped": [
+      {
+        "kind": "code",
+        "path": "tests/admin_views/tests.py",
+        "reason": "file exceeds max_file_bytes"
+      },
+      {
+        "kind": "code",
+        "path": "tests/migrations/test_operations.py",
+        "reason": "file exceeds max_file_bytes"
+      },
+      {
+        "kind": "code",
+        "path": "tests/staticfiles_tests/project/nonutf8/nonutf8.css",
+        "reason": "non-UTF-8 file"
+      }
+    ],
+    "embeddingModel": null,
+    "modelRevision": null,
+    "rerankerModel": null,
+    "rerankerRevision": null,
+    "vectorEngine": "stdlib",
+    "excludes": []
+  }
+}

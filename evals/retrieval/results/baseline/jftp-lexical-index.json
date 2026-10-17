@@ -1,0 +1,140 @@
+{
+  "corpus": "jftp",
+  "mode": "lexical",
+  "command": [
+    "/usr/bin/python3",
+    "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "index",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/jftp",
+    "--database",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/jftp-lexical.sqlite",
+    "--library-id",
+    "/eval/jftp",
+    "--docs-root",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/jftp/docs"
+  ],
+  "seconds": 2.77082888399309,
+  "exit_code": 0,
+  "stderr": "",
+  "database_bytes": 24113152,
+  "index": {
+    "libraryId": "/eval/jftp",
+    "revision": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+    "corpusId": "80428b99e7a940be59dfe02bfebec64bac9e7133fac989acc185b5ecd69486d2",
+    "files": 601,
+    "chunks": 6332,
+    "chunkChars": 1200,
+    "oversizedChunks": 11,
+    "changed": 601,
+    "deleted": 0,
+    "skippedCount": 41,
+    "skipped": [
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/gui/EditPopupMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/AboutDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/AutoUpdater_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/CertificatePrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeLocalDirectoryDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ConnectionDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/DownloadAndUnzipDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ExecuteCommandDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FTPMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FTPSession_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritePropertiesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/GeneralConnectionPrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/HelpMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/JFTPToolBar_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileFilterDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFilePropertiesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileTableModel_de.properties",
+        "reason": "non-UTF-8 file"
+      }
+    ],
+    "embeddingModel": null,
+    "modelRevision": null,
+    "rerankerModel": null,
+    "rerankerRevision": null,
+    "vectorEngine": "stdlib",
+    "excludes": []
+  }
+}

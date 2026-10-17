@@ -1,0 +1,1342 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-17T20:48:04.259034+00:00",
+  "budget_policy": "ranked character prefix; ceil(chars/4); text only; no deduplication",
+  "overall": {
+    "questions": 10,
+    "positive_questions": 8,
+    "absent_questions": 2,
+    "errors": 0,
+    "hit@1": 0.25,
+    "hit@3": 0.625,
+    "hit@5": 0.75,
+    "hit@10": 0.75,
+    "MRR@10": 0.4479166666666667,
+    "recall@10": 0.6875,
+    "micro_range_recall@10": 0.6666666666666666,
+    "absent_success": 1.0,
+    "budgets": {
+      "2000": {
+        "hit": 0.75,
+        "range_recall": 0.6875,
+        "character_precision": 0.053984375
+      },
+      "5000": {
+        "hit": 0.75,
+        "range_recall": 0.6875,
+        "character_precision": 0.04413278237678925
+      }
+    },
+    "latency_seconds": {
+      "p50": 11.162298198003555,
+      "p95": 12.974785048005288
+    }
+  },
+  "by_kind": {
+    "absent": {
+      "questions": 2,
+      "positive_questions": 0,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": null,
+      "hit@3": null,
+      "hit@5": null,
+      "hit@10": null,
+      "MRR@10": null,
+      "recall@10": null,
+      "micro_range_recall@10": null,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": null,
+          "range_recall": null,
+          "character_precision": null
+        },
+        "5000": {
+          "hit": null,
+          "range_recall": null,
+          "character_precision": null
+        }
+      },
+      "latency_seconds": {
+        "p50": 10.584576512002968,
+        "p95": 11.162298198003555
+      }
+    },
+    "concept": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 0.0,
+      "hit@3": 0.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 0.25,
+      "recall@10": 1.0,
+      "micro_range_recall@10": 1.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.0625
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.04273869561500983
+        }
+      },
+      "latency_seconds": {
+        "p50": 11.140420498995809,
+        "p95": 11.140420498995809
+      }
+    },
+    "config": {
+      "questions": 2,
+      "positive_questions": 2,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 0.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 0.41666666666666663,
+      "recall@10": 1.0,
+      "micro_range_recall@10": 1.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.06443750000000001
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.07280146176261189
+        }
+      },
+      "latency_seconds": {
+        "p50": 9.242702097995789,
+        "p95": 12.974785048005288
+      }
+    },
+    "cross-file": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 0.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 0.5,
+      "recall@10": 0.5,
+      "micro_range_recall@10": 0.5,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 0.5,
+          "character_precision": 0.099
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 0.5,
+          "character_precision": 0.06834066787470877
+        }
+      },
+      "latency_seconds": {
+        "p50": 9.284387332008919,
+        "p95": 9.284387332008919
+      }
+    },
+    "docs-howto": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 0.0,
+      "hit@3": 0.0,
+      "hit@5": 0.0,
+      "hit@10": 0.0,
+      "MRR@10": 0.0,
+      "recall@10": 0.0,
+      "micro_range_recall@10": 0.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 0.0,
+          "range_recall": 0.0,
+          "character_precision": 0.0
+        },
+        "5000": {
+          "hit": 0.0,
+          "range_recall": 0.0,
+          "character_precision": 0.0
+        }
+      },
+      "latency_seconds": {
+        "p50": 11.75907757198729,
+        "p95": 11.75907757198729
+      }
+    },
+    "exact-symbol": {
+      "questions": 2,
+      "positive_questions": 2,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 1.0,
+      "recall@10": 1.0,
+      "micro_range_recall@10": 1.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.07075000000000001
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.0481899859996858
+        }
+      },
+      "latency_seconds": {
+        "p50": 11.584741939004743,
+        "p95": 11.985406448991853
+      }
+    },
+    "paraphrase": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 0.0,
+      "hit@3": 0.0,
+      "hit@5": 0.0,
+      "hit@10": 0.0,
+      "MRR@10": 0.0,
+      "recall@10": 0.0,
+      "micro_range_recall@10": 0.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 0.0,
+          "range_recall": 0.0,
+          "character_precision": 0.0
+        },
+        "5000": {
+          "hit": 0.0,
+          "range_recall": 0.0,
+          "character_precision": 0.0
+        }
+      },
+      "latency_seconds": {
+        "p50": 11.175517779993243,
+        "p95": 11.175517779993243
+      }
+    }
+  },
+  "by_corpus": {
+    "django": {
+      "questions": 10,
+      "positive_questions": 8,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": 0.25,
+      "hit@3": 0.625,
+      "hit@5": 0.75,
+      "hit@10": 0.75,
+      "MRR@10": 0.4479166666666667,
+      "recall@10": 0.6875,
+      "micro_range_recall@10": 0.6666666666666666,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": 0.75,
+          "range_recall": 0.6875,
+          "character_precision": 0.053984375
+        },
+        "5000": {
+          "hit": 0.75,
+          "range_recall": 0.6875,
+          "character_precision": 0.04413278237678925
+        }
+      },
+      "latency_seconds": {
+        "p50": 11.162298198003555,
+        "p95": 12.974785048005288
+      }
+    }
+  },
+  "questions": [
+    {
+      "question": {
+        "id": "django-001",
+        "corpus": "django",
+        "kind": "exact-symbol",
+        "question": "Where is transaction.on_commit defined and how does it forward the callback?",
+        "expected": [
+          {
+            "path": "django/db/transaction.py",
+            "start": 143,
+            "end": 148
+          }
+        ],
+        "notes": "Delegates callback registration to the selected connection."
+      },
+      "results": [
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 138,
+          "endLine": 170,
+          "text": "            connection.needs_rollback = True\n            connection.rollback_exc = exc\n        raise\n\n\ndef on_commit(func, using=None, robust=False):\n    \"\"\"\n    Register `func` to be called when the current transaction is committed.\n    If the current transaction is rolled back, `func` will not be called.\n    \"\"\"\n    get_connection(using).on_commit(func, robust)\n\n\n#################################\n# Decorators / context managers #\n#################################\n\n\nclass Atomic(ContextDecorator):\n    \"\"\"\n    Guarantee the atomic execution of a given block.\n\n    An instance can be used either as a decorator or as a context manager.\n\n    When it's used as a decorator, __call__ wraps the execution of the\n    decorated function in the instance itself, used as a context manager.\n\n    When it's used as a context manager, __enter__ creates a transaction or a\n    savepoint, depending on whether a transaction is already in progress, and\n    __exit__ commits the transaction or releases the savepoint on normal exit,\n    and rolls back the transaction or to the savepoint on exceptions.\n\n    It's possible to disable the creation of savepoints if the goal is to"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 109,
+          "endLine": 145,
+          "text": "    and data corruption may occur.\n    \"\"\"\n    return get_connection(using).set_rollback(rollback)\n\n\n@contextmanager\ndef mark_for_rollback_on_error(using=None):\n    \"\"\"\n    Internal low-level utility to mark a transaction as \"needs rollback\" when\n    an exception is raised while not enforcing the enclosed block to be in a\n    transaction. This is needed by Model.save() and friends to avoid starting a\n    transaction when in autocommit mode and a single query is executed.\n\n    It's equivalent to:\n\n        connection = get_connection(using)\n        if connection.get_autocommit():\n            yield\n        else:\n            with transaction.atomic(using=using, savepoint=False):\n                yield\n\n    but it uses low-level utilities to avoid performance overhead.\n    \"\"\"\n    try:\n        yield\n    except Exception as exc:\n        connection = get_connection(using)\n        if connection.in_atomic_block:\n            connection.needs_rollback = True\n            connection.rollback_exc = exc\n        raise\n\n\ndef on_commit(func, using=None, robust=False):\n    \"\"\"\n    Register `func` to be called when the current transaction is committed."
+        },
+        {
+          "path": "django/db/backends/base/base.py",
+          "startLine": 726,
+          "endLine": 754,
+          "text": "\n    def on_commit(self, func, robust=False):\n        if not callable(func):\n            raise TypeError(\"on_commit()'s callback must be a callable.\")\n        if self.in_atomic_block:\n            # Transaction in progress; save for execution on commit.\n            self.run_on_commit.append((set(self.savepoint_ids), func, robust))\n        elif not self.get_autocommit():\n            raise TransactionManagementError(\n                \"on_commit() cannot be used in manual transaction management\"\n            )\n        else:\n            # No transaction in progress and in autocommit mode; execute\n            # immediately.\n            if robust:\n                try:\n                    func()\n                except Exception as e:\n                    name = getattr(func, \"__qualname__\", func)\n                    logger.exception(\"Error calling %s in on_commit() (%s).\", name, e)\n            else:\n                func()\n\n    def run_and_clear_commit_hooks(self):\n        self.validate_no_atomic_block()\n        current_run_on_commit = self.run_on_commit\n        self.run_on_commit = []\n        while current_run_on_commit:\n            _, func, robust = current_run_on_commit.pop(0)"
+        },
+        {
+          "path": "tests/transaction_hooks/tests.py",
+          "startLine": 276,
+          "endLine": 317,
+          "text": "        except ForcedError:\n            pass\n\n        with transaction.atomic():\n            self.do(1)\n\n        self.assertDone([1])\n\n    def test_db_query_in_hook(self):\n        with transaction.atomic():\n            Thing.objects.create(num=1)\n            transaction.on_commit(\n                lambda: [self.notify(t.num) for t in Thing.objects.all()]\n            )\n\n        self.assertDone([1])\n\n    def test_transaction_in_hook(self):\n        def on_commit():\n            with transaction.atomic():\n                t = Thing.objects.create(num=1)\n                self.notify(t.num)\n\n        with transaction.atomic():\n            transaction.on_commit(on_commit)\n\n        self.assertDone([1])\n\n    def test_hook_in_hook(self):\n        def on_commit(i, add_hook):\n            with transaction.atomic():\n                if add_hook:\n                    transaction.on_commit(lambda: on_commit(i + 10, False))\n                t = Thing.objects.create(num=i)\n                self.notify(t.num)\n\n        with transaction.atomic():\n            transaction.on_commit(lambda: on_commit(1, True))\n            transaction.on_commit(lambda: on_commit(2, True))\n\n        self.assertDone([1, 11, 2, 12])\n"
+        },
+        {
+          "path": "django/db/backends/base/base.py",
+          "startLine": 706,
+          "endLine": 733,
+          "text": "        creation/deletion. This also prevents the production database from\n        being exposed to potential child threads while (or after) the test\n        database is destroyed. Refs #10868, #17786, #16969.\n        \"\"\"\n        conn = self.__class__({**self.settings_dict, \"NAME\": None}, alias=NO_DB_ALIAS)\n        try:\n            with conn.cursor() as cursor:\n                yield cursor\n        finally:\n            conn.close()\n\n    def schema_editor(self, *args, **kwargs):\n        \"\"\"\n        Return a new instance of this backend's SchemaEditor.\n        \"\"\"\n        if self.SchemaEditorClass is None:\n            raise NotImplementedError(\n                \"The SchemaEditorClass attribute of this database wrapper is still None\"\n            )\n        return self.SchemaEditorClass(self, *args, **kwargs)\n\n    def on_commit(self, func, robust=False):\n        if not callable(func):\n            raise TypeError(\"on_commit()'s callback must be a callable.\")\n        if self.in_atomic_block:\n            # Transaction in progress; save for execution on commit.\n            self.run_on_commit.append((set(self.savepoint_ids), func, robust))\n        elif not self.get_autocommit():"
+        },
+        {
+          "path": "tests/model_formsets_regress/tests.py",
+          "startLine": 322,
+          "endLine": 365,
+          "text": "            \"test-MAX_NUM_FORMS\": \"\",\n            \"test-0-name\": \"Random Place\",\n        }\n        with self.assertNumQueries(1):\n            formset = Formset(data, prefix=\"test\")\n            formset.save()\n\n\nclass CustomWidget(forms.widgets.TextInput):\n    pass\n\n\nclass UserSiteForm(forms.ModelForm):\n    class Meta:\n        model = UserSite\n        fields = \"__all__\"\n        widgets = {\n            \"id\": CustomWidget,\n            \"data\": CustomWidget,\n        }\n        localized_fields = (\"data\",)\n\n\nclass Callback:\n    def __init__(self):\n        self.log = []\n\n    def __call__(self, db_field, **kwargs):\n        self.log.append((db_field, kwargs))\n        return db_field.formfield(**kwargs)\n\n\nclass FormfieldCallbackTests(TestCase):\n    \"\"\"\n    Regression for #13095 and #17683: Using base forms with widgets\n    defined in Meta should not raise errors and BaseModelForm should respect\n    the specified pk widget.\n    \"\"\"\n\n    def test_inlineformset_factory_default(self):\n        Formset = inlineformset_factory(\n            User, UserSite, form=UserSiteForm, fields=\"__all__\"\n        )\n        form = Formset().forms[0]"
+        },
+        {
+          "path": "tests/model_forms/tests.py",
+          "startLine": 3579,
+          "endLine": 3613,
+          "text": "                type(NewForm.base_fields[name].widget),\n            )\n\n    def test_custom_callback_in_meta(self):\n        def callback(db_field, **kwargs):\n            return forms.CharField(widget=forms.Textarea)\n\n        class NewForm(forms.ModelForm):\n            class Meta:\n                model = Person\n                fields = [\"id\", \"name\"]\n                formfield_callback = callback\n\n        for field in NewForm.base_fields.values():\n            self.assertEqual(type(field.widget), forms.Textarea)\n\n    def test_custom_callback_from_base_form_meta(self):\n        def callback(db_field, **kwargs):\n            return forms.CharField(widget=forms.Textarea)\n\n        class BaseForm(forms.ModelForm):\n            class Meta:\n                model = Person\n                fields = \"__all__\"\n                formfield_callback = callback\n\n        NewForm = modelform_factory(model=Person, form=BaseForm)\n\n        class InheritedForm(NewForm):\n            pass\n\n        for name, field in NewForm.base_fields.items():\n            self.assertEqual(type(field.widget), forms.Textarea)\n            self.assertEqual(\n                type(field.widget),"
+        },
+        {
+          "path": "tests/model_forms/tests.py",
+          "startLine": 3524,
+          "endLine": 3559,
+          "text": "        \"\"\"Regression for #19733\"\"\"\n        form = modelform_factory(Person, fields=\"__all__\")\n        self.assertEqual(list(form.base_fields), [\"name\"])\n\n    def test_custom_callback(self):\n        \"\"\"A custom formfield_callback is used if provided\"\"\"\n        callback_args = []\n\n        def callback(db_field, **kwargs):\n            callback_args.append((db_field, kwargs))\n            return db_field.formfield(**kwargs)\n\n        widget = forms.Textarea()\n\n        class BaseForm(forms.ModelForm):\n            class Meta:\n                model = Person\n                widgets = {\"name\": widget}\n                fields = \"__all__\"\n\n        modelform_factory(Person, form=BaseForm, formfield_callback=callback)\n        id_field, name_field = Person._meta.fields\n\n        self.assertEqual(\n            callback_args, [(id_field, {}), (name_field, {\"widget\": widget})]\n        )\n\n    def test_bad_callback(self):\n        # A bad callback provided by user still gives an error\n        with self.assertRaises(TypeError):\n            modelform_factory(\n                Person,\n                fields=\"__all__\",\n                formfield_callback=\"not a function or callable\",\n            )\n"
+        },
+        {
+          "path": "tests/model_forms/tests.py",
+          "startLine": 3552,
+          "endLine": 3586,
+          "text": "        # A bad callback provided by user still gives an error\n        with self.assertRaises(TypeError):\n            modelform_factory(\n                Person,\n                fields=\"__all__\",\n                formfield_callback=\"not a function or callable\",\n            )\n\n    def test_inherit_after_custom_callback(self):\n        def callback(db_field, **kwargs):\n            if isinstance(db_field, models.CharField):\n                return forms.CharField(widget=forms.Textarea)\n            return db_field.formfield(**kwargs)\n\n        class BaseForm(forms.ModelForm):\n            class Meta:\n                model = Person\n                fields = \"__all__\"\n\n        NewForm = modelform_factory(Person, form=BaseForm, formfield_callback=callback)\n\n        class InheritedForm(NewForm):\n            pass\n\n        for name in NewForm.base_fields:\n            self.assertEqual(\n                type(InheritedForm.base_fields[name].widget),\n                type(NewForm.base_fields[name].widget),\n            )\n\n    def test_custom_callback_in_meta(self):\n        def callback(db_field, **kwargs):\n            return forms.CharField(widget=forms.Textarea)\n\n        class NewForm(forms.ModelForm):"
+        },
+        {
+          "path": "tests/migrations/test_executor.py",
+          "startLine": 621,
+          "endLine": 659,
+          "text": "            ]\n        )\n\n    @override_settings(MIGRATION_MODULES={\"migrations\": \"migrations.test_migrations\"})\n    def test_process_callback(self):\n        \"\"\"\n        #24129 - Tests callback process\n        \"\"\"\n        call_args_list = []\n\n        def callback(*args):\n            call_args_list.append(args)\n\n        executor = MigrationExecutor(connection, progress_callback=callback)\n        # Were the tables there before?\n        self.assertTableNotExists(\"migrations_author\")\n        self.assertTableNotExists(\"migrations_tribble\")\n        executor.migrate(\n            [\n                (\"migrations\", \"0001_initial\"),\n                (\"migrations\", \"0002_second\"),\n            ]\n        )\n        # Rebuild the graph to reflect the new DB state\n        executor.loader.build_graph()\n\n        executor.migrate(\n            [\n                (\"migrations\", None),\n                (\"migrations\", None),\n            ]\n        )\n        self.assertTableNotExists(\"migrations_author\")\n        self.assertTableNotExists(\"migrations_tribble\")\n\n        migrations = executor.loader.graph.nodes\n        expected = [\n            (\"render_start\",),\n            (\"render_success\",),"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 11.584741939004743,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.049125,
+            "returned_chars": 8000,
+            "relevant_chars": 393,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.03348100187425456,
+            "returned_chars": 11738,
+            "relevant_chars": 393,
+            "estimated_tokens": 2935,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-002",
+        "corpus": "django",
+        "kind": "exact-symbol",
+        "question": "Where is QuerySet.get_or_create implemented?",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 1089,
+            "end": 1112
+          }
+        ],
+        "notes": "Tries get, creates within an atomic transaction and handles an IntegrityError race."
+      },
+      "results": [
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1074,
+          "endLine": 1104,
+          "text": "            for pks, update_kwargs in updates:\n                rows_updated += queryset.filter(pk__in=pks).update(**update_kwargs)\n        return rows_updated\n\n    bulk_update.alters_data = True\n\n    async def abulk_update(self, objs, fields, batch_size=None):\n        return await sync_to_async(self.bulk_update)(\n            objs=objs,\n            fields=fields,\n            batch_size=batch_size,\n        )\n\n    abulk_update.alters_data = True\n\n    def get_or_create(self, defaults=None, **kwargs):\n        \"\"\"\n        Look up an object with the given kwargs, creating one if necessary.\n        Return a tuple of (object, created), where created is a boolean\n        specifying whether an object was created.\n        \"\"\"\n        # The get() needs to be targeted at the write database in order\n        # to avoid potential transaction consistency problems.\n        self._for_write = True\n        try:\n            return self.get(**kwargs), False\n        except self.model.DoesNotExist:\n            params = self._extract_model_params(defaults, **kwargs)\n            # Try to create an object using passed params.\n            try:\n                with transaction.atomic(using=self.db):"
+        },
+        {
+          "path": "django/db/models/fields/related_descriptors.py",
+          "startLine": 1461,
+          "endLine": 1489,
+          "text": "            return await sync_to_async(self.create)(\n                through_defaults=through_defaults, **kwargs\n            )\n\n        acreate.alters_data = True\n\n        def get_or_create(self, *, through_defaults=None, **kwargs):\n            db = router.db_for_write(self.instance.__class__, instance=self.instance)\n            obj, created = super(ManyRelatedManager, self.db_manager(db)).get_or_create(\n                **kwargs\n            )\n            # We only need to add() if created because if we got an object back\n            # from get() then the relationship already exists.\n            if created:\n                self.add(obj, through_defaults=through_defaults)\n            return obj, created\n\n        get_or_create.alters_data = True\n\n        async def aget_or_create(self, *, through_defaults=None, **kwargs):\n            return await sync_to_async(self.get_or_create)(\n                through_defaults=through_defaults, **kwargs\n            )\n\n        aget_or_create.alters_data = True\n\n        def update_or_create(self, *, through_defaults=None, **kwargs):\n            db = router.db_for_write(self.instance.__class__, instance=self.instance)\n            obj, created = super("
+        },
+        {
+          "path": "django/contrib/contenttypes/fields.py",
+          "startLine": 843,
+          "endLine": 871,
+          "text": "        acreate.alters_data = True\n\n        def get_or_create(self, **kwargs):\n            kwargs[self.content_type_field_name] = self.content_type\n            kwargs[self.object_id_field_name] = self.pk_val\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super().using(db).get_or_create(**kwargs)\n\n        get_or_create.alters_data = True\n\n        async def aget_or_create(self, **kwargs):\n            return await sync_to_async(self.get_or_create)(**kwargs)\n\n        aget_or_create.alters_data = True\n\n        def update_or_create(self, **kwargs):\n            kwargs[self.content_type_field_name] = self.content_type\n            kwargs[self.object_id_field_name] = self.pk_val\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super().using(db).update_or_create(**kwargs)\n\n        update_or_create.alters_data = True\n\n        async def aupdate_or_create(self, **kwargs):\n            return await sync_to_async(self.update_or_create)(**kwargs)\n\n        aupdate_or_create.alters_data = True\n\n    return GenericRelatedObjectManager"
+        },
+        {
+          "path": "django/db/models/fields/related_descriptors.py",
+          "startLine": 909,
+          "endLine": 940,
+          "text": "        acreate.alters_data = True\n\n        def get_or_create(self, **kwargs):\n            self._check_fk_val()\n            kwargs[self.field.name] = self.instance\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super(RelatedManager, self.db_manager(db)).get_or_create(**kwargs)\n\n        get_or_create.alters_data = True\n\n        async def aget_or_create(self, **kwargs):\n            return await sync_to_async(self.get_or_create)(**kwargs)\n\n        aget_or_create.alters_data = True\n\n        def update_or_create(self, **kwargs):\n            self._check_fk_val()\n            kwargs[self.field.name] = self.instance\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super(RelatedManager, self.db_manager(db)).update_or_create(**kwargs)\n\n        update_or_create.alters_data = True\n\n        async def aupdate_or_create(self, **kwargs):\n            return await sync_to_async(self.update_or_create)(**kwargs)\n\n        aupdate_or_create.alters_data = True\n\n        # remove() and clear() are only provided if the ForeignKey can have a\n        # value of null.\n        if rel.field.null:\n"
+        },
+        {
+          "path": "django/db/models/fields/related_descriptors.py",
+          "startLine": 884,
+          "endLine": 916,
+          "text": "            else:\n                with transaction.atomic(using=db, savepoint=False):\n                    for obj in objs:\n                        check_and_update_obj(obj)\n                        obj.save()\n\n        add.alters_data = True\n\n        async def aadd(self, *objs, bulk=True):\n            return await sync_to_async(self.add)(*objs, bulk=bulk)\n\n        aadd.alters_data = True\n\n        def create(self, **kwargs):\n            self._check_fk_val()\n            self._remove_prefetched_objects()\n            kwargs[self.field.name] = self.instance\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super(RelatedManager, self.db_manager(db)).create(**kwargs)\n\n        create.alters_data = True\n\n        async def acreate(self, **kwargs):\n            return await sync_to_async(self.create)(**kwargs)\n\n        acreate.alters_data = True\n\n        def get_or_create(self, **kwargs):\n            self._check_fk_val()\n            kwargs[self.field.name] = self.instance\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super(RelatedManager, self.db_manager(db)).get_or_create(**kwargs)\n"
+        },
+        {
+          "path": "django/contrib/contenttypes/fields.py",
+          "startLine": 819,
+          "endLine": 850,
+          "text": "                            new_objs.append(obj)\n\n                    self.remove(*old_objs)\n                    self.add(*new_objs, bulk=bulk)\n\n        set.alters_data = True\n\n        async def aset(self, objs, *, bulk=True, clear=False):\n            return await sync_to_async(self.set)(objs, bulk=bulk, clear=clear)\n\n        aset.alters_data = True\n\n        def create(self, **kwargs):\n            self._remove_prefetched_objects()\n            kwargs[self.content_type_field_name] = self.content_type\n            kwargs[self.object_id_field_name] = self.pk_val\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super().using(db).create(**kwargs)\n\n        create.alters_data = True\n\n        async def acreate(self, **kwargs):\n            return await sync_to_async(self.create)(**kwargs)\n\n        acreate.alters_data = True\n\n        def get_or_create(self, **kwargs):\n            kwargs[self.content_type_field_name] = self.content_type\n            kwargs[self.object_id_field_name] = self.pk_val\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super().using(db).get_or_create(**kwargs)\n"
+        },
+        {
+          "path": "tests/multiple_database/models.py",
+          "startLine": 35,
+          "endLine": 73,
+          "text": "\n\n# This book manager doesn't do anything interesting; it just\n# exists to strip out the 'extra_arg' argument to certain\n# calls. This argument is used to establish that the BookManager\n# is actually getting used when it should be.\nclass BookManager(models.Manager):\n    def create(self, *args, extra_arg=None, **kwargs):\n        return super().create(*args, **kwargs)\n\n    def get_or_create(self, *args, extra_arg=None, **kwargs):\n        return super().get_or_create(*args, **kwargs)\n\n\nclass Book(models.Model):\n    title = models.CharField(max_length=100)\n    published = models.DateField()\n    authors = models.ManyToManyField(Person)\n    editor = models.ForeignKey(\n        Person, models.SET_NULL, null=True, related_name=\"edited\"\n    )\n    reviews = GenericRelation(Review)\n    pages = models.IntegerField(default=100)\n\n    objects = BookManager()\n\n    class Meta:\n        ordering = (\"title\",)\n\n    def __str__(self):\n        return self.title\n\n\nclass Pet(models.Model):\n    name = models.CharField(max_length=100)\n    owner = models.ForeignKey(Person, models.CASCADE)\n    owner_first_name = models.CharField(\n        max_length=150, null=True, blank=True, default=None\n    )"
+        },
+        {
+          "path": "django/db/models/fields/related_descriptors.py",
+          "startLine": 1438,
+          "endLine": 1468,
+          "text": "                    )\n\n        def set(self, objs, *, clear=False, through_defaults=None):\n            self.set_base(objs, clear=clear, through_defaults=through_defaults)\n\n        set.alters_data = True\n\n        async def aset(self, objs, *, clear=False, through_defaults=None):\n            return await sync_to_async(self.set)(\n                objs=objs, clear=clear, through_defaults=through_defaults\n            )\n\n        aset.alters_data = True\n\n        def create(self, *, through_defaults=None, **kwargs):\n            db = router.db_for_write(self.instance.__class__, instance=self.instance)\n            new_obj = super(ManyRelatedManager, self.db_manager(db)).create(**kwargs)\n            self.add(new_obj, through_defaults=through_defaults)\n            return new_obj\n\n        create.alters_data = True\n\n        async def acreate(self, *, through_defaults=None, **kwargs):\n            return await sync_to_async(self.create)(\n                through_defaults=through_defaults, **kwargs\n            )\n\n        acreate.alters_data = True\n\n        def get_or_create(self, *, through_defaults=None, **kwargs):\n            db = router.db_for_write(self.instance.__class__, instance=self.instance)"
+        },
+        {
+          "path": "tests/get_or_create/tests.py",
+          "startLine": 63,
+          "endLine": 94,
+          "text": "            first_name=\"George\",\n            last_name=\"Harrison\",\n            defaults={\"birthday\": date(1943, 2, 25)},\n        )[1]\n\n        self.assertFalse(created)\n        self.assertEqual(Person.objects.count(), 2)\n\n    def test_get_or_create_invalid_params(self):\n        \"\"\"\n        If you don't specify a value or default value for all required\n        fields, you will get an error.\n        \"\"\"\n        with self.assertRaises(IntegrityError):\n            Person.objects.get_or_create(first_name=\"Tom\", last_name=\"Smith\")\n\n    def test_get_or_create_with_pk_property(self):\n        \"\"\"\n        Using the pk property of a model is allowed.\n        \"\"\"\n        Thing.objects.get_or_create(pk=1)\n\n    def test_get_or_create_with_model_property_defaults(self):\n        \"\"\"Using a property with a setter implemented is allowed.\"\"\"\n        t, _ = Thing.objects.get_or_create(\n            defaults={\"capitalized_name_property\": \"annie\"}, pk=1\n        )\n        self.assertEqual(t.name, \"Annie\")\n\n    def test_get_or_create_on_related_manager(self):\n        p = Publisher.objects.create(name=\"Acme Publishing\")\n        # Create a book through the publisher."
+        },
+        {
+          "path": "tests/get_or_create/tests.py",
+          "startLine": 352,
+          "endLine": 379,
+          "text": "        then you will get an error and data will not be updated.\n        \"\"\"\n        ManualPrimaryKeyTest.objects.create(id=1, data=\"Original\")\n        with self.assertRaises(IntegrityError):\n            ManualPrimaryKeyTest.objects.update_or_create(id=1, data=\"Different\")\n        self.assertEqual(ManualPrimaryKeyTest.objects.get(id=1).data, \"Original\")\n\n    def test_with_pk_property(self):\n        \"\"\"\n        Using the pk property of a model is allowed.\n        \"\"\"\n        Thing.objects.update_or_create(pk=1)\n\n    def test_update_or_create_with_model_property_defaults(self):\n        \"\"\"Using a property with a setter implemented is allowed.\"\"\"\n        t, _ = Thing.objects.update_or_create(\n            defaults={\"capitalized_name_property\": \"annie\"}, pk=1\n        )\n        self.assertEqual(t.name, \"Annie\")\n\n    def test_error_contains_full_traceback(self):\n        \"\"\"\n        update_or_create should raise IntegrityErrors with the full traceback.\n        This is tested by checking that a known method call is in the\n        traceback. We cannot use assertRaises/assertRaises here because we need\n        to inspect the actual traceback. Refs #16340.\n        \"\"\"\n        try:"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 11.985406448991853,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.092375,
+            "returned_chars": 8000,
+            "relevant_chars": 739,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.06289897012511703,
+            "returned_chars": 11749,
+            "relevant_chars": 739,
+            "estimated_tokens": 2938,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-003",
+        "corpus": "django",
+        "kind": "concept",
+        "question": "What prevents a durable atomic transaction block from being nested in another atomic block?",
+        "expected": [
+          {
+            "path": "django/db/transaction.py",
+            "start": 196,
+            "end": 207
+          }
+        ],
+        "notes": "Atomic.__enter__ raises RuntimeError unless the enclosing block is a test case."
+      },
+      "results": [
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 307,
+          "endLine": 333,
+          "text": "                    # Roll back transaction\n                    try:\n                        connection.rollback()\n                    except Error:\n                        # An error during rollback means that something\n                        # went wrong with the connection. Drop it.\n                        connection.close()\n\n        finally:\n            # Outermost block exit when autocommit was enabled.\n            if not connection.in_atomic_block:\n                if connection.closed_in_transaction:\n                    connection.connection = None\n                else:\n                    connection.set_autocommit(True)\n            # Outermost block exit when autocommit was disabled.\n            elif not connection.savepoint_ids and not connection.commit_on_exit:\n                if connection.closed_in_transaction:\n                    connection.connection = None\n                else:\n                    connection.in_atomic_block = False\n\n\ndef atomic(using=None, savepoint=True, durable=False):\n    # Bare decorator: @atomic -- although the first argument is called\n    # `using`, it's actually the function being decorated.\n    if callable(using):"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 326,
+          "endLine": 367,
+          "text": "                else:\n                    connection.in_atomic_block = False\n\n\ndef atomic(using=None, savepoint=True, durable=False):\n    # Bare decorator: @atomic -- although the first argument is called\n    # `using`, it's actually the function being decorated.\n    if callable(using):\n        return Atomic(DEFAULT_DB_ALIAS, savepoint, durable)(using)\n    # Decorator: @atomic(...) or context manager: with atomic(...): ...\n    else:\n        return Atomic(using, savepoint, durable)\n\n\ndef _non_atomic_requests(view, using):\n    try:\n        databases = view._non_atomic_requests | {using}\n    except AttributeError:\n        databases = {using}\n\n    if iscoroutinefunction(view):\n\n        @wraps(view)\n        async def wrapper(*args, **kwargs):\n            return await view(*args, **kwargs)\n\n    else:\n\n        @wraps(view)\n        def wrapper(*args, **kwargs):\n            return view(*args, **kwargs)\n\n    wrapper._non_atomic_requests = databases\n    return wrapper\n\n\ndef non_atomic_requests(using=None):\n    if callable(using):\n        return _non_atomic_requests(using, DEFAULT_DB_ALIAS)\n    else:\n        if using is None:\n            using = DEFAULT_DB_ALIAS"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 138,
+          "endLine": 170,
+          "text": "            connection.needs_rollback = True\n            connection.rollback_exc = exc\n        raise\n\n\ndef on_commit(func, using=None, robust=False):\n    \"\"\"\n    Register `func` to be called when the current transaction is committed.\n    If the current transaction is rolled back, `func` will not be called.\n    \"\"\"\n    get_connection(using).on_commit(func, robust)\n\n\n#################################\n# Decorators / context managers #\n#################################\n\n\nclass Atomic(ContextDecorator):\n    \"\"\"\n    Guarantee the atomic execution of a given block.\n\n    An instance can be used either as a decorator or as a context manager.\n\n    When it's used as a decorator, __call__ wraps the execution of the\n    decorated function in the instance itself, used as a context manager.\n\n    When it's used as a context manager, __enter__ creates a transaction or a\n    savepoint, depending on whether a transaction is already in progress, and\n    __exit__ commits the transaction or releases the savepoint on normal exit,\n    and rolls back the transaction or to the savepoint on exceptions.\n\n    It's possible to disable the creation of savepoints if the goal is to"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 179,
+          "endLine": 212,
+          "text": "\n    Since database connections are thread-local, this is thread-safe.\n\n    An atomic block can be tagged as durable. In this case, a RuntimeError is\n    raised if it's nested within another atomic block. This guarantees\n    that database changes in a durable block are committed to the database when\n    the block exits without error.\n\n    This is a private API.\n    \"\"\"\n\n    def __init__(self, using, savepoint, durable):\n        self.using = using\n        self.savepoint = savepoint\n        self.durable = durable\n        self._from_testcase = False\n\n    def __enter__(self):\n        connection = get_connection(self.using)\n\n        if (\n            self.durable\n            and connection.atomic_blocks\n            and not connection.atomic_blocks[-1]._from_testcase\n        ):\n            raise RuntimeError(\n                \"A durable atomic block cannot be nested within another \"\n                \"atomic block.\"\n            )\n        if not connection.in_atomic_block:\n            # Reset state when entering an outermost atomic block.\n            connection.commit_on_exit = True\n            connection.needs_rollback = False\n            if not connection.get_autocommit():"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 205,
+          "endLine": 226,
+          "text": "                \"A durable atomic block cannot be nested within another \"\n                \"atomic block.\"\n            )\n        if not connection.in_atomic_block:\n            # Reset state when entering an outermost atomic block.\n            connection.commit_on_exit = True\n            connection.needs_rollback = False\n            if not connection.get_autocommit():\n                # Pretend we're already in an atomic block to bypass the code\n                # that disables autocommit to enter a transaction, and make a\n                # note to deal with this case in __exit__.\n                connection.in_atomic_block = True\n                connection.commit_on_exit = False\n\n        if connection.in_atomic_block:\n            # We're already in a transaction; create a savepoint, unless we\n            # were told not to or we're already waiting for a rollback. The\n            # second condition avoids creating useless savepoints and prevents\n            # overwriting needs_rollback until the rollback is performed.\n            if self.savepoint and not connection.needs_rollback:\n                sid = connection.savepoint()\n                connection.savepoint_ids.append(sid)"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 163,
+          "endLine": 186,
+          "text": "    decorated function in the instance itself, used as a context manager.\n\n    When it's used as a context manager, __enter__ creates a transaction or a\n    savepoint, depending on whether a transaction is already in progress, and\n    __exit__ commits the transaction or releases the savepoint on normal exit,\n    and rolls back the transaction or to the savepoint on exceptions.\n\n    It's possible to disable the creation of savepoints if the goal is to\n    ensure that some code runs within a transaction without creating overhead.\n\n    A stack of savepoint identifiers is maintained as an attribute of the\n    connection. None denotes the absence of a savepoint.\n\n    This allows reentrancy even if the same AtomicWrapper is reused. For\n    example, it's possible to define `oa = atomic('other')` and use `@oa` or\n    `with oa:` multiple times.\n\n    Since database connections are thread-local, this is thread-safe.\n\n    An atomic block can be tagged as durable. In this case, a RuntimeError is\n    raised if it's nested within another atomic block. This guarantees\n    that database changes in a durable block are committed to the database when\n    the block exits without error.\n"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 219,
+          "endLine": 246,
+          "text": "        if connection.in_atomic_block:\n            # We're already in a transaction; create a savepoint, unless we\n            # were told not to or we're already waiting for a rollback. The\n            # second condition avoids creating useless savepoints and prevents\n            # overwriting needs_rollback until the rollback is performed.\n            if self.savepoint and not connection.needs_rollback:\n                sid = connection.savepoint()\n                connection.savepoint_ids.append(sid)\n            else:\n                connection.savepoint_ids.append(None)\n        else:\n            connection.set_autocommit(\n                False, force_begin_transaction_with_broken_autocommit=True\n            )\n            connection.in_atomic_block = True\n\n        if connection.in_atomic_block:\n            connection.atomic_blocks.append(self)\n\n    def __exit__(self, exc_type, exc_value, traceback):\n        connection = get_connection(self.using)\n\n        if connection.in_atomic_block:\n            connection.atomic_blocks.pop()\n\n        if connection.savepoint_ids:\n            sid = connection.savepoint_ids.pop()\n        else:"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 239,
+          "endLine": 266,
+          "text": "        connection = get_connection(self.using)\n\n        if connection.in_atomic_block:\n            connection.atomic_blocks.pop()\n\n        if connection.savepoint_ids:\n            sid = connection.savepoint_ids.pop()\n        else:\n            # Prematurely unset this flag to allow using commit or rollback.\n            connection.in_atomic_block = False\n\n        try:\n            if connection.closed_in_transaction:\n                # The database will perform a rollback by itself.\n                # Wait until we exit the outermost block.\n                pass\n\n            elif exc_type is None and not connection.needs_rollback:\n                if connection.in_atomic_block:\n                    # Release savepoint if there is one\n                    if sid is not None:\n                        try:\n                            connection.savepoint_commit(sid)\n                        except DatabaseError:\n                            try:\n                                connection.savepoint_rollback(sid)\n                                # The savepoint won't be reused. Release it to\n                                # minimize overhead for the database server."
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 109,
+          "endLine": 145,
+          "text": "    and data corruption may occur.\n    \"\"\"\n    return get_connection(using).set_rollback(rollback)\n\n\n@contextmanager\ndef mark_for_rollback_on_error(using=None):\n    \"\"\"\n    Internal low-level utility to mark a transaction as \"needs rollback\" when\n    an exception is raised while not enforcing the enclosed block to be in a\n    transaction. This is needed by Model.save() and friends to avoid starting a\n    transaction when in autocommit mode and a single query is executed.\n\n    It's equivalent to:\n\n        connection = get_connection(using)\n        if connection.get_autocommit():\n            yield\n        else:\n            with transaction.atomic(using=using, savepoint=False):\n                yield\n\n    but it uses low-level utilities to avoid performance overhead.\n    \"\"\"\n    try:\n        yield\n    except Exception as exc:\n        connection = get_connection(using)\n        if connection.in_atomic_block:\n            connection.needs_rollback = True\n            connection.rollback_exc = exc\n        raise\n\n\ndef on_commit(func, using=None, robust=False):\n    \"\"\"\n    Register `func` to be called when the current transaction is committed."
+        },
+        {
+          "path": "tests/transactions/tests.py",
+          "startLine": 549,
+          "endLine": 575,
+          "text": "\n    def test_commit(self):\n        with transaction.atomic(durable=True):\n            reporter = Reporter.objects.create(first_name=\"Tintin\")\n        self.assertEqual(Reporter.objects.get(), reporter)\n\n    def test_nested_outer_durable(self):\n        with transaction.atomic(durable=True):\n            reporter1 = Reporter.objects.create(first_name=\"Tintin\")\n            with transaction.atomic():\n                reporter2 = Reporter.objects.create(\n                    first_name=\"Archibald\",\n                    last_name=\"Haddock\",\n                )\n        self.assertSequenceEqual(Reporter.objects.all(), [reporter2, reporter1])\n\n    def test_nested_both_durable(self):\n        msg = \"A durable atomic block cannot be nested within another atomic block.\"\n        with transaction.atomic(durable=True):\n            with self.assertRaisesMessage(RuntimeError, msg):\n                with transaction.atomic(durable=True):\n                    pass\n\n    def test_nested_inner_durable(self):\n        msg = \"A durable atomic block cannot be nested within another atomic block.\"\n        with transaction.atomic():\n            with self.assertRaisesMessage(RuntimeError, msg):"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 11.140420498995809,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": false,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 0.25,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.0625,
+            "returned_chars": 8000,
+            "relevant_chars": 500,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.04273869561500983,
+            "returned_chars": 11699,
+            "relevant_chars": 500,
+            "estimated_tokens": 2925,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-004",
+        "corpus": "django",
+        "kind": "paraphrase",
+        "question": "Why must I provide a batch size when streaming rows after requesting related objects in advance?",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 609,
+            "end": 626
+          }
+        ],
+        "notes": "iterator rejects missing chunk_size with prefetch_related and rejects nonpositive sizes."
+      },
+      "results": [
+        {
+          "path": "django/core/files/storage/base.py",
+          "startLine": 162,
+          "endLine": 194,
+          "text": "        the first item being directories, the second item being files.\n        \"\"\"\n        raise NotImplementedError(\n            \"subclasses of Storage must provide a listdir() method\"\n        )\n\n    def size(self, name):\n        \"\"\"\n        Return the total size, in bytes, of the file specified by name.\n        \"\"\"\n        raise NotImplementedError(\"subclasses of Storage must provide a size() method\")\n\n    def url(self, name):\n        \"\"\"\n        Return an absolute URL where the file's contents can be accessed\n        directly by a web browser.\n        \"\"\"\n        raise NotImplementedError(\"subclasses of Storage must provide a url() method\")\n\n    def get_accessed_time(self, name):\n        \"\"\"\n        Return the last accessed time (as a datetime) of the file specified by\n        name. The datetime will be timezone-aware if USE_TZ=True.\n        \"\"\"\n        raise NotImplementedError(\n            \"subclasses of Storage must provide a get_accessed_time() method\"\n        )\n\n    def get_created_time(self, name):\n        \"\"\"\n        Return the creation time (as a datetime) of the file specified by name.\n        The datetime will be timezone-aware if USE_TZ=True.\n        \"\"\""
+        },
+        {
+          "path": "django/core/files/storage/base.py",
+          "startLine": 136,
+          "endLine": 169,
+          "text": "        \"\"\"\n        raise NotImplementedError(\"This backend doesn't support absolute paths.\")\n\n    # The following methods form the public API for storage systems, but with\n    # no default implementations. Subclasses must implement *all* of these.\n\n    def delete(self, name):\n        \"\"\"\n        Delete the specified file from the storage system.\n        \"\"\"\n        raise NotImplementedError(\n            \"subclasses of Storage must provide a delete() method\"\n        )\n\n    def exists(self, name):\n        \"\"\"\n        Return True if a file referenced by the given name already exists in\n        the storage system, or False if the name is available for a new file.\n        \"\"\"\n        raise NotImplementedError(\n            \"subclasses of Storage must provide an exists() method\"\n        )\n\n    def listdir(self, path):\n        \"\"\"\n        List the contents of the specified path. Return a 2-tuple of lists:\n        the first item being directories, the second item being files.\n        \"\"\"\n        raise NotImplementedError(\n            \"subclasses of Storage must provide a listdir() method\"\n        )\n\n    def size(self, name):\n        \"\"\""
+        },
+        {
+          "path": "tests/bulk_create/tests.py",
+          "startLine": 437,
+          "endLine": 464,
+          "text": "        NoFields.objects.bulk_create([parent])\n        NullableFields.objects.bulk_create([child])\n        child = NullableFields.objects.get(integer_field=88)\n        self.assertEqual(child.auto_field, parent)\n\n    def test_pk_from_related_instance_saved_after_init(self):\n        country = Country(name=\"Syldavia\", iso_two_letter=\"SW\")\n        related = RelatedModel(country=country)\n        country.save()\n        RelatedModel.objects.bulk_create([related])\n        self.assertEqual(related.country_id, country.pk)\n\n    def test_unsaved_parent(self):\n        parent = NoFields()\n        msg = (\n            \"bulk_create() prohibited to prevent data loss due to unsaved \"\n            \"related object 'auto_field'.\"\n        )\n        with self.assertRaisesMessage(ValueError, msg):\n            NullableFields.objects.bulk_create([NullableFields(auto_field=parent)])\n\n    def test_invalid_batch_size_exception(self):\n        msg = \"Batch size must be a positive integer.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Country.objects.bulk_create([], batch_size=-1)\n\n    @skipIfDBFeature(\"supports_update_conflicts\")\n    def test_update_conflicts_unsupported(self):"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2222,
+          "endLine": 2250,
+          "text": "        \"\"\"\n        Helper method for bulk_create() to insert objs one batch at a time.\n        \"\"\"\n        connection = connections[self.db]\n        ops = connection.ops\n        max_batch_size = max(ops.bulk_batch_size(fields, objs), 1)\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        inserted_rows = []\n        returning_fields = (\n            self.model._meta.db_returning_fields\n            if (\n                connection.features.can_return_rows_from_bulk_insert\n                and (on_conflict is None or on_conflict == OnConflict.UPDATE)\n            )\n            else None\n        )\n        batches = [objs[i : i + batch_size] for i in range(0, len(objs), batch_size)]\n        if len(batches) > 1:\n            context = transaction.atomic(using=self.db, savepoint=False)\n        else:\n            context = nullcontext()\n        with context:\n            for item in batches:\n                inserted_rows.extend(\n                    self._insert(\n                        item,\n                        fields=fields,\n                        using=self.db,\n                        on_conflict=on_conflict,"
+        },
+        {
+          "path": "tests/delete/tests.py",
+          "startLine": 570,
+          "endLine": 594,
+          "text": "        objs = [Avatar() for i in range(0, TEST_SIZE)]\n        Avatar.objects.bulk_create(objs)\n        # Calculate the number of queries needed.\n        batch_size = connection.ops.bulk_batch_size([\"pk\"], objs)\n        # The related fetches are done in batches.\n        batches = ceil(len(objs) / batch_size)\n        # One query for Avatar.objects.all() and then one related fast delete\n        # for each batch.\n        fetches_to_mem = 1 + batches\n        # The Avatar objects are going to be deleted in batches of\n        # GET_ITERATOR_CHUNK_SIZE.\n        queries = fetches_to_mem + TEST_SIZE // GET_ITERATOR_CHUNK_SIZE\n        self.assertNumQueries(queries, Avatar.objects.all().delete)\n        self.assertFalse(Avatar.objects.exists())\n\n    def test_large_delete_related(self):\n        TEST_SIZE = 2000\n        s = S.objects.create(r=R.objects.create())\n        for i in range(TEST_SIZE):\n            T.objects.create(s=s)\n\n        batch_size = max(connection.ops.bulk_batch_size([\"pk\"], range(TEST_SIZE)), 1)\n\n        # TEST_SIZE / batch_size (select related `T` instances)\n        # + 1 (select related `U` instances)"
+        },
+        {
+          "path": "tests/bulk_create/tests.py",
+          "startLine": 276,
+          "endLine": 299,
+          "text": "        self.assertEqual(NoFields.objects.count(), 2)\n\n    @skipUnlessDBFeature(\"has_bulk_insert\")\n    def test_explicit_batch_size_efficiency(self):\n        objs = [TwoFields(f1=i, f2=i) for i in range(0, 100)]\n        with self.assertNumQueries(2):\n            TwoFields.objects.bulk_create(objs, 50)\n        TwoFields.objects.all().delete()\n        with self.assertNumQueries(1):\n            TwoFields.objects.bulk_create(objs, len(objs))\n\n    @skipUnlessDBFeature(\"has_bulk_insert\")\n    def test_explicit_batch_size_respects_max_batch_size(self):\n        objs = [Country(name=f\"Country {i}\") for i in range(1000)]\n        fields = [\"name\", \"iso_two_letter\", \"description\"]\n        max_batch_size = max(connection.ops.bulk_batch_size(fields, objs), 1)\n        with self.assertNumQueries(ceil(len(objs) / max_batch_size)):\n            Country.objects.bulk_create(objs, batch_size=max_batch_size + 1)\n\n    @skipUnlessDBFeature(\"has_bulk_insert\")\n    def test_max_batch_size(self):\n        objs = [Country(name=f\"Country {i}\") for i in range(1000)]\n        fields = [\"name\", \"iso_two_letter\", \"description\"]\n        max_batch_size = connection.ops.bulk_batch_size(fields, objs)"
+        },
+        {
+          "path": "django/db/models/deletion.py",
+          "startLine": 243,
+          "endLine": 282,
+          "text": "            all(\n                related.field.remote_field.on_delete in SKIP_COLLECTION\n                for related in get_candidate_relations_to_delete(opts)\n            )\n            and (\n                # Something like generic foreign key.\n                not any(\n                    hasattr(field, \"bulk_related_objects\")\n                    for field in opts.private_fields\n                )\n            )\n        )\n\n    def get_del_batches(self, objs, fields):\n        \"\"\"\n        Return the objs in suitably sized batches for the used connection.\n        \"\"\"\n        conn_batch_size = max(\n            connections[self.using].ops.bulk_batch_size(fields, objs), 1\n        )\n        if len(objs) > conn_batch_size:\n            return [\n                objs[i : i + conn_batch_size]\n                for i in range(0, len(objs), conn_batch_size)\n            ]\n        else:\n            return [objs]\n\n    def collect(\n        self,\n        objs,\n        source=None,\n        nullable=False,\n        collect_related=True,\n        source_attr=None,\n        reverse_dependency=False,\n        keep_parents=False,\n        fail_on_restricted=True,\n    ):\n        \"\"\""
+        },
+        {
+          "path": "tests/bulk_create/tests.py",
+          "startLine": 259,
+          "endLine": 283,
+          "text": "    def test_explicit_batch_size(self):\n        objs = [TwoFields(f1=i, f2=i) for i in range(0, 4)]\n        num_objs = len(objs)\n        TwoFields.objects.bulk_create(objs, batch_size=1)\n        self.assertEqual(TwoFields.objects.count(), num_objs)\n        TwoFields.objects.all().delete()\n        TwoFields.objects.bulk_create(objs, batch_size=2)\n        self.assertEqual(TwoFields.objects.count(), num_objs)\n        TwoFields.objects.all().delete()\n        TwoFields.objects.bulk_create(objs, batch_size=3)\n        self.assertEqual(TwoFields.objects.count(), num_objs)\n        TwoFields.objects.all().delete()\n        TwoFields.objects.bulk_create(objs, batch_size=num_objs)\n        self.assertEqual(TwoFields.objects.count(), num_objs)\n\n    def test_empty_model(self):\n        NoFields.objects.bulk_create([NoFields() for i in range(2)])\n        self.assertEqual(NoFields.objects.count(), 2)\n\n    @skipUnlessDBFeature(\"has_bulk_insert\")\n    def test_explicit_batch_size_efficiency(self):\n        objs = [TwoFields(f1=i, f2=i) for i in range(0, 100)]\n        with self.assertNumQueries(2):\n            TwoFields.objects.bulk_create(objs, 50)\n        TwoFields.objects.all().delete()"
+        },
+        {
+          "path": "tests/bulk_create/tests.py",
+          "startLine": 240,
+          "endLine": 266,
+          "text": "        id_range = range(100000, 101000, 2)\n        self.assertEqual(TwoFields.objects.filter(id__in=id_range).count(), 500)\n        self.assertEqual(TwoFields.objects.exclude(id__in=id_range).count(), 500)\n\n    @skipUnlessDBFeature(\"has_bulk_insert\")\n    def test_large_batch_mixed_efficiency(self):\n        \"\"\"\n        Test inserting a large batch with objects having primary key set\n        mixed together with objects without PK set.\n        \"\"\"\n        with CaptureQueriesContext(connection) as ctx:\n            TwoFields.objects.bulk_create(\n                [\n                    TwoFields(id=i if i % 2 == 0 else None, f1=i, f2=i + 1)\n                    for i in range(100000, 101000)\n                ]\n            )\n            self.assertLess(len(ctx), 10)\n\n    def test_explicit_batch_size(self):\n        objs = [TwoFields(f1=i, f2=i) for i in range(0, 4)]\n        num_objs = len(objs)\n        TwoFields.objects.bulk_create(objs, batch_size=1)\n        self.assertEqual(TwoFields.objects.count(), num_objs)\n        TwoFields.objects.all().delete()\n        TwoFields.objects.bulk_create(objs, batch_size=2)\n        self.assertEqual(TwoFields.objects.count(), num_objs)"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1040,
+          "endLine": 1064,
+          "text": "        if not objs:\n            return 0\n        for obj in objs:\n            obj._prepare_related_fields_for_save(\n                operation_name=\"bulk_update\", fields=fields\n            )\n        # PK is used twice in the resulting update query, once in the filter\n        # and once in the WHEN. Each field will also have one CAST.\n        self._for_write = True\n        connection = connections[self.db]\n        max_batch_size = connection.ops.bulk_batch_size(\n            [opts.pk, opts.pk, *fields], objs\n        )\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        requires_casting = connection.features.requires_casted_case_in_updates\n        batches = (objs[i : i + batch_size] for i in range(0, len(objs), batch_size))\n        updates = []\n        for batch_objs in batches:\n            update_kwargs = {}\n            for field in fields:\n                when_statements = []\n                for obj in batch_objs:\n                    attr = getattr(obj, field.attname)\n                    if not hasattr(attr, \"resolve_expression\"):\n                        attr = Value(attr, output_field=field)"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 11.175517779993243,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": false,
+        "hit@5": false,
+        "hit@10": false,
+        "MRR@10": 0.0,
+        "recall@10": 0.0,
+        "matched_ranges@10": 0,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": false,
+            "range_recall": 0.0,
+            "character_precision": 0.0,
+            "returned_chars": 8000,
+            "relevant_chars": 0,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": false,
+            "range_recall": 0.0,
+            "character_precision": 0.0,
+            "returned_chars": 11661,
+            "relevant_chars": 0,
+            "estimated_tokens": 2916,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-005",
+        "corpus": "django",
+        "kind": "config",
+        "question": "Where are default database settings such as CONN_MAX_AGE and AUTOCOMMIT filled in?",
+        "expected": [
+          {
+            "path": "django/db/utils.py",
+            "start": 150,
+            "end": 170
+          }
+        ],
+        "notes": "ConnectionHandler.configure_settings supplies backend and connection defaults."
+      },
+      "results": [
+        {
+          "path": "tests/backends/postgresql/tests.py",
+          "startLine": 219,
+          "endLine": 253,
+          "text": "            new_connection.close()\n\n    def test_connect_non_autocommit(self):\n        \"\"\"\n        The connection wrapper shouldn't believe that autocommit is enabled\n        after setting the time zone when AUTOCOMMIT is False (#21452).\n        \"\"\"\n        new_connection = no_pool_connection()\n        new_connection.settings_dict[\"AUTOCOMMIT\"] = False\n\n        try:\n            # Open a database connection.\n            with new_connection.cursor():\n                self.assertFalse(new_connection.get_autocommit())\n        finally:\n            new_connection.close()\n\n    @unittest.skipUnless(is_psycopg3, \"psycopg3 specific test\")\n    def test_connect_pool(self):\n        from psycopg_pool import PoolTimeout\n\n        new_connection = no_pool_connection(alias=\"default_pool\")\n        new_connection.settings_dict[\"OPTIONS\"][\"pool\"] = {\n            \"min_size\": 0,\n            \"max_size\": 2,\n            \"timeout\": 5,\n        }\n        self.assertIsNotNone(new_connection.pool)\n\n        connections = []\n\n        def get_connection():\n            # copy() reuses the existing alias and as such the same pool.\n            conn = new_connection.copy()\n            conn.connect()"
+        },
+        {
+          "path": "tests/servers/tests.py",
+          "startLine": 66,
+          "endLine": 94,
+          "text": "    server_thread_class = CloseConnectionTestLiveServerThread\n\n    @classmethod\n    def _make_connections_override(cls):\n        conn = connections[DEFAULT_DB_ALIAS]\n        cls.conn = conn\n        cls.old_conn_max_age = conn.settings_dict[\"CONN_MAX_AGE\"]\n        # Set the connection's CONN_MAX_AGE to None to simulate the\n        # CONN_MAX_AGE setting being set to None on the server. This prevents\n        # Django from closing the connection and allows testing that\n        # ThreadedWSGIServer closes connections.\n        conn.settings_dict[\"CONN_MAX_AGE\"] = None\n        # Pass a database connection through to the server to check it is being\n        # closed by ThreadedWSGIServer.\n        return {DEFAULT_DB_ALIAS: conn}\n\n    @classmethod\n    def tearDownConnectionTest(cls):\n        cls.conn.settings_dict[\"CONN_MAX_AGE\"] = cls.old_conn_max_age\n\n    @classmethod\n    def tearDownClass(cls):\n        cls.tearDownConnectionTest()\n        super().tearDownClass()\n\n    def test_closes_connections(self):\n        # The server's request thread sets this event after closing\n        # its database connections.\n        closed_event = self.server_thread.httpd._connections_closed"
+        },
+        {
+          "path": "django/db/utils.py",
+          "startLine": 157,
+          "endLine": 183,
+          "text": "            )\n        elif databases[DEFAULT_DB_ALIAS] == {}:\n            databases[DEFAULT_DB_ALIAS][\"ENGINE\"] = \"django.db.backends.dummy\"\n\n        # Configure default settings.\n        for conn in databases.values():\n            conn.setdefault(\"ATOMIC_REQUESTS\", False)\n            conn.setdefault(\"AUTOCOMMIT\", True)\n            conn.setdefault(\"ENGINE\", \"django.db.backends.dummy\")\n            if conn[\"ENGINE\"] == \"django.db.backends.\" or not conn[\"ENGINE\"]:\n                conn[\"ENGINE\"] = \"django.db.backends.dummy\"\n            conn.setdefault(\"CONN_MAX_AGE\", 0)\n            conn.setdefault(\"CONN_HEALTH_CHECKS\", False)\n            conn.setdefault(\"OPTIONS\", {})\n            conn.setdefault(\"TIME_ZONE\", None)\n            for setting in [\"NAME\", \"USER\", \"PASSWORD\", \"HOST\", \"PORT\"]:\n                conn.setdefault(setting, \"\")\n\n            test_settings = conn.setdefault(\"TEST\", {})\n            default_test_settings = [\n                (\"CHARSET\", None),\n                (\"COLLATION\", None),\n                (\"MIGRATE\", True),\n                (\"MIRROR\", None),\n                (\"NAME\", None),\n            ]\n            for key, value in default_test_settings:"
+        },
+        {
+          "path": "django/db/backends/base/base.py",
+          "startLine": 54,
+          "endLine": 78,
+          "text": "        # Connection related attributes.\n        # The underlying database connection.\n        self.connection = None\n        # `settings_dict` should be a dictionary containing keys such as\n        # NAME, USER, etc. It's called `settings_dict` instead of `settings`\n        # to disambiguate it from Django settings modules.\n        self.settings_dict = settings_dict\n        self.alias = alias\n        # Query logging in debug mode or when explicitly enabled.\n        self.queries_log = deque(maxlen=self.queries_limit)\n        self.force_debug_cursor = False\n\n        # Transaction related attributes.\n        # Tracks if the connection is in autocommit mode. Per PEP 249, by\n        # default, it isn't.\n        self.autocommit = False\n        # Tracks if the connection is in a transaction managed by 'atomic'.\n        self.in_atomic_block = False\n        # Increment to generate unique savepoint ids.\n        self.savepoint_state = 0\n        # List of savepoints created by 'atomic'.\n        self.savepoint_ids = []\n        # Stack of active 'atomic' blocks.\n        self.atomic_blocks = []\n        # Tracks if the outermost 'atomic' block should commit on exit,"
+        },
+        {
+          "path": "django/db/backends/postgresql/base.py",
+          "startLine": 305,
+          "endLine": 330,
+          "text": "            conn_params[\"port\"] = settings_dict[\"PORT\"]\n        if is_psycopg3:\n            conn_params[\"context\"] = get_adapters_template(\n                settings.USE_TZ, self.timezone\n            )\n            # Disable prepared statements by default to keep connection poolers\n            # working. Can be reenabled via OPTIONS in the settings dict.\n            conn_params[\"prepare_threshold\"] = conn_params.pop(\n                \"prepare_threshold\", None\n            )\n        return conn_params\n\n    @async_unsafe\n    def get_new_connection(self, conn_params):\n        # self.isolation_level must be set:\n        # - after connecting to the database in order to obtain the database's\n        #   default when no value is explicitly specified in options.\n        # - before calling _set_autocommit() because if autocommit is on, that\n        #   will set connection.isolation_level to ISOLATION_LEVEL_AUTOCOMMIT.\n        options = self.settings_dict[\"OPTIONS\"]\n        set_isolation_level = False\n        try:\n            isolation_level_value = options[\"isolation_level\"]\n        except KeyError:\n            self.isolation_level = IsolationLevel.READ_COMMITTED\n        else:"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 1,
+          "endLine": 48,
+          "text": "import warnings\nfrom asyncio import iscoroutinefunction\nfrom contextlib import ContextDecorator, contextmanager\nfrom functools import wraps\n\nfrom django.db import (\n    DEFAULT_DB_ALIAS,\n    DatabaseError,\n    Error,\n    ProgrammingError,\n    connections,\n)\nfrom django.utils.deprecation import RemovedInDjango2028Warning\nfrom django.utils.warnings import django_file_prefixes\n\n\nclass TransactionManagementError(ProgrammingError):\n    \"\"\"Transaction management is used improperly.\"\"\"\n\n    pass\n\n\ndef get_connection(using=None):\n    \"\"\"\n    Get a database connection by name, or the default database connection\n    if no name is provided. This is a private API.\n    \"\"\"\n    if using is None:\n        using = DEFAULT_DB_ALIAS\n    return connections[using]\n\n\ndef get_autocommit(using=None):\n    \"\"\"Get the autocommit status of the connection.\"\"\"\n    return get_connection(using).get_autocommit()\n\n\ndef set_autocommit(autocommit, using=None):\n    \"\"\"Set the autocommit status of the connection.\"\"\"\n    return get_connection(using).set_autocommit(autocommit)\n\n\ndef commit(using=None):\n    \"\"\"Commit a transaction.\"\"\"\n    get_connection(using).commit()\n\n\ndef rollback(using=None):"
+        },
+        {
+          "path": "tests/servers/tests.py",
+          "startLine": 38,
+          "endLine": 73,
+          "text": "        \"django.contrib.sessions\",\n    ]\n    fixtures = [\"testdata.json\"]\n\n    def urlopen(self, url):\n        return urlopen(self.live_server_url + url)\n\n\nclass CloseConnectionTestServer(ThreadedWSGIServer):\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        # This event is set right after the first time a request closes its\n        # database connections.\n        self._connections_closed = threading.Event()\n\n    def _close_connections(self):\n        super()._close_connections()\n        self._connections_closed.set()\n\n\nclass CloseConnectionTestLiveServerThread(LiveServerThread):\n    server_class = CloseConnectionTestServer\n\n    def _create_server(self, connections_override=None):\n        return super()._create_server(connections_override=self.connections_override)\n\n\nclass LiveServerTestCloseConnectionTest(LiveServerBase):\n    server_thread_class = CloseConnectionTestLiveServerThread\n\n    @classmethod\n    def _make_connections_override(cls):\n        conn = connections[DEFAULT_DB_ALIAS]\n        cls.conn = conn\n        cls.old_conn_max_age = conn.settings_dict[\"CONN_MAX_AGE\"]\n        # Set the connection's CONN_MAX_AGE to None to simulate the"
+        },
+        {
+          "path": "django/db/backends/sqlite3/base.py",
+          "startLine": 225,
+          "endLine": 252,
+          "text": "\n    @async_unsafe\n    def close(self):\n        self.validate_thread_sharing()\n        # If database is in memory, closing the connection destroys the\n        # database. To prevent accidental data loss, ignore close requests on\n        # an in-memory db.\n        if not self.is_in_memory_db():\n            BaseDatabaseWrapper.close(self)\n\n    def _savepoint_allowed(self):\n        # When 'isolation_level' is not None, sqlite3 commits before each\n        # savepoint; it's a bug. When it is None, savepoints don't make sense\n        # because autocommit is enabled. The only exception is inside 'atomic'\n        # blocks. To work around that bug, on SQLite, 'atomic' starts a\n        # transaction explicitly rather than simply disable autocommit.\n        return self.in_atomic_block\n\n    def _set_autocommit(self, autocommit):\n        if autocommit:\n            level = None\n        else:\n            # sqlite3's internal default is ''. It's different from None.\n            # See Modules/_sqlite/connection.c.\n            level = \"\"\n        # 'isolation_level' is a misleading API.\n        # SQLite always runs at the SERIALIZABLE isolation level.\n        with self.wrap_database_errors:"
+        },
+        {
+          "path": "django/db/backends/postgresql/base.py",
+          "startLine": 181,
+          "endLine": 212,
+          "text": "    Database = Database\n    SchemaEditorClass = DatabaseSchemaEditor\n    # Classes instantiated in __init__().\n    client_class = DatabaseClient\n    creation_class = DatabaseCreation\n    features_class = DatabaseFeatures\n    introspection_class = DatabaseIntrospection\n    ops_class = DatabaseOperations\n    # PostgreSQL backend-specific attributes.\n    _named_cursor_idx = 0\n    _connection_pools = {}\n\n    @property\n    def pool(self):\n        pool_options = self.settings_dict[\"OPTIONS\"].get(\"pool\")\n        if self.alias == NO_DB_ALIAS or not pool_options:\n            return None\n\n        if self.alias not in self._connection_pools:\n            if self.settings_dict.get(\"CONN_MAX_AGE\", 0) != 0:\n                raise ImproperlyConfigured(\n                    \"Pooling doesn't support persistent connections.\"\n                )\n            # Set the default options.\n            if pool_options is True:\n                pool_options = {}\n\n            try:\n                from psycopg_pool import ConnectionPool\n            except ImportError as err:\n                raise ImproperlyConfigured(\n                    \"Error loading psycopg_pool module.\\nDid you install psycopg[pool]?\""
+        },
+        {
+          "path": "django/db/utils.py",
+          "startLine": 139,
+          "endLine": 164,
+          "text": "\n\nclass ConnectionHandler(BaseConnectionHandler):\n    settings_name = \"DATABASES\"\n    # Connections needs to still be an actual thread local, as it's truly\n    # thread-critical. Database backends should use @async_unsafe to protect\n    # their code from async contexts, but this will give those contexts\n    # separate connections in case it's needed as well. There's no cleanup\n    # after async contexts, though, so we don't allow that if we can help it.\n    thread_critical = True\n\n    def configure_settings(self, databases):\n        databases = super().configure_settings(databases)\n        if databases == {}:\n            databases[DEFAULT_DB_ALIAS] = {\"ENGINE\": \"django.db.backends.dummy\"}\n        elif DEFAULT_DB_ALIAS not in databases:\n            raise ImproperlyConfigured(\n                f\"You must define a '{DEFAULT_DB_ALIAS}' database.\"\n            )\n        elif databases[DEFAULT_DB_ALIAS] == {}:\n            databases[DEFAULT_DB_ALIAS][\"ENGINE\"] = \"django.db.backends.dummy\"\n\n        # Configure default settings.\n        for conn in databases.values():\n            conn.setdefault(\"ATOMIC_REQUESTS\", False)\n            conn.setdefault(\"AUTOCOMMIT\", True)"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 12.974785048005288,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 0.3333333333333333,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.084125,
+            "returned_chars": 8000,
+            "relevant_chars": 673,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.11533576086036074,
+            "returned_chars": 11809,
+            "relevant_chars": 1362,
+            "estimated_tokens": 2953,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-006",
+        "corpus": "django",
+        "kind": "docs-howto",
+        "question": "How do I make every HTTP request commit on success and roll back if the view raises an exception?",
+        "expected": [
+          {
+            "path": "docs/topics/db/transactions.txt",
+            "start": 29,
+            "end": 44
+          }
+        ],
+        "notes": "Set ATOMIC_REQUESTS=True per database. Ground truth deliberately remains reST, even though the baseline cannot index .txt docs."
+      },
+      "results": [
+        {
+          "path": "tests/view_tests/views.py",
+          "startLine": 1,
+          "endLine": 43,
+          "text": "import datetime\nimport decimal\nimport logging\nimport sys\nfrom pathlib import Path\n\nfrom django.core.exceptions import BadRequest, PermissionDenied, SuspiciousOperation\nfrom django.http import Http404, HttpResponse, JsonResponse\nfrom django.shortcuts import render\nfrom django.template import Context, Template, TemplateDoesNotExist\nfrom django.urls import get_resolver\nfrom django.views import View\nfrom django.views.debug import (\n    ExceptionReporter,\n    SafeExceptionReporterFilter,\n    technical_500_response,\n)\nfrom django.views.decorators.debug import sensitive_post_parameters, sensitive_variables\n\nTEMPLATES_PATH = Path(__file__).resolve().parent / \"templates\"\n\n\ndef index_page(request):\n    \"\"\"Dummy index page\"\"\"\n    return HttpResponse(\"<html><body>Dummy page</body></html>\")\n\n\ndef with_parameter(request, parameter):\n    return HttpResponse(\"ok\")\n\n\ndef raises(request):\n    # Make sure that a callable that raises an exception in the stack frame's\n    # local vars won't hijack the technical 500 response (#15025).\n    def callable():\n        raise Exception\n\n    try:\n        raise Exception\n    except Exception:\n        return technical_500_response(request, *sys.exc_info())\n\n"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 41,
+          "endLine": 86,
+          "text": "\n\ndef commit(using=None):\n    \"\"\"Commit a transaction.\"\"\"\n    get_connection(using).commit()\n\n\ndef rollback(using=None):\n    \"\"\"Roll back a transaction.\"\"\"\n    get_connection(using).rollback()\n\n\ndef savepoint(using=None):\n    warnings.warn(\n        \"savepoint() is deprecated. Use savepoint_create() instead.\",\n        category=RemovedInDjango2028Warning,\n        skip_file_prefixes=django_file_prefixes(),\n    )\n    return savepoint_create(using=using)\n\n\ndef savepoint_create(using=None):\n    \"\"\"\n    Create a savepoint (if supported and required by the backend) inside the\n    current transaction. Return an identifier for the savepoint that will be\n    used for the subsequent rollback or commit.\n    \"\"\"\n    return get_connection(using).savepoint()\n\n\ndef savepoint_rollback(sid, using=None):\n    \"\"\"\n    Roll back the most recent savepoint (if one exists). Do nothing if\n    savepoints are not supported.\n    \"\"\"\n    get_connection(using).savepoint_rollback(sid)\n\n\ndef savepoint_commit(sid, using=None):\n    \"\"\"\n    Commit the most recent savepoint (if one exists). Do nothing if\n    savepoints are not supported.\n    \"\"\"\n    get_connection(using).savepoint_commit(sid)\n\n"
+        },
+        {
+          "path": "django/db/backends/base/base.py",
+          "startLine": 320,
+          "endLine": 351,
+          "text": "        return self._cursor()\n\n    @async_unsafe\n    def commit(self):\n        \"\"\"Commit a transaction and reset the dirty flag.\"\"\"\n        self.validate_thread_sharing()\n        self.validate_no_atomic_block()\n        self._commit()\n        # A successful commit means that the database connection works.\n        self.errors_occurred = False\n        self.run_commit_hooks_on_set_autocommit_on = True\n\n    @async_unsafe\n    def rollback(self):\n        \"\"\"Roll back a transaction and reset the dirty flag.\"\"\"\n        self.validate_thread_sharing()\n        self.validate_no_atomic_block()\n        self._rollback()\n        # A successful rollback means that the database connection works.\n        self.errors_occurred = False\n        self.needs_rollback = False\n        self.run_on_commit = []\n\n    @async_unsafe\n    def close(self):\n        \"\"\"Close the connection to the database.\"\"\"\n        self.validate_thread_sharing()\n        self.run_on_commit = []\n\n        # Don't call validate_no_atomic_block() to avoid making it difficult\n        # to get rid of a connection in an invalid state. The next connect()\n        # will reset the transaction state anyway."
+        },
+        {
+          "path": "django/views/decorators/http.py",
+          "startLine": 1,
+          "endLine": 37,
+          "text": "\"\"\"\nDecorators for views based on HTTP headers.\n\"\"\"\n\nimport datetime\nfrom functools import wraps\nfrom inspect import iscoroutinefunction\n\nfrom django.http import HttpResponseNotAllowed\nfrom django.middleware.http import ConditionalGetMiddleware\nfrom django.utils import timezone\nfrom django.utils.cache import get_conditional_response\nfrom django.utils.decorators import decorator_from_middleware\nfrom django.utils.http import http_date, quote_etag\nfrom django.utils.log import log_response\n\nconditional_page = decorator_from_middleware(ConditionalGetMiddleware)\n\n\ndef require_http_methods(request_method_list):\n    \"\"\"\n    Decorator to make a view only accept particular request methods. Usage::\n\n        @require_http_methods([\"GET\", \"POST\"])\n        def my_view(request):\n            # I can assume now that only GET or POST requests make it this far\n            # ...\n\n    Note that request methods should be in uppercase.\n    \"\"\"\n\n    def decorator(func):\n        if iscoroutinefunction(func):\n\n            @wraps(func)\n            async def inner(request, *args, **kwargs):\n                if request.method not in request_method_list:"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 291,
+          "endLine": 314,
+          "text": "                    # Roll back to savepoint if there is one, mark for rollback\n                    # otherwise.\n                    if sid is None:\n                        connection.needs_rollback = True\n                    else:\n                        try:\n                            connection.savepoint_rollback(sid)\n                            # The savepoint won't be reused. Release it to\n                            # minimize overhead for the database server.\n                            connection.savepoint_commit(sid)\n                        except Error:\n                            # If rolling back to a savepoint fails, mark for\n                            # rollback at a higher level and avoid shadowing\n                            # the original exception.\n                            connection.needs_rollback = True\n                else:\n                    # Roll back transaction\n                    try:\n                        connection.rollback()\n                    except Error:\n                        # An error during rollback means that something\n                        # went wrong with the connection. Drop it.\n                        connection.close()\n"
+        },
+        {
+          "path": "tests/view_tests/views.py",
+          "startLine": 76,
+          "endLine": 119,
+          "text": "\n\ndef technical404(request):\n    raise Http404(\"Testing technical 404.\")\n\n\nclass Http404View(View):\n    def get(self, request):\n        raise Http404(\"Testing class-based technical 404.\")\n\n\ndef template_exception(request):\n    return render(request, \"debug/template_exception.html\")\n\n\ndef safestring_in_template_exception(request):\n    \"\"\"\n    Trigger an exception in the template machinery which causes a SafeString\n    to be inserted as args[0] of the Exception.\n    \"\"\"\n    template = Template('{% extends \"<script>alert(1);</script>\" %}')\n    try:\n        template.render(Context())\n    except Exception:\n        return technical_500_response(request, *sys.exc_info())\n\n\ndef jsi18n(request):\n    return render(request, \"jsi18n.html\")\n\n\ndef jsi18n_multi_catalogs(request):\n    return render(request, \"jsi18n-multi-catalogs.html\")\n\n\ndef raises_template_does_not_exist(request, path=\"i_dont_exist.html\"):\n    # We need to inspect the HTML generated by the fancy 500 debug view but\n    # the test client ignores it, so we send it explicitly.\n    try:\n        return render(request, path)\n    except TemplateDoesNotExist:\n        return technical_500_response(request, *sys.exc_info())\n\n"
+        },
+        {
+          "path": "tests/transaction_hooks/tests.py",
+          "startLine": 310,
+          "endLine": 333,
+          "text": "                self.notify(t.num)\n\n        with transaction.atomic():\n            transaction.on_commit(lambda: on_commit(1, True))\n            transaction.on_commit(lambda: on_commit(2, True))\n\n        self.assertDone([1, 11, 2, 12])\n\n    def test_raises_exception_non_autocommit_mode(self):\n        def should_never_be_called():\n            raise AssertionError(\"this function should never be called\")\n\n        try:\n            connection.set_autocommit(False)\n            msg = \"on_commit() cannot be used in manual transaction management\"\n            with self.assertRaisesMessage(transaction.TransactionManagementError, msg):\n                transaction.on_commit(should_never_be_called)\n        finally:\n            connection.set_autocommit(True)\n\n    def test_raises_exception_non_callable(self):\n        msg = \"on_commit()'s callback must be a callable.\"\n        with self.assertRaisesMessage(TypeError, msg):\n            transaction.on_commit(None)"
+        },
+        {
+          "path": "django/utils/decorators.py",
+          "startLine": 115,
+          "endLine": 141,
+          "text": "    \"\"\"\n    Given a middleware class (not an instance), return a view decorator. This\n    lets you use middleware functionality on a per-view basis. The middleware\n    is created with no params passed.\n    \"\"\"\n    return make_middleware_decorator(middleware_class)()\n\n\ndef make_middleware_decorator(middleware_class):\n    def _make_decorator(*m_args, **m_kwargs):\n        def _decorator(view_func):\n            middleware = middleware_class(view_func, *m_args, **m_kwargs)\n\n            def _pre_process_request(request, *args, **kwargs):\n                if hasattr(middleware, \"process_request\"):\n                    result = middleware.process_request(request)\n                    if result is not None:\n                        return result\n                if hasattr(middleware, \"process_view\"):\n                    result = middleware.process_view(request, view_func, args, kwargs)\n                    if result is not None:\n                        return result\n                return None\n\n            def _process_exception(request, exception):\n                if hasattr(middleware, \"process_exception\"):\n                    result = middleware.process_exception(request, exception)"
+        },
+        {
+          "path": "tests/auth_tests/test_mixins.py",
+          "startLine": 41,
+          "endLine": 74,
+          "text": "):\n    permission_required = [\"auth_tests.add_customuser\", \"auth_tests.change_customuser\"]\n    raise_exception = True\n\n\nclass StackedMixinsView2(\n    PermissionRequiredMixin, LoginRequiredMixin, EmptyResponseView\n):\n    permission_required = [\"auth_tests.add_customuser\", \"auth_tests.change_customuser\"]\n    raise_exception = True\n\n\nclass AccessMixinTests(TestCase):\n    factory = RequestFactory()\n\n    def test_stacked_mixins_success(self):\n        user = models.User.objects.create(username=\"joe\", password=\"qwerty\")\n        perms = models.Permission.objects.filter(\n            codename__in=(\"add_customuser\", \"change_customuser\")\n        )\n        user.user_permissions.add(*perms)\n        request = self.factory.get(\"/rand\")\n        request.user = user\n\n        view = StackedMixinsView1.as_view()\n        response = view(request)\n        self.assertEqual(response.status_code, 200)\n\n        view = StackedMixinsView2.as_view()\n        response = view(request)\n        self.assertEqual(response.status_code, 200)\n\n    def test_stacked_mixins_missing_permission(self):\n        user = models.User.objects.create(username=\"joe\", password=\"qwerty\")"
+        },
+        {
+          "path": "django/core/handlers/base.py",
+          "startLine": 346,
+          "endLine": 375,
+          "text": "\n    def make_view_atomic(self, view):\n        non_atomic_requests = getattr(view, \"_non_atomic_requests\", set())\n        for alias, settings_dict in connections.settings.items():\n            if settings_dict[\"ATOMIC_REQUESTS\"] and alias not in non_atomic_requests:\n                if iscoroutinefunction(view):\n                    raise RuntimeError(\n                        \"You cannot use ATOMIC_REQUESTS with async views.\"\n                    )\n                view = transaction.atomic(using=alias)(view)\n        return view\n\n    def process_exception_by_middleware(self, exception, request):\n        \"\"\"\n        Pass the exception to the exception middleware. If no middleware\n        return a response for this exception, return None.\n        \"\"\"\n        for middleware_method in self._exception_middleware:\n            response = middleware_method(request, exception)\n            if response:\n                return response\n        return None\n\n\ndef reset_urlconf(sender, **kwargs):\n    \"\"\"Reset the URLconf after each request is finished.\"\"\"\n    set_urlconf(None)\n\n\nrequest_finished.connect(reset_urlconf)"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 11.75907757198729,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": false,
+        "hit@5": false,
+        "hit@10": false,
+        "MRR@10": 0.0,
+        "recall@10": 0.0,
+        "matched_ranges@10": 0,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": false,
+            "range_recall": 0.0,
+            "character_precision": 0.0,
+            "returned_chars": 8000,
+            "relevant_chars": 0,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": false,
+            "range_recall": 0.0,
+            "character_precision": 0.0,
+            "returned_chars": 11461,
+            "relevant_chars": 0,
+            "estimated_tokens": 2866,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-007",
+        "corpus": "django",
+        "kind": "cross-file",
+        "question": "Trace how a QuerySet without an explicit database chooses a read or write database through the routers.",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 2173,
+            "end": 2177
+          },
+          {
+            "path": "django/db/utils.py",
+            "start": 220,
+            "end": 242
+          }
+        ],
+        "notes": "QuerySet.db selects router action; routing tries configured routers, instance state and default alias."
+      },
+      "results": [
+        {
+          "path": "django/test/client.py",
+          "startLine": 87,
+          "endLine": 122,
+          "text": "    def read(self, size=-1, /):\n        if not self.read_started:\n            self.__content.seek(0)\n            self.read_started = True\n        if size == -1 or size is None:\n            size = self.__len\n        assert (\n            self.__len >= size\n        ), \"Cannot read more than the available bytes from the HTTP incoming data.\"\n        content = self.__content.read(size)\n        self.__len -= len(content)\n        return content\n\n    def readline(self, size=-1, /):\n        if not self.read_started:\n            self.__content.seek(0)\n            self.read_started = True\n        if size == -1 or size is None:\n            size = self.__len\n        assert (\n            self.__len >= size\n        ), \"Cannot read more than the available bytes from the HTTP incoming data.\"\n        content = self.__content.readline(size)\n        self.__len -= len(content)\n        return content\n\n    def write(self, b, /):\n        if self.read_started:\n            raise ValueError(\"Unable to write a payload after it's been read\")\n        content = force_bytes(b)\n        self.__content.write(content)\n        self.__len += len(content)\n\n\ndef closing_iterator_wrapper(iterable, close):\n    try:"
+        },
+        {
+          "path": "django/db/utils.py",
+          "startLine": 206,
+          "endLine": 241,
+          "text": "\n    @cached_property\n    def routers(self):\n        if self._routers is None:\n            self._routers = settings.DATABASE_ROUTERS\n        routers = []\n        for r in self._routers:\n            if isinstance(r, str):\n                router = import_string(r)()\n            else:\n                router = r\n            routers.append(router)\n        return routers\n\n    def _router_func(action):\n        def _route_db(self, model, **hints):\n            chosen_db = None\n            for router in self.routers:\n                try:\n                    method = getattr(router, action)\n                except AttributeError:\n                    # If the router doesn't have a method, skip to the next\n                    # one.\n                    pass\n                else:\n                    chosen_db = method(model, **hints)\n                    if chosen_db:\n                        return chosen_db\n            instance = hints.get(\"instance\")\n            if instance is not None and instance._state.db:\n                return instance._state.db\n            return DEFAULT_DB_ALIAS\n\n        return _route_db\n\n    db_for_read = _router_func(\"db_for_read\")"
+        },
+        {
+          "path": "django/db/utils.py",
+          "startLine": 176,
+          "endLine": 213,
+          "text": "            default_test_settings = [\n                (\"CHARSET\", None),\n                (\"COLLATION\", None),\n                (\"MIGRATE\", True),\n                (\"MIRROR\", None),\n                (\"NAME\", None),\n            ]\n            for key, value in default_test_settings:\n                test_settings.setdefault(key, value)\n        return databases\n\n    @property\n    def databases(self):\n        # Maintained for backward compatibility as some 3rd party packages have\n        # made use of this private API in the past. It is no longer used within\n        # Django itself.\n        return self.settings\n\n    def create_connection(self, alias):\n        db = self.settings[alias]\n        backend = load_backend(db[\"ENGINE\"])\n        return backend.DatabaseWrapper(db, alias)\n\n\nclass ConnectionRouter:\n    def __init__(self, routers=None):\n        \"\"\"\n        If routers is not specified, default to settings.DATABASE_ROUTERS.\n        \"\"\"\n        self._routers = routers\n\n    @cached_property\n    def routers(self):\n        if self._routers is None:\n            self._routers = settings.DATABASE_ROUTERS\n        routers = []\n        for r in self._routers:\n            if isinstance(r, str):"
+        },
+        {
+          "path": "tests/multiple_database/routers.py",
+          "startLine": 1,
+          "endLine": 41,
+          "text": "from django.db import DEFAULT_DB_ALIAS\n\n\nclass TestRouter:\n    \"\"\"\n    Vaguely behave like primary/replica, but the databases aren't assumed to\n    propagate changes.\n    \"\"\"\n\n    def db_for_read(self, model, instance=None, **hints):\n        if instance:\n            return instance._state.db or \"other\"\n        return \"other\"\n\n    def db_for_write(self, model, **hints):\n        return DEFAULT_DB_ALIAS\n\n    def allow_relation(self, obj1, obj2, **hints):\n        return obj1._state.db in (\"default\", \"other\") and obj2._state.db in (\n            \"default\",\n            \"other\",\n        )\n\n    def allow_migrate(self, db, app_label, **hints):\n        return True\n\n\nclass AuthRouter:\n    \"\"\"\n    Control all database operations on models in the contrib.auth application.\n    \"\"\"\n\n    def db_for_read(self, model, **hints):\n        \"Point all read operations on auth models to 'default'\"\n        if model._meta.app_label == \"auth\":\n            # We use default here to ensure we can tell the difference\n            # between a read request and a write request for Auth objects\n            return \"default\"\n        return None\n\n    def db_for_write(self, model, **hints):"
+        },
+        {
+          "path": "tests/multiple_database/routers.py",
+          "startLine": 34,
+          "endLine": 61,
+          "text": "        \"Point all read operations on auth models to 'default'\"\n        if model._meta.app_label == \"auth\":\n            # We use default here to ensure we can tell the difference\n            # between a read request and a write request for Auth objects\n            return \"default\"\n        return None\n\n    def db_for_write(self, model, **hints):\n        \"Point all operations on auth models to 'other'\"\n        if model._meta.app_label == \"auth\":\n            return \"other\"\n        return None\n\n    def allow_relation(self, obj1, obj2, **hints):\n        \"Allow any relation if a model in Auth is involved\"\n        return obj1._meta.app_label == \"auth\" or obj2._meta.app_label == \"auth\" or None\n\n    def allow_migrate(self, db, app_label, **hints):\n        \"Make sure the auth app only appears on the 'other' db\"\n        if app_label == \"auth\":\n            return db == \"other\"\n        return None\n\n\nclass WriteRouter:\n    # A router that only expresses an opinion on writes\n    def db_for_write(self, model, **hints):\n        return \"writer\""
+        },
+        {
+          "path": "tests/multiple_database/tests.py",
+          "startLine": 2218,
+          "endLine": 2255,
+          "text": "        with self.override_router():\n            b.authors.remove(p)\n        self.assertEqual(receiver._database, \"other\")\n\n        # Test addition in reverse\n        p.book_set.add(b)\n        self.assertEqual(receiver._database, DEFAULT_DB_ALIAS)\n        with self.override_router():\n            p.book_set.add(b)\n        self.assertEqual(receiver._database, \"other\")\n\n        # Test clearing\n        b.authors.clear()\n        self.assertEqual(receiver._database, DEFAULT_DB_ALIAS)\n        with self.override_router():\n            b.authors.clear()\n        self.assertEqual(receiver._database, \"other\")\n\n\nclass AttributeErrorRouter:\n    \"A router to test the exception handling of ConnectionRouter\"\n\n    def db_for_read(self, model, **hints):\n        raise AttributeError\n\n    def db_for_write(self, model, **hints):\n        raise AttributeError\n\n\nclass RouterAttributeErrorTestCase(TestCase):\n    databases = {\"default\", \"other\"}\n\n    def override_router(self):\n        return override_settings(DATABASE_ROUTERS=[AttributeErrorRouter()])\n\n    def test_attribute_error_read(self):\n        \"The AttributeError from AttributeErrorRouter bubbles up\"\n        b = Book.objects.create("
+        },
+        {
+          "path": "tests/auth_tests/test_admin_multidb.py",
+          "startLine": 1,
+          "endLine": 46,
+          "text": "from unittest import mock\n\nfrom django.contrib import admin\nfrom django.contrib.auth.admin import UserAdmin\nfrom django.contrib.auth.models import User\nfrom django.test import TestCase, override_settings\nfrom django.urls import path, reverse\n\n\nclass Router:\n    target_db = None\n\n    def db_for_read(self, model, **hints):\n        return self.target_db\n\n    db_for_write = db_for_read\n\n    def allow_relation(self, obj1, obj2, **hints):\n        return True\n\n\nsite = admin.AdminSite(name=\"test_adminsite\")\nsite.register(User, admin_class=UserAdmin)\n\nurlpatterns = [\n    path(\"admin/\", site.urls),\n]\n\n\n@override_settings(ROOT_URLCONF=__name__, DATABASE_ROUTERS=[\"%s.Router\" % __name__])\nclass MultiDatabaseTests(TestCase):\n    databases = {\"default\", \"other\"}\n    READ_ONLY_METHODS = {\"get\", \"options\", \"head\", \"trace\"}\n\n    @classmethod\n    def setUpTestData(cls):\n        cls.superusers = {}\n        for db in cls.databases:\n            Router.target_db = db\n            cls.superusers[db] = User.objects.create_superuser(\n                username=\"admin\",\n                password=\"something\",\n                email=\"test@test.org\",\n            )\n\n    def tearDown(self):"
+        },
+        {
+          "path": "tests/admin_views/test_multidb.py",
+          "startLine": 1,
+          "endLine": 48,
+          "text": "from unittest import mock\n\nfrom django.contrib import admin\nfrom django.contrib.auth.models import User\nfrom django.contrib.contenttypes.models import ContentType\nfrom django.contrib.sites.models import Site\nfrom django.http import HttpResponse\nfrom django.test import TestCase, override_settings\nfrom django.urls import path, reverse\n\nfrom .models import Book\n\n\nclass Router:\n    target_db = None\n\n    def db_for_read(self, model, **hints):\n        return self.target_db\n\n    db_for_write = db_for_read\n\n    def allow_relation(self, obj1, obj2, **hints):\n        return True\n\n\nsite = admin.AdminSite(name=\"test_adminsite\")\nsite.register(Book)\n\n\ndef book(request, book_id):\n    b = Book.objects.get(id=book_id)\n    return HttpResponse(b.title)\n\n\nurlpatterns = [\n    path(\"admin/\", site.urls),\n    path(\"books/<book_id>/\", book),\n]\n\n\n@override_settings(ROOT_URLCONF=__name__, DATABASE_ROUTERS=[\"%s.Router\" % __name__])\nclass MultiDatabaseTests(TestCase):\n    databases = {\"default\", \"other\"}\n    READ_ONLY_METHODS = {\"get\", \"options\", \"head\", \"trace\"}\n\n    @classmethod\n    def setUpTestData(cls):\n        cls.superusers = {}"
+        },
+        {
+          "path": "tests/multiple_database/tests.py",
+          "startLine": 1979,
+          "endLine": 2007,
+          "text": "                return super().db_for_read(model, instance=instance, **hints)\n\n        owner = Person.objects.create(name=\"Bob\")\n        for name, first_name, expected_read_router_calls in [\n            (\"Wart\", \"Bob\", []),\n            (\"\", \"\", [Pet]),\n        ]:\n            with self.subTest(name=name, first_name=first_name):\n                user = User.objects.create(username=name, first_name=first_name)\n                pet = Pet.objects.create(\n                    name=name, owner=owner, owner_first_name=first_name\n                )\n\n                spy = []\n                with override_settings(DATABASE_ROUTERS=[SpyRouter()]):\n                    queryset = user.related_pets.all()\n                    self.assertEqual(spy, expected_read_router_calls)\n                    spy.clear()\n                    self.assertEqual(list(queryset), [pet])\n                    self.assertEqual(spy, [Pet])\n\n\n@override_settings(DATABASE_ROUTERS=[AuthRouter()])\nclass AuthTestCase(TestCase):\n    databases = {\"default\", \"other\"}\n\n    def test_auth_manager(self):\n        \"The methods on the auth manager obey database hints\"\n        # Create one user using default allocation policy"
+        },
+        {
+          "path": "tests/gis_tests/layermap/tests.py",
+          "startLine": 413,
+          "endLine": 442,
+          "text": "        them.\n        \"\"\"\n        lm = LayerMapping(DoesNotAllowNulls, has_nulls_geojson, has_nulls_mapping)\n        lm.save(silent=True)\n        # When a model fails to save due to IntegrityError (null in non-null\n        # column), subsequent saves fail with \"An error occurred in the current\n        # transaction. You can't execute queries until the end of the 'atomic'\n        # block.\" On Oracle and MySQL, the one object that did load appears in\n        # this count. On other databases, no records appear.\n        self.assertLessEqual(DoesNotAllowNulls.objects.count(), 1)\n\n\nclass OtherRouter:\n    def db_for_read(self, model, **hints):\n        return \"other\"\n\n    def db_for_write(self, model, **hints):\n        return self.db_for_read(model, **hints)\n\n    def allow_relation(self, obj1, obj2, **hints):\n        # ContentType objects are created during a post-migrate signal while\n        # performing fixture teardown using the default database alias and\n        # don't abide by the database specified by this router.\n        return True\n\n    def allow_migrate(self, db, app_label, **hints):\n        return True\n\n\n@override_settings(DATABASE_ROUTERS=[OtherRouter()])"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 9.284387332008919,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 0.5,
+        "recall@10": 0.5,
+        "matched_ranges@10": 1,
+        "expected_ranges": 2,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 0.5,
+            "character_precision": 0.099,
+            "returned_chars": 8000,
+            "relevant_chars": 792,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 0.5,
+            "character_precision": 0.06834066787470877,
+            "returned_chars": 11589,
+            "relevant_chars": 792,
+            "estimated_tokens": 2898,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-008",
+        "corpus": "django",
+        "kind": "config",
+        "question": "How does QuerySet.using select a database without mutating the original query?",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 2048,
+            "end": 2052
+          }
+        ],
+        "notes": "Clones the query and sets _db on the clone."
+      },
+      "results": [
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 344,
+          "endLine": 382,
+          "text": "        queryset = self.queryset\n        compiler = queryset.query.get_compiler(queryset.db)\n        for row in compiler.results_iter(\n            chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size\n        ):\n            yield row[0]\n\n\nclass PreventQuerySetCloning:\n    \"\"\"\n    Temporarily prevent the given QuerySet from creating new QuerySet instances\n    on each mutating operation (e.g: filter(), exclude() etc), instead\n    modifying the QuerySet in-place.\n\n    @contextlib.contextmanager is intentionally not used for performance\n    reasons.\n    \"\"\"\n\n    __slots__ = (\"queryset\",)\n\n    def __init__(self, queryset):\n        self.queryset = queryset\n\n    def __enter__(self):\n        return self.queryset._disable_cloning()\n\n    def __exit__(self, exc_type, exc_value, traceback):\n        self.queryset._enable_cloning()\n\n\nclass QuerySet(AltersData):\n    \"\"\"Represent a lazy database lookup for a set of objects.\"\"\"\n\n    def __init__(self, model=None, query=None, using=None, hints=None):\n        self.model = model\n        self._db = using\n        self._hints = hints or {}\n        self._query = query or sql.Query(self.model)\n        self._result_cache = None"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2047,
+          "endLine": 2087,
+          "text": "\n    def using(self, alias):\n        \"\"\"Select which database this QuerySet should execute against.\"\"\"\n        clone = self._chain()\n        clone._db = alias\n        return clone\n\n    def fetch_mode(self, fetch_mode):\n        \"\"\"Set the fetch mode for the QuerySet.\"\"\"\n        clone = self._chain()\n        clone._fetch_mode = fetch_mode\n        return clone\n\n    ###################################\n    # PUBLIC INTROSPECTION ATTRIBUTES #\n    ###################################\n\n    @property\n    def ordered(self):\n        \"\"\"\n        Return True if the QuerySet is ordered -- i.e. has an order_by()\n        clause or a default ordering on the model (or is empty).\n        \"\"\"\n        if isinstance(self, EmptyQuerySet):\n            return True\n        if self.query.extra_order_by or self.query.order_by:\n            return True\n        elif (\n            self.query.default_ordering\n            and self.query.get_meta().ordering\n            and\n            # A default ordering doesn't affect GROUP BY queries.\n            not self.query.group_by\n        ):\n            return True\n        else:\n            return False\n\n    @property\n    def totally_ordered(self):\n        \"\"\""
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2029,
+          "endLine": 2054,
+          "text": "        Essentially, the opposite of defer(). Only the fields passed into this\n        method and that are not already specified as deferred are loaded\n        immediately when the queryset is evaluated.\n        \"\"\"\n        self._not_support_combined_queries(\"only\")\n        if self._fields is not None:\n            raise TypeError(\"Cannot call only() after .values() or .values_list()\")\n        if fields == (None,):\n            # Can only pass None to defer(), not only(), as the rest option.\n            # That won't stop people trying to do this, so let's be explicit.\n            raise TypeError(\"Cannot pass None as an argument to only().\")\n        for field in fields:\n            field = field.split(LOOKUP_SEP, 1)[0]\n            if field in self.query._filtered_relations:\n                raise ValueError(\"only() is not supported with FilteredRelation.\")\n        clone = self._chain()\n        clone.query.add_immediate_loading(fields)\n        return clone\n\n    def using(self, alias):\n        \"\"\"Select which database this QuerySet should execute against.\"\"\"\n        clone = self._chain()\n        clone._db = alias\n        return clone\n\n    def fetch_mode(self, fetch_mode):"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2543,
+          "endLine": 2583,
+          "text": "        return iter(self._result_cache)\n\n    def __aiter__(self):\n        # Remember, __aiter__ itself is synchronous, it's the thing it returns\n        # that is async!\n        async def generator():\n            await sync_to_async(self._fetch_all)()\n            for item in self._result_cache:\n                yield item\n\n        return generator()\n\n    def iterator(self):\n        yield from RawModelIterable(self)\n\n    def __repr__(self):\n        return \"<%s: %s>\" % (self.__class__.__name__, self.query)\n\n    def __getitem__(self, k):\n        return list(self)[k]\n\n    @property\n    def db(self):\n        \"\"\"Return the database used if this query is executed now.\"\"\"\n        return self._db or router.db_for_read(self.model, **self._hints)\n\n    def using(self, alias):\n        \"\"\"Select the database this RawQuerySet should execute against.\"\"\"\n        return RawQuerySet(\n            self.raw_query,\n            model=self.model,\n            query=self.query.chain(using=alias),\n            params=self.params,\n            translations=self.translations,\n            using=alias,\n            fetch_mode=self._fetch_mode,\n        )\n\n    @cached_property\n    def columns(self):\n        \"\"\""
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 629,
+          "endLine": 653,
+          "text": "        \"\"\"\n        An asynchronous iterator over the results from applying this QuerySet\n        to the database.\n        \"\"\"\n        if chunk_size is None:\n            if self._prefetch_related_lookups:\n                # RemovedInDjango2029Warning: Replace the warning with:\n                # raise ValueError(\n                #     \"chunk_size must be provided when using \"\n                #     \"QuerySet.aiterator() after prefetch_related().\"\n                # )\n                warnings.warn(\n                    \"Using QuerySet.aiterator() after prefetch_related() without \"\n                    \"providing a chunk_size is deprecated and will raise a \"\n                    \"ValueError in Django 2029.\",\n                    category=RemovedInDjango2029Warning,\n                    skip_file_prefixes=django_file_prefixes(),\n                )\n                # RemovedInDjango2029Warning: Remove when the deprecation ends.\n                chunk_size = 2000\n        elif chunk_size <= 0:\n            raise ValueError(\"Chunk size must be strictly positive.\")\n        use_chunked_fetch = not connections[self.db].settings_dict.get(\n            \"DISABLE_SERVER_SIDE_CURSORS\"\n        )"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1387,
+          "endLine": 1413,
+          "text": "    def delete(self):\n        \"\"\"Delete the records in the current QuerySet.\"\"\"\n        self._not_support_combined_queries(\"delete\")\n        if self.query.is_sliced:\n            raise TypeError(\"Cannot use 'limit' or 'offset' with delete().\")\n        if self.query.distinct_fields:\n            raise TypeError(\"Cannot call delete() after .distinct(*fields).\")\n        if self._fields is not None:\n            raise TypeError(\"Cannot call delete() after .values() or .values_list()\")\n\n        del_query = self._chain()\n\n        # The delete is actually 2 queries - one to find related objects,\n        # and one to delete. Make sure that the discovery of related\n        # objects is performed on the same database as the deletion.\n        del_query._for_write = True\n\n        # Disable non-supported fields.\n        del_query.query.select_for_update = False\n        del_query.query.select_related = False\n        del_query.query.clear_ordering(force=True)\n\n        collector = Collector(using=del_query.db, origin=self)\n        collector.collect(del_query)\n        num_deleted, num_deleted_per_model = collector.delete()\n\n        # Clear the result cache, in case this QuerySet gets reused."
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1406,
+          "endLine": 1441,
+          "text": "        del_query.query.select_related = False\n        del_query.query.clear_ordering(force=True)\n\n        collector = Collector(using=del_query.db, origin=self)\n        collector.collect(del_query)\n        num_deleted, num_deleted_per_model = collector.delete()\n\n        # Clear the result cache, in case this QuerySet gets reused.\n        self._result_cache = None\n        return num_deleted, num_deleted_per_model\n\n    delete.alters_data = True\n    delete.queryset_only = True\n\n    async def adelete(self):\n        return await sync_to_async(self.delete)()\n\n    adelete.alters_data = True\n    adelete.queryset_only = True\n\n    def _raw_delete(self, using):\n        \"\"\"\n        Delete objects found from the given queryset in single direct SQL\n        query. No signals are sent and there is no protection for cascades.\n        \"\"\"\n        query = self.query.clone()\n        query.__class__ = sql.DeleteQuery\n        return query.get_compiler(using).execute_sql(ROW_COUNT)\n\n    _raw_delete.alters_data = True\n\n    def update(self, **kwargs):\n        \"\"\"\n        Update all elements in the current QuerySet, setting all the given\n        fields to the appropriate values.\n        \"\"\""
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 137,
+          "endLine": 162,
+          "text": "        compiler = queryset.query.get_compiler(using=db)\n        fetch_mode = queryset._fetch_mode\n        # Execute the query. This will also fill compiler.select, klass_info,\n        # and annotations.\n        results = compiler.execute_sql(\n            chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size\n        )\n        select, klass_info, annotation_col_map = (\n            compiler.select,\n            compiler.klass_info,\n            compiler.annotation_col_map,\n        )\n        model_cls = klass_info[\"model\"]\n        select_fields = klass_info[\"select_fields\"]\n        model_fields_start, model_fields_end = select_fields[0], select_fields[-1] + 1\n        init_list = [\n            f[0].target.attname for f in select[model_fields_start:model_fields_end]\n        ]\n        # RemovedInDjango2028Warning: When the deprecation ends, remove this\n        # assignment and call model_cls.from_db(..., fetch_mode=fetch_mode)\n        # directly in the loop below.\n        from_db = _get_from_db(model_cls, fetch_mode)\n        related_populators = get_related_populators(klass_info, select, db, fetch_mode)\n        known_related_objects = [\n            (\n                field,"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 712,
+          "endLine": 742,
+          "text": "        \"\"\"\n        Perform a SELECT COUNT() and return the number of records as an\n        integer.\n\n        If the QuerySet is already fully cached, return the length of the\n        cached results set to avoid multiple SELECT COUNT(*) calls.\n        \"\"\"\n        if self._result_cache is not None:\n            return len(self._result_cache)\n\n        return self.query.get_count(using=self.db)\n\n    async def acount(self):\n        return await sync_to_async(self.count)()\n\n    def get(self, *args, **kwargs):\n        \"\"\"\n        Perform the query and return a single object matching the given\n        keyword arguments.\n        \"\"\"\n        if self.query.combinator and (args or kwargs):\n            raise NotSupportedError(\n                \"Calling QuerySet.get(...) with filters after %s() is not \"\n                \"supported.\" % self.query.combinator\n            )\n        clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)\n        if self.query.can_filter() and not self.query.distinct_fields:\n            clone = clone.order_by()\n        limit = None\n        if (\n            not clone.query.select_for_update"
+        },
+        {
+          "path": "django/db/models/sql/query.py",
+          "startLine": 159,
+          "endLine": 189,
+          "text": "    def __init__(self, sql, using, params=()):\n        self.params = params\n        self.sql = sql\n        self.using = using\n        self.cursor = None\n\n        # Mirror some properties of a normal query so that\n        # the compiler can be used to process results.\n        self.low_mark, self.high_mark = 0, None  # Used for offset/limit\n        self.extra_select = {}\n        self.annotation_select = {}\n\n    def chain(self, using):\n        return self.clone(using)\n\n    def clone(self, using):\n        return RawQuery(self.sql, using, params=self.params)\n\n    def get_columns(self):\n        if self.cursor is None:\n            self._execute_query()\n        converter = connections[self.using].introspection.identifier_converter\n        return [converter(column_meta[0]) for column_meta in self.cursor.description]\n\n    def __iter__(self):\n        # Always execute a new query for a new iterator.\n        # This could be optimized with a cache at the expense of RAM.\n        self._execute_query()\n        if not connections[self.using].features.can_use_chunked_reads:\n            # If the database can't use chunked reads we need to make sure we\n            # evaluate the entire query up front."
+        }
+      ],
+      "error": null,
+      "latency_seconds": 9.242702097995789,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 0.5,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.04475,
+            "returned_chars": 8000,
+            "relevant_chars": 358,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.030267162664863036,
+            "returned_chars": 11828,
+            "relevant_chars": 358,
+            "estimated_tokens": 2957,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-009",
+        "corpus": "django",
+        "kind": "absent",
+        "question": "Where is QuerySet.quantum_prefetch defined?",
+        "expected": [],
+        "notes": "quantum_prefetch is an invented QuerySet method, absent from this snapshot.",
+        "absentIdentifier": "quantum_prefetch"
+      },
+      "results": [
+        {
+          "path": "tests/admin_changelist/admin.py",
+          "startLine": 230,
+          "endLine": 242,
+          "text": "\n    def queryset(self, request, queryset):\n        if self.value() == \"yes\":\n            return queryset.filter(is_active=True)\n        else:\n            return queryset.filter(is_active=False)\n\n\nclass CustomUserAdmin(UserAdmin):\n    list_filter = [UnescapedTitleFilter]\n\n\nsite.register(ProxyUser, CustomUserAdmin)"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 344,
+          "endLine": 382,
+          "text": "        queryset = self.queryset\n        compiler = queryset.query.get_compiler(queryset.db)\n        for row in compiler.results_iter(\n            chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size\n        ):\n            yield row[0]\n\n\nclass PreventQuerySetCloning:\n    \"\"\"\n    Temporarily prevent the given QuerySet from creating new QuerySet instances\n    on each mutating operation (e.g: filter(), exclude() etc), instead\n    modifying the QuerySet in-place.\n\n    @contextlib.contextmanager is intentionally not used for performance\n    reasons.\n    \"\"\"\n\n    __slots__ = (\"queryset\",)\n\n    def __init__(self, queryset):\n        self.queryset = queryset\n\n    def __enter__(self):\n        return self.queryset._disable_cloning()\n\n    def __exit__(self, exc_type, exc_value, traceback):\n        self.queryset._enable_cloning()\n\n\nclass QuerySet(AltersData):\n    \"\"\"Represent a lazy database lookup for a set of objects.\"\"\"\n\n    def __init__(self, model=None, query=None, using=None, hints=None):\n        self.model = model\n        self._db = using\n        self._hints = hints or {}\n        self._query = query or sql.Query(self.model)\n        self._result_cache = None"
+        },
+        {
+          "path": "tests/admin_filters/tests.py",
+          "startLine": 32,
+          "endLine": 67,
+          "text": "\nclass DecadeListFilter(SimpleListFilter):\n    def lookups(self, request, model_admin):\n        return (\n            (\"the 80s\", \"the 1980's\"),\n            (\"the 90s\", \"the 1990's\"),\n            (\"the 00s\", \"the 2000's\"),\n            (\"other\", \"other decades\"),\n        )\n\n    def queryset(self, request, queryset):\n        decade = self.value()\n        if decade == \"the 80s\":\n            return queryset.filter(year__gte=1980, year__lte=1989)\n        if decade == \"the 90s\":\n            return queryset.filter(year__gte=1990, year__lte=1999)\n        if decade == \"the 00s\":\n            return queryset.filter(year__gte=2000, year__lte=2009)\n\n\nclass NotNinetiesListFilter(SimpleListFilter):\n    title = \"Not nineties books\"\n    parameter_name = \"book_year\"\n\n    def lookups(self, request, model_admin):\n        return ((\"the 90s\", \"the 1990's\"),)\n\n    def queryset(self, request, queryset):\n        if self.value() == \"the 90s\":\n            return queryset.filter(year__gte=1990, year__lte=1999)\n        else:\n            return queryset.exclude(year__gte=1990, year__lte=1999)\n\n\nclass DecadeListFilterWithTitleAndParameter(DecadeListFilter):\n    title = \"publication decade\""
+        },
+        {
+          "path": "tests/model_formsets/tests.py",
+          "startLine": 1817,
+          "endLine": 1842,
+          "text": "        self.assertFalse(formset.extra_forms[0].has_changed())\n\n    def test_get_queryset_falls_back_to_pk_when_no_ordering_defined(self):\n        # Product has no Meta.ordering, so the default queryset is not\n        # totally ordered.\n        self.assertIs(Product._default_manager.get_queryset().totally_ordered, False)\n\n        ProductFormSet = modelformset_factory(Product, fields=\"__all__\")\n        formset = ProductFormSet()\n\n        queryset = formset.get_queryset()\n        self.assertEqual(queryset.query.order_by, (\"pk\",))\n\n    def test_get_queryset_appends_pk_to_explicit_queryset_ordering(self):\n        # Author.name is non-unique, so order_by(\"name\") is not totally\n        # ordered.\n        AuthorFormSet = modelformset_factory(Author, fields=\"__all__\")\n        formset = AuthorFormSet(queryset=Author.objects.order_by(\"name\"))\n\n        queryset = formset.get_queryset()\n        self.assertEqual(queryset.query.order_by, (\"name\", \"pk\"))\n\n    def test_get_queryset_appends_pk_to_meta_ordering(self):\n        # Author has Meta.ordering = (\"name\",) which is not deterministic\n        # by itself.\n        AuthorFormSet = modelformset_factory(Author, fields=\"__all__\")"
+        },
+        {
+          "path": "tests/model_formsets/tests.py",
+          "startLine": 1800,
+          "endLine": 1824,
+          "text": "        formset = FormSet(initial=[{\"poet\": john_milton}], data=data)\n        self.assertFalse(formset.extra_forms[0].has_changed())\n\n    def test_model_formset_with_initial_queryset(self):\n        # has_changed should work with queryset and list of pk's\n        # see #18898\n        FormSet = modelformset_factory(AuthorMeeting, fields=\"__all__\")\n        Author.objects.create(name=\"Charles Baudelaire\")\n        data = {\n            \"form-TOTAL_FORMS\": 1,\n            \"form-INITIAL_FORMS\": 0,\n            \"form-MAX_NUM_FORMS\": \"\",\n            \"form-0-name\": \"\",\n            \"form-0-created\": \"\",\n            \"form-0-authors\": list(Author.objects.values_list(\"id\", flat=True)),\n        }\n        formset = FormSet(initial=[{\"authors\": Author.objects.all()}], data=data)\n        self.assertFalse(formset.extra_forms[0].has_changed())\n\n    def test_get_queryset_falls_back_to_pk_when_no_ordering_defined(self):\n        # Product has no Meta.ordering, so the default queryset is not\n        # totally ordered.\n        self.assertIs(Product._default_manager.get_queryset().totally_ordered, False)\n\n        ProductFormSet = modelformset_factory(Product, fields=\"__all__\")"
+        },
+        {
+          "path": "tests/sitemaps_tests/test_generic.py",
+          "startLine": 65,
+          "endLine": 89,
+          "text": "        self.assertEqual(\n            response.headers[\"Last-Modified\"], \"Wed, 13 Mar 2013 10:00:00 GMT\"\n        )\n\n    def test_get_protocol_defined_in_constructor(self):\n        for protocol in [\"http\", \"https\"]:\n            with self.subTest(protocol=protocol):\n                sitemap = GenericSitemap({\"queryset\": None}, protocol=protocol)\n                self.assertEqual(sitemap.get_protocol(), protocol)\n\n    def test_get_protocol_passed_as_argument(self):\n        sitemap = GenericSitemap({\"queryset\": None})\n        for protocol in [\"http\", \"https\"]:\n            with self.subTest(protocol=protocol):\n                self.assertEqual(sitemap.get_protocol(protocol), protocol)\n\n    def test_get_protocol_default(self):\n        sitemap = GenericSitemap({\"queryset\": None})\n        self.assertEqual(sitemap.get_protocol(), \"https\")\n\n    def test_generic_sitemap_index(self):\n        TestModel.objects.update(lastmod=datetime(2013, 3, 13, 10, 0, 0))\n        response = self.client.get(\"/generic-lastmod/index.xml\")\n        expected_content = \"\"\"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
+        },
+        {
+          "path": "tests/admin_ordering/tests.py",
+          "startLine": 157,
+          "endLine": 186,
+          "text": "        )\n        m2m_field = site.get_model_admin(Song).formfield_for_manytomany(\n            Song.other_interpreters.field, request=None\n        )\n        self.assertEqual(list(fk_field.queryset), correct_ordering)\n        self.assertEqual(list(m2m_field.queryset), correct_ordering)\n\n    def test_no_admin_fallback_to_model_ordering(self):\n        # should be ordered by name (as defined by the model)\n        self.check_ordering_of_field_choices([self.b2, self.b1])\n\n    def test_admin_with_no_ordering_fallback_to_model_ordering(self):\n        class NoOrderingBandAdmin(admin.ModelAdmin):\n            pass\n\n        site.register(Band, NoOrderingBandAdmin)\n\n        # should be ordered by name (as defined by the model)\n        self.check_ordering_of_field_choices([self.b2, self.b1])\n\n    def test_admin_ordering_beats_model_ordering(self):\n        class StaticOrderingBandAdmin(admin.ModelAdmin):\n            ordering = (\"rank\",)\n\n        site.register(Band, StaticOrderingBandAdmin)\n\n        # should be ordered by rank (defined by the ModelAdmin)\n        self.check_ordering_of_field_choices([self.b1, self.b2])\n\n    def test_custom_queryset_still_wins(self):"
+        },
+        {
+          "path": "tests/deprecation/tests.py",
+          "startLine": 1,
+          "endLine": 41,
+          "text": "import warnings\n\nfrom django.test import SimpleTestCase\nfrom django.utils.deprecation import (\n    RemovedAfterNextVersionWarning,\n    RemovedInDjango2028Warning,\n    RenameMethodsBase,\n)\n\n\nclass RenameManagerMethods(RenameMethodsBase):\n    renamed_methods = ((\"old\", \"new\", DeprecationWarning),)\n\n\nclass RenameMethodsTests(SimpleTestCase):\n    \"\"\"\n    Tests the `RenameMethodsBase` type introduced to rename `get_query_set`\n    to `get_queryset` across the code base following #15363.\n    \"\"\"\n\n    def test_class_definition_warnings(self):\n        \"\"\"\n        Ensure a warning is raised upon class definition to suggest renaming\n        the faulty method.\n        \"\"\"\n        msg = \"`Manager.old` method should be renamed `new`.\"\n        with self.assertWarnsMessage(DeprecationWarning, msg) as ctx:\n\n            class Manager(metaclass=RenameManagerMethods):\n                def old(self):\n                    pass\n\n        self.assertEqual(ctx.filename, __file__)\n\n    def test_get_new_defined(self):\n        \"\"\"\n        Ensure `old` complains and not `new` when only `new` is defined.\n        \"\"\"\n\n        class Manager(metaclass=RenameManagerMethods):\n            def new(self):"
+        },
+        {
+          "path": "tests/sitemaps_tests/test_generic.py",
+          "startLine": 45,
+          "endLine": 72,
+          "text": "            \"%s\\n\"\n            \"</urlset>\"\n        ) % expected\n        self.assertXMLEqual(response.text, expected_content)\n\n    def test_generic_sitemap_lastmod(self):\n        test_model = TestModel.objects.first()\n        TestModel.objects.update(lastmod=datetime(2013, 3, 13, 10, 0, 0))\n        response = self.client.get(\"/generic-lastmod/sitemap.xml\")\n        expected_content = (\n            '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n'\n            '<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\" '\n            'xmlns:xhtml=\"http://www.w3.org/1999/xhtml\">\\n'\n            \"<url><loc>%s/testmodel/%s/</loc><lastmod>2013-03-13</lastmod></url>\\n\"\n            \"</urlset>\"\n        ) % (\n            self.base_url,\n            test_model.pk,\n        )\n        self.assertXMLEqual(response.text, expected_content)\n        self.assertEqual(\n            response.headers[\"Last-Modified\"], \"Wed, 13 Mar 2013 10:00:00 GMT\"\n        )\n\n    def test_get_protocol_defined_in_constructor(self):\n        for protocol in [\"http\", \"https\"]:\n            with self.subTest(protocol=protocol):\n                sitemap = GenericSitemap({\"queryset\": None}, protocol=protocol)"
+        },
+        {
+          "path": "tests/modeladmin/test_checks.py",
+          "startLine": 1870,
+          "endLine": 1900,
+          "text": "        )\n\n    def test_actions_not_unique(self):\n        @admin.action\n        def action(modeladmin, request, queryset):\n            pass\n\n        class BandAdmin(ModelAdmin):\n            actions = (action, action)\n\n        self.assertIsInvalid(\n            BandAdmin,\n            Band,\n            \"__name__ attributes of actions defined in BandAdmin must be \"\n            \"unique. Name 'action' is not unique.\",\n            id=\"admin.E130\",\n        )\n\n    def test_actions_unique(self):\n        @admin.action\n        def action1(modeladmin, request, queryset):\n            pass\n\n        @admin.action\n        def action2(modeladmin, request, queryset):\n            pass\n\n        class BandAdmin(ModelAdmin):\n            actions = (action1, action2)\n\n        self.assertIsValid(BandAdmin, Band)"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 10.584576512002968,
+      "metrics": {
+        "absent_success": true,
+        "identifier_match_ranks": []
+      }
+    },
+    {
+      "question": {
+        "id": "django-010",
+        "corpus": "django",
+        "kind": "absent",
+        "question": "How can I use atomic_retry_forever to retry transactions?",
+        "expected": [],
+        "notes": "atomic_retry_forever is an invented transaction helper, absent from this snapshot.",
+        "absentIdentifier": "atomic_retry_forever"
+      },
+      "results": [
+        {
+          "path": "tests/cache/tests.py",
+          "startLine": 77,
+          "endLine": 124,
+          "text": "    def m(n):\n        return 24\n\n\nclass Unpicklable:\n    def __getstate__(self):\n        raise pickle.PickleError()\n\n\ndef empty_response(request):\n    return HttpResponse()\n\n\nKEY_ERRORS_WITH_MEMCACHED_MSG = (\n    \"Cache key contains characters that will cause errors if used with memcached: %r\"\n)\n\n\ndef retry(retries=3, delay=1):\n    def decorator(func):\n        @wraps(func)\n        def wrapper(*args, **kwargs):\n            attempts = 0\n            while attempts < retries:\n                try:\n                    return func(*args, **kwargs)\n                except AssertionError:\n                    attempts += 1\n                    if attempts >= retries:\n                        raise\n                    time.sleep(delay)\n\n        return wrapper\n\n    return decorator\n\n\n@override_settings(\n    CACHES={\n        \"default\": {\n            \"BACKEND\": \"django.core.cache.backends.dummy.DummyCache\",\n        }\n    }\n)\nclass DummyCacheTests(SimpleTestCase):\n    # The Dummy cache backend doesn't really behave like a test backend,\n    # so it has its own test case.\n"
+        },
+        {
+          "path": "django/contrib/admin/static/admin/js/calendar.js",
+          "startLine": 181,
+          "endLine": 212,
+          "text": "            tableRow = quickElement(\"tr\", tableBody);\n            for (let i = 0; i < startingPos; i++) {\n                nonDayCell = quickElement(\"td\", tableRow, \" \");\n                nonDayCell.className = \"nonday\";\n            }\n\n            function calendarMonth(y, m) {\n                function onClick(e) {\n                    e.preventDefault();\n                    callback(y, m, this.textContent);\n                }\n                return onClick;\n            }\n\n            // Draw days of month\n            let currentDay = 1;\n            for (let i = startingPos; currentDay <= days; i++) {\n                if (i % 7 === 0 && currentDay !== 1) {\n                    tableRow = quickElement(\"tr\", tableBody);\n                }\n                if (\n                    currentDay === todayDay &&\n                    month === todayMonth &&\n                    year === todayYear\n                ) {\n                    todayClass = \"today\";\n                } else {\n                    todayClass = \"\";\n                }\n\n                // use UTC function; see above for explanation.\n                if (isSelectedMonth && currentDay === selected.getUTCDate()) {"
+        },
+        {
+          "path": "django/contrib/gis/static/gis/js/OLMapWidget.js",
+          "startLine": 225,
+          "endLine": 255,
+          "text": "    disableDrawing() {\n        if (this.interactions.draw) {\n            this.interactions.draw.setActive(false);\n            if (this.typeChoices) {\n                // Hide geometry type icons\n                const divs = document.getElementsByClassName(\"switch-type\");\n                for (let i = 0; i !== divs.length; i++) {\n                    divs[i].style.visibility = \"hidden\";\n                }\n            }\n        }\n    }\n\n    clearFeatures() {\n        this.featureCollection.clear();\n        // Empty textarea widget\n        document.getElementById(this.options.id).value = \"\";\n        this.enableDrawing();\n    }\n\n    serializeFeatures() {\n        // Three use cases: GeometryCollection, multigeometries, and single geometry\n        let geometry = null;\n        const features = this.featureOverlay.getSource().getFeatures();\n        if (this.options.is_collection) {\n            if (this.options.geom_name === \"GeometryCollection\") {\n                const geometries = [];\n                for (let i = 0; i < features.length; i++) {\n                    geometries.push(features[i].getGeometry());\n                }\n                geometry = new ol.geom.GeometryCollection(geometries);"
+        },
+        {
+          "path": "django/contrib/admin/static/admin/js/core.js",
+          "startLine": 1,
+          "endLine": 39,
+          "text": "// Core JavaScript helper functions\n\"use strict\";\n\n// quickElement(tagType, parentReference [, textInChildNode, attribute, attributeValue ...]);\nfunction quickElement() {\n    const obj = document.createElement(arguments[0]);\n    if (arguments[2]) {\n        const textNode = document.createTextNode(arguments[2]);\n        obj.appendChild(textNode);\n    }\n    const len = arguments.length;\n    for (let i = 3; i < len; i += 2) {\n        obj.setAttribute(arguments[i], arguments[i + 1]);\n    }\n    arguments[1].appendChild(obj);\n    return obj;\n}\n\n// \"a\" is reference to an object\nfunction removeChildren(a) {\n    while (a.hasChildNodes()) {\n        a.removeChild(a.lastChild);\n    }\n}\n\n// ----------------------------------------------------------------------------\n// Find-position functions by PPK\n// See https://www.quirksmode.org/js/findpos.html\n// ----------------------------------------------------------------------------\nfunction findPosX(obj) {\n    let curleft = 0;\n    if (obj.offsetParent) {\n        while (obj.offsetParent) {\n            curleft += obj.offsetLeft - obj.scrollLeft;\n            obj = obj.offsetParent;\n        }\n    } else if (obj.x) {\n        curleft += obj.x;\n    }"
+        },
+        {
+          "path": "js_tests/admin/SelectBox.test.js",
+          "startLine": 1,
+          "endLine": 32,
+          "text": "/* global QUnit, SelectBox */\n\"use strict\";\n\nQUnit.module(\"admin.SelectBox\");\n\nQUnit.test(\"init: no options\", function (assert) {\n    const $ = django.jQuery;\n    $('<select id=\"id\"></select>').appendTo(\"#qunit-fixture\");\n    SelectBox.init(\"id\");\n    assert.equal(SelectBox.cache.id.length, 0);\n});\n\nQUnit.test(\"filter\", function (assert) {\n    const $ = django.jQuery;\n    $('<select id=\"id\"></select>').appendTo(\"#qunit-fixture\");\n    $('<option value=\"0\">A</option>').appendTo(\"#id\");\n    $('<option value=\"1\">B</option>').appendTo(\"#id\");\n    SelectBox.init(\"id\");\n    assert.equal($(\"#id option\").length, 2);\n    SelectBox.filter(\"id\", \"A\");\n    assert.equal($(\"#id option\").length, 1);\n    assert.equal($(\"#id option\").text(), \"A\");\n});\n\nQUnit.test(\"preserve scroll position\", function (assert) {\n    const $ = django.jQuery;\n    const optionsCount = 100;\n    $('<select id=\"from_id\" multiple></select>').appendTo(\"#qunit-fixture\");\n    $('<select id=\"to_id\" multiple></select>').appendTo(\"#qunit-fixture\");\n    const fromSelectBox = document.getElementById(\"from_id\");\n    const toSelectBox = document.getElementById(\"to_id\");\n    for (let i = 0; i < optionsCount; i++) {"
+        },
+        {
+          "path": "tests/transactions/tests.py",
+          "startLine": 591,
+          "endLine": 600,
+          "text": "\nclass DurableTests(DurableTestsBase, TestCase):\n    pass\n\n\nclass SavepointTests(SimpleTestCase):\n    def test_deprecation_warning(self):\n        msg = \"savepoint() is deprecated. Use savepoint_create() instead.\"\n        with self.assertRaisesMessage(RemovedInDjango2028Warning, msg):\n            transaction.savepoint()"
+        },
+        {
+          "path": "tests/transactions/tests.py",
+          "startLine": 1,
+          "endLine": 46,
+          "text": "import sys\nimport threading\nimport time\nfrom unittest import skipIf, skipUnless\n\nfrom django.db import (\n    DatabaseError,\n    Error,\n    IntegrityError,\n    OperationalError,\n    connection,\n    transaction,\n)\nfrom django.test import (\n    SimpleTestCase,\n    TestCase,\n    TransactionTestCase,\n    skipIfDBFeature,\n    skipUnlessDBFeature,\n)\nfrom django.utils.deprecation import RemovedInDjango2028Warning\n\nfrom .models import Reporter\n\n\n@skipUnlessDBFeature(\"uses_savepoints\")\nclass AtomicTests(TransactionTestCase):\n    \"\"\"\n    Tests for the atomic decorator and context manager.\n\n    The tests make assertions on internal attributes because there isn't a\n    robust way to ask the database for its current transaction state.\n\n    Since the decorator syntax is converted into a context manager (see the\n    implementation), there are only a few basic tests with the decorator\n    syntax and the bulk of the tests use the context manager syntax.\n    \"\"\"\n\n    available_apps = [\"transactions\"]\n\n    def test_decorator_syntax_commit(self):\n        @transaction.atomic\n        def make_reporter():\n            return Reporter.objects.create(first_name=\"Tintin\")\n\n        reporter = make_reporter()"
+        },
+        {
+          "path": "tests/transactions/models.py",
+          "startLine": 1,
+          "endLine": 22,
+          "text": "\"\"\"\nTransactions\n\nDjango handles transactions in three different ways. The default is to commit\neach transaction upon a write, but you can decorate a function to get\ncommit-on-success behavior. Alternatively, you can manage the transaction\nmanually.\n\"\"\"\n\nfrom django.db import models\n\n\nclass Reporter(models.Model):\n    first_name = models.CharField(max_length=30)\n    last_name = models.CharField(max_length=30)\n    email = models.EmailField()\n\n    class Meta:\n        ordering = (\"first_name\", \"last_name\")\n\n    def __str__(self):\n        return (\"%s %s\" % (self.first_name, self.last_name)).strip()"
+        },
+        {
+          "path": "tests/transactions/tests.py",
+          "startLine": 568,
+          "endLine": 598,
+          "text": "            with self.assertRaisesMessage(RuntimeError, msg):\n                with transaction.atomic(durable=True):\n                    pass\n\n    def test_nested_inner_durable(self):\n        msg = \"A durable atomic block cannot be nested within another atomic block.\"\n        with transaction.atomic():\n            with self.assertRaisesMessage(RuntimeError, msg):\n                with transaction.atomic(durable=True):\n                    pass\n\n    def test_sequence_of_durables(self):\n        with transaction.atomic(durable=True):\n            reporter = Reporter.objects.create(first_name=\"Tintin 1\")\n        self.assertEqual(Reporter.objects.get(first_name=\"Tintin 1\"), reporter)\n        with transaction.atomic(durable=True):\n            reporter = Reporter.objects.create(first_name=\"Tintin 2\")\n        self.assertEqual(Reporter.objects.get(first_name=\"Tintin 2\"), reporter)\n\n\nclass DurableTransactionTests(DurableTestsBase, TransactionTestCase):\n    pass\n\n\nclass DurableTests(DurableTestsBase, TestCase):\n    pass\n\n\nclass SavepointTests(SimpleTestCase):\n    def test_deprecation_warning(self):\n        msg = \"savepoint() is deprecated. Use savepoint_create() instead.\""
+        },
+        {
+          "path": "tests/transactions/tests.py",
+          "startLine": 255,
+          "endLine": 286,
+          "text": "        self.atomic.__enter__()\n\n    def tearDown(self):\n        self.atomic.__exit__(*sys.exc_info())\n\n\nclass AtomicWithoutAutocommitTests(AtomicTests):\n    \"\"\"\n    All basic tests for atomic should also pass when autocommit is turned off.\n    \"\"\"\n\n    def setUp(self):\n        transaction.set_autocommit(False)\n        self.addCleanup(transaction.set_autocommit, True)\n        # The tests access the database after exercising 'atomic', initiating\n        # a transaction ; a rollback is required before restoring autocommit.\n        self.addCleanup(transaction.rollback)\n\n\n@skipUnlessDBFeature(\"uses_savepoints\")\nclass AtomicMergeTests(TransactionTestCase):\n    \"\"\"Test merging transactions with savepoint=False.\"\"\"\n\n    available_apps = [\"transactions\"]\n\n    def test_merged_outer_rollback(self):\n        with transaction.atomic():\n            Reporter.objects.create(first_name=\"Tintin\")\n            with transaction.atomic(savepoint=False):\n                Reporter.objects.create(first_name=\"Archibald\", last_name=\"Haddock\")\n                with self.assertRaisesMessage(Exception, \"Oops\"):\n                    with transaction.atomic(savepoint=False):"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 11.162298198003555,
+      "metrics": {
+        "absent_success": true,
+        "identifier_match_ranks": []
+      }
+    }
+  ],
+  "configuration": {
+    "questions": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/questions/django.dev.jsonl",
+    "engine": "context7-backend",
+    "database": "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/django-lexical.sqlite",
+    "backend": "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "corpus_root": null,
+    "mode": "lexical",
+    "rerank": "lexical-symbol",
+    "command": null,
+    "command_json": null,
+    "timeout": 120,
+    "budgets": [
+      2000,
+      5000
+    ],
+    "json_output": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/django-lexical-symbol.json",
+    "markdown_output": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/django-lexical-symbol.md"
+  }
+}
