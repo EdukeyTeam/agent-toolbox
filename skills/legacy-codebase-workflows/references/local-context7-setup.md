@@ -2,8 +2,9 @@
 
 Use this short route for a requested local runtime/MCP integration. Reuse the
 generator and assets; do not recreate launchers, hook handlers, client locks or
-Windows fixes. Read [private retrieval](private-retrieval.md) only for optional
-models, ranking or unusual corpus layouts.
+Windows fixes. Read [retrieval setup](retrieval-setup.md) for one-time engine
+installation and consent gates, and [private retrieval](private-retrieval.md)
+for usage, models and unusual corpus layouts.
 
 ## Ask first
 
