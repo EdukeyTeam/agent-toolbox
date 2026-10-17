@@ -172,7 +172,8 @@ class ProjectTests(unittest.TestCase):
             result = mcp.request("tools/call", args)
             self.assertIn("src/Demo.java", result["content"][0]["text"])
             self.java.unlink()
-            self.assertIn("409", mcp.request("tools/call", args)["content"][0]["text"])
+            # Format 8 refreshes candidate deletions; cached Java source must vanish.
+            self.assertNotIn("Source: src/Demo.java", mcp.request("tools/call", args)["content"][0]["text"])
         self.cli("refresh")
         cli = json.loads(self.cli("library", "retryTransfer").stdout)
         self.assertEqual(cli[0]["id"], "/local/demo")

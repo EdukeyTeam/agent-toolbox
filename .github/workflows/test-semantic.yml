@@ -11,6 +11,8 @@ on:
       - '!skills/legacy-codebase-workflows/scripts/check_citations.py'
       - '!skills/legacy-codebase-workflows/scripts/legacy_tools.py'
       - 'tests/test_legacy_retrieval.py'
+      - 'tests/test_legacy_local_context_*.py'
+      - 'tests/test_legacy_embed.py'
       - '.github/workflows/test-semantic.yml'
   push:
     branches: [main]
@@ -63,4 +65,6 @@ jobs:
           LEGACY_RETRIEVAL_TEST_RUNTIME: ${{ runner.temp }}/legacy-inference
           LEGACY_RETRIEVAL_TEST_CACHE: ${{ runner.temp }}/legacy-model-cache
           LEGACY_CTX7_CLI: ${{ runner.temp }}/ctx7-cli/node_modules/ctx7/dist/index.js
-        run: python -m unittest discover -s tests -p test_legacy_retrieval.py -v
+        run: |
+          python -m unittest discover -s tests -p test_legacy_retrieval.py -v
+          python -m unittest discover -s tests -p "test_legacy_local_context_*.py" -v

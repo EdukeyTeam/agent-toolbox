@@ -160,7 +160,11 @@ def refresh(backend, runtime: Path) -> dict:
                 try:
                     backend.assert_fresh(con, metadata)
                 except backend.RetrievalError:
-                    pass
+                    # Native refresh retains per-library provider, scan and parser
+                    # settings; repeating the old lexical index call would reset them.
+                    native_refresh = getattr(backend, "refresh", None)
+                    if callable(native_refresh):
+                        return {**native_refresh(database, LIBRARY_ID), "refreshed": True}
                 else:
                     return {"libraryId": LIBRARY_ID, "refreshed": False, "changed": 0, "deleted": 0, "revision": metadata["revision"]}
     return {**index(backend, runtime), "refreshed": True}

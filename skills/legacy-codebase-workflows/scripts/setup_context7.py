@@ -17,7 +17,7 @@ ASSETS = SKILL / "assets/context7"
 sys.path.insert(0, str(SKILL / "scripts"))
 import context7_backend as backend
 
-BACKEND_FILES = ("scripts/context7_backend.py", "scripts/repo_files.py", "scripts/legacy_common.py", "LICENSE.txt", "THIRD_PARTY.md")
+BACKEND_FILES = ("scripts/context7_backend.py", "scripts/repo_files.py", "scripts/legacy_common.py", "LICENSE.txt", "THIRD_PARTY.md") + tuple(p.relative_to(SKILL).as_posix() for p in sorted((SKILL / "scripts/local_context").rglob("*.py"))) + tuple(p.relative_to(SKILL).as_posix() for p in sorted((SKILL / "scripts/retrieval").iterdir()) if p.is_file() and p.suffix in {".mjs", ".json", ".yaml"})
 DEFAULT_EXCLUDES = (".agents", ".claude", ".codex", ".github", ".vscode", "tools", "mcp.json", ".mcp.json", "AGENTS.md", "CLAUDE.md", "docs/repo-maps", "repo-maps", "docs/RepoMix", "RepoMix", "docs/analysis", "analysis")
 
 
@@ -141,7 +141,7 @@ def prepare(args) -> dict:
         servers["context7-local"] = server
         plan(".mcp.json", json.dumps(config, indent=2) + "\n", merge=True)
         if args.with_hooks:
-            hook = {"type": "command", "command": python_command, "args": ["-c", bootstrap("context7_refresh_hook.py")], "timeout": 30}
+            hook = {"type": "command", "command": sys.executable, "args": ["-c", bootstrap("context7_refresh_hook.py")], "timeout": 30}
             config = add_hooks(read_json(root / ".claude/settings.json"), hook, "^(Write|Edit|MultiEdit|Bash|PowerShell)$")
             plan(".claude/settings.json", json.dumps(config, indent=2) + "\n", merge=True)
     if args.with_agents_md:
