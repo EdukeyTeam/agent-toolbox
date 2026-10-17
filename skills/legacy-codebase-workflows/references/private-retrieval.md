@@ -1,5 +1,7 @@
 # Optional private code and documentation retrieval
 
+For a requested project-local MCP runtime, start with the short [setup route](local-context7-setup.md). It supplies reusable integration and an explicit first-question consent gate for hooks and AGENTS.md. Read optional models and benchmarks below only when needed.
+
 Evaluate retrieval for repeated questions over a framework or documentation set that agents otherwise reread, after comparison with direct search and scoped maps. Index original code as well as existing/generated Markdown; documentation alone may omit the API the task needs. Keep provenance distinct for repository source and separately supplied docs.
 
 The bundled `scripts/context7_backend.py` is a local reference implementation. It uses persistent SQLite FTS5 for lexical retrieval, optional local embeddings for semantic retrieval, reciprocal-rank fusion for hybrid search, and optional symbol/path or local cross-encoder reranking. It is a loopback service, not an authenticated shared production backend. See the [storage ADR](../../../docs/ADR/000-local-code-retrieval-storage.md) in the source repository for the database comparison; the installed skill does not need that ADR to run.

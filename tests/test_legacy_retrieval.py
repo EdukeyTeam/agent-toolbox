@@ -1860,5 +1860,42 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(ranked[0], ranked[1])
 
 
+
+class GitPipeTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name).resolve() / "source"
+        self.root.mkdir()
+
+    def test_git_metadata_does_not_consume_open_protocol_stdin(self):
+        # Run a real stdin-reading subprocess while the parent's MCP-like pipe
+        # stays open. Inherited stdin would block; DEVNULL must produce EOF.
+        program = (
+            "import importlib.util,pathlib,subprocess,sys;"
+            f"p=pathlib.Path({str(SCRIPT.parent / 'repo_files.py')!r});"
+            "s=importlib.util.spec_from_file_location('inventory',p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+            "real=subprocess.run\n"
+            "def reader(*args,**kwargs):\n"
+            " kwargs['timeout']=2\n"
+            " return real([sys.executable,'-c','import sys;sys.stdin.read();print(\"eof\")'],**kwargs)\n"
+            "m.subprocess.run=reader\n"
+            "r=m._git(pathlib.Path('.'),'rev-parse');assert r.stdout.strip()==b'eof';print('detached',flush=True)\n"
+        )
+        proc = subprocess.Popen([sys.executable, "-c", program], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=self.root)
+        try:
+            proc.stdin.write(b"protocol remains open\n")
+            proc.stdin.flush()
+            proc.wait(timeout=8)
+            self.assertEqual(proc.returncode, 0, proc.stderr.read().decode())
+            self.assertEqual(proc.stdout.read().strip(), b"detached")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            for stream in (proc.stdin, proc.stdout, proc.stderr):
+                stream.close()
+
+
 if __name__ == "__main__":
     unittest.main()
