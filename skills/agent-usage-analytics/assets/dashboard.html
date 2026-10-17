@@ -651,6 +651,7 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
     var s = v.summary;
     if (!Object.keys(s).length) { body.appendChild(empty('No summary is available in this report.')); return; }
     var missing = isNum(s.missing_usage_requests) ? s.missing_usage_requests : 0;
+    var incomplete = missing || s.count_quality === 'known lower bound';
     var unpriced = isNum(s.unpriced_requests) ? s.unpriced_requests : 0;
     if (!isNum(s.requests) || s.requests === 0) {
       body.appendChild(v.filtered
@@ -661,7 +662,7 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
     function share(part, whole) { return isNum(part) && isNum(whole) && whole > 0 ? ' (' + Math.round(100 * part / whole) + '%)' : ''; }
     function delta(value) { return el('p', { class: 'delta', text: fmtDelta(value) + ' vs previous period' }); }
     body.appendChild(el('div', { class: 'cards' },
-      card('Total processed tokens', fmtInt(s.total_tokens), 'Input + output' + (missing ? '; known lower bound' : ''),
+      card('Total processed tokens', fmtInt(s.total_tokens), 'Input + output' + (incomplete ? '; known lower bound' : ''),
         { accent: 'teal', extra: cmp ? delta(cmp.token_delta_percent) : null }),
       card('API-equivalent cost', fmtCost(s.cost_lower_usd, s.cost_upper_usd),
         'Estimate, not an invoice' + (unpriced ? '; ' + fmtInt(unpriced) + ' requests unpriced' : ''),
@@ -672,6 +673,7 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
       card('Output tokens', fmtInt(s.output_tokens), 'Includes reasoning ' + fmtInt(s.reasoning_tokens)),
       card('Usage coverage', fmtInt(s.priced_requests) + ' priced', fmtInt(unpriced) + ' unpriced, ' + fmtInt(missing) + ' missing usage counts')));
     if (missing) body.appendChild(note('Token totals are known lower bounds: ' + fmtInt(missing) + ' requests had no usage counts.'));
+    if (s.accounting_gap_observations) body.appendChild(note('Selected source history has ' + fmtInt(s.accounting_gap_observations) + ' accounting-gap observations. Excluded or unattributable activity is not zero usage; these gaps may extend outside the selected period.'));
     if (cmp) {
       var prev = obj(cmp.previous);
       body.appendChild(dataTable('Comparison with the previous period', [

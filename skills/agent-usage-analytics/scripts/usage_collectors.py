@@ -194,6 +194,11 @@ class Observations:
         row = self.calls.get(str(key))
         if row:
             row["result_chars"] = size
+            loads = [value for call, value in self.calls.items()
+                     if call.startswith(str(key) + ":") and value.get("kind") == "skill"]
+            if len(loads) == 1:
+                loads[0]["result_chars"] = size
+                loads[0]["quality"] = "estimated_load_output_proxy"
         else:
             self.pending_results[str(key)] = size
 
@@ -240,6 +245,7 @@ class Observations:
         if self.context is None:
             self.anchor(self.end, None, None)
         if emit_context:
+            self.context["parent_session_id"] = self.parent
             self.data["contexts"].append(self.context)
         # A rotation may separate a result from its call. Content-free stubs
         # join by the same stable invocation ID during collection coalescence.
@@ -261,7 +267,7 @@ def quota(data: JSON, source: JSON, agent: str, sid: str, raw: object,
         entry = obj(limits.get(bucket))
         if number(entry.get("used_percent")) is None:
             continue
-        label = safe_name(limits.get("limit_id"), "default") + ":" + bucket
+        label = safe_name(limits.get("limit_id"), "codex" if agent == "codex" else "default") + ":" + bucket
         data["quotas"].append({"id": digest("quota", agent, account, label, at,
                                              entry.get("resets_at"), entry.get("used_percent")),
             "agent": agent, "account": safe_name(account), "bucket": label,
@@ -311,24 +317,28 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
             if first_native is None:
                 first_native = line, p
     sid = identifier(pick(meta, "id", "session_id", "thread_id"), path.stem)
-    if selected and sid != selected:
+    parent = pick(meta, "forked_from_id", "parent_thread_id", "parent_session_id")
+    fork = obj(obj(meta.get("source")).get("subagent"))
+    parent = parent or pick(fork, "parent_thread_id", "parent_session_id")
+    parent = parent or pick(obj(fork.get("thread_spawn")), "parent_thread_id", "parent_session_id")
+    if selected and sid != selected and parent != selected:
         return
     source["session_id"] = sid
     # Re-reading a stream is intentional, but parsing coverage counts source rows once.
     source["rows_seen"] = source["malformed_rows"] = 0
     data["warnings"] = [w for w in data["warnings"] if w["source_id"] != source["id"]]
     obs = Observations(data, source, "codex", sid, device)
-    parent = pick(meta, "forked_from_id", "parent_thread_id", "parent_session_id")
-    fork = obj(obj(meta.get("source")).get("subagent"))
-    parent = parent or pick(fork, "parent_thread_id", "parent_session_id")
-    parent = parent or pick(obj(fork.get("thread_spawn")), "parent_thread_id", "parent_session_id")
     obs.parent = identifier(parent, "unknown") if parent else None
     parent_snapshots: set[str] = set()
     if obs.parent and re.fullmatch(r"[A-Za-z0-9_-]{1,100}", obs.parent):
         # Legacy forks can replay snapshots AFTER their own metadata. Compare
         # leading payloads with the parent when that rollout is available.
         tree = next((p for p in path.parents if p.name in ("sessions", "archived_sessions")), path.parent)
-        for candidate in tree.glob("**/*" + obs.parent + "*.jsonl"):
+        trees = [tree]
+        if tree.name in ("sessions", "archived_sessions"):
+            trees = [p for p in (tree.parent / "sessions", tree.parent / "archived_sessions") if p.is_dir()]
+        candidates = (candidate for root in trees for candidate in root.glob("**/*" + obs.parent + "*.jsonl"))
+        for candidate in candidates:
             if candidate == path or candidate.is_symlink():
                 continue
             parent_source = source_info(candidate, "codex", device)
@@ -392,6 +402,8 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
             dims = dimensions.get(turn or "", {})
             record = usage_row("codex", sid, (thread, response), raw, source, device, account,
                 at, model, "codex_native_per_response", parent_session_id=obs.parent,
+                native_total_input_tokens=count(obj(pick(p, "thread_token_usage", "thread_total", "thread_total_usage", "thread_total_token_usage", "total_token_usage")), "input_tokens"),
+                native_total_output_tokens=count(obj(pick(p, "thread_token_usage", "thread_total", "thread_total_usage", "thread_total_token_usage", "total_token_usage")), "output_tokens"),
                 model_inferred=inferred, **{k: safe_name(p[k]) if p.get(k) else dims.get(k)
                     for k in ("speed", "service_tier", "inference_geo")})
             data["usage"].append(record)
@@ -459,6 +471,7 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
             last_total = total
             legacy.append(usage_row("codex", sid, ("legacy", total, at), delta, source,
                 device, account, at, preceding_model, "codex_legacy_snapshot_delta",
+                legacy_total_input_tokens=total["input_tokens"], legacy_total_output_tokens=total["output_tokens"],
                 quality="reconstructed", model_inferred=True, parent_session_id=obs.parent))
     if legacy and first_native:
         p = first_native[1]
@@ -466,12 +479,14 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
                                                "thread_total_token_usage", "total_token_usage")))
         response = codex_counts(obj(p.get("usage")))
         budget = delta_counts(thread_total, response)
-        # Only a fully reconciled pre-native boundary can establish non-overlap.
-        if last_total is None or budget["input_tokens"] is None or any(
-            last_total.get(k) is not None and budget.get(k) != last_total[k]
-            for k in ("input_tokens", "output_tokens")):
+        # A legacy snapshot can precede its matching native event in the log.
+        # Keep only endpoints proven to precede the first native response.
+        proven = [r for r in legacy if all(budget.get(k) is not None and
+            r.get("legacy_total_" + k) is not None and r["legacy_total_" + k] <= budget[k]
+            for k in ("input_tokens", "output_tokens"))]
+        if len(proven) != len(legacy):
             warn(data, "native_legacy_overlap_unresolved", source["id"])
-            legacy = []
+        legacy = proven
     data["usage"].extend(legacy)
     obs.finish()
 
@@ -522,17 +537,21 @@ def _claude(path: Path, data: JSON, source: JSON, device: str, account: str,
         if number(metadata_window.get("context_window_size")) is not None:
             window = number(metadata_window["context_window_size"])
         mid = message.get("id")
+        # Claude stores distinct streamed content blocks under the same message
+        # ID. UUID identifies the block observation, while repeated UUIDs replace
+        # earlier snapshots of that same block.
+        block_id = row.get("uuid") or mid or line
         blocks = message.get("content", [])
         if isinstance(blocks, str):
-            obs.inv.add(str(mid or row.get("uuid") or line), blocks, str(message.get("role", row.get("type", "user"))))
+            obs.inv.add(str(block_id), blocks, str(message.get("role", row.get("type", "user"))))
         elif isinstance(blocks, list):
             for i, block in enumerate(blocks):
                 b = obj(block)
                 if b.get("type") == "text":
-                    obs.inv.add(f"{mid or row.get('uuid') or line}:{i}", b.get("text"),
+                    obs.inv.add(f"{block_id}:{i}", b.get("text"),
                                 str(message.get("role", row.get("type", "user"))))
                 elif b.get("type") in ("tool_use", "tool_result"):
-                    obs.item(b, at, f"{mid or row.get('uuid') or line}:{i}")
+                    obs.item(b, at, f"{block_id}:{i}")
         raw = obj(message.get("usage"))
         if row.get("type") != "assistant" or not raw or message.get("model") in ("<synthetic>", "synthetic"):
             continue
@@ -627,16 +646,14 @@ def _copilot_events(path: Path, data: JSON, source: JSON, device: str,
         record = usage_row("copilot", sid, request, counts, source, device, account, at,
                            model, "copilot_jsonl_request")
         data["usage"].append(record)
-        sessions.add(sid)
+        if counts["input_tokens"] is not None or counts["output_tokens"] is not None:
+            sessions.add(sid)
         obs.anchor(at, counts["input_tokens"], pick(p, "model_context_window", "contextWindow"), record["model"])
     if checkpoint:
         # Checkpoints have no request identity and are never additive.
         warn(data, "checkpoint_crosscheck_only", source["id"])
     if obs:
         obs.finish()
-        # A JSONL session with missing accounting still establishes overlap. SQL
-        # cannot be safely added merely because a new event version was skipped.
-        sessions.add(sid)
     return sessions
 
 
@@ -680,7 +697,14 @@ def _copilot_sql(path: Path, data: JSON, source: JSON, device: str, account: str
             if sid not in observations:
                 observations[sid] = Observations(data, source, "copilot", sid, device)
                 warn(data, "sql_only_session_coverage", source["id"])
-            at = timestamp(raw["created_at"])
+            # This store writes UTC wall-clock SQL timestamps without an offset.
+            # Interpret that documented SQL representation here only; generic
+            # imports still reject timezone-naive observations.
+            created = raw["created_at"]
+            at = timestamp(created)
+            if at is None and isinstance(created, str) and re.fullmatch(
+                    r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?", created):
+                at = timestamp(created.replace(" ", "T") + "Z")
             observations[sid].tick(at)
             data["usage"].append(usage_row("copilot", sid, ("sql", raw["id"]), raw, source,
                 device, account, at, raw["model"], "copilot_sql_request"))
@@ -830,7 +854,7 @@ def _agy(path: Path, data: JSON, source: JSON, device: str, account: str,
         if row.get("type") == "result" or (path.suffix.lower() == ".json" and row.get("type") is None):
             results[sid].append((row, counts))
         elif row.get("type") == "step_update" and pick(payload, "state", "status") == "DONE":
-            steps[sid].append((row, counts, pick(payload, "step_id", "id") or line))
+            steps[sid].append((row, counts, pick(payload, "step_id", "step_index", "id") or line))
     for sid, obs in observations.items():
         cumulative = results.get(sid, [])
         if cumulative:
@@ -856,7 +880,8 @@ def _agy(path: Path, data: JSON, source: JSON, device: str, account: str,
                     data["usage"].append(usage_row("agy", sid,
                         ("cumulative", stamp(row)), delta, source, device, account,
                         stamp(row), row.get("model"), "agy_cumulative_delta", unit="turn",
-                        request_count=None))
+                        request_count=None, cumulative_observed_at=stamp(row),
+                        **{"cumulative_" + key: counters[key] for key in TOKEN_FIELDS}))
                     previous = counters
         else:
             for row, counters, key in steps.get(sid, []):
@@ -914,7 +939,22 @@ def _discover(agent: str, path: Path, selected: str | None) -> list[Path]:
                     if (selected and agent == "codex" and
                             re.fullmatch(r"[a-fA-F0-9-]{36}", selected) and
                             candidate.name.startswith("rollout-") and selected not in candidate.stem):
-                        continue
+                        # Children have their own UUID filenames. Inspect only
+                        # metadata rather than parsing unrelated full rollouts.
+                        related = False
+                        try:
+                            with candidate.open(encoding="utf-8-sig") as stream:
+                                first = obj(json.loads(stream.readline()))
+                            p = obj(first.get("payload")) if first.get("type") == "session_meta" else {}
+                            sub = obj(obj(p.get("source")).get("subagent"))
+                            parent = pick(p, "forked_from_id", "parent_thread_id", "parent_session_id")
+                            parent = parent or pick(sub, "parent_thread_id", "parent_session_id")
+                            parent = parent or pick(obj(sub.get("thread_spawn")), "parent_thread_id", "parent_session_id")
+                            related = parent == selected
+                        except (OSError, ValueError, UnicodeError):
+                            pass
+                        if not related:
+                            continue
                     found.add(candidate)
     if agent == "copilot":
         for name in ("session-store.db", "session-state.db", "sessions.db"):

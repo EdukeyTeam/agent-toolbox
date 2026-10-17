@@ -12,16 +12,20 @@ from usage_common import LISTS, dataset, digest, number, safe_name, timestamp
 from usage_accounting import merge
 
 FIELDS = {
-    "usage": "id agent session_id parent_session_id model timestamp source_id origin device account input_tokens cache_read_tokens cache_write_tokens cache_write_5m_tokens cache_write_1h_tokens output_tokens reasoning_tokens request_count unit quality speed inference_geo service_tier cache_write_reported model_inferred accounting_mode web_search_requests task",
-    "contexts": "id agent session_id observed_at used_tokens window_tokens basis provider_percent computed_percent baseline_reserved_tokens compactions model quality visible_estimated_tokens unattributed_tokens estimation_method retention_status source_id origin device post_compaction_pending_turn",
-    "tools": "id agent session_id parent_session_id timestamp source_id origin device name kind argument_chars result_chars quality",
+    "usage": "id agent session_id parent_session_id model timestamp source_id origin device account input_tokens cache_read_tokens cache_write_tokens cache_write_5m_tokens cache_write_1h_tokens output_tokens reasoning_tokens request_count unit quality speed inference_geo service_tier cache_write_reported model_inferred accounting_mode web_search_requests task cumulative_observed_at cumulative_input_tokens cumulative_output_tokens cumulative_cache_read_tokens cumulative_cache_write_tokens cumulative_reasoning_tokens",
+    "contexts": "id agent session_id parent_session_id observed_at used_tokens window_tokens basis provider_percent computed_percent baseline_reserved_tokens compactions model quality visible_estimated_tokens unattributed_tokens estimation_method retention_status capacity_basis source_id origin device post_compaction_pending_turn",
+    "tools": "id agent session_id parent_session_id timestamp source_id origin device name kind argument_chars result_chars quality detection",
     "quotas": "id agent account bucket window_minutes resets_at used_percent observed_at source_id device origin model speed",
     "sessions": "id agent session_id parent_session_id device origin start end compactions source_id",
-    "sources": "id agent device origin contract files_seen files_parsed rows_seen malformed_rows schema_fingerprint",
-    "warnings": "id code source_id line",
+    "sources": "id agent session_id device origin contract files_seen files_parsed rows_seen malformed_rows schema_fingerprint",
+    "warnings": "id code source_id session_id line",
 }
 NUMERIC = set("input_tokens cache_read_tokens cache_write_tokens cache_write_5m_tokens cache_write_1h_tokens output_tokens reasoning_tokens request_count web_search_requests used_tokens window_tokens provider_percent computed_percent baseline_reserved_tokens compactions visible_estimated_tokens window_minutes used_percent argument_chars result_chars files_seen files_parsed rows_seen malformed_rows line".split())
-TIMES = {"timestamp", "observed_at", "resets_at", "start", "end"}
+NUMERIC.update("cumulative_" + key for key in ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "reasoning_tokens"))
+RECONCILIATION_FIELDS = "native_total_input_tokens native_total_output_tokens legacy_total_input_tokens legacy_total_output_tokens"
+FIELDS["usage"] += " " + RECONCILIATION_FIELDS
+NUMERIC.update(RECONCILIATION_FIELDS.split())
+TIMES = {"timestamp", "observed_at", "resets_at", "start", "end", "cumulative_observed_at"}
 BOOLEANS = {"cache_write_reported", "model_inferred", "post_compaction_pending_turn"}
 
 
@@ -66,8 +70,8 @@ def normalize_import(value: dict[str, Any]) -> dict[str, Any]:
                     raise ValueError("Usage needs agent and session identity")
                 for key in ("input_tokens", "cache_read_tokens", "cache_write_tokens", "output_tokens", "reasoning_tokens"):
                     row.setdefault(key, None)
-                if row.get("request_count", 1) < 1:
-                    raise ValueError("request_count must be positive")
+                if row.get("request_count") is not None and row["request_count"] < 0:
+                    raise ValueError("request_count must be nonnegative")
                 row.setdefault("request_count", 1)
             if kind == "contexts":
                 categories = record.get("categories", [])
@@ -134,7 +138,7 @@ class Ledger:
         for kind, raw in self.connection.execute("SELECT kind,data FROM usage_analytics_records ORDER BY kind,id"):
             if kind in result:
                 result[kind].append(json.loads(raw))
-        return result
+        return normalize_import(result)
 
     def close(self) -> None:
         self.connection.close()

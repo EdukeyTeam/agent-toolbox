@@ -251,6 +251,9 @@ def _summary_md(report: dict) -> list[str]:
     unpriced = _num(summary.get("unpriced_requests")) or 0
     if missing:
         lines += [f"Token totals are known lower bounds: {fmt_int(missing)} requests had no usage counts.", ""]
+    if summary.get("accounting_gap_observations"):
+        lines += [f"Selected source history has {fmt_int(summary['accounting_gap_observations'])} accounting-gap observations. "
+                  "Excluded or unattributable activity is not zero usage; gaps may extend outside the selected period.", ""]
     if unpriced:
         lines += [f"The cost covers priced requests only: {fmt_int(unpriced)} requests are unpriced.", ""]
     return lines
