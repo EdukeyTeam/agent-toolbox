@@ -63,3 +63,9 @@ Exact attribution of hidden system prompts, provider tool serialization and reta
 Historical prompts and outputs may contain sensitive information. Collection must keep raw content out of its output contract and avoid credential files entirely. A personalized recommendation that requires protected raw content needs the user's authorized data-processing route; numeric analysis can continue independently.
 
 Browser retrieval could not open two skills.sh candidate pages on its first attempts. ECC was subsequently verified through its canonical `www.skills.sh` page and upstream source. The Codex candidate remains unverified beyond the CLI listing; no replacement was silently treated as equivalent.
+
+## Proxy routing and GLM
+
+[Z.ai's Claude Code integration](https://docs.z.ai/devpack/tool/claude) documents mappings from the CLI's model choices to GLM. This establishes why a harness label alone cannot prove the serving model. Historical routing still needs contemporaneous metadata or an explicit confirmed map.
+
+[Official Z.ai pricing](https://docs.z.ai/guides/overview/pricing), checked 2026-10-17, supplies separate input, cached-input and output rates for GLM-5.3 and GLM-5.3-Flash. Those two models are added to the reference card; temporary storage terms and tool fees are outside token estimates. [Coding Plan rules](https://docs.z.ai/devpack/overview) describe credits and reset behavior separately. A subscriber's allowance is not the API price or an Anthropic quota.

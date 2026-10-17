@@ -1012,6 +1012,16 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
   function renderMethod(sec) {
     var body = sec.body;
     var pricing = obj(report.pricing);
+    body.appendChild(el('h3', {text: 'Provider and model attribution'}));
+    body.appendChild(note('Harness labels can hide GLM or another proxy route. Reported models are unverified reference comparisons. Confirm historical routes with an attribution map; provider mismatches remain unpriced. This table shows the full report scope.'));
+    body.appendChild(dataTable('Provider and model attribution', [
+      {label:'Agent', value:function(r){return text(r.agent);}},
+      {label:'Provider', value:function(r){return text(r.provider);}},
+      {label:'Reported label', value:function(r){return text(r.reported_model);}},
+      {label:'Effective model', value:function(r){return text(r.model);}},
+      {label:'Basis', value:function(r){return text(r.model_attribution);}},
+      {label:'Requests',num:true,value:function(r){return fmtInt(r.requests);}}
+    ], rows(report.attribution), 50));
     body.appendChild(el('ul', { class: 'method' }, [
       'Input tokens include cache reads and cache writes; ordinary input is input minus both.',
       'Output tokens include reasoning. Reasoning is shown as a subset and never added again.',

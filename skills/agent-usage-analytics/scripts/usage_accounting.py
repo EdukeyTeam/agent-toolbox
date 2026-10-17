@@ -13,6 +13,7 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from usage_common import COUNTS, LISTS, copilot_preference, dataset, digest, number, safe_name, timestamp
+from usage_attribution import attribution_rank
 
 
 def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
@@ -27,6 +28,12 @@ def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
                     records[key] = deepcopy(record)
                     continue
                 old = records[key]
+                if kind in ("usage", "contexts"):
+                    if attribution_rank(record) > attribution_rank(old) or (
+                            attribution_rank(record) == 2 and attribution_rank(old) == 2):
+                        for field in ("model", "reported_model", "provider", "model_attribution", "speed", "inference_geo", "service_tier"):
+                            if field in record:
+                                old[field] = record[field]
                 if kind == "usage":
                     for field, value in record.items():
                         if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -187,7 +194,14 @@ def price(row: dict[str, Any], card: dict[str, Any]) -> dict[str, Any]:
         return result
     costs: list[Decimal] = []
     notes: set[str] = set()
+    if attribution_rank(row) == 0:
+        notes.add("reported_model_unverified")
     for base in variants:
+        provider = row.get("provider")
+        if provider:
+            provider = {"z.ai": "zai", "z-ai": "zai"}.get(provider.lower(), provider.lower())
+        if provider and provider != base.get("provider"):
+            return {**result, "price_notes": ["provider_model_mismatch"]}
         options = [base]
         for tier in base.get("tiers", []):
             if row.get("unit", "request") != "request":
@@ -211,7 +225,7 @@ def price(row: dict[str, Any], card: dict[str, Any]) -> dict[str, Any]:
             geo = row.get("inference_geo")
             if geo == "us" and rate.get("provider") == "anthropic":
                 multiplier *= Decimal("1.1")
-            elif geo not in (None, "global", "us"):
+            elif geo not in (None, "global", "us") and rate.get("provider") in ("anthropic", "openai"):
                 notes.add("geography_rate_not_established")
                 return {**result, "price_notes": sorted(notes)}
             rates = {k: Decimal(str(rate[k])) for k in ("input", "output", "cache_read", "cache_write_5m", "cache_write_1h")}
@@ -306,7 +320,7 @@ def quota_analysis(quotas: list[dict[str, Any]], requests: list[dict[str, Any]],
                 elif percentages[-1] - percentages[0] >= 5:
                     relevant = [r for r in requests if r.get("agent") == agent and r.get("account", "local") == account
                                 and r.get("timestamp") and valid[0]["observed_at"] < r["timestamp"] <= valid[-1]["observed_at"]]
-                    mix = {(r.get("model"), r.get("speed"), r.get("service_tier")) for r in relevant}
+                    mix = {(r.get("model"), r.get("speed"), r.get("service_tier"), r.get("provider")) for r in relevant}
                     if duration:
                         start = datetime.fromisoformat(valid[0]["observed_at"].replace("Z", "+00:00")) - timedelta(minutes=duration)
                         end = datetime.fromisoformat(valid[-1]["observed_at"].replace("Z", "+00:00")) - timedelta(minutes=duration)
@@ -388,6 +402,8 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
     contexts = list(contexts_by_session.values())
     quotas = [q for q in data["quotas"] if in_scope(q, "observed_at", account_scope=True)]
     summary = stats(rows)
+    summary["unverified_model_requests"] = sum(r.get("request_count") if r.get("request_count") is not None else 1
+                                               for r in rows if attribution_rank(r) == 0)
     gap_codes = {"fork_baseline_unknown", "native_legacy_overlap_unresolved", "source_unreadable",
                  "malformed_or_partial_line", "missing_request_identity", "unsupported_usage_schema",
                  "unsupported_sql_schema", "grok_turn_usage_unavailable", "counter_reset_unknown_baseline",
@@ -411,6 +427,9 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
                       "cost_delta_percent": (100 * (summary["cost_lower_usd"] / previous["cost_lower_usd"] - 1)
                                              if previous["cost_lower_usd"] else None)}
     insights = []
+    if summary["unverified_model_requests"]:
+        insights.append({"title": "Confirm historical model routes", "evidence": f'{summary["unverified_model_requests"]} requests use reported model labels without confirmed provider attribution.',
+                         "action": "If GLM or another proxy served an Opus-labeled session, supply a confirmed attribution map before interpreting its API-equivalent cost."})
     if ranked["tools"]:
         top = ranked["tools"][0]
         insights.append({"title": "Largest observed tool content", "evidence": f'{top["name"]}: {top["result_chars"] if top["result_chars"] is not None else "unknown"} result characters across {top["calls"]} calls.',
@@ -425,6 +444,11 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
         insights.append({"title": "Visible estimate exceeds its measured anchor", "evidence": "At least one context estimate has a negative residual.",
                          "action": "Treat composition as uncertain: pruning, serialization and the heuristic can differ. Categories were not rescaled."})
     generated = timestamp(now) or timestamp(datetime.now(timezone.utc).isoformat())
+    attribution = _groups(rows, lambda r: " | ".join((str(r.get("agent")), str(r.get("provider") or "unverified provider"),
+                          str(r.get("reported_model") or r.get("model") or "unknown"),
+                          str(r.get("model") or "unknown"), str(r.get("model_attribution") or "reported"))))
+    for group in attribution:
+        group["agent"], group["provider"], group["reported_model"], group["model"], group["model_attribution"] = group["label"].split(" | ")
     rolling = {}
     for label, hours in (("five_hour", 5), ("seven_day", 168)):
         bound = timestamp((datetime.fromisoformat(generated.replace("Z", "+00:00")) - timedelta(hours=hours)).isoformat())
@@ -442,6 +466,7 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
               "monthly": _groups(rows, lambda r: date_key(r, 7)), "models": _groups(rows, lambda r: r.get("model") or "unknown"),
               "sessions": session_groups,
               "tasks": _groups(rows, lambda r: r["task"]), **ranked, "contexts": contexts, "quotas": quotas,
+              "attribution": attribution,
               "quota_estimates": quota_analysis(quotas, all_rows, complete_coverage), "local_rolling_usage": rolling,
               "coverage": [s for s in data["sources"] if not session_id or s.get("id") in selected_source_ids], "warnings": selected_warnings, "insights": insights,
               "comparison": comparison, "undated_requests_excluded": sum(not r.get("timestamp") for r in all_rows if session_scope(r)) if start or end else 0,
@@ -457,12 +482,13 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
                               "Context categories estimate visible text; hidden schemas, prompts and multimodal content are unknown.",
                               "Local rolling usage is distinct from provider-defined quotas and can omit other devices/cloud work.",
                               "API-equivalent cost uses per-request reference rates, excludes unrecorded tool fees and is not a subscription bill."]}
+    report["methodology"].append("Harness labels can hide proxy routes. Reported/unverified models are reference comparisons; use an explicit attribution map for GLM or other routed sessions. Known provider mismatches are unpriced.")
     return pseudonymize(report) if share else report
 
 
 def pseudonymize(report: dict[str, Any]) -> dict[str, Any]:
     report = deepcopy(report)
-    sensitive = {"id", "source_id", "session_id", "parent_session_id", "account", "device", "name", "bucket", "task"}
+    sensitive = {"id", "source_id", "session_id", "parent_session_id", "account", "device", "name", "bucket", "task", "provider"}
     names: dict[str, str] = {}
     salt = secrets.token_hex(24)
     public_categories = {"instructions", "skill_catalog", "loaded_skills", "tool_schemas", "user_messages",
@@ -475,7 +501,7 @@ def pseudonymize(report: dict[str, Any]) -> dict[str, Any]:
                     continue
                 if key in sensitive and isinstance(item, str):
                     value[key] = names.setdefault(item, "item-" + digest(salt, item)[:10])
-                elif key == "label" and parent in ("sessions", "tasks") and isinstance(item, str):
+                elif key == "label" and parent in ("sessions", "tasks", "attribution") and isinstance(item, str):
                     value[key] = names.setdefault(item, "item-" + digest(salt, item)[:10])
                 else:
                     visit(item, key)

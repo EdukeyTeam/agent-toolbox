@@ -37,6 +37,8 @@ python3 scripts/agent_usage.py session --source claude=/path/to/.claude --sessio
 
 Use `--current` only when the current Codex process exposes its thread ID. If unavailable, resolve an explicit session from the owning agent or ask the user to choose. Never select the newest unrelated session. A snapshot describes the last completed observation, not an in-flight prompt.
 
+For a normalized numeric export, use `session --input /path/to/export.json --session SESSION_ID --out /path/to/reports/session` or `usage --input /path/to/export.json --out /path/to/reports/usage`. Explicit input never triggers native discovery. Do not combine `--input` and `--source`.
+
 For repeated monitoring, keep an optional **analytics** ledger, distinct from every provider database:
 
 ```bash
@@ -44,6 +46,10 @@ python3 scripts/agent_usage.py collect --source codex=/path/to/.codex --store /p
 ```
 
 Query a stored month with the same `usage` command and `--store` instead of sources. Add `--compare-since` and `--compare-until` for a prior period. Bounds are inclusive start/exclusive end; UTC is the default. Explicit `--timezone` must resolve on the machine. `--task-map` accepts a JSON session-ID-to-category map; unmatched work stays unclassified.
+
+## Proxy routes and GLM
+
+A Claude/Opus label can represent Z.ai GLM through a proxy. Never infer a historical route from current settings or credentials. Preserve the reported label and use `--attribution-map /path/to/routes.json` when the user or recorded export confirms the serving provider/model. The map uses `agent:session_id` keys (or explicit `agent:*` defaults), for example `{"claude:SESSION_ID":{"provider":"zai","model":"glm-5.3"}}`. A provider-only entry leaves the effective model unknown and unpriced. Explicit mappings persist in the optional ledger and survive ordinary recollection; a corrected explicit mapping can replace them. Review the provider/model attribution table before explaining costs. Unmapped labels remain unverified reference comparisons.
 
 ## Interpret correctly
 

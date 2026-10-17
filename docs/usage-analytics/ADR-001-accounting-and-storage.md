@@ -6,7 +6,7 @@ Status: accepted under the user's delegated decision authority. Requirements: [P
 
 ## Decision
 
-Use a Python 3.11+ standard-library CLI with independent adapters, a content-free normalized dataset, an optional SQLite history ledger and a single report object shared by JSON, Markdown and offline HTML renderers. Analysis does not call a model or require an API key. Optional live account collection uses the owning CLI's documented read-only interface.
+Use a Python 3.11+ standard-library CLI with independent adapters, a content-free normalized dataset, an optional SQLite history ledger and a single report object shared by JSON, Markdown and offline HTML renderers. Explicit `--input` on usage/session/collect reads a normalized export and never triggers native discovery; combining it with native sources is rejected. Analysis does not call a model or require an API key. Optional live account collection uses the owning CLI's documented read-only interface.
 
 The user explicitly authorized expert consultation followed by documentation, implementation and real-session testing. Routine decisions are owned by the implementing agent. The documents record them before code; no new approval gate is introduced.
 
@@ -101,6 +101,10 @@ sequenceDiagram
     end
     Renderer-->>User: JSON, Markdown, offline HTML
 ```
+
+## Provider and model attribution
+
+A harness label does not prove the serving model. Preserve `reported_model`, `provider` and `model_attribution` separately from the effective `model` used for grouping/pricing. Explicit numeric-export provider metadata or a user-supplied `agent:session_id` route map can establish attribution; an `agent:*` map entry is an explicit fallback. Never inspect credentials or apply today's settings retroactively to historical sessions. Unmapped native labels are reported/unverified comparisons. Known provider/model mismatches are unpriced, and a provider-only route marks the effective model unknown. Explicit route corrections outrank reported metadata in the ledger and remain stable when ordinary raw logs are collected again. The report includes an attribution table and a warning explaining unmapped proxy risk.
 
 ## Pricing
 

@@ -5,7 +5,7 @@ Date: 2026-10-17. Real histories and full reviewer transcripts remain local and 
 | Check | Result | Evidence and limits |
 | --- | --- | --- |
 | Skill structure | Passed | Codex skill-creator validator accepts the frontmatter and layout; repository structure tests discover the new skill. |
-| Focused Python suite | 92 tests passed | Includes follow-up review regressions. Hand-counted fixtures cover pricing/cache dimensions, repeated snapshots, imports, SQLite, context/compaction, privacy, source overlap and CLI artifacts. |
+| Focused Python suite | 98 tests passed | Includes follow-up review regressions. Hand-counted fixtures cover pricing/cache dimensions, repeated snapshots, imports, SQLite, context/compaction, privacy, source overlap and CLI artifacts. |
 | Committed feature branch | 111 Node tests passed | `npm ci` and `npm test` run against an exported feature-branch tree, independent of concurrent legacy changes. The Node bridge also runs the focused Python suite. |
 | Real Linux and Windows histories | Passed | Independent raw numeric oracles agree with normalized Codex, Claude Code and Copilot SQL counters on both devices. The Windows Codex fixture includes six compactions. Three additional real legacy spawned sessions confirm fresh-child counters. No real transcript is copied into a test fixture. |
 | Real Grok Build history | Passed | Seven measured turn-usage files match independent output-counter sums and observation counts. Native context signals have separate semantics. |
@@ -28,3 +28,9 @@ Codex legacy snapshots can arrive before their matching native event. Tests reta
 - API-equivalent costs are a dated reference comparison, with unknown models unpriced and missing billing dimensions expressed as ranges. Used rate entries are embedded in report JSON.
 - Task categories require an explicit mapping. Tool/skill sizes are visible-content proxies, not causal cost attribution. A source's schema can change after these observed contracts.
 - Dedicated CI runs Python 3.11 and 3.14 on Linux and Windows. Its live PR results are the authority for the cross-platform matrix; local access to Windows histories alone is not a native Windows runtime test.
+
+## Routed-model and independent-user checks
+
+Two separate CLI agents received ordinary session/history analysis requests without testing instructions or expected totals. Both preserved the reported Opus label, attributed the confirmed routed session to Z.ai GLM-5.3, kept the native Anthropic session separate, and produced numerically correct costs and reports. Their failures exposed two usability defects: explicit normalized input was ignored on native workflow commands, and the import allowlist dropped a generated estimator label. Both are corrected and covered by regression assertions; root reruns the exact export workflows before release. Browser limitations reported by the agents are separately covered by root's installed-Chrome checks.
+
+Additional hand-counted tests verify provider-only unknown models, provider/rate mismatches, recorded-versus-explicit precedence, corrected mappings and route persistence through ordinary recollection. Real GLM records with declared model labels also match an independent reference-price formula. Those checks verify token arithmetic and reference rates; they do not prove an otherwise unrecorded historical proxy route. No current credential or configuration is used to rewrite historical model attribution.

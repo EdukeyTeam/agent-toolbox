@@ -57,7 +57,8 @@ def usage_row(agent: str, sid: str, key: object, raw: JSON, source: JSON,
             fields["reasoning_tokens"] > fields["output_tokens"]):
         fields["reasoning_tokens"] = None
     return {"id": digest("usage", agent, sid, key), "agent": agent,
-            "session_id": sid, "model": safe_name(model), "timestamp": at,
+            "session_id": sid, "model": safe_name(model), "reported_model": safe_name(model),
+            "provider": None, "model_attribution": "reported", "timestamp": at,
             "source_id": source["id"], "origin": source.get("origin", "local"), "device": safe_name(device),
             "account": safe_name(account), **fields,
             "cache_write_5m_tokens": number(raw.get("cache_write_5m_tokens")),
@@ -407,6 +408,9 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
                 native_total_output_tokens=count(obj(pick(p, "thread_token_usage", "thread_total", "thread_total_usage", "thread_total_token_usage", "total_token_usage")), "output_tokens"),
                 model_inferred=inferred, **{k: safe_name(p[k]) if p.get(k) else dims.get(k)
                     for k in ("speed", "service_tier", "inference_geo")})
+            provider = pick(p, "model_provider", "provider") or pick(meta, "model_provider", "provider")
+            if provider:
+                record.update(provider=safe_name(provider), model_attribution="recorded")
             data["usage"].append(record)
             previous = native_counts.setdefault(str(response), raw.copy())
             for k in TOKEN_FIELDS:
@@ -571,6 +575,9 @@ def _claude(path: Path, data: JSON, source: JSON, device: str, account: str,
             speed=safe_name(raw.get("speed")) if raw.get("speed") else None,
             inference_geo=safe_name(raw.get("inference_geo")) if raw.get("inference_geo") else None,
             service_tier=safe_name(raw.get("service_tier")) if raw.get("service_tier") else None)
+        provider = pick(message, "provider", "model_provider") or pick(row, "provider", "model_provider")
+        if provider:
+            record.update(provider=safe_name(provider), model_attribution="recorded")
         # Claude's request identity is global, not scoped to the file or session copy.
         record["id"] = digest("usage", "claude", mid, request)
         searches = count(obj(raw.get("server_tool_use")), "web_search_requests")

@@ -29,3 +29,15 @@ Pricing coverage counts requests with usable counters/rates and those left unpri
 ## Reconciliation metadata
 
 Native collectors preserve numeric cumulative endpoints for Codex transitions and AGY snapshots. Keep those fields when round-tripping normalized exports: `native_total_input_tokens`, `native_total_output_tokens`, `legacy_total_input_tokens`, `legacy_total_output_tokens`, `cumulative_observed_at`, and the `cumulative_` token counters. They establish overlap across separate collection runs. An initial AGY cumulative baseline has unknown activity time and is excluded from dated reports; later observed deltas can be dated. Alternative Copilot SQL/event rows are reconciled per session globally, preferring event detail when coverage agrees and a dominating SQL history when events are partial; mismatches and unsupported schemas remain visible.
+
+## Harness aliases and provider routes
+
+Usage and context records can carry `reported_model`, `provider` and `model_attribution` (`reported`, `recorded`, `user_override`). `model` is the effective grouping/pricing model. Preserve these fields through exports. Native metadata can identify a provider; a provider mismatch against the rate entry is unpriced. No current credential or configuration file is read to rewrite history.
+
+Supply a UTF-8 `--attribution-map` with explicit routes:
+
+```json
+{"claude:SESSION_ID":{"provider":"zai","model":"glm-5.3"},"codex:ANOTHER_ID":{"provider":"zai"}}
+```
+
+An `agent:*` key is an explicit fallback for that agent in the selected input. A specific session entry wins. The provider-only example retains the original label but leaves its effective model unknown. Confirm the model used at that time; do not assume an Opus label, or today's GLM routing, establishes it. Optional confirmed `speed`, `service_tier` and `inference_geo` can correct proxy-exposed billing labels as well. The bundled Z.ai GLM-5.3 and GLM-5.3-Flash entries are API reference prices, distinct from Coding Plan credits. Cache storage/service fees outside token counters are excluded.

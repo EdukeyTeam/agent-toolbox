@@ -24,6 +24,8 @@ NUMERIC = set("input_tokens cache_read_tokens cache_write_tokens cache_write_5m_
 NUMERIC.update("cumulative_" + key for key in ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "reasoning_tokens"))
 RECONCILIATION_FIELDS = "native_total_input_tokens native_total_output_tokens legacy_total_input_tokens legacy_total_output_tokens"
 FIELDS["usage"] += " " + RECONCILIATION_FIELDS
+FIELDS["usage"] += " provider reported_model model_attribution"
+FIELDS["contexts"] += " provider reported_model model_attribution"
 NUMERIC.update(RECONCILIATION_FIELDS.split())
 TIMES = {"timestamp", "observed_at", "resets_at", "start", "end", "cumulative_observed_at"}
 BOOLEANS = {"cache_write_reported", "model_inferred", "post_compaction_pending_turn"}
@@ -60,6 +62,9 @@ def normalize_import(value: dict[str, Any]) -> dict[str, Any]:
                 elif key in BOOLEANS:
                     if not isinstance(item, bool):
                         raise ValueError("Invalid observation boolean")
+                    row[key] = item
+                elif key == "estimation_method" and isinstance(item, str) and re.fullmatch(
+                        r"visible characters / (?:4\.0|3\.1); range characters / 6 to / 2", item):
                     row[key] = item
                 elif item is None:
                     row[key] = None

@@ -189,6 +189,7 @@ def parser() -> argparse.ArgumentParser:
         p.add_argument("--compare-until")
         p.add_argument("--rates", type=Path)
         p.add_argument("--task-map", type=Path, help="JSON session ID -> explicit task category")
+        p.add_argument("--attribution-map", type=Path, help="JSON agent:session -> confirmed provider/model route")
         p.add_argument("--share", action="store_true", help="Pseudonymize identifiers in reports")
         p.add_argument("--complete-coverage", action="store_true", help="Declare all relevant device/cloud usage captured for experimental quota calibration")
     return root
@@ -206,9 +207,11 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("Current session identity is unavailable; provide --session and a source")
         if args.command == "session" and not args.session_id:
             raise ValueError("Session inspection requires --session ID or --current")
+        if args.input and args.source:
+            raise ValueError("Choose a normalized --input export or native --source paths, not both")
         if args.command == "demo":
             data = demo_data()
-        elif args.command == "import":
+        elif args.command == "import" or (args.input and args.command in ("usage", "session", "collect")):
             if not args.input:
                 raise ValueError("Import requires --input normalized.json")
             data = normalize_import(json.loads(guarded_path(str(args.input)).read_text(encoding="utf-8-sig")))
@@ -236,6 +239,16 @@ def main(argv: list[str] | None = None) -> int:
                 data = ledger.read()
             finally:
                 ledger.close()
+        if args.attribution_map:
+            from usage_attribution import apply_attribution
+            mapping = json.loads(guarded_path(str(args.attribution_map)).read_text(encoding="utf-8-sig"))
+            data = apply_attribution(data, mapping)
+            if args.store:
+                ledger = Ledger(args.store)
+                try:
+                    ledger.add({"schema_version": 1, "usage": data["usage"], "contexts": data["contexts"]})
+                finally:
+                    ledger.close()
         if args.session_id and not any(s.get("session_id") == args.session_id for s in data["sessions"]) and not any(r.get("session_id") == args.session_id for r in data["usage"]):
             raise ValueError("Requested session was not found in the selected sources/history")
         task_map = json.loads(guarded_path(str(args.task_map)).read_text(encoding="utf-8-sig")) if args.task_map else None

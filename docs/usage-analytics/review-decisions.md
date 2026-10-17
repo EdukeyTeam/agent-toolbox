@@ -50,3 +50,7 @@ Opus 5.5 independently reviewed the implementation and then reviewed the fixes. 
 Unsupported Claude geography values observed in real history remain unpriced rather than guessed. Unverified Copilot field spellings/cache conventions remain explicit schema gaps. Codex event ordering now has a hand-counted live-ledger regression; real numeric comparisons separately validate observed native records. AGY's initial cumulative baseline remains undated by design, which is documented in the interchange reference.
 
 The final root verification runs the regression suite and cross-platform CI; these are the evidence for the corrected code. The reviewers' original verdicts are not represented as approval of later edits they did not inspect.
+
+## Independent skill-use feedback
+
+Ordinary analysis requests to separate Codex and Opus agents verified the routed-model workflow without providing intended totals or test framing. Their feedback led to explicit-input scope handling and preservation of the generated estimator method through imports. The public validation record distinguishes the agent experience from subsequent root regression verification.

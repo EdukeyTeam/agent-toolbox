@@ -548,12 +548,21 @@ def _methodology_md(report: dict) -> list[str]:
     return lines + [""]
 
 
+def _attribution_md(report: dict) -> list[str]:
+    lines = ["## Provider and model attribution", "", "Harness labels can hide GLM or other proxy routes. Reported models are unverified reference comparisons unless their route is recorded or explicitly confirmed.", ""]
+    rows = _rows(report.get("attribution"))
+    lines += table(["Agent", "Provider", "Reported label", "Effective model", "Basis", "Requests", "API-equivalent cost"],
+                   [[md(r.get(k)) for k in ("agent", "provider", "reported_model", "model", "model_attribution")] +
+                    [fmt_int(r.get("requests")), fmt_cost(r.get("cost_lower_usd"), r.get("cost_upper_usd"))] for r in rows], {5, 6})
+    return lines
+
+
 def render_markdown(report: dict) -> str:
     session = report.get("mode") == "session"
     sections = ([_context_md, _summary_md, _comparison_md, _insights_md, _contributors_md, _groups_md]
                 if session else
                 [_summary_md, _comparison_md, _insights_md, _groups_md, _context_md, _contributors_md])
-    sections += [_quotas_md, _coverage_md, _pricing_md, _methodology_md]
+    sections += [_attribution_md, _quotas_md, _coverage_md, _pricing_md, _methodology_md]
     lines = _scope_md(report)
     for section in sections:
         lines += section(report)
