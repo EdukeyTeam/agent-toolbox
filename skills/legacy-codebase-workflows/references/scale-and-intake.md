@@ -7,6 +7,7 @@ Choose from the question, relevant source scope and measured costs. Git history,
 | Task scope | Start with | Escalate only for an observed gap |
 | --- | --- | --- |
 | Known path or symbol, in any repository | Direct search, original definition and callers | Scoped map when ownership is unclear |
+| One Java file too large to read whole | [Member outline](large-files.md), then single members | Member ledger when the file is refactored |
 | Unfamiliar small repository or subsystem | Native overview and relevant originals | Complete captured-definition index or focused full-source pack |
 | Several modules or applications | Lazy catalog, one task map over active subtrees and required core paths | Separate searchable module indexes, verified API cards |
 | Repeated difficult questions in a large/huge repository | The same scoped navigation; record which question types fail | Evaluate retrieval for prose discovery, compiler references for impact, or verified wiring notes for runtime questions |
@@ -57,6 +58,7 @@ First inspect representation quality, missing candidates, scope and near-duplica
 | --- | --- | --- |
 | Exact symbol found, ownership unknown | Catalog plus complete-index lookup | No database needed |
 | Repeated prose questions fail despite useful candidates | Verified API cards, suitable model/reranker, existing SQLite | Changing storage does not repair representation |
+| A fact about one class: modifiers, bound overload, dependencies | `javap` and `jdeps` on the [compiled classes](compiled-and-runtime-evidence.md) | Needs the build output, not a working IDE import; describes that build only |
 | Exact Java references/change impact | JDT LS or SCIP-Java for core plus one module | First obtain classpath/javac inputs and resolve one real slice; occurrences are not automatically call edges |
 | Selective shared indexes/concurrent users or measured ANN need | Self-hosted Qdrant pilot | Requires ingestion, module/application filters, update consistency, access policy, backups and recall evaluation |
 | Data/control-flow questions | Scoped Joern evaluation | Requires usable frontend evidence and unresolved-edge reporting |

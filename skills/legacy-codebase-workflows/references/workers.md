@@ -27,6 +27,8 @@ Do not infer an API from its name or treat a missing map entry as proof of absen
 
 Check the actual coverage and mechanical citations first. Reject unsupported claims and stale evidence. Read the original source behind conclusions that affect the task, including relevant callers/configuration. Reconcile cross-module edges and terminology; test or inspect behavior where source alone leaves uncertainty.
 
+For a file too large for one worker, split by members instead of by line count: give each worker a list of member identifiers from the [outline](large-files.md) and have it fetch those members with `slice`. After a refactor, the coordinator runs the ledger comparison itself; a worker's statement that it handled every member is not evidence.
+
 Keep summaries compact but include the facts needed to avoid rediscovery. Request a targeted follow-up for an unresolved edge instead of asking every worker to reread the whole repository. Before implementation, verify the types, conventions and lifecycle of each private framework API the change will use.
 
 Measure quality and cost on representative tasks if this becomes a recurring process: correct source-backed answers, invalid citations, unresolved edges, runtime and token usage. A cheaper model can produce an expensive incorrect summary; do not judge the process only by its input price.
