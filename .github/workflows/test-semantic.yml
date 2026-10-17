@@ -13,6 +13,7 @@ on:
       - 'tests/test_legacy_retrieval.py'
       - 'tests/test_legacy_local_context_*.py'
       - 'tests/test_legacy_embed.py'
+      - 'tests/test_legacy_eval_retrieval.py'
       - '.github/workflows/test-semantic.yml'
   push:
     branches: [main]
@@ -68,3 +69,5 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_legacy_retrieval.py -v
           python -m unittest discover -s tests -p "test_legacy_local_context_*.py" -v
+          python -m unittest discover -s tests -p test_legacy_embed.py -v
+          python -m unittest discover -s tests -p test_legacy_eval_retrieval.py -v

@@ -1,7 +1,9 @@
 """Tier-0 and optional syntax chunking; all spans cite original whole lines."""
 from __future__ import annotations
 import ast
+from bisect import bisect_left, bisect_right
 from dataclasses import replace
+import heapq
 from html.parser import HTMLParser
 import importlib.util
 import json
@@ -47,11 +49,24 @@ def python_definitions(text: str) -> list[Definition]:
             start = min([node.lineno, *(d.lineno for d in node.decorator_list)])
             body_start = node.body[0].lineno if node.body else node.lineno + 1
             signature = "\n".join(lines[node.lineno - 1:max(node.lineno, body_start - 1)])[:1000]
-            doc = ast.get_docstring(node, clean=False) or ""
-            result.append(Definition(start, node.end_lineno, node.name, ".".join((*scope, node.name)), signature, scope, doc[:600]))
+            leading = leading_comments(lines, start)
+            docstring = ast.get_docstring(node, clean=False) or ""
+            doc = "\n".join(filter(None, (leading, docstring)))
+            doc_node = node.body[0] if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str) else None
+            header_end = doc_node.end_lineno if doc_node else max(node.lineno, body_start - 1)
+            result.append(Definition(start, node.end_lineno, node.name, ".".join((*scope, node.name)), signature, scope, doc[:600], start-len(leading.splitlines()), header_end))
             child_scope = (*scope, node.name)
         stack.extend((child, child_scope) for child in ast.iter_child_nodes(node))
     return sorted(result, key=lambda d:(d.start, -d.end))
+
+
+def leading_comments(lines, start):
+    leading = []
+    for line in reversed(lines[max(0, start - 65):start - 1]):
+        if not line.strip().startswith("#"):
+            break
+        leading.append(line.strip())
+    return "\n".join(reversed(leading))
 
 
 _DECL = re.compile(r"^\s*(?:(?:export|default|public|private|protected|static|final|abstract|async|override|virtual|inline|suspend|open|sealed|partial|unsafe|friend|declare)\s+)*(?:(?:class|interface|enum|struct|trait|record|module|namespace|def|function|fn|sub|filter|procedure|package|program)\s+([\w.$:-]+)|(?:[\w<>\[\],.?*:&]+\s+)+([\w$]+)\s*\(|(?:const|let|var|val)\s+([\w$]+)\s*=.*(?:=>|function)|([\w.]+)\s*(?:<-|=)\s*function\s*\(|([\w-]+)\s*\(\)\s*\{)", re.I)
@@ -63,7 +78,9 @@ def generic_definitions(text: str, language: str) -> list[Definition]:
     lines = split_source_lines(text)
     found = []
     # Remove comments and quoted literals before counting braces, retaining lines.
-    cleaned = re.sub(r'/\*[\s\S]*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`', lambda m:"\n" * m[0].count("\n"), text)
+    hash_comment = r"|\#[^\n]*" if language in {"powershell", "php", "bash", "ruby", "perl", "r", "python"} else ""
+    literals = r'''/\*[\s\S]*?\*/|//[^\n]*|"(?:\\[^\n]|[^"\\\n])*"|'(?:\\[^\n]|[^'\\\n])*'|`(?:\\[^\n]|[^`\\\n])*`'''
+    cleaned = re.sub(literals + hash_comment, lambda m:"\n" * m[0].count("\n"), text)
     clean_lines = cleaned.split("\n")
     depths, depth = [], 0
     for line in clean_lines:
@@ -77,7 +94,10 @@ def generic_definitions(text: str, language: str) -> list[Definition]:
             elif char == "}" and brace_stack:
                 opening = brace_stack.pop()
                 brace_ends[opening] = max(brace_ends.get(opening,0),line_number+1)
+    scopes = []
     for i, line in enumerate(lines):
+        while scopes and scopes[-1].end < i + 1:
+            scopes.pop()
         if len(line)>2000:
             continue  # Indivisible long lines are still indexed by windows.
         match = (_SQL.match(line) if language == "sql" else _COBOL.match(line) if language == "cobol" else _DECL.match(line))
@@ -109,15 +129,39 @@ def generic_definitions(text: str, language: str) -> list[Definition]:
                 if lines[k].strip() and len(lines[k]) - len(lines[k].lstrip()) <= indent:
                     end = k
                     break
-        scope = tuple(d.name for d in found if d.start < i + 1 <= d.end and re.search(r"\b(class|interface|struct|module|package)\b", d.signature, re.I))
+        elif any(";" in value for value in signature_lines) and (language != "sql" or re.search(r"\bview\b", signature_lines[0], re.I)):
+            end = j + 1
+        scope = tuple(d.name for d in scopes)
         leading = []
         s = i - 1
         while s >= 0 and len(leading) < 64 and lines[s].strip().startswith(("//", "#", "*", "/*", "@", "'", "--")):
             leading.insert(0, lines[s].strip())
             s -= 1
-        found.append(Definition(i + 1, max(i + 1, end), name, ".".join((*scope, name)), "\n".join(signature_lines)[:1000], scope, "\n".join(leading)[:600]))
-    # Declarations without braces end at the next sibling declaration.
-    return found
+        found.append(Definition(i + 1, max(i + 1, end), name, ".".join((*scope, name)), "\n".join(signature_lines)[:1000], scope, "\n".join(leading)[:600], s + 2, j + 1))
+        if re.search(r"\b(class|interface|struct|module|package)\b", found[-1].signature, re.I):
+            scopes.append(found[-1])
+    # Uncertain braceless blocks end at the next declaration at their own or
+    # lesser indentation, with an enclosing brace boundary as an upper bound.
+    bounded = list(found)
+    pending = []
+    openings = iter(sorted(brace_ends.items()))
+    following = next(openings, None)
+    containing = []
+    for index, definition in enumerate(found):
+        while following is not None and following[0] < definition.start - 1:
+            heapq.heappush(containing, following[1])
+            following = next(openings, None)
+        while containing and containing[0] < definition.start:
+            heapq.heappop(containing)
+        indent = len(lines[definition.start-1]) - len(lines[definition.start-1].lstrip())
+        while pending and pending[-1][0] >= indent:
+            _, previous = pending.pop()
+            bounded[previous] = replace(bounded[previous], end=min(bounded[previous].end, definition.start-1))
+        if definition.end == len(lines) and "{" not in definition.signature:
+            boundary = containing[0] if containing else len(lines)
+            bounded[index] = replace(definition, end=min(definition.end, boundary))
+            pending.append((indent, index))
+    return bounded
 
 
 def parser_tier(preference="auto") -> str:
@@ -180,7 +224,7 @@ def syntax_definitions(text: str, language: str, target=1500):
                         leading.insert(0, line.strip())
                     else:
                         break
-                result.append(Definition(start, end, name, ".".join((*scope, name)), signature, scope, "\n".join(leading)))
+                result.append(Definition(start, end, name, ".".join((*scope, name)), signature, scope, "\n".join(leading), max(1,start-len(leading)), max(start,body_line)))
                 child_scope = (*scope, name)
             stack.extend((child, child_scope) for child in reversed(node.named_children))
         if error_lines:
@@ -197,10 +241,44 @@ def syntax_definitions(text: str, language: str, target=1500):
                 cuts.update((a,b+1))
                 partial = "\n".join(lines[a-1:b])
                 for d in generic_definitions(partial, language):
-                    result.append(replace(d, start=d.start+a-1, end=min(b,d.end+a-1)))
+                    result.append(replace(d, start=d.start+a-1, end=min(b,d.end+a-1), header_start=(d.header_start or d.start)+a-1, header_end=(d.header_end or d.start)+a-1))
         return result, cuts, "error-span-fallback" if error_lines else None
     except (ImportError, OSError, LookupError, ValueError, TypeError, RuntimeError, RecursionError):
         return None, (), "grammar-unavailable-or-failed"
+
+
+def fitting_definitions(definitions, prefix, target):
+    """Keep an entire fitting outer definition, including nested helpers."""
+    fitting = {}
+    for definition in definitions:
+        if prefix[definition.end] - prefix[definition.start - 1] <= target:
+            fitting.setdefault(definition.start, definition)
+    return fitting
+
+
+def attach_parents(units, spans):
+    active = []
+    pending = iter(sorted(spans))
+    following = next(pending, None)
+    for unit in units:
+        while following is not None and following[0] <= unit.start:
+            first, last, index = following
+            heapq.heappush(active, (last - first, index, last))
+            following = next(pending, None)
+        while active and active[0][2] < unit.end:
+            heapq.heappop(active)
+        yield replace(unit, parent=active[0][1] if active else None)
+
+
+def config_contexts(lines):
+    current, source_line = "", 1
+    contexts = []
+    for number, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if re.match(r'^(?:\[[^]]+\]|["\w.-]+["\']?\s*[:=]|<(?![!?/])[\w:.-]+)', stripped):
+            current, source_line = stripped, number
+        contexts.append((current or lines[0].strip(), source_line))
+    return contexts
 
 
 def code_units(text: str, path: str, language: str, target=1500, tier="0", kind="code-block"):
@@ -217,26 +295,35 @@ def code_units(text: str, path: str, language: str, target=1500, tier="0", kind=
             if language != "python" or not definitions:
                 definitions = parsed
     definitions.sort(key=lambda d:(d.start, -d.end, d.name))
+    starts = [d.start for d in definitions]
+    prefix = [0]
+    for line in lines:
+        prefix.append(prefix[-1] + nonwhite(line))
+    syntax_cuts = sorted(syntax_cuts)
+    contexts = config_contexts(lines) if kind == "config" else None
     boundaries = {1, len(lines) + 1}
     for d in definitions:
         boundaries.update((d.start, min(len(lines) + 1, d.end + 1)))
     boundaries = sorted(boundaries)
     pieces = []
+    active, next_definition = [], 0
     for first, after in zip(boundaries, boundaries[1:]):
         last = after - 1
-        enclosing = [d for d in definitions if d.start <= first <= d.end]
-        inner = enclosing[-1] if enclosing else None
+        while next_definition < len(definitions) and definitions[next_definition].start <= first:
+            heapq.heappush(active, (-next_definition, definitions[next_definition].end))
+            next_definition += 1
+        while active and active[0][1] < first:
+            heapq.heappop(active)
+        inner = definitions[-active[0][0]] if active else None
         header = "\n".join((path[:100],inner.qualified[:80],inner.signature[:100],inner.description[:160])) if inner else path[:MAX_HEADER]
         # Include original top-level config key/element in every part.
-        if kind == "config":
-            header += lines[first - 1].strip()
         if tier == "1" and syntax_cuts:
-            cuts = sorted({first,*(n for n in syntax_cuts if first<n<=last),last+1})
+            cuts = [first, *syntax_cuts[bisect_right(syntax_cuts, first):bisect_right(syntax_cuts, last)], last + 1]
             segments = []
             group_first,group_last = first,first-1
             total = 0
             for a,b in zip(cuts,cuts[1:]):
-                size = sum(nonwhite(line) for line in lines[a-1:b-1])
+                size = prefix[b - 1] - prefix[a - 1]
                 if group_last>=group_first and total+size>target:
                     segments.extend(windows(lines,group_first,group_last,target))
                     group_first,total = a,0
@@ -246,17 +333,19 @@ def code_units(text: str, path: str, language: str, target=1500, tier="0", kind=
         else:
             segments = list(windows(lines,first,last,target))
         for part, (start, end) in enumerate(segments, 1):
+            header_spans = ((inner.header_start or inner.start, inner.header_end or inner.start),) if inner else ()
+            if contexts:
+                key_line, key_number = contexts[start - 1]
+                header = path + "\n" + key_line
+                header_spans = ((key_number, key_number),)
             body = "\n".join(lines[start - 1:end])
             if not body.strip():
                 continue
-            own = tuple(d for d in definitions if start <= d.start <= end)
-            pieces.append(UnitDraft(start, end, body, "code-definition" if inner else kind, inner.qualified if inner else path, header[:MAX_HEADER].strip(), (inner.description[:200] if inner else ""), language, own, header_spans=((max(1,inner.start-len(inner.description.split("\n"))),min(len(lines),inner.start+len(inner.description.split("\n")))),) if inner else (), oversized=nonwhite(body) > target, part=part, parts=len(segments)))
+            own = tuple(definitions[bisect_left(starts, start):bisect_right(starts, end)])
+            pieces.append(UnitDraft(start, end, body, "code-definition" if inner else kind, inner.qualified if inner else path, header[:MAX_HEADER].strip(), (inner.description[:200] if inner else ""), language, own, header_spans=header_spans, oversized=nonwhite(body) > target, part=part, parts=len(segments)))
     # Fitting definitions are kept whole, including their nested definitions.
     # Rebuild the partition choosing the innermost useful whole definition.
-    prefix = [0]
-    for line in lines:
-        prefix.append(prefix[-1]+nonwhite(line))
-    fitting = {d.start:d for d in definitions if prefix[min(len(lines),d.end)]-prefix[d.start-1]<=target and not any(child.start>d.start and child.end<=d.end for child in definitions)}
+    fitting = fitting_definitions(definitions, prefix, target)
     merged = []
     i = 0
     while i < len(pieces):
@@ -269,7 +358,10 @@ def code_units(text: str, path: str, language: str, target=1500, tier="0", kind=
                 children.extend(pieces[i].definitions)
                 i += 1
             body = "\n".join(lines[piece.start - 1:end])
-            merged.append(replace(piece, end=end, text=body, definitions=tuple(children), part=1, parts=1))
+            nested_header = "\n".join(d.qualified + "\n" + d.signature[:100] + "\n" + d.description[:160] for d in children if d != declaration)
+            header = (piece.header + "\n" + nested_header).strip()[:MAX_HEADER]
+            spans = tuple((d.header_start or d.start, d.header_end or d.start) for d in children)
+            merged.append(replace(piece, end=end, text=body, header=header, header_spans=spans or piece.header_spans, definitions=tuple(children), part=1, parts=1))
         else:
             merged.append(piece)
             i += 1
@@ -279,13 +371,9 @@ def code_units(text: str, path: str, language: str, target=1500, tier="0", kind=
         if prefix[min(len(lines),definition.end)]-prefix[definition.start-1]>target:
             header = f"{path}\n{definition.qualified}\n{definition.signature}\n{definition.description}"[:MAX_HEADER]
             parent_by_span.append((definition.start,definition.end,len(parents)))
-            parents.append(UnitDraft(definition.start,definition.end,None,"code-definition",definition.qualified,header,definition.description[:200],language,definitions=(definition,),header_spans=((max(1,definition.start-len(definition.description.split("\n"))),min(len(lines),definition.start+len(definition.description.split("\n")))),),searchable=False))
+            parents.append(UnitDraft(definition.start,definition.end,None,"code-definition",definition.qualified,header,definition.description[:200],language,definitions=(definition,),header_spans=((definition.header_start or definition.start,definition.header_end or definition.start),),searchable=False))
     if parents:
-        children = []
-        for unit in merged:
-            enclosing = [p for p in parent_by_span if p[0]<=unit.start and p[1]>=unit.end]
-            parent = min(enclosing,key=lambda p:p[1]-p[0])[2] if enclosing else None
-            children.append(replace(unit,parent=parent))
+        children = list(attach_parents(merged, parent_by_span))
         return parents+children,fallback
     return merged, fallback
 
@@ -336,9 +424,9 @@ def docs_units(text: str, path: str, fmt: str, target=1500):
         heading = re.match(r"^(#{1,6}|={1,6})\s+(.+?)\s*#*\s*$", line)
         if heading:
             headings.append((i + 1, len(heading[1]), heading[2]))
-        elif i + 1 < len(lines) and stripped and re.fullmatch(r"([=~^`:#*+\-])\1{2,}", lines[i + 1].strip()):
+        elif i + 1 < len(lines) and stripped and re.fullmatch(r"([=\-])\1{2,}" if fmt == "markdown" else r"([=~^`:#*+\-])\1{2,}", lines[i + 1].strip()) and not re.match(r"^(`{3,}|~{3,})", lines[i + 1].strip()):
             chars = "=~-^\"`:+*#"
-            level = chars.find(lines[i + 1].strip()[0]) + 1
+            level = (1 if lines[i + 1].strip()[0] == "=" else 2) if fmt == "markdown" else chars.find(lines[i + 1].strip()[0]) + 1
             headings.append((i + 1, max(1, level), stripped))
     boundaries = sorted({1, *(h[0] for h in headings), len(lines) + 1})
     stack = []
@@ -389,7 +477,7 @@ def notebook_units(text, path, target, tier):
 
 
 def chunk_file(text, path, language, fmt, target=1500, tier="0", scan=True):
-    if fmt in {"markdown", "rst", "asciidoc", "html"}:
+    if fmt in {"markdown", "rst", "asciidoc", "html", "text"}:
         units, fallback = docs_units(text, path, fmt, target), None
     elif fmt == "notebook":
         units, fallback = notebook_units(text, path, target, tier)

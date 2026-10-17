@@ -357,6 +357,9 @@ class LocalTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get('LEGACY_TEST_POTION_DIR'), 'set LEGACY_TEST_POTION_DIR to test real offline model')
     def test_real_model2vec_offline(self):
+        directory = Path(os.environ['LEGACY_TEST_POTION_DIR'])
+        if not importlib.util.find_spec('model2vec') or not all((directory / name).is_file() for name in ('config.json', 'model.safetensors', 'tokenizer.json')):
+            self.skipTest('optional Model2Vec runtime or local model files are missing')
         with patch.object(socket,'create_connection',side_effect=AssertionError('network attempted')):
             p=embed.create_provider(embed.EmbedConfig(provider='local-python',model_dir=os.environ['LEGACY_TEST_POTION_DIR']))
             self.assertEqual(len(p.embed_query('Where is the HTTP client implemented?')),256)
@@ -365,6 +368,17 @@ class LocalTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get('LEGACY_TEST_FASTEMBED_DIR'), 'set LEGACY_TEST_FASTEMBED_DIR to test real offline model')
     def test_real_fastembed_offline(self):
+        directory = Path(os.environ['LEGACY_TEST_FASTEMBED_DIR'])
+        if not importlib.util.find_spec('fastembed'):
+            self.skipTest('optional FastEmbed runtime is missing')
+        try:
+            from fastembed import TextEmbedding
+            description = next(d for d in TextEmbedding.list_supported_models() if d['model'] == 'BAAI/bge-small-en-v1.5')
+        except (ImportError, OSError, StopIteration):
+            self.skipTest('optional FastEmbed runtime or model manifest is unavailable')
+        files = [description['model_file'], 'config.json', 'tokenizer.json', 'tokenizer_config.json', 'special_tokens_map.json', *description.get('additional_files', [])]
+        if not all((directory / name).is_file() for name in files):
+            self.skipTest('optional FastEmbed runtime or local model files are missing')
         with patch.object(socket,'create_connection',side_effect=AssertionError('network attempted')):
             p=embed.create_provider(embed.EmbedConfig(provider='local-python',model='BAAI/bge-small-en-v1.5',model_dir=os.environ['LEGACY_TEST_FASTEMBED_DIR']))
             self.assertEqual(len(p.embed_query('read file')),384)

@@ -157,16 +157,37 @@ class CommandAdapter:
 
 class Context7BackendAdapter:
     def __init__(self, database: Path, backend: Path, mode: str = "lexical", rerank: str | None = None,
-                 corpus_root: Path | None = None, timeout: float = 120, vector_engine: str | None = None):
+                 corpus_root: Path | None = None, timeout: float = 120, vector_engine: str | None = None,
+                 library_id: str | None = None):
         self.argv = [sys.executable, str(backend.resolve()), "query", "--database", str(database.resolve()), "--mode", mode]
         if rerank:
             self.argv += ["--rerank", rerank]
         if vector_engine:
             self.argv += ["--vector-engine", vector_engine]
+        if library_id:
+            self.argv += ["--library-id", library_id]
         self.timeout = timeout
+        self.root_prefixes = {}
         # Read provenance roots once. Backend query still performs all freshness checks.
         with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as con:
             meta = dict(con.execute("SELECT key,value FROM meta"))
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='libraries'").fetchone():
+                rows = con.execute("SELECT id,roots_json FROM libraries" + (" WHERE id=?" if library_id else " LIMIT 2"), (library_id,) if library_id else ()).fetchall()
+                if len(rows) != 1:
+                    raise ValueError("Select --library-id for a multi-library database or an existing library")
+                roots = json.loads(rows[0][1])
+                default_root = next((r["path"] for r in roots if r["role"] == "code"), roots[0]["path"])
+                corpus_root = (corpus_root or Path(default_root)).resolve()
+                external_docs = [r for r in roots if r["role"] == "docs" and not Path(r["path"]).is_relative_to(corpus_root)]
+                for root in roots:
+                    path = Path(root["path"])
+                    prefix = path.relative_to(corpus_root).as_posix() if path.is_relative_to(corpus_root) else "@docs" if root["role"] == "docs" else "@code"
+                    if root in external_docs and len(external_docs) > 1:
+                        prefix += "/" + root["id"]
+                    self.root_prefixes[root["id"]] = prefix
+                self.prefixes = {}
+                return
+        # Format-7 baseline databases keep only the legacy primary root keys.
         root = Path(meta["root"])
         corpus_root = (corpus_root or root).resolve()
         self.prefixes = {"code": root.relative_to(corpus_root).as_posix(),
@@ -183,7 +204,7 @@ class Context7BackendAdapter:
         rows = []
         for row in payload["results"]:
             source = row["source"]
-            prefix = self.prefixes[source["kind"]]
+            prefix = self.root_prefixes[source["rootId"]] if self.root_prefixes else self.prefixes[source["kind"]]
             rows.append({"path": posixpath.join(prefix, source["path"]), "startLine": source["startLine"],
                          "endLine": source["endLine"], "text": row["text"]})
         return parse_results({"results": rows})[:limit]
@@ -314,6 +335,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--database", type=Path)
     parser.add_argument("--backend", type=Path, default=Path(__file__).with_name("context7_backend.py"))
     parser.add_argument("--corpus-root", type=Path, help="Original corpus root when indexing a subtree; normalizes citations")
+    parser.add_argument("--library-id", help="Selected local library (required for multi-library databases)")
     parser.add_argument("--mode", choices=("lexical", "semantic", "hybrid"), default="lexical")
     parser.add_argument("--rerank", choices=("lexical-symbol", "cross-encoder"))
     parser.add_argument("--vector-engine", choices=("auto", "stdlib", "numpy", "sqlite-vec"), help="Context7 adapter exact vector scanner")
@@ -342,7 +364,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("context7-backend requires --database")
             if len({question['corpus'] for question in questions}) != 1:
                 raise ValueError("one backend database can evaluate only one corpus at a time")
-            adapter = Context7BackendAdapter(args.database, args.backend, args.mode, args.rerank, args.corpus_root, args.timeout, args.vector_engine)
+            adapter = Context7BackendAdapter(args.database, args.backend, args.mode, args.rerank, args.corpus_root, args.timeout, args.vector_engine, args.library_id)
         report = evaluate(questions, adapter, list(dict.fromkeys(args.budgets)))
         report["configuration"] = {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()}
         for path in (args.json_output, args.markdown_output):

@@ -33,6 +33,19 @@ def prior(path, provenance, doc_intent, exact, disabled):
     return value
 
 
+def preserve_exact_window(ranked, protected):
+    """Rescue displaced exact evidence without reordering a valid fused window."""
+    from .assemble import candidate_window
+    protected_ids = {r["id"] for r in protected}
+    if protected_ids <= {r["id"] for r in candidate_window(ranked, 5)}:
+        return ranked
+    preferred = protected + [r for r in ranked if r["id"] not in protected_ids]
+    chosen = {r["id"] for r in candidate_window(preferred, 5)}
+    lexical = [r for r in ranked if r["lexical_score"] > 0]
+    dense_only = [r for r in ranked if r["lexical_score"] <= 0]
+    return [r for r in lexical if r["id"] in chosen] + [r for r in lexical if r["id"] not in chosen] + dense_only
+
+
 def candidates(con, library, question, mode="lexical", vector_engine=None, kind=None, language=None, provider=None, ablations=()):
     disabled = frozenset(ablations)
     library_id = library["id"]
@@ -54,6 +67,7 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
         identifiers = list(dict.fromkeys([*identifiers,question.strip()]))
     identifiers = list(dict.fromkeys(identifiers))[:32]
     explicit_names = set(re.findall(r"`+([\w.:$]+)(?:\(\))?`+", question))
+    identifiers = list(dict.fromkeys([*identifiers, *sorted(explicit_names)]))[:32]
     single_name = bool(re.fullmatch(r"[\w$]+", question.strip()))
     exact_rows = []
     for ident in identifiers:
@@ -62,13 +76,16 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
         matched = False
         # Indexed equality paths are cheap; qualified suffix matching occurs on
         # the bounded result set for this leaf, never arbitrary LIKE substrings.
-        rows = con.execute(f"SELECT DISTINCT u.id,s.qualified_name,s.name,s.line FROM symbols s JOIN units u ON u.id=s.unit_id JOIN files f ON f.id=u.file_id WHERE {where} AND s.library_id=? AND s.name_fold=? ORDER BY s.line,s.path,u.unit_uid LIMIT ?",(*args,library_id,leaf.casefold(),DEPTH)).fetchall()
+        rows = con.execute(f"SELECT DISTINCT u.id,u.file_id,s.qualified_name,s.name,s.line FROM symbols s JOIN units u ON u.id=s.unit_id JOIN files f ON f.id=u.file_id WHERE {where} AND s.library_id=? AND s.name_fold=? ORDER BY s.line,s.path,u.unit_uid LIMIT ?",(*args,library_id,leaf.casefold(),DEPTH)).fetchall()
+        matched_files = set()
         for row in rows:
             # An acronym in prose is not a case-insensitive API reference.
             # Explicit code notation still supports case-folded lookup.
-            if ident.isupper() and row["name"] != leaf and not explicit:
+            prose_capital = ident.istitle() and question.lstrip().startswith(ident)
+            if (ident.isupper() or prose_capital) and row["name"] != leaf and not explicit:
                 continue
             matched = True
+            matched_files.add(row["file_id"])
             qualified = row["qualified_name"]
             score = 0 if qualified == ident else 1 if qualified.casefold() == ident.casefold() else 2 if qualified.endswith("."+ident) else 3 if row["name"] == ident else 4
             exact_rows.append((row["id"],score, row["line"]))
@@ -77,7 +94,7 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
         if not matched:
             continue
         prefix = ident.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
-        anchored = con.execute(f"SELECT u.id,u.title,u.start_line FROM units u JOIN files f ON f.id=u.file_id WHERE {where} AND u.kind='code-definition' AND (u.title=? OR u.title LIKE ? ESCAPE '\\') ORDER BY u.start_line,f.path,u.unit_uid LIMIT ?",(*args,ident,prefix+".%",DEPTH)).fetchall()
+        anchored = con.execute(f"SELECT u.id,u.title,u.start_line FROM units u JOIN files f ON f.id=u.file_id WHERE {where} AND u.file_id IN (" + ",".join("?" for _ in matched_files) + ") AND u.kind='code-definition' AND (u.title=? OR u.title LIKE ? ESCAPE '\\') ORDER BY u.start_line,f.path,u.unit_uid LIMIT ?",(*args,*sorted(matched_files),ident,prefix+".%",DEPTH)).fetchall()
         exact_rows.extend((row["id"],4,row["start_line"]) for row in anchored)
     exact_rows.sort(key=lambda r:(r[1],r[2],r[0]))
     exact = bool(exact_rows)
@@ -105,7 +122,8 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
                     rows = con.execute(f"SELECT u.id,bm25({name},0.,0.,0.,0.,1.) AS bm FROM {name} JOIN units u ON u.id={name}.rowid JOIN files f ON f.id=u.file_id WHERE {name} MATCH ? AND {where} ORDER BY bm,f.path,u.start_line,u.unit_uid LIMIT ?",(expression,*args,DEPTH)).fetchall()
                     add("shadow",rows,W_SHADOW)
         if "paths" not in disabled:
-            paths = [p for p in re.findall(r"[\w./-]+",question) if "/" in p or re.search(r"\.(?:py|java|[cm]?[jt]sx?|md|rst|txt|sql)$",p)]
+            path_tokens = [p.removeprefix("./").strip(".") for p in re.findall(r"[\w./-]+",question)]
+            paths = list(dict.fromkeys(p for p in path_tokens if p and ("/" in p or "." in p or p in explicit_names or single_name)))[:16]
             for path in paths:
                 rows = con.execute(f"SELECT u.id,f.path FROM units u JOIN files f ON f.id=u.file_id WHERE {where} AND (f.path=? OR f.path LIKE ? ESCAPE '\\') ORDER BY length(f.path),u.id LIMIT ?",(*args,path,"%/"+path.replace("\\","\\\\").replace("%","\\%").replace("_","\\_"),DEPTH)).fetchall()
                 add("path",rows,W_PATH)
@@ -181,11 +199,11 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
                 if leaf in referenced or len(referenced)>=6:
                     continue
                 referenced.add(leaf)
-                refs = con.execute("SELECT DISTINCT s.qualified_name,u.file_id FROM symbols s JOIN units u ON u.id=s.unit_id WHERE s.library_id=? AND s.name_fold=? ORDER BY s.qualified_name LIMIT 3",(library_id,leaf.casefold())).fetchall()
+                refs = con.execute("SELECT DISTINCT s.qualified_name,s.unit_id,u.file_id FROM symbols s JOIN units u ON u.id=s.unit_id WHERE s.library_id=? AND s.name_fold=? ORDER BY s.qualified_name LIMIT 3",(library_id,leaf.casefold())).fetchall()
                 for ref in refs:
                     ref_name = ref["qualified_name"]
                     escaped = ref_name.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
-                    related = con.execute(f"SELECT u.*,f.path,f.root_id,f.hash AS file_hash,f.kind AS provenance,f.encoding,f.status,f.mtime_ns,f.size,ft.identifier_tokens AS split_tokens,ft.stemmed AS stem_tokens FROM units u JOIN files f ON f.id=u.file_id JOIN {name} ft ON ft.rowid=u.id WHERE {where} AND u.file_id=? AND (u.title=? OR u.title LIKE ? ESCAPE '\\') LIMIT 200",(*args,ref["file_id"],ref_name,escaped+".%")).fetchall()
+                    related = con.execute(f"SELECT u.*,f.path,f.root_id,f.hash AS file_hash,f.kind AS provenance,f.encoding,f.status,f.mtime_ns,f.size,ft.identifier_tokens AS split_tokens,ft.stemmed AS stem_tokens FROM units u JOIN files f ON f.id=u.file_id JOIN {name} ft ON ft.rowid=u.id WHERE {where} AND u.file_id=? AND (u.id=? OR u.title=? OR u.title LIKE ? ESCAPE '\\') LIMIT 200",(*args,ref["file_id"],ref["unit_id"],ref_name,escaped+".%")).fetchall()
                     scored = []
                     for row in related:
                         item = dict(row)
@@ -207,7 +225,19 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
                             result.append(item)
                             by_id[item["id"]] = item
         result.sort(key=lambda r:(-r["score"],r["path"],r["start_line"],r["unit_uid"]))
+    anchored = mode == "hybrid" and any("symbol" in r["channels"] or "path" in r["channels"] for r in result)
+    protected = []
+    if anchored:
+        from .assemble import candidate_window
+        # Reserve the named source evidence in the default five-result lexical
+        # window. Unbounded class descendants must not fill the entire prefix.
+        protected = [r for r in candidate_window((r for r in result if r["score"] > 0), 5) if "symbol" in r["channels"] or "path" in r["channels"]]
     for item in result:
+        item["lexical_score"] = item["score"]
         item["score"] += item.get("vector_score", 0.)
-    result.sort(key=lambda r:(-r["score"],r["path"],r["start_line"],r["unit_uid"]))
+    # Named source evidence precedes dense-only neighbors. Within that bound,
+    # keep fusion order unless it actually displaces a leading exact hit.
+    result.sort(key=lambda r:((0 if r["lexical_score"] > 0 else 1) if anchored else 0, -r["score"],r["path"],r["start_line"],r["unit_uid"]))
+    if protected:
+        result = preserve_exact_window(result, protected)
     return result, used_engine

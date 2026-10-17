@@ -10,6 +10,11 @@ from .units import DEFAULT_CHUNK_CHARS, RetrievalError
 
 
 def main(argv=None):
+    # Redirected Windows stdio can inherit a legacy code page. The CLI wire
+    # format is UTF-8 even when a result contains mixed-language source text.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command",required=True)
     for name in ("index","refresh","query","serve","resolve","expand","status"):

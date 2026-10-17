@@ -55,6 +55,8 @@ class Definition:
     signature: str
     scope: tuple[str, ...] = ()
     description: str = ""
+    header_start: int | None = None
+    header_end: int | None = None
 
 
 @dataclass(frozen=True)

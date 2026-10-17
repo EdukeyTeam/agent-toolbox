@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 import re
 import subprocess
 from repo_files import (_git, git_context, _safe_relative, SECRET_NAMES, SECRET_SUFFIXES, SECRET_PATTERN,
-                        contains_control_characters, safe_path_display, _ignored_non_git)
+                        contains_control_characters, safe_path_display, _ignored_non_git, MAX_IGNORE_BYTES, MAX_IGNORE_TOTAL_BYTES)
 from .units import Root, RetrievalError
 
 SKIP_DIRS = {".git", ".svn", "CVS", ".hg", "node_modules", "__pycache__", ".venv", "venv", "target", "dist", "build", "bin", "obj", "out", ".gradle", ".idea", ".vs", ".next", ".cache"}
@@ -34,6 +34,8 @@ def normalize_excludes(excludes) -> tuple[str, ...]:
         if not isinstance(value, str) or not value.strip() or value.startswith(("/", "\\")) or ".." in PurePosixPath(value.replace("\\", "/")).parts or re.match(r"^[A-Za-z]:", value) or contains_control_characters(value):
             raise RetrievalError("Invalid exclusion; use relative paths or patterns")
         value = value.replace("\\", "/").rstrip("/")
+        if "*" in value or "?" in value:
+            raise RetrievalError("Wildcards are not supported; use literal relative paths")
         if value in ("", "."):
             raise RetrievalError("Invalid exclusion")
         if value not in result:
@@ -42,7 +44,36 @@ def normalize_excludes(excludes) -> tuple[str, ...]:
 
 
 def matches(path: str, patterns) -> bool:
-    return any(path == p or path.startswith(p + "/") or fnmatch.fnmatchcase(path, p) or fnmatch.fnmatchcase(PurePosixPath(path).name, p) for p in patterns)
+    return any(path == p or path.startswith(p + "/") or PurePosixPath(path).name == p for p in patterns)
+
+
+def ignore_match(base, relative, cache, is_directory=False):
+    try:
+        return _ignored_non_git(base, PurePosixPath(relative), ignore_cache=cache, is_directory=is_directory)
+    except ValueError as exc:
+        if "non-UTF-8" not in str(exc):
+            raise RetrievalError("Cannot read ignore rules; check ignore-file resource limits", "invalid_scope") from exc
+        directory = (base / relative).parent
+        folders = [base, *reversed([p for p in (directory, *directory.parents) if p != base and base in p.parents])]
+        for folder in folders:
+            ignore = folder / ".gitignore"
+            if folder in cache["files"] or not ignore.is_file() or ignore.is_symlink():
+                continue
+            with safe_path(base, ignore.relative_to(base).as_posix()).open("rb") as handle:
+                raw = handle.read(MAX_IGNORE_BYTES + 1)
+            if len(raw) > MAX_IGNORE_BYTES or cache["bytes"] + len(raw) > MAX_IGNORE_TOTAL_BYTES:
+                raise RetrievalError("Ignore-file resource limit exceeded", "invalid_scope")
+            cache["bytes"] += len(raw)
+            rules = []
+            for line in raw.decode("utf-8", errors="replace").splitlines():
+                rule = line.strip()
+                if not rule or rule.startswith("#"):
+                    continue
+                negated = rule.startswith("!")
+                rule = rule[1:] if negated else rule
+                rules.append((folder.relative_to(base).as_posix() if folder != base else "", rule, negated, rule.endswith("/")))
+            cache["files"][folder] = rules
+        return _ignored_non_git(base, PurePosixPath(relative), ignore_cache=cache, is_directory=is_directory)
 
 
 def revision(root: Path) -> str:
@@ -56,7 +87,7 @@ def roots_for(root: Path | None, docs_roots) -> list[Root]:
     result = []
     for path, role in declared:
         original = Path(path).expanduser().absolute()
-        if original.is_symlink() or any(p.is_symlink() for p in original.parents):
+        if original.is_symlink():
             raise RetrievalError("Root must be a nonsymlink directory", "invalid_scope")
         resolved = original.resolve(strict=True)
         if not resolved.is_dir():
@@ -69,6 +100,8 @@ def roots_for(root: Path | None, docs_roots) -> list[Root]:
         index_path = Path(os.fsdecode(index_info.stdout.strip())) if index_info.returncode == 0 else None
         if index_path and not index_path.is_absolute():
             index_path = resolved / index_path
+        if index_path:
+            index_path = index_path.resolve()
         result.append(Root(f"r{len(result)}", str(resolved), role, revision(resolved),resolved.stat().st_mtime_ns,str(index_path or ""),index_path.stat().st_mtime_ns if index_path and index_path.is_file() else 0))
     if not result:
         raise RetrievalError("Provide ROOT or at least one --docs-root")
@@ -77,6 +110,10 @@ def roots_for(root: Path | None, docs_roots) -> list[Root]:
 
 def classify(path: str, role: str) -> tuple[str, str, str]:
     suffix = PurePosixPath(path).suffix.lower()
+    if suffix == ".txt" and role == "code" and PurePosixPath(path).name.lower() not in {"readme.txt", "license.txt", "notice.txt"}:
+        return "code", "text", "code"
+    if suffix == ".txt" and role == "code":
+        return "docs", "text", "text"
     if suffix in DOCS or suffix == ".txt" or (role == "docs" and suffix in {".html", ".htm"}):
         fmt = "rst" if suffix in {".rst", ".txt"} else "asciidoc" if suffix in {".adoc", ".asciidoc"} else "html" if suffix in {".html", ".htm"} else "markdown"
         return "docs", fmt, fmt
@@ -110,14 +147,16 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
             if git_repo and not includes:
                 env = {k:v for k,v in os.environ.items() if not k.upper().startswith("GIT_")}
                 env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_OPTIONAL_LOCKS="0")
-                proc = subprocess.Popen(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", str(base), "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--deduplicate"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=env)
+                proc = subprocess.Popen(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", str(base), "ls-files", "-z", "--cached", "--others", "--exclude-standard"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=env)
                 try:
                     buffer = b""
+                    seen = set()
                     while block := proc.stdout.read(65536):
                         pieces = (buffer + block).split(b"\0")
                         buffer = pieces.pop()
                         for item in pieces:
-                            if item:
+                            if item and item not in seen:
+                                seen.add(item)
                                 yield os.fsdecode(item)
                     if proc.wait():
                         raise RetrievalError("Git inventory failed", "invalid_scope")
@@ -130,16 +169,23 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
                 stack = [base]
                 while stack:
                     directory = stack.pop()
-                    with os.scandir(directory) as entries:
+                    try:
+                        entries = os.scandir(directory)
+                    except OSError:
+                        excluded(directory.relative_to(base).as_posix())
+                        counters.setdefault("unreadableDirectories", []).append(safe_path_display(directory.relative_to(base).as_posix()))
+                        continue
+                    with entries:
                         for entry in entries:
                             rel = Path(entry.path).relative_to(base).as_posix()
                             if entry.is_dir(follow_symlinks=False):
-                                if entry.name not in {".git", ".hg", ".svn", "CVS"} and not secret_name(PurePosixPath(rel)) and (includes or (entry.name not in SKIP_DIRS and not matches(rel, excludes) and not _ignored_non_git(base, PurePosixPath(rel), ignore_cache=ignore_cache, is_directory=True))):
+                                include_branch = any(p == rel or p.startswith(rel + "/") or rel.startswith(p + "/") for p in includes)
+                                if entry.name not in {".git", ".hg", ".svn", "CVS"} and not secret_name(PurePosixPath(rel)) and (include_branch or (entry.name not in SKIP_DIRS and not matches(rel, excludes) and not ignore_match(base, rel, ignore_cache, True))):
                                     stack.append(Path(entry.path))
                                 else:
                                     excluded(rel)
                             else:
-                                if _ignored_non_git(base, PurePosixPath(rel), ignore_cache=ignore_cache) and not matches(rel,includes):
+                                if not matches(rel, includes) and ignore_match(base, rel, ignore_cache):
                                     excluded(rel)
                                     continue
                                 yield rel

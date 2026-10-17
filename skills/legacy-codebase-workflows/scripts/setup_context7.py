@@ -17,7 +17,14 @@ ASSETS = SKILL / "assets/context7"
 sys.path.insert(0, str(SKILL / "scripts"))
 import context7_backend as backend
 
-BACKEND_FILES = ("scripts/context7_backend.py", "scripts/repo_files.py", "scripts/legacy_common.py", "LICENSE.txt", "THIRD_PARTY.md") + tuple(p.relative_to(SKILL).as_posix() for p in sorted((SKILL / "scripts/local_context").rglob("*.py"))) + tuple(p.relative_to(SKILL).as_posix() for p in sorted((SKILL / "scripts/retrieval").iterdir()) if p.is_file() and p.suffix in {".mjs", ".json", ".yaml"})
+def backend_files(skill=SKILL):
+    fixed = ("scripts/context7_backend.py", "scripts/repo_files.py", "scripts/legacy_common.py", "LICENSE.txt", "THIRD_PARTY.md")
+    python = tuple(p.relative_to(skill).as_posix() for p in sorted((skill / "scripts/local_context").rglob("*.py")))
+    helpers = tuple(p.relative_to(skill).as_posix() for p in sorted((skill / "scripts/retrieval").rglob("*")) if p.is_file() and p.suffix in {".mjs", ".json", ".yaml"} and not {"node_modules", "__pycache__"}.intersection(p.relative_to(skill / "scripts/retrieval").parts))
+    return fixed + python + helpers
+
+
+BACKEND_FILES = backend_files()
 DEFAULT_EXCLUDES = (".agents", ".claude", ".codex", ".github", ".vscode", "tools", "mcp.json", ".mcp.json", "AGENTS.md", "CLAUDE.md", "docs/repo-maps", "repo-maps", "docs/RepoMix", "RepoMix", "docs/analysis", "analysis")
 
 
@@ -33,7 +40,8 @@ def runtime_for(root: Path) -> Path:
 def bootstrap(filename: str) -> str:
     # Static code only; never interpolate hook inputs or user commands.
     return ("import pathlib,runpy,sys; p=pathlib.Path.cwd(); "
-            "root=next(r for r in (p,*p.parents) if (r/'tools/context7/project.json').is_file()); "
+            "root=next((r for r in (p,*p.parents) if (r/'tools/context7/project.json').is_file()),None); "
+            "sys.exit(0) if root is None else None; "
             "sys.path.insert(0,str(root/'tools')); "
             f"runpy.run_path(str(root/'tools/{filename}'),run_name='__main__')")
 
@@ -109,11 +117,11 @@ def prepare(args) -> dict:
             raise ValueError(f"Existing file differs; preserve it and review manually: {relative}")
         planned[path] = text
 
-    plan("tools/local_context7.py", (ASSETS / "local_context7.py").read_text())
+    plan("tools/local_context7.py", (ASSETS / "local_context7.py").read_text(encoding="utf-8"))
     if args.with_hooks:
-        plan("tools/context7_refresh_hook.py", (ASSETS / "context7_refresh_hook.py").read_text())
+        plan("tools/context7_refresh_hook.py", (ASSETS / "context7_refresh_hook.py").read_text(encoding="utf-8"))
     for name in ("package.json", "pnpm-lock.yaml"):
-        plan("tools/context7/" + name, (ASSETS / name).read_text())
+        plan("tools/context7/" + name, (ASSETS / name).read_text(encoding="utf-8"))
     plan("tools/context7/project.json", json.dumps(project, indent=2) + "\n")
     plan("tools/context7/backend-manifest.json", json.dumps(manifest, indent=2) + "\n")
     python_command = "python" if shutil.which("python") else "python3"

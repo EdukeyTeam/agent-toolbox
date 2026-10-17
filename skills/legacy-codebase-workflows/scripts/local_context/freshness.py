@@ -36,6 +36,8 @@ def embedding_config(embed_model=None, model_revision=None, model_cache=None, em
         from .embed import EmbedConfig, config_from_env
         # Environment supplies defaults only after an explicit enablement.
         base = config_from_env(EmbedConfig(provider=enabled))
+        if kwargs.get("embed_base_url") is not None and kwargs["embed_base_url"] != base.base_url and kwargs.get("embed_api_key_env") is None:
+            base = replace(base, api_key_env=None)
         replacements = {"model":embed_model, "revision":model_revision, "cache_dir":str(model_cache) if model_cache else None, "runtime_dir":str(embedding_runtime) if embedding_runtime else None, "base_url":kwargs.get("embed_base_url"), "api_key_env":kwargs.get("embed_api_key_env"), "model_dir":str(kwargs["model_dir"]) if kwargs.get("model_dir") else None}
         base = replace(base, **{k:v for k,v in replacements.items() if v is not None}, provider=enabled, allow_remote=bool(kwargs.get("allow_remote_embeddings")), allow_download=False)
         if enabled == "transformers-js" and base.model == "Xenova/all-MiniLM-L6-v2" and not base.revision:
@@ -47,6 +49,8 @@ def embedding_config(embed_model=None, model_revision=None, model_cache=None, em
 
 def index(root, database, library_id, docs_root=None, embed_model=None, model_cache=None, embedding_runtime=None, *, model_revision=None, vector_engine="stdlib", reranker_model=None, reranker_revision=None, chunk_chars=DEFAULT_CHUNK_CHARS, excludes=(), docs_roots=(), includes=(), encodings=(), no_secret_scan=False, parser="auto", max_files=0, max_units=0, max_file_bytes=2_000_000, discovery_limit=2_000_000, title=None, description=None, jobs=1, verify_all=False, _timeout=5.0, _candidate_paths=None, _saved=None, **kwargs):
     started = time.monotonic()
+    if _candidate_paths is not None:
+        _candidate_paths = set(_candidate_paths)
     if not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", library_id):
         raise RetrievalError("Library ID must be /namespace/name")
     if not 128 <= chunk_chars <= 12000 or max_file_bytes < 1 or discovery_limit < 1 or jobs < 1 or max_files < 0 or max_units < 0:
@@ -74,11 +78,14 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
     config = _saved if _saved is not None else embedding_config(embed_model, model_revision, model_cache, embedding_runtime, **kwargs)
     scope = {"excludes":list(excludes), "includes":list(includes), "encodings":list(encodings), "no_secret_scan":no_secret_scan, "chunk_chars":chunk_chars, "max_file_bytes":max_file_bytes, "discovery_limit":discovery_limit, "max_files":max_files, "max_units":max_units, "vector_engine":vector_engine, "parser":parser}
     tier = parser_tier(parser)
-    parser_config = {"version":8, "tier":tier, "chunk_chars":chunk_chars, "encodings":list(encodings), "scan":not no_secret_scan}
+    parser_config = {"version":8, "chunker_revision":2, "tier":tier, "chunk_chars":chunk_chars, "encodings":list(encodings), "scan":not no_secret_scan}
     fingerprint = digest(canonical(parser_config).encode())
     if database.exists():
         with store.connect(database) as check:
-            store.validate(check)
+            # A failed first publication rolls back the schema, but SQLite
+            # still leaves an empty database file. It is safe to initialize.
+            if check.execute("SELECT 1 FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' LIMIT 1").fetchone():
+                store.validate(check)
     database.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(database, timeout=_timeout, isolation_level=None)
     con.row_factory = sqlite3.Row
@@ -93,9 +100,14 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
             old_roots = json.loads(old["roots_json"])
             if [(r["path"],r["role"]) for r in old_roots] != [(r.path,r.role) for r in roots]:
                 raise RetrievalError("Library roots differ; use a new library ID", "invalid_scope")
+            if _candidate_paths is not None:
+                roots = [Root(**r) for r in old_roots]
+            if _saved is None and embed_model is None and not kwargs.get("embed_provider"):
+                config = json.loads(old["embedding_json"]).get("config", {"provider":"none"})
         embedding_changed = old is None or json.loads(old["embedding_json"]).get("config", {"provider":"none"}) != config
         embedding_enabled = config.get("provider", "none") != "none"
-        if embedding_enabled and embedding_changed:
+        defer_embeddings = embedding_enabled and _candidate_paths is not None
+        if embedding_enabled and embedding_changed and not defer_embeddings:
             provider = provider_for(config, download=kwargs.get("download_model", False))
         stamp = store.now()
         generation = old["generation"] if old else 1
@@ -133,10 +145,13 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
             def changed_candidates():
                 for root_id, rel in _candidate_paths:
                     owner = next(r for r in roots if r.id == root_id)
-                    path = safe_path(Path(owner.path),rel)
-                    if path.is_file():
-                        kind,language,fmt = classify(rel,owner.role)
-                        yield owner,rel,kind,language,fmt,path.stat()
+                    try:
+                        path = safe_path(Path(owner.path),rel)
+                        if path.is_file():
+                            kind,language,fmt = classify(rel,owner.role)
+                            yield owner,rel,kind,language,fmt,path.stat()
+                    except (RetrievalError, OSError):
+                        continue
             candidates = changed_candidates()
         for owner, rel, kind, language, fmt, stat in candidates:
             eligible += 1
@@ -146,13 +161,16 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
             seen.add((owner.id,rel))
             previous = con.execute("SELECT * FROM files WHERE library_id=? AND root_id=? AND path=?", (library_id,owner.id,rel)).fetchone()
             same_parser = previous is not None and previous["parser_fingerprint"] == fingerprint
+            vectors_pending = previous is not None and previous["embedding_status"] in {"pending", "error"}
             stat_same = previous is not None and previous["size"] == stat.st_size and previous["mtime_ns"] == stat.st_mtime_ns
-            if stat_same and same_parser and not embedding_changed and not verify_all:
+            if stat_same and same_parser and not embedding_changed and not vectors_pending and not verify_all:
                 continue
             decoded, drafts, reason, status, fallback = None, [], None, "indexed", None
             try:
                 decoded = read_source(Path(owner.path),rel,encodings,max_file_bytes)
-                if previous is not None and decoded.sha256 == previous["hash"] and same_parser and not embedding_changed:
+                if Path(rel).suffix.lower() == ".txt" and owner.role == "code" and (re.search(r"(?m)^\.\.\s+\w+::", decoded.text) or re.search(r"(?m)^\S[^\n]*\n(?:={3,}|-{3,}|~{3,})\s*$", decoded.text)):
+                    kind, language, fmt = "docs", "rst", "rst"
+                if previous is not None and decoded.sha256 == previous["hash"] and same_parser and not embedding_changed and not vectors_pending:
                     con.execute("UPDATE files SET size=?,mtime_ns=? WHERE id=?",(stat.st_size,stat.st_mtime_ns,previous["id"]))
                     metadata_only += 1
                     actions.append({"rootId":owner.id,"path":rel,"action":"metadata-only"})
@@ -177,17 +195,20 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
             file_reason = reason or fallback
             if decoded is not None and decoded.assumed:
                 file_reason = ((file_reason + "; ") if file_reason else "") + "assumed-encoding:" + decoded.encoding
-            file_id = con.execute("INSERT INTO files(library_id,root_id,kind,path,hash,size,mtime_ns,encoding,language,format,status,status_reason,parser_tier,parser_fingerprint,embedding_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(library_id,owner.id,kind,rel,decoded.sha256 if decoded else None,stat.st_size,stat.st_mtime_ns,decoded.encoding if decoded else None,language,fmt,status,file_reason,file_tier,fingerprint,"complete" if embedding_enabled else "disabled")).lastrowid
+            file_id = con.execute("INSERT INTO files(library_id,root_id,kind,path,hash,size,mtime_ns,encoding,language,format,status,status_reason,parser_tier,parser_fingerprint,embedding_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(library_id,owner.id,kind,rel,decoded.sha256 if decoded else None,stat.st_size,stat.st_mtime_ns,decoded.encoding if decoded else None,language,fmt,status,file_reason,file_tier,fingerprint,"pending" if defer_embeddings else "complete" if embedding_enabled else "disabled")).lastrowid
             try:
                 store.insert_units(con,library_id,owner.id,file_id,rel,decoded.sha256 if decoded else "",drafts,fingerprint)
             except sqlite3.IntegrityError as exc:
                 raise RetrievalError(f"Unit storage invariant failed at {owner.id}:{rel}: {exc}","index_invalid",409) from exc
-            if embedding_enabled:
+            if embedding_enabled and not defer_embeddings:
                 for row in con.execute("SELECT id,header_json,description,text FROM units WHERE file_id=? AND redacted=0 AND searchable=1",(file_id,)).fetchall():
                     pending.append((row["id"], json.loads(row["header_json"])["text"] + "\n" + row["description"] + "\n" + (row["text"] or "")))
                     if len(pending) >= config.get("batch_size",32):
                         flush()
-        for row in con.execute("SELECT id,root_id,path FROM files WHERE library_id=?",(library_id,)).fetchall():
+        deletion_rows = con.execute("SELECT id,root_id,path FROM files WHERE library_id=?",(library_id,)).fetchall() if _candidate_paths is None else (con.execute("SELECT id,root_id,path FROM files WHERE library_id=? AND root_id=? AND path=?", (library_id, root_id, path)).fetchone() for root_id,path in _candidate_paths - seen)
+        for row in deletion_rows:
+            if row is None:
+                continue
             key = (row["root_id"],row["path"])
             if key not in seen and (_candidate_paths is None or key in _candidate_paths):
                 store.delete_file(con,library_id,row["id"])
@@ -216,7 +237,7 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
         report["assumedEncodingFiles"] = [dict(r) for r in con.execute("SELECT root_id AS rootId,path,encoding FROM files WHERE library_id=? AND status_reason LIKE '%assumed-encoding:%' ORDER BY root_id,path", (library_id,))]
         if max_files and total > max_files or max_units and chunks > max_units:
             report["warnings"].append("Soft resource threshold exceeded; all eligible files were accounted for")
-        con.execute("UPDATE libraries SET generation=?,roots_json=?,corpus_hash=?,refreshed_at=?,last_report_json=? WHERE id=?",(generation,canonical([asdict(r) for r in roots]),corpus_id,stamp,canonical(report),library_id))
+        con.execute("UPDATE libraries SET generation=?,roots_json=?,corpus_hash=?,refreshed_at=?,last_report_json=? WHERE id=?",(generation,canonical([asdict(r) for r in roots]),corpus_id,stamp,old["last_report_json"] if old and _candidate_paths is not None else canonical(report),library_id))
         primary = store.metadata(con).get("library_id")
         if primary is None or primary == library_id:
             for key,value in {"root":roots[0].path if roots[0].role == "code" else "", "docs_root":next((r.path for r in roots if r.role=="docs"),""),"library_id":library_id,"revision":roots[0].revision,"corpus_id":corpus_id,"chunk_chars":chunk_chars,"excludes":canonical(excludes),"embed_model":config.get("model") or "","model_revision":config.get("revision") or "","vector_engine":vector_engine,"model_cache":config.get("cache_dir") or "","embedding_runtime":config.get("runtime_dir") or "","oversized_chunks":report["oversizedChunks"]}.items():

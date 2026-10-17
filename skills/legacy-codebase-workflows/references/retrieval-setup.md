@@ -10,11 +10,13 @@ One-time installation and consent for the local retrieval engine (`scripts/conte
 
 **Level 2, embeddings (optional).** Semantic and hybrid modes need exactly one provider, enabled per library at index time:
 
-- `local-python`: install `scripts/requirements-embed.txt` (Model2Vec 0.10.0 runtime, about 94 MB of packages) and download the default model `minishlab/potion-code-16M-v2` (about 34 MB) once; it runs on CPU and stays warm in-process.
+- `local-python` (recommended): install `scripts/requirements-embed.txt` (Model2Vec 0.10.0 runtime, about 94 MB of packages) and download the default model `minishlab/potion-code-16M-v2`, pinned revision `e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b` (about 34 MB), once; it runs on CPU and stays warm in-process.
 - `openai-compatible`: an endpoint you already run (Ollama, llama.cpp server, vLLM, LM Studio) or a company gateway; see the endpoint section below.
 - `transformers-js`: the locked Node helper; copy `scripts/retrieval/package.json`, `pnpm-workspace.yaml` and `pnpm-lock.yaml` into an empty directory, run `pnpm install --dir /path/to/inference-runtime --frozen-lockfile` with Node.js 24, and pass the directory as `--embedding-runtime`.
 
 Optional vector acceleration: NumPy or the pinned `sqlite-vec` 0.1.9 (in `scripts/requirements-retrieval.txt`, tool environment only), selected with `--vector-engine numpy|sqlite-vec|auto`; the default `stdlib` engine needs nothing. In source-repository measurements NumPy was the fastest exact scanner; if both are installed, select `numpy` explicitly for large libraries.
+
+After enabling embeddings, recommend hybrid queries and keep a warm server with `serve --default-mode hybrid --default-vector-engine numpy` (omit the vector flag if NumPy is unavailable). Repeated standalone CLI queries load the model each time; `serve` reuses it across requests. Accepting the one-time model download or using an existing local endpoint is optional; declining keeps the stdlib lexical route.
 
 ## Consent procedure (mandatory)
 
@@ -45,7 +47,7 @@ Download the pinned model revision's files (`config.json`, `model.safetensors`, 
 
 ```bash
 python3.12 -m pip install --no-index --find-links wheels -r requirements-embed.txt
-python /path/to/skill/scripts/context7_backend.py index /path/to/repo --database /path/to/indexes/repo.sqlite --library-id /local/repo --embed-provider local-python --embed-model minishlab/potion-code-16M-v2 --model-dir /path/to/models/potion-code-16M-v2
+python /path/to/skill/scripts/context7_backend.py index /path/to/repo --database /path/to/indexes/repo.sqlite --library-id /local/repo --embed-provider local-python --embed-model minishlab/potion-code-16M-v2 --model-revision e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b --model-dir /path/to/models/potion-code-16M-v2
 ```
 
 Verify the copied model file hashes against the recorded manifest before indexing. The exact pinned model revision and file hashes are listed in the source repository's embedding benchmark report. No installation or query step needs a connection.

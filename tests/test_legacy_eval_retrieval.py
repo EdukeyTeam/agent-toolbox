@@ -226,6 +226,40 @@ class InputAndAdapterTests(unittest.TestCase):
         self.assertTrue(results)
         self.assertEqual(results[0].path, "marker.py")
 
+    def test_backend_adapter_uses_selected_library_roots_without_primary_meta(self):
+        sys.path.insert(0, str(SCRIPT.parent))
+        from local_context import freshness, store
+        code = self.root / "primary"
+        docs = self.root / "secondary"
+        code.mkdir()
+        docs.mkdir()
+        (code / "first.py").write_text("def primary(): pass\n", encoding="utf-8")
+        (docs / "guide.md").write_text("# Secondary\nA unique secondary answer.\n", encoding="utf-8")
+        database = self.root / "libraries.sqlite"
+        freshness.index(code, database, "/eval/primary", parser="0")
+        freshness.index(None, database, "/eval/secondary", docs_roots=[docs], parser="0")
+        with store.connect(database) as con:
+            con.execute("DELETE FROM meta WHERE key IN ('root','docs_root')")
+        with self.assertRaisesRegex(ValueError, "library-id"):
+            evaluation.Context7BackendAdapter(database, SCRIPT.with_name("context7_backend.py"))
+        adapter = evaluation.Context7BackendAdapter(database, SCRIPT.with_name("context7_backend.py"), library_id="/eval/secondary")
+        self.assertEqual(adapter.argv[adapter.argv.index("--library-id") + 1], "/eval/secondary")
+        result = adapter.search("secondary answer", 10)
+        self.assertTrue(result)
+        self.assertEqual(result[0].path, "guide.md")
+
+    def test_backend_adapter_docs_only_and_multiple_docs_root_namespaces(self):
+        sys.path.insert(0, str(SCRIPT.parent))
+        from local_context import freshness
+        docs = [self.root / "first", self.root / "second"]
+        for root in docs:
+            root.mkdir()
+            (root / "guide.md").write_text("# Guide\nanswer marker\n", encoding="utf-8")
+        database = self.root / "docs.sqlite"
+        freshness.index(None, database, "/eval/docs", docs_roots=docs, parser="0")
+        adapter = evaluation.Context7BackendAdapter(database, SCRIPT.with_name("context7_backend.py"), corpus_root=self.root)
+        self.assertEqual({r.path for r in adapter.search("marker", 10)}, {"first/guide.md", "second/guide.md"})
+
     def test_cli_writes_json_and_markdown_for_command_engine(self):
         path = self.root / "q.jsonl"
         path.write_text(json.dumps(question()) + "\n")

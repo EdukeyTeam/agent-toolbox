@@ -17,6 +17,18 @@ def database_path(con):
     return Path(con.execute("PRAGMA database_list").fetchone()[2])
 
 
+def embedding_coverage(con, library, kind=None, language=None):
+    if json.loads(library["embedding_json"]).get("config", {}).get("provider", "none") == "none":
+        return 0.0
+    filters, args = ["u.library_id=?", "u.searchable=1", "u.redacted=0"], [library["id"]]
+    for column, value in (("f.kind", kind), ("u.language", language)):
+        if value:
+            filters.append(column + "=?")
+            args.append(value)
+    total, present = con.execute("SELECT count(*),count(v.unit_id) FROM units u JOIN files f ON f.id=u.file_id LEFT JOIN unit_vectors v ON v.unit_id=u.id WHERE " + " AND ".join(filters), args).fetchone()
+    return present / total if total else 1.0
+
+
 def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=None, *, library_id=None, kind=None, language=None, tokens=None, refresh_policy="auto", provider_cache=None, ablations=(), explain=False, _restart=False):
     if not isinstance(question,str) or not question.strip() or len(question)>8000:
         raise RetrievalError("Query must contain 1-8000 characters")
@@ -33,6 +45,9 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
     try:
         with store.snapshot(con):
             lib = store.library(con,library_id)
+            coverage = embedding_coverage(con, lib, kind, language)
+            if mode == "semantic" and coverage < 1 and json.loads(lib["embedding_json"]).get("config", {}).get("provider", "none") != "none":
+                raise RetrievalError("Embeddings are incomplete; refresh pending vectors or rebuild the index, or use lexical mode.", "embedding_incomplete", 409)
             if mode != "lexical":
                 embedded = json.loads(lib["embedding_json"])
                 config = embedded.get("config",{})
@@ -75,7 +90,9 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
             if (revision_changed or trigger_changed) and refresh_policy=="strict":
                 raise RetrievalError("Repository revision changed; run refresh", "source_changed",409)
             response = assemble.pack(items,lib,mode,rerank,used_engine,limit,tokens,question,changed,unavailable)
-            response["coverage"]["embeddingCoverage"] = 1.0 if json.loads(lib["embedding_json"]).get("config",{}).get("provider","none") != "none" else 0.0
+            response["coverage"]["embeddingCoverage"] = coverage
+            if mode == "hybrid" and coverage < 1:
+                response["warnings"].append("Embeddings are incomplete; rebuild into a new database to restore full hybrid coverage.")
             if revision_changed or trigger_changed:
                 response["warnings"].append("Repository change trigger fired; run refresh to update inventory and recorded revisions.")
                 response["freshness"]["state"] = "stale"
@@ -120,6 +137,7 @@ def status(con, library_id=None, verify_all=False):
     for lib in libraries:
         counts = dict(con.execute("SELECT status,count(*) FROM files WHERE library_id=? GROUP BY status",(lib["id"],)))
         row = {"id":lib["id"],"generation":lib["generation"],"roots":json.loads(lib["roots_json"]),"counts":counts,"scope":json.loads(lib["scope_json"]),"embedding":json.loads(lib["embedding_json"]),"lastReport":json.loads(lib["last_report_json"]),"capabilities":{"fts5":True,"parser":json.loads(lib["parser_json"])["tier"]},"freshness":"not-audited"}
+        row["embeddingCoverage"] = embedding_coverage(con, lib)
         if verify_all:
             from .freshness import assert_fresh
             try:
@@ -148,6 +166,8 @@ def expand(con, *, library_id=None, unit_id=None, path=None, root_id=None, start
         file = con.execute("SELECT * FROM files WHERE library_id=? AND root_id=? AND path=?",(lib["id"],root_id,path)).fetchone()
         if file is None:
             raise RetrievalError("Indexed file not found", "unit_not_found",404)
+        if con.execute("SELECT 1 FROM units WHERE file_id=? AND redacted=1 AND start_line<=? AND end_line>=? LIMIT 1", (file["id"],end_line,start_line)).fetchone():
+            raise RetrievalError("Secret-bearing source range withheld", "secret_range",403)
         roots = {r["id"]:r for r in json.loads(lib["roots_json"])}
         scope = json.loads(lib["scope_json"])
         live = read_source(Path(roots[root_id]["path"]),path,scope["encodings"],scope["max_file_bytes"])

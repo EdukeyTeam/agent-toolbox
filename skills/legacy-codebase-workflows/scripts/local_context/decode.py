@@ -1,6 +1,7 @@
 """Source-faithful decoding and intentionally narrow secret scanning."""
 from __future__ import annotations
 import codecs
+from bisect import bisect_left
 import os
 from pathlib import Path
 import re
@@ -16,7 +17,40 @@ DECLARED = re.compile(br"(?:coding\s*[:=]\s*|encoding\s*=\s*['\"]|charset\s*=\s*
 
 
 def secret_spans(text: str) -> list[tuple[int, int]]:
-    return [(text.count("\n", 0, m.start()) + 1, text.count("\n", 0, m.end()) + 1) for pattern in (PEM, KEY) for m in pattern.finditer(text)]
+    newlines = [m.start() for m in re.finditer("\n", text)]
+    return [(bisect_left(newlines, m.start()) + 1, bisect_left(newlines, m.end()) + 1) for pattern in (PEM, KEY) for m in pattern.finditer(text)]
+
+
+def declared_encoding(raw: bytes, suffix: str) -> str | None:
+    if suffix == ".py":
+        lines = raw.removeprefix(codecs.BOM_UTF8).split(b"\n", 2)[:2]
+        cookie = re.compile(br"^[ \t\f]*\#.*?coding[:=][ \t]*([-\w.]+)")
+        for line in lines:
+            match = cookie.match(line)
+            if match:
+                return match[1].decode("ascii")
+            # PEP 263 only permits a second-line cookie after a blank/comment.
+            if not re.match(br"^[ \t\f]*(?:\#|\r?$)", line):
+                break
+    elif suffix in {".xml", ".config"}:
+        prolog = re.match(br"\s*<\?xml\b[^?]*\?>", raw[:1024], re.I)
+        match = DECLARED.search(prolog[0]) if prolog else None
+        if match:
+            return match[1].decode("ascii")
+    elif suffix in {".html", ".htm"}:
+        # Inspect actual head metadata, never body text or quoted examples.
+        head = re.sub(br"<!--[\s\S]*?-->", b"", raw[:1024])
+        for tag in re.finditer(br"<\s*(/?)\s*([\w!]+)\b[^>]*>", head):
+            name = tag[2].lower()
+            if name in {b"body", b"head"} and (name == b"body" or tag[1]):
+                break
+            if name not in {b"!doctype", b"html", b"head", b"meta", b"title", b"link", b"base", b"style", b"script"}:
+                break
+            if name == b"meta" and not tag[1]:
+                match = DECLARED.search(tag[0])
+                if match:
+                    return match[1].decode("ascii")
+    return None
 
 
 def read_source(root: Path, relative: str, encodings=(), max_file_bytes=2_000_000) -> Decoded:
@@ -42,15 +76,16 @@ def read_source(root: Path, relative: str, encodings=(), max_file_bytes=2_000_00
             bom = "utf-16-le"
         elif a >= .3 and b < .05:
             bom = "utf-16-be"
-    if not bom and b"\0" in raw:
+    explicit_utf16 = [encoding for encoding in encodings if encoding.lower().replace("_", "-") in {"utf-16", "utf-16-le", "utf-16-be"}]
+    if not bom and b"\0" in raw and not explicit_utf16:
         raise RetrievalError("Binary file", "binary")
     if bom:
         try:
             raw.decode(bom,errors="strict")
         except UnicodeDecodeError as exc:
             raise RetrievalError("Malformed BOM-declared encoding", "encoding") from exc
-    declared = DECLARED.search(raw[:1024]) if Path(relative).suffix.lower() in {".py", ".xml", ".html", ".htm", ".config"} else None
-    candidates = ([bom] if bom else []) + ([declared[1].decode("ascii")] if declared else []) + ["utf-8"]
+    declared = declared_encoding(raw, Path(relative).suffix.lower())
+    candidates = ([bom] if bom else []) + ([declared] if declared else []) + (explicit_utf16 if b"\0" in raw else []) + ["utf-8"]
     candidates += ["iso-8859-1"] if relative.lower().endswith(".properties") else [*encodings, "cp1252", "latin-1"]
     text = None
     for encoding in dict.fromkeys(candidates):
