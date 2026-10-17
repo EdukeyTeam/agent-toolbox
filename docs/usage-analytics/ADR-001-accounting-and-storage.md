@@ -57,7 +57,7 @@ Legacy cumulative snapshots supply deltas, never a sum of repeated last-usage fi
 
 Some forked rollouts retain parent metadata before their own metadata. The last establishing session metadata, cross-checked with the filename identity when present, determines file ownership. Earlier metadata and snapshots establish lineage/baselines rather than new child usage.
 
-Forked native records are the child's own usage. Legacy replay is matched against the parent when available; otherwise inherited baselines are treated as uncertain rather than charged again. Inferred legacy attribution is labeled reconstructed. Parent and child summaries remain cross-checks.
+Forked native records are the child's own usage. Legacy replay is matched against the parent when available; otherwise inherited baselines are treated as uncertain rather than charged again. Inferred legacy attribution is labeled reconstructed. Parent and child summaries remain cross-checks. Fresh spawned children without fork/replay evidence start at zero; a lineage link alone does not imply inherited counters. Discovery also recognizes replayed parent metadata. Reconciled transition exclusions are informational, while unproven gaps remain lower bounds.
 
 `rate_limits` on repeated token events remains useful even when the usage delta is zero. Quota observations are extracted independently. Local rollout-budget fields are excluded from subscription quota analysis.
 
@@ -71,7 +71,7 @@ Claude fresh input, cache creation and cache reads are separate provider counter
 
 Copilot JSONL with request identity is the preferred local request source. SQL schemas are inspected against required column/type contracts; unknown extensions do not invalidate known fields, but missing or incompatible required fields prevent accounting. Source schemas are observed-local contracts, explicitly distinct from public documented guarantees.
 
-SQL reads use `mode=ro` and an in-memory backup for a consistent WAL-aware snapshot. Queries are fixed allowlisted statements. With no shared request identity, alternative SQL/JSONL totals are reconciled at session scope: prefer the higher-resolution source, report unmatched coverage, and never add both sets on speculation. SQL-only sessions remain useful.
+SQL reads use `mode=ro` and an in-memory backup for a consistent WAL-aware snapshot. Queries are fixed allowlisted statements. With no shared request identity, alternative SQL/JSONL totals are reconciled at session scope: prefer event detail when coverage agrees, select SQL when its request/input/output measures dominate a partial event history, report every discrepancy as a coverage gap, and never add both sets on speculation. SQL-only sessions remain useful.
 
 Reconciliation runs after merging every selected source and every ledger collection, not merely within a single directory scan. JSONL with no usable usage does not suppress measured SQL. Cumulative AGY observations retain their original numeric counters so cross-file and cross-collection deltas can be recomputed once. An initial cumulative baseline has unknown event time; later compatible increments have their observed interval, rather than assigning all earlier usage to the first snapshot date.
 
@@ -110,7 +110,7 @@ Per-request costs include the applicable prompt tier, speed/service tier, infere
 
 ## Local history and quotas
 
-Retain optional SQLite because the user requested automated repeat collection and comparisons, including deleted or rotated logs. It stores normalized measurements only, using transactional upserts and a schema-version check. Repeated identical imports do not increase counts. Source databases are never modified. Concurrent-writer and Windows tests are mandatory. An append-only snapshot directory was considered but rejected because reconciling multiple growing sources would require another deduplication/storage protocol.
+Retain optional SQLite because the user requested automated repeat collection and comparisons, including deleted or rotated logs. It stores normalized measurements only, using transactional upserts and a schema-version check. Repeated identical imports do not increase counts. Recollecting a successfully parsed source replaces its warning snapshot, allowing resolved gaps to disappear without deleting historical measurements. Subagents inherit an explicit parent task label when they have no label of their own. Report JSON retains rate entries for every model priced in its main, comparison and rolling calculations. Source databases are never modified. Concurrent-writer and Windows tests are mandatory. An append-only snapshot directory was considered but rejected because reconciling multiple growing sources would require another deduplication/storage protocol.
 
 Quota calibration is descriptive, not a recovered provider allowance. Require at least five compatible observations spanning five percentage points, one account/bucket/reset, monotone percentages, complete declared device/cloud coverage and stable model/speed scope. Otherwise show observations and local rolling totals without a calibrated allowance. Even eligible estimates display sample count, observed range and the assumption that the quota formula is unknown. Reset crossings are excluded. Forecasting future quota exhaustion is deferred.
 

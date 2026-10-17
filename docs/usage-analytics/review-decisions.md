@@ -31,3 +31,22 @@ Both verdicts were conditional approval requiring accounting changes before impl
 Tests must reproduce duplicate snapshots, mixed native/legacy coverage, inherited metadata, counter resets, Claude streaming and subagents, cache TTL uncertainty, prompt-tier boundaries, SQL/event overlap, live WAL, compaction with no subsequent request, invalid imports, privacy canaries and HTML injection. Real Linux and Windows sessions supply independent numeric baselines, including a Codex session with six compactions. Browser validation uses the installed Chrome.
 
 The reviewers' unverified precision claims, benchmark timings and broad runtime assumptions are not acceptance evidence. Implementation is judged by the documented contracts and actual test results.
+
+## Implementation review disposition
+
+Opus 5.5 independently reviewed the implementation and then reviewed the fixes. The second review confirmed the original AGY cumulative, Claude streaming, archive lookup, SQL fallback, encoding, warning-scope, pseudonym and quota-label corrections. Its remaining findings were resolved as follows and verified with focused regression tests:
+
+| Finding | Final behavior |
+| --- | --- |
+| Partial Copilot events can hide a larger SQL history | Compare request counts and input/output totals globally and inside a directory scan. Select SQL when it dominates the event subset; otherwise keep event detail. Never add alternatives. Every disagreement remains a coverage gap. |
+| Fresh legacy subagents were mistaken for replayed forks | Distinguish fresh spawn lineage from explicit fork/replay evidence. Confirmed against upstream new-history semantics and three real legacy spawned sessions. |
+| UUID discovery missed replayed parent metadata | Recognize a selected parent in the first metadata identity as well as explicit parent links. Test direct and ledger modes with UUID filenames. |
+| Reconciled transition overlap was marked unresolved | Keep informational overlap warnings when the proven prefix equals the native budget; preserve gap warnings only for unproven spans. |
+| An undated later native response could expand the legacy budget | Select the smallest cumulative native endpoint conservatively, rather than sorting a missing timestamp first. |
+| Resolved source warnings persisted in the ledger | Successfully re-collected sources replace their warning snapshots; historical measurements remain. |
+| Parent task labels did not reach subagents | Use an explicit child label first, then the parent's label. |
+| Comparison-only model rates were missing from exported pricing | Embed rate entries and aliases for all priced calculations, including comparison and rolling history. |
+
+Unsupported Claude geography values observed in real history remain unpriced rather than guessed. Unverified Copilot field spellings/cache conventions remain explicit schema gaps. Codex event ordering now has a hand-counted live-ledger regression; real numeric comparisons separately validate observed native records. AGY's initial cumulative baseline remains undated by design, which is documented in the interchange reference.
+
+The final root verification runs the regression suite and cross-platform CI; these are the evidence for the corrected code. The reviewers' original verdicts are not represented as approval of later edits they did not inspect.

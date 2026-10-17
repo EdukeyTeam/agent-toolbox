@@ -28,6 +28,23 @@ def number(value: object) -> int | float | None:
     return value if math.isfinite(value) and value >= 0 else None
 
 
+def copilot_preference(sql: list[dict[str, Any]], events: list[dict[str, Any]]) -> tuple[bool, bool]:
+    """Return (prefer SQL, discrepancy); alternatives never become additive."""
+    def measures(rows):
+        values = [sum(r["request_count"] if r.get("request_count") is not None else 1 for r in rows)]
+        for key in ("input_tokens", "output_tokens"):
+            values.append(sum(r[key] for r in rows) if all(r.get(key) is not None for r in rows) else None)
+        return values
+    a, b = measures(sql), measures(events)
+    usable = any(r.get("input_tokens") is not None or r.get("output_tokens") is not None for r in events)
+    def totals(rows, key):
+        return sum(r[key] for r in rows) if all(r.get(key) is not None for r in rows) else None
+    differs = a != b or any(totals(sql, key) != totals(events, key) for key in COUNTS)
+    dominates = all(x is not None and (y is None or x >= y) for x, y in zip(a, b))
+    larger = any(x is not None and (y is None or x > y) for x, y in zip(a, b))
+    return not usable or (larger and dominates), differs
+
+
 def timestamp(value: object) -> str | None:
     try:
         if isinstance(value, (int, float)) and not isinstance(value, bool):

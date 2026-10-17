@@ -117,6 +117,11 @@ class Ledger:
         value = normalize_import(value)
         self.connection.execute("BEGIN IMMEDIATE")
         try:
+            refreshed = {r["id"] for r in value["sources"] if r.get("files_parsed") == 1}
+            if refreshed:
+                for key, raw in self.connection.execute("SELECT id,data FROM usage_analytics_records WHERE kind='warnings'").fetchall():
+                    if json.loads(raw).get("source_id") in refreshed:
+                        self.connection.execute("DELETE FROM usage_analytics_records WHERE kind='warnings' AND id=?", (key,))
             for kind in LISTS:
                 for row in value[kind]:
                     previous = self.connection.execute("SELECT data FROM usage_analytics_records WHERE kind=? AND id=?", (kind, row["id"])).fetchone()

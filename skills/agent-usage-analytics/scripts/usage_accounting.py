@@ -12,7 +12,7 @@ from statistics import median
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from usage_common import COUNTS, LISTS, dataset, digest, number, safe_name, timestamp
+from usage_common import COUNTS, LISTS, copilot_preference, dataset, digest, number, safe_name, timestamp
 
 
 def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
@@ -55,7 +55,9 @@ def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
             native = [r for r in rows if r.get("accounting_mode") == "codex_native_per_response"]
             legacy = [r for r in rows if r.get("accounting_mode") == "codex_legacy_snapshot_delta"]
             if native and legacy:
-                first = min(native, key=lambda r: r.get("timestamp") or "")
+                first = min(native, key=lambda r: (r.get("native_total_input_tokens") or 0,
+                                                   r.get("native_total_output_tokens") or 0,
+                                                   r.get("timestamp") or ""))
                 budget = {key: first.get("native_total_" + key) - first[key]
                           if first.get("native_total_" + key) is not None and first.get(key) is not None else None
                           for key in ("input_tokens", "output_tokens")}
@@ -65,18 +67,22 @@ def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
                 if excluded:
                     ids = {r["id"] for r in excluded}
                     rows = [r for r in rows if r["id"] not in ids]
-                    result["warnings"].append({"id": digest("native_legacy_overlap_unresolved", sid),
-                        "code": "native_legacy_overlap_unresolved", "session_id": sid,
+                    endpoints = [{key: r.get("legacy_total_" + key) for key in budget} for r in rows
+                                 if r.get("accounting_mode") == "codex_legacy_snapshot_delta"] + [{key: 0 for key in budget}]
+                    resolved = any(all(budget[key] is not None and endpoint[key] == budget[key] for key in budget) for endpoint in endpoints)
+                    code = "native_legacy_overlap_reconciled" if resolved else "native_legacy_overlap_unresolved"
+                    result["warnings"].append({"id": digest(code, sid),
+                        "code": code, "session_id": sid,
                         "source_id": excluded[0].get("source_id")})
         if agent == "copilot":
             sql = [r for r in rows if r.get("accounting_mode") == "copilot_sql_request"]
             events = [r for r in rows if r.get("accounting_mode") == "copilot_jsonl_request"]
             if sql and events:
-                usable = any(r.get("input_tokens") is not None or r.get("output_tokens") is not None for r in events)
-                excluded = sql if usable else events
+                prefer_sql, different = copilot_preference(sql, events)
+                excluded = events if prefer_sql else sql
                 excluded_ids = {r["id"] for r in excluded}
                 rows = [r for r in rows if r["id"] not in excluded_ids]
-                code = "copilot_alternative_source_reconciled" if usable else "copilot_sql_fallback_for_missing_events"
+                code = "sql_jsonl_discrepancy" if different else "copilot_alternative_source_reconciled"
                 result["warnings"].append({"id": digest(code, sid), "code": code,
                     "source_id": excluded[0].get("source_id"), "session_id": sid})
         if agent == "agy":
@@ -351,7 +357,8 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
     selected_warnings = [w for w in data["warnings"] if not session_id or
                          w.get("source_id") in selected_source_ids or w.get("session_id") == session_id]
     for row in rows:
-        row["task"] = safe_name((task_map or {}).get(row.get("session_id"), "unclassified"))
+        row["task"] = safe_name((task_map or {}).get(row.get("session_id"),
+                                (task_map or {}).get(row.get("parent_session_id"), "unclassified")))
     def date_key(row, length):
         when = row.get("timestamp")
         return datetime.fromisoformat(when.replace("Z", "+00:00")).astimezone(tz).isoformat()[:length] if when else "undated"
@@ -441,10 +448,10 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
               "pricing": {**{key: card.get(key) for key in ("version", "verified_at", "sources", "historical_policy")},
                           "currency": card.get("currency"),
                           "rates": {model: deepcopy(card["models"][model]) for model in
-                                    {card.get("aliases", {}).get(r.get("model"), r.get("model")) for r in rows}
+                                    {card.get("aliases", {}).get(r.get("model"), r.get("model")) for r in all_rows}
                                     if model in card["models"]},
                           "aliases": {key: value for key, value in card.get("aliases", {}).items()
-                                      if any(r.get("model") == key for r in rows)}},
+                                      if any(r.get("model") == key for r in all_rows)}},
               "methodology": ["Historical totals include measured/reconstructed request counters only; no character estimates.",
                               "Accounting-gap warnings cover selected source history and can extend outside the report period.",
                               "Context categories estimate visible text; hidden schemas, prompts and multimodal content are unknown.",

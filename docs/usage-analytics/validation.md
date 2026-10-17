@@ -5,13 +5,13 @@ Date: 2026-10-17. Real histories and full reviewer transcripts remain local and 
 | Check | Result | Evidence and limits |
 | --- | --- | --- |
 | Skill structure | Passed | Codex skill-creator validator accepts the frontmatter and layout; repository structure tests discover the new skill. |
-| Focused Python suite | 86 tests passed | Hand-counted fixtures cover pricing/cache dimensions, repeated snapshots, imports, SQLite, context/compaction, privacy, source overlap and CLI artifacts. |
+| Focused Python suite | 92 tests passed | Includes follow-up review regressions. Hand-counted fixtures cover pricing/cache dimensions, repeated snapshots, imports, SQLite, context/compaction, privacy, source overlap and CLI artifacts. |
 | Committed feature branch | 111 Node tests passed | `npm ci` and `npm test` run against an exported feature-branch tree, independent of concurrent legacy changes. The Node bridge also runs the focused Python suite. |
-| Real Linux and Windows histories | Passed | Independent raw numeric oracles agree with normalized Codex, Claude Code and Copilot SQL counters on both devices. The Windows Codex fixture includes six compactions. No real transcript is copied into a test fixture. |
+| Real Linux and Windows histories | Passed | Independent raw numeric oracles agree with normalized Codex, Claude Code and Copilot SQL counters on both devices. The Windows Codex fixture includes six compactions. Three additional real legacy spawned sessions confirm fresh-child counters. No real transcript is copied into a test fixture. |
 | Real Grok Build history | Passed | Seven measured turn-usage files match independent output-counter sums and observation counts. Native context signals have separate semantics. |
 | Real AGY export | Correctly partial | Actual headless result exports parse. Cache-inclusive input semantics were not established by those exports, so ambiguous input and exact pricing stay unavailable. Wrapper footer lines are disclosed as malformed rather than treated as usage. |
 | Broad local history | Passed | A full collection spanning more than one thousand source files completed and generated the three report formats. Unsupported records and unpriced work remain visible. This is a coverage trial, not an independent oracle for every historical request. |
-| Offline Chrome | Passed | Summary numbers match JSON; agent/date filters, reset, theme, request multiplicity and session context ordering work. A 390-pixel viewport has no horizontal page overflow. Injected markup stays inert; no external HTTP requests occur. |
+| Offline Chrome | Passed | Summary numbers match JSON; agent/date filters, reset, theme, request multiplicity and session context ordering work. A 390-pixel viewport has no horizontal page overflow. Injected markup stays inert; no external HTTP requests occur. The full real-history dashboard also passes totals, filtering and offline checks. |
 | Native quota read | Passed | The authenticated Codex app-server accepted the read-only rate-limit request, without a model turn or credential extraction. The observed buckets are preserved; missing five-hour metadata is not invented. |
 | Skill behavior trial | Passed | A separate Codex session followed the skill against synthetic input and generated numerically matching JSON, Markdown and HTML. Root independently verified the browser output. |
 

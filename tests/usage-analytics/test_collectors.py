@@ -356,7 +356,7 @@ class CollectorTests(unittest.TestCase):
         self.sql_insert(conn)
         conn.close()
         data = collect("copilot", self.root)
-        self.assertEqual(data["usage"][0]["input_tokens"], 50)
+        self.assertEqual(data["usage"][0]["input_tokens"], 100)
         self.assertIn("sql_jsonl_discrepancy", self.codes(data))
         evidence = next(r for r in data["warnings"] if r["code"] == "sql_jsonl_discrepancy")
         self.assertEqual(evidence["sql_rows"], 1)

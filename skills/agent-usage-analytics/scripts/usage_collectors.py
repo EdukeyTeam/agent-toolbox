@@ -13,7 +13,7 @@ import sqlite3
 import time
 from typing import Any
 
-from usage_common import (classify_text, context_observation, dataset, digest, jsonl,
+from usage_common import (classify_text, context_observation, copilot_preference, dataset, digest, jsonl,
                           number, safe_name, source_info, text_chars, timestamp, warn)
 
 # Any is confined to untyped JSON / normalized interchange boundaries.
@@ -349,7 +349,8 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
                     counters = obj(obj(payload.get("info")).get("total_token_usage"))
                     if counters:
                         parent_snapshots.add(digest(codex_counts(counters)))
-    replay_pending = bool(obs.parent)
+    replay_pending = bool(meta.get("forked_from_id") or boundary > 1 or
+                          (obs.parent and not fork.get("thread_spawn")))
     inherited = False
     last_total: JSON | None = None
     context_total: JSON | None = None
@@ -453,7 +454,7 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
             if last_total is not None and counters_equal(total, last_total):
                 continue
             if last_total is None:
-                if obs.parent and not inherited:
+                if replay_pending and not inherited:
                     warn(data, "fork_baseline_unknown", source["id"], line)
                     last_total = total
                     continue
@@ -485,7 +486,10 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
             r.get("legacy_total_" + k) is not None and r["legacy_total_" + k] <= budget[k]
             for k in ("input_tokens", "output_tokens"))]
         if len(proven) != len(legacy):
-            warn(data, "native_legacy_overlap_unresolved", source["id"])
+            endpoints = [{k: r.get("legacy_total_" + k) for k in ("input_tokens", "output_tokens")} for r in proven]
+            endpoints.append({"input_tokens": 0, "output_tokens": 0})
+            resolved = any(all(budget.get(k) is not None and e[k] == budget[k] for k in e) for e in endpoints)
+            warn(data, "native_legacy_overlap_reconciled" if resolved else "native_legacy_overlap_unresolved", source["id"])
         legacy = proven
     data["usage"].extend(legacy)
     obs.finish()
@@ -682,6 +686,7 @@ def _copilot_sql(path: Path, data: JSON, source: JSON, device: str, account: str
             warn(data, "unsupported_sql_schema", source["id"])
             return
         totals: dict[str, JSON] = {}
+        alternatives: dict[str, list[JSON]] = defaultdict(list)
         observations: dict[str, Observations] = {}
         for values in memory.execute(SQL_SELECT):
             source["rows_seen"] += 1
@@ -689,10 +694,17 @@ def _copilot_sql(path: Path, data: JSON, source: JSON, device: str, account: str
             sid = identifier(raw["session_id"], "unknown")
             if selected and selected != sid:
                 continue
+            created = raw["created_at"]
+            at = timestamp(created)
+            if at is None and isinstance(created, str) and re.fullmatch(
+                    r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?", created):
+                at = timestamp(created.replace(" ", "T") + "Z")
             if sid in event_sessions:
                 aggregate = totals.setdefault(sid, {k: 0 for k in TOKEN_FIELDS})
                 for k in TOKEN_FIELDS:
                     aggregate[k] = plus(aggregate[k], number(raw[k]))
+                alternatives[sid].append(usage_row("copilot", sid, ("sql", raw["id"]), raw, source,
+                    device, account, at, raw["model"], "copilot_sql_request"))
                 continue
             if sid not in observations:
                 observations[sid] = Observations(data, source, "copilot", sid, device)
@@ -700,11 +712,6 @@ def _copilot_sql(path: Path, data: JSON, source: JSON, device: str, account: str
             # This store writes UTC wall-clock SQL timestamps without an offset.
             # Interpret that documented SQL representation here only; generic
             # imports still reject timezone-naive observations.
-            created = raw["created_at"]
-            at = timestamp(created)
-            if at is None and isinstance(created, str) and re.fullmatch(
-                    r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?", created):
-                at = timestamp(created.replace(" ", "T") + "Z")
             observations[sid].tick(at)
             data["usage"].append(usage_row("copilot", sid, ("sql", raw["id"]), raw, source,
                 device, account, at, raw["model"], "copilot_sql_request"))
@@ -712,6 +719,12 @@ def _copilot_sql(path: Path, data: JSON, source: JSON, device: str, account: str
             event_rows = coalesce([r.copy() for r in data["usage"] if r["agent"] == "copilot"
                                   and r["session_id"] == sid and r["accounting_mode"] == "copilot_jsonl_request"])
             different = any(total[k] != plus(*(r[k] for r in event_rows)) for k in TOKEN_FIELDS)
+            prefer_sql, measures_differ = copilot_preference(alternatives[sid], event_rows)
+            different = different or measures_differ
+            if prefer_sql:
+                excluded_ids = {r["id"] for r in event_rows}
+                data["usage"] = [r for r in data["usage"] if r["id"] not in excluded_ids]
+                data["usage"].extend(alternatives[sid])
             code = "sql_jsonl_discrepancy" if different else "sql_jsonl_alternative_excluded"
             warn(data, code, source["id"])
             # Only numeric mismatch evidence is retained, never the SQL row itself.
@@ -950,7 +963,7 @@ def _discover(agent: str, path: Path, selected: str | None) -> list[Path]:
                             parent = pick(p, "forked_from_id", "parent_thread_id", "parent_session_id")
                             parent = parent or pick(sub, "parent_thread_id", "parent_session_id")
                             parent = parent or pick(obj(sub.get("thread_spawn")), "parent_thread_id", "parent_session_id")
-                            related = parent == selected
+                            related = parent == selected or p.get("id") == selected
                         except (OSError, ValueError, UnicodeError):
                             pass
                         if not related:

@@ -41,6 +41,20 @@ class Reconciliation(unittest.TestCase):
             self.assertEqual(sum(r["input_tokens"] for r in value["usage"]), 300)
             self.assertEqual(len(value["usage"]), 2)
 
+    def test_copilot_partial_events_do_not_hide_growing_sql_history(self):
+        event_path = self.write("session-state/p1/events.jsonl", copilot_event())
+        sql, connection = self.sql()
+        self.sql_insert(connection)
+        self.sql_insert(connection, "new-request", "p1", 200)
+        connection.close()
+        a, b = collect("copilot", event_path), collect("copilot", sql)
+        for value in (merge(a, b), merge(b, a), self.ledger_sequence(a, b), collect("copilot", self.root)):
+            report = build_report(value, load_rates())
+            self.assertEqual(report["summary"]["input_tokens"], 300)
+            self.assertEqual(report["summary"]["requests"], 2)
+            self.assertGreater(report["summary"]["accounting_gap_observations"], 0)
+            self.assertEqual(report["summary"]["count_quality"], "known lower bound")
+
     def test_empty_or_unusable_event_accounting_falls_back_to_sql(self):
         events = copilot_event()
         events[1]["data"]["responseUsage"] = {"new_field": 999}
@@ -89,12 +103,32 @@ class Reconciliation(unittest.TestCase):
             self.write(f".codex/sessions/rollout-{sid}.jsonl", [meta(sid, **extra), turn(), row])
         direct = collect("codex", self.root / ".codex", session=parent)
         stored = self.ledger_sequence(collect("codex", self.root / ".codex"))
-        reports = [build_report(v, load_rates(), session_id=parent, compare_since="2026-10-17", compare_until="2026-10-18", now=T2) for v in (direct, stored)]
+        reports = [build_report(v, load_rates(), session_id=parent, compare_since="2026-10-17", compare_until="2026-10-18", now=T2,
+                                task_map={parent: "client-work"}) for v in (direct, stored)]
         for report in reports:
             self.assertEqual(report["summary"]["input_tokens"], 200)
             self.assertEqual(len(report["contexts"]), 2)
             self.assertEqual(report["local_rolling_usage"]["five_hour"]["input_tokens"], 200)
             self.assertEqual(report["comparison"]["previous"]["input_tokens"], 200)
+            self.assertEqual([r["label"] for r in report["tasks"]], ["client-work"])
+
+    def test_fresh_legacy_spawn_starts_at_zero(self):
+        path = self.write("spawn.jsonl", [meta(source={"subagent": {"thread_spawn": {"parent_thread_id": "parent"}}}),
+            turn(), snapshot(cx_counts(100)), snapshot(cx_counts(150, 15), at=T2)])
+        value = collect("codex", path)
+        self.assertEqual(sum(r["input_tokens"] for r in value["usage"]), 150)
+        self.assertNotIn("fork_baseline_unknown", {r["code"] for r in value["warnings"]})
+
+    def test_uuid_discovery_recognizes_replayed_parent_metadata(self):
+        parent, child = "11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"
+        self.write(f".codex/sessions/rollout-{parent}.jsonl", [meta(parent), turn(), snapshot(cx_counts(100))])
+        self.write(f".codex/sessions/rollout-{child}.jsonl", [meta(parent), snapshot(cx_counts(100)),
+            meta(child, forked_from_id=parent), turn(), snapshot(cx_counts(150, 15), at=T2)])
+        for value in (collect("codex", self.root / ".codex", session=parent),
+                      self.ledger_sequence(collect("codex", self.root / ".codex"))):
+            report = build_report(value, load_rates(), session_id=parent)
+            self.assertEqual(report["summary"]["input_tokens"], 150)
+            self.assertEqual(len(report["contexts"]), 2)
 
     def test_codex_legacy_parent_in_archive_tree(self):
         self.write(".codex/archived_sessions/parent.jsonl", [meta("parent"), snapshot(cx_counts(100))])
@@ -112,6 +146,35 @@ class Reconciliation(unittest.TestCase):
         for value in (merge(prefix, full), self.ledger_sequence(prefix, full)):
             self.assertEqual(sum(r["input_tokens"] for r in value["usage"]), 300)
             self.assertEqual(sum(r["output_tokens"] for r in value["usage"]), 30)
+            self.assertEqual(build_report(value, load_rates())["summary"]["accounting_gap_observations"], 0)
+
+    def test_undated_later_native_cannot_expand_legacy_budget(self):
+        path = self.write("child.jsonl", [meta(), turn(), snapshot(cx_counts(100)), snapshot(cx_counts(300, 30), at=T2)])
+        old = collect("codex", path)
+        self.write("child.jsonl", [meta(), turn(), snapshot(cx_counts(100)),
+            native("r1", cx_counts(200, 20), at=T2, thread_token_usage=cx_counts(300, 30)),
+            native("r2", cx_counts(200, 20), at=None, thread_token_usage=cx_counts(500, 50))])
+        value = self.ledger_sequence(old, collect("codex", path))
+        self.assertEqual(sum(r["input_tokens"] for r in value["usage"]), 500)
+
+    def test_resolved_source_warnings_expire_after_recollection(self):
+        child = self.write(".codex/sessions/child.jsonl", [meta("child", forked_from_id="parent"),
+            snapshot(cx_counts(100)), snapshot(cx_counts(150, 15), at=T2)])
+        old = collect("codex", child)
+        self.assertIn("fork_baseline_unknown", {r["code"] for r in old["warnings"]})
+        self.write(".codex/archived_sessions/parent.jsonl", [meta("parent"), snapshot(cx_counts(100))])
+        value = self.ledger_sequence(old, collect("codex", child))
+        self.assertNotIn("fork_baseline_unknown", {r["code"] for r in value["warnings"]})
+        self.assertEqual(sum(r["input_tokens"] for r in value["usage"]), 50)
+
+    def test_comparison_only_models_keep_their_rate_entries(self):
+        from test_accounting import request
+        value = dataset()
+        value["usage"] = [request(id="old", model="claude-sonnet-5-5"),
+                          request(id="new", model="claude-opus-5-5", timestamp=T1)]
+        report = build_report(value, load_rates(), since="2026-10-17", until="2026-10-18",
+                              compare_since="2026-10-01", compare_until="2026-10-02", now=T2)
+        self.assertEqual(set(report["pricing"]["rates"]), {"claude-sonnet-5-5", "claude-opus-5-5"})
 
     def test_growing_session_metadata_and_warning_scope(self):
         a, b = dataset(), dataset()
