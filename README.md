@@ -45,6 +45,42 @@ To add every skill in one run with the [skills CLI](https://skills.sh/), use `--
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill '*' -g
 ```
 
+### Codex CLI and Codex app
+
+Codex CLI 0.162.1 supports this repository as a marketplace containing one plugin with every skill. Register the marketplace, then install the toolbox:
+
+```bash
+codex plugin marketplace add EdukeyTeam/agent-toolbox
+```
+
+```bash
+codex plugin add agent-toolbox@edukey-agent-toolbox
+```
+
+Start a new Codex session after installation. Use `codex plugin list --marketplace edukey-agent-toolbox` to check the installation, or `/plugins` in an interactive CLI session. In [Codex in the ChatGPT desktop app](https://learn.chatgpt.com/docs/plugins), restart the app, open the **Plugins** tab, select the **Edukey Agent Toolbox** marketplace, then open **agent-toolbox** and install it. Register the marketplace with the CLI on the same backend the app uses; the [local marketplace guide](https://developers.openai.com/plugins/build/plugins#build-your-own-curated-plugin-list) describes app discovery.
+
+To update, refresh the Git marketplace and install the plugin again, then start a new session:
+
+```bash
+codex plugin marketplace upgrade edukey-agent-toolbox
+```
+
+```bash
+codex plugin add agent-toolbox@edukey-agent-toolbox
+```
+
+To remove the plugin and its marketplace registration:
+
+```bash
+codex plugin remove agent-toolbox@edukey-agent-toolbox
+```
+
+```bash
+codex plugin marketplace remove edukey-agent-toolbox
+```
+
+The configuration equivalent is a `[marketplaces.edukey-agent-toolbox]` table in `config.toml` with `source_type = "git"` and `source = "https://github.com/EdukeyTeam/agent-toolbox.git"`; an optional `ref` pins a branch, tag or commit. This registers the source; installing the plugin is a separate step. Trusted projects can set `[plugins."agent-toolbox@edukey-agent-toolbox"]` with `enabled = true` or `false` in `.codex/config.toml`. See the [configuration reference](https://developers.openai.com/codex/config-reference). The toolbox reuses the root `plugin.json` and `skills/`; no separate Codex skill copies are needed.
+
 ### Claude Code and Claude Desktop / Cowork
 
 This repository is also a Claude plugin marketplace. Register the marketplace, then install its plugin from a terminal:
@@ -70,7 +106,7 @@ Copilot CLI can install the same repository as a plugin using its root plugin ma
 copilot plugin install EdukeyTeam/agent-toolbox
 ```
 
-For Codex and other agents, the skills CLI command above installs the skills directly. The root `plugin.json` also provides a portable plugin manifest; availability in a particular plugin catalog depends on that catalog's publishing process.
+The skills CLI remains an option for Codex and other supported agents when you want to install skills directly. The root `plugin.json` provides a portable plugin manifest shared by Codex and Copilot; publishing in a public plugin directory is separate from registering this repository as a marketplace.
 
 ## Contribute
 
