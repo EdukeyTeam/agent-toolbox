@@ -9,6 +9,8 @@ on:
       - 'skills/legacy-codebase-workflows/SKILL.md'
       - 'tests/**/*.test.cjs'
       - 'tests/**/*.test.js'
+      - 'tests/test_atlassian_onprem.py'
+      - 'tests/fixtures/atlassian_fake_server.py'
       - 'package.json'
       - 'package-lock.json'
       - 'plugin.json'
@@ -38,5 +40,20 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - run: npm ci
       - run: npm test
+
+  atlassian-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Test Atlassian stdlib wrappers and Windows file ACLs
+        run: python -B -m unittest discover -s tests -p test_atlassian_onprem.py -v
