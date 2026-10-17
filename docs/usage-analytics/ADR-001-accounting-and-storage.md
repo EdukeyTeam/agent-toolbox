@@ -73,6 +73,8 @@ Copilot JSONL with request identity is the preferred local request source. SQL s
 
 SQL reads use `mode=ro` and an in-memory backup for a consistent WAL-aware snapshot. Queries are fixed allowlisted statements. With no shared request identity, alternative SQL/JSONL totals are reconciled at session scope: prefer the higher-resolution source, report unmatched coverage, and never add both sets on speculation. SQL-only sessions remain useful.
 
+Reconciliation runs after merging every selected source and every ledger collection, not merely within a single directory scan. JSONL with no usable usage does not suppress measured SQL. Cumulative AGY observations retain their original numeric counters so cross-file and cross-collection deltas can be recomputed once. An initial cumulative baseline has unknown event time; later compatible increments have their observed interval, rather than assigning all earlier usage to the first snapshot date.
+
 Hosted Copilot SQL is an import recipe based on the host's available tool/schema, not a promised endpoint. AGY accepts documented JSON/stream exports; cumulative results and per-step counts are alternative evidence. Ambiguous cache/reasoning semantics remain unavailable for exact pricing. Grok Build supports verified turn-level `usage.json` observations and context signals as an observed contract; inherited whole-session summaries are not summed into turns.
 
 ## Current context
@@ -115,6 +117,8 @@ Quota calibration is descriptive, not a recovered provider allowance. Require at
 ## Privacy and share mode
 
 Raw text is processed locally for lengths/category detection, then discarded. Prompts, responses, arguments, outputs, reasoning text, credentials, email addresses and account IDs do not enter the normalized output contract. Source files use hashed references by default. Local session/tool/skill names remain useful identifiers; `--share` replaces potentially identifying labels with stable pseudonyms. Model IDs, numeric measurements and source quality remain readable.
+
+Share-mode pseudonyms use a fresh in-memory per-report salt, which is not exported. They are consistent within that report, not linkable by a public unsalted name dictionary. Longitudinal identity comparison remains available in the user's local reports. Generic public context-category names remain readable.
 
 Imported labels are data and escaped in Markdown/HTML. JSON embedded in HTML escapes script-breaking characters. Neither HTML nor normal collection fetches external resources. Account collection starts the owning CLI and requests only documented read methods; it does not read authentication files or consume a model turn.
 

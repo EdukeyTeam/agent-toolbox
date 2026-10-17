@@ -12,33 +12,33 @@ Create an original, publicly installable skill for developers, trainers and cour
 
 The skill produces a short chat answer, a detailed Markdown report, a portable JSON report and an attractive, self-contained HTML dashboard. Normal analysis works locally without model calls, credentials, a running server or a third-party chart service.
 
-## Decisions proposed for approval
+## Implementation decisions
 
-| Decision | Proposed behavior |
+| Decision | Behavior |
 | --- | --- |
 | Name | `agent-usage-analytics` |
 | Interface | A Python 3.11+ standard-library CLI, invoked by any agent that can run local scripts |
 | Storage | Content-free normalized JSON for interchange; an optional local SQLite ledger for repeated collection and quota snapshots |
 | Presentation | One offline HTML file with embedded data, CSS and SVG charts; matching Markdown tables and JSON |
 | Measurement | Every metric carries source, timestamp, scope and evidence quality: reported, reconstructed, estimated or unavailable |
-| Initial native adapters | Codex rollouts and session index; Claude JSONL; Copilot JSONL and supported SQL usage tables |
+| Initial native adapters | Codex rollouts; Claude JSONL; Copilot JSONL and supported SQL usage tables |
 | Additional sources | Grok Build signals and documented AGY JSON exports where their semantics are established; generic normalized imports for other tools |
 | Automation | Idempotent collection and snapshot commands, suitable for an existing scheduler; scheduling is documented, not installed automatically |
 | Privacy | Process transcript content locally; retain numeric measurements and safe identifiers, excluding raw prompts, responses, tool arguments/results and credentials from generated reports by default |
 
 ## Workflow 1: historical usage
 
-The user selects sources and a date range, such as a calendar month. Discovery lists supported data locations and coverage; it does not recursively scan the whole home directory. Custom roots support Windows, Linux, macOS, archives and several devices. A source manifest identifies device and account using user-supplied aliases rather than exposed account IDs.
+The user selects sources and a date range, such as a calendar month. Discovery lists supported data locations and coverage; it does not recursively scan the whole home directory. Custom roots support Windows, Linux, macOS, archives and several devices. Collection flags identify device and account using user-supplied aliases rather than exposed account IDs.
 
-Collection extracts provider usage and session metadata into a common representation. Reports show input, cache reads, cache writes, output, reasoning where available, request/session counts, cache hit rates, and API-equivalent cost. Views group by day, week, month, agent, model, session and explicit task category. Period comparisons use equally defined ranges and show missing coverage.
+Collection extracts provider usage and session metadata into a common representation. Reports show input, cache reads, cache writes, output, reasoning where available, request/session counts, cache hit rates, and API-equivalent cost. Views group by day, month, agent, model, session and explicit task category. Period comparisons use equally defined ranges and show missing coverage.
 
 Task categories come from explicit labels or a supplied mapping. Optional local heuristics must be marked inferred, retain an unclassified group, and never represent a guess as a measured task type. The skill may help interpret a sanitized summary; it must not send whole historical transcripts to a model to classify them.
 
-Tool and skill tables distinguish invocation counts, estimated visible content size, and request usage associated with those invocations. They must not claim that all tokens in a request were caused by its last tool or skill. Shared request usage is not counted again for every associated item.
+Tool and skill tables distinguish invocation counts and estimated visible content size from historical request usage. They must not claim that all tokens in a request were caused by its last tool or skill. Shared request usage is not counted again for every associated item.
 
 ## Workflow 2: a specific session and its context
 
-Resolve an explicit session ID or path first. For Codex, use the current-thread environment identifier when present; otherwise discover candidates scoped to the working directory and let the user select if ambiguous. Never silently choose the newest unrelated session. A report records the selected source and observation time, since an active session can grow after the report.
+Resolve an explicit session ID, optionally with a source file path. For Codex, use the current-thread environment identifier when present; otherwise require an explicit session ID. Never silently choose the newest unrelated session. A report records the selected source and observation time, since an active session can grow after the report.
 
 Display a Claude-style grid or stacked bar, latest observed context size/capacity, compaction boundaries and a category table. Candidate categories include instructions, skill catalog descriptions, loaded skills, tool schemas, MCP schemas, user messages, assistant messages, tool arguments/results, compaction summaries and unobservable overhead. A category may be unknown.
 
@@ -100,7 +100,7 @@ The chat response gives scope, measured totals, context/quota status where avail
 
 Markdown includes coverage, methodology, model/session/day/month tables, context categories, top tools/skills, quota observations, pricing provenance, anomalies and recommendations.
 
-HTML opens through `file://` without fetching scripts, fonts, chart libraries or data. It includes summary cards, time-series usage and cost charts, a context map, ranked contributor bars, quota observations, comparisons and filterable tables. All charts have numeric tables and accessible labels. Source/model/date filters operate on embedded data. It includes readable light/dark styling and a print layout. Text is escaped; imported labels cannot execute HTML or JavaScript.
+HTML opens through `file://` without fetching scripts, fonts, chart libraries or data. It includes summary cards, time-series usage and cost charts, a context map, ranked contributor bars, quota observations, comparisons and filterable tables. All charts have numeric tables and accessible labels. Agent/model/date filters operate on embedded request data; context and coverage retain the full report scope. It includes readable light/dark styling and a print layout. Text is escaped; imported labels cannot execute HTML or JavaScript.
 
 JSON contains the normalized metrics, source coverage, confidence, pricing references and report schema version. Generated artifacts are written to a user-selected local report directory, outside the skill installation. Real reports, source transcripts, local databases and credentials are never committed to the public repository. A synthetic example report demonstrates the layout.
 
@@ -131,3 +131,5 @@ Use a task feature branch and explicitly scoped commits. Publication must contai
 | 2026-10-17 | UA-005 | Initial design awaited confirmation | Proceed under user-authorized expert consultation and decision authority | User explicitly asked the agent to finish and validate the result |
 | 2026-10-17 | UA-006 | Source transition, context basis and pricing dimensions were underspecified | Record per-request tiered pricing, cache-write presence, metadata/response joins, replay baselines, provider-specific context and Windows CI | Verified Opus 5.5 and Argon 4 review findings |
 | 2026-10-17 | UA-007 | Hosted SQL and broad native adapters might imply universal support | Treat local schemas as observed contracts; hosted sources and AGY through explicit numeric exports; preserve unknown accounting | Expert feedback and local schema evidence |
+| 2026-10-17 | UA-008 | Alternative-source reconciliation occurred inside individual scans | Reconcile Copilot modes and cumulative AGY observations globally, including ledger reads; align parent/subagent scope and preserve evolving session metadata | Independent implementation review reproduced cross-import double counting |
+| 2026-10-17 | UA-009 | Share pseudonyms used public unsalted hashes | Use an unexported per-report salt, preserving generic category labels | Low-entropy metadata should not be recoverable by a simple dictionary |

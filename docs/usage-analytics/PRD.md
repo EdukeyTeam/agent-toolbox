@@ -26,7 +26,7 @@ Unreadable files, unsupported schemas and incomplete records appear in the cover
 
 ### Inspect one session
 
-The user provides a session ID or file. When supported, the system can resolve the current agent's session from its environment. If several sessions remain possible, it lists the candidates instead of choosing an unrelated newest session.
+The user provides a session ID and can narrow the source to a specific file. When supported, the system can resolve the current agent's session from its environment. If the current identity is unavailable, it requires an explicit session ID instead of choosing an unrelated newest session.
 
 The report shows lifetime processed usage separately from the latest observed context. It includes context capacity where available, compaction information, estimated visible content by category, and observed tool/skill contributors. Unknown system and schema overhead remain explicit. The user receives a short chat explanation and links to the detailed reports.
 
