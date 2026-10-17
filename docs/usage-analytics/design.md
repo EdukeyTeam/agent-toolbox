@@ -2,7 +2,7 @@
 
 Date: 2026-10-17
 
-Design approval: pending human confirmation under AGENTS.md HR-2.
+Design approval: the user's 2026-10-17 follow-up authorized independent expert reviews, documentation, design decisions, implementation and testing through completion. The [PRD](PRD.md), [accounting ADR](ADR-001-accounting-and-storage.md) and [review decisions](review-decisions.md) refine this initial design and take precedence.
 
 Canonical source: `skills/agent-usage-analytics/`. Execution ownership and progress belong in Beads, not this document. Research evidence is in [research.md](research.md).
 
@@ -128,3 +128,6 @@ Use a task feature branch and explicitly scoped commits. Publication must contai
 | 2026-10-17 | UA-001 | No usage/context analytics skill | Record the two workflows and shared offline reporting design | User's initial request |
 | 2026-10-17 | UA-002 | A simple cumulative-snapshot parser was a possible approach | Prefer native response usage; handle replay and cumulative snapshots explicitly | Current Codex schema and documented duplicate-counting failures |
 | 2026-10-17 | UA-003 | Quotas could be mistaken for fixed token budgets | Separate measured tokens, provider percentages and empirical calibration | Provider quotas depend on plan, bucket and workload |
+| 2026-10-17 | UA-005 | Initial design awaited confirmation | Proceed under user-authorized expert consultation and decision authority | User explicitly asked the agent to finish and validate the result |
+| 2026-10-17 | UA-006 | Source transition, context basis and pricing dimensions were underspecified | Record per-request tiered pricing, cache-write presence, metadata/response joins, replay baselines, provider-specific context and Windows CI | Verified Opus 5.5 and Argon 4 review findings |
+| 2026-10-17 | UA-007 | Hosted SQL and broad native adapters might imply universal support | Treat local schemas as observed contracts; hosted sources and AGY through explicit numeric exports; preserve unknown accounting | Expert feedback and local schema evidence |
