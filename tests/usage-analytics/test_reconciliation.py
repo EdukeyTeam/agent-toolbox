@@ -111,6 +111,11 @@ class Reconciliation(unittest.TestCase):
             self.assertEqual(report["local_rolling_usage"]["five_hour"]["input_tokens"], 200)
             self.assertEqual(report["comparison"]["previous"]["input_tokens"], 200)
             self.assertEqual([r["label"] for r in report["tasks"]], ["client-work"])
+            from usage_render import render_markdown
+            for context in report["contexts"]:
+                context["observed_at"] = T0 if context["session_id"] == parent else T3
+            markdown = render_markdown(report)
+            self.assertLess(markdown.index("### Session " + parent), markdown.index("### Session " + child))
 
     def test_fresh_legacy_spawn_starts_at_zero(self):
         path = self.write("spawn.jsonl", [meta(source={"subagent": {"thread_spawn": {"parent_thread_id": "parent"}}}),

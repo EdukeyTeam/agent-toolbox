@@ -317,9 +317,11 @@ def _context_md(report: dict) -> list[str]:
     if not contexts:
         return lines + ["No context observation is available in this report. Context is reported per "
                         "session from its latest measured request.", ""]
-    contexts.sort(key=lambda row: str(row.get("observed_at") or ""), reverse=True)
+    selected = (report.get("scope") or {}).get("session_id")
+    contexts.sort(key=lambda row: (bool(selected and row.get("session_id") == selected),
+                                    str(row.get("observed_at") or "")), reverse=True)
     lines += ["Context describes one session at its latest measured request. It is separate from "
-              "the processed historical totals above, which count every request.", ""]
+              "the processed historical totals elsewhere in this report, which count every request.", ""]
     for context in contexts[:10]:
         lines += _one_context_md(context)
     if len(contexts) > 10:

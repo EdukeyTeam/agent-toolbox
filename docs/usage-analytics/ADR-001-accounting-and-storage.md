@@ -79,7 +79,7 @@ Hosted Copilot SQL is an import recipe based on the host's available tool/schema
 
 ## Current context
 
-A context chart is anchored to the latest measured request, with its timestamp and basis. Codex's protocol uses input plus output for its last-request total; Claude's native status percentage uses input only. Provider percentage is preserved separately from computed raw occupancy. Any Codex display-baseline formula is explicitly a versioned estimate, not an observed provider percentage or a universal reserve.
+A context chart is anchored to the latest measured request, with its timestamp and basis. The selected session leads the Markdown context list, before related children; HTML defaults to that selected session as well. Codex's protocol uses input plus output for its last-request total; Claude's native status percentage uses input only. Provider percentage is preserved separately from computed raw occupancy. Any Codex display-baseline formula is explicitly a versioned estimate, not an observed provider percentage or a universal reserve.
 
 Reconstruct only recorded retained history. A Codex replacement history replaces the earlier content inventory. A compaction without a reconstructable replacement invalidates the inventory; after a compaction with no subsequent request, measured context is unavailable. Claude inventories start at a recorded compaction boundary and remain estimates.
 
