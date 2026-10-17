@@ -11,9 +11,12 @@
 | `{{DOCUMENTATION_LABEL}}`, `{{DOCUMENTATION_PATH}}` | One existing documentation entry point with a relative link. Otherwise remove; do not fabricate a PRD, ADR or design guide. |
 | `{{NONSTANDARD_LAYOUT_RULES}}` | Nonstandard roots and enduring consequences. Remove the entire Repository Layout section if there are none. |
 | `{{WEB_QA_METHOD}}` | Prefer the Playwright CLI, as in the source template. Verify availability and preserve an agreed project runner; use an equivalent only when established or approved by the user. Missing tooling blocks required QA. |
-| `{{DESKTOP_QA_METHOD}}` | Available computer-use tooling or Computer Commander/Command Commander MCP equivalent for real native windows. Do not assert an unavailable tool is installed. |
+| `{{DESKTOP_QA_METHOD}}` | Available native computer-use tooling (such as Computer Commander/Command Commander MCP equivalent) or established human verification on real windows. Do not assert an unavailable tool is installed. |
+| `{{SCREENSHOTS_PATH}}` | The agreed project-relative folder for changed-screen/state evidence, for example `docs/qa/screens`. Preserve an existing convention; agree a folder if absent. Do not invent an absolute machine path or capture private data. |
 
 No `{{...}}` may remain in a finished AGENTS.md. Read metadata to avoid fabricated commands but keep tool-specific commands out of always-loaded output. Do not change communication language, UI locale, brand, architecture or scope to match a sample.
+
+Keep the seven Manual QA steps at root: separate startup confirmation with isolated synthetic state; complete flows and actual persisted/output checks; real browser/native UI interaction; packaged launch when packaging changes; screenshots and log inspection; language/visual checks; and evidence with explicit incomplete status for unverified required checks. Resolve the QA method and screenshot folder without replacing this procedure with a single sentence. Actual launch commands, fixture setup and scenario-specific click sequences belong in skills.
 
 ## Root versus nested
 
@@ -27,7 +30,7 @@ Before keeping a sentence, finish: **Every agent in this scope must know this be
 
 ## Preserve mandatory policies
 
-At root retain the TDD sequence, missing-test-infrastructure requirement, real Manual QA, zero-mock E2E/Manual QA (including LLM connections) and freshly captured endpoint mocks for unit/integration, honest scoped verification, focused commits, no unrequested push and documentation maintenance. Keep TDD steps and core commit bullets word-for-word unless the user expressly changes them. Adapt domain wording/placeholders only after copying.
+At root retain the TDD sequence, missing-test-infrastructure requirement, seven-step real Manual QA procedure, zero-mock E2E/Manual QA (including LLM connections) and the explicit fresh-capture endpoint/database mock block for unit/integration, honest scoped verification, focused commits, no unrequested push and documentation maintenance. Keep the mock rationale, separate secret-free provenance, fresh capture despite existing fixtures and blocked creation/refresh without access. Keep TDD steps and core commit bullets word-for-word unless the user expressly changes them. Adapt domain wording/placeholders only after copying.
 
 Nested files inherit these policies: remove repetition instead of weakening them. Explicit user instructions take precedence over defaults.
 
