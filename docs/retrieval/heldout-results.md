@@ -11,6 +11,9 @@ Scoring uses the shipped `skills/legacy-codebase-workflows/scripts/eval_retrieva
 | New engine round 2, lexical Tier 0 (stdlib only) | 36.8% | 57.4% | 0.455 | 61% | 56% | 50% | 64% | 0.28 / 0.41 / 0.53 / 0.72 |
 | New engine round 2, lexical Tier 1 (tree-sitter) | 44.1% | 63.2% | 0.522 | 61% | 78% | 50% | 64% | 0.30 / 0.40 / 0.45 / 0.67 |
 | New engine round 2, hybrid (Model2Vec potion-code-16M-v2) | 48.5% | 70.6% | 0.573 | 72% | 83% | 67% | 57% | 1.57 / 1.60 / 1.73 / 2.53 |
+| Final (after review fixes), lexical Tier 0 | 36.8% | 57.4% | 0.457 | 61% | 56% | 50% | 64% | 0.35 / 0.42 / 0.54 / 1.00 |
+| Final, lexical Tier 1 | 44.1% | 63.2% | 0.522 | 61% | 78% | 50% | 64% | 0.33 / 0.38 / 0.45 / 0.75 |
+| Final, hybrid | 48.5% | 73.5% | 0.578 | 72% | 89% | 67% | 64% | 1.51 / 1.72 / 1.81 / 2.75 |
 
 Hit@5 by question kind (pooled over corpora):
 
@@ -21,5 +24,6 @@ Hit@5 by question kind (pooled over corpora):
 | Round 2 lexical Tier 0 | 15/15 | 9/18 | 2/11 | 4/8 | 5/8 | 4/8 |
 | Round 2 lexical Tier 1 | 15/15 | 9/18 | 2/11 | 6/8 | 5/8 | 6/8 |
 | Round 2 hybrid | 13/15 | 11/18 | 5/11 | 6/8 | 7/8 | 6/8 |
+| Final hybrid | 15/15 | 11/18 | 5/11 | 6/8 | 7/8 | 6/8 |
 
-What this shows: round 1 reached 76.6% hit@5 on the development set but only 50.0% held-out, so most of its gain was tuning to the development questions; round 2 added a second development set from another model family and re-checked every heuristic against both, which moved held-out lexical hit@5 to 57.4% (Tier 0) and 63.2% (Tier 1) with large latency gains. Hybrid search is the largest single improvement, especially for paraphrase and documentation questions, but it lost two exact-symbol hits, so exact symbol matches must keep priority in fusion. CLI hybrid latency includes loading the model in every process; a warm `serve` process avoids that. Small per-kind counts (8-18 questions) make differences of one or two questions noise; treat the direction, not the decimals, as the result.
+What this shows: round 1 reached 76.6% hit@5 on the development set but only 50.0% held-out, so most of its gain was tuning to the development questions; round 2 added a second development set from another model family and re-checked every heuristic against both, which moved held-out lexical hit@5 to 57.4% (Tier 0) and 63.2% (Tier 1) with large latency gains. Hybrid search is the largest single improvement, especially for paraphrase and documentation questions, but in round 2 it lost two exact-symbol hits; the final review-fix round keeps exact symbol and path hits ahead of dense-only candidates, which restored 15/15 and lifted hybrid to 73.5%. The final runs reuse the round-2 indexes (query-side changes only), so chunking fixes from the review round are not reflected in these numbers. CLI hybrid latency includes loading the model in every process; a warm `serve` process avoids that. Small per-kind counts (8-18 questions) make differences of one or two questions noise; treat the direction, not the decimals, as the result.
