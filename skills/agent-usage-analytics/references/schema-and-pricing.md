@@ -41,3 +41,5 @@ Supply a UTF-8 `--attribution-map` with explicit routes:
 ```
 
 An `agent:*` key is an explicit fallback for that agent in the selected input. A specific session entry wins. The provider-only example retains the original label but leaves its effective model unknown. Confirm the model used at that time; do not assume an Opus label, or today's GLM routing, establishes it. Optional confirmed `speed`, `service_tier` and `inference_geo` can correct proxy-exposed billing labels as well. The bundled Z.ai GLM-5.3 and GLM-5.3-Flash entries are API reference prices, distinct from Coding Plan credits. Cache storage/service fees outside token counters are excluded.
+
+Quota `provider` is independent of the serving-model route. Include a confirmed provider on normalized quota exports when available. A model attribution map never relabels account quota observations. Calibration rejects confirmed routed requests against an unknown or different provider, and charts keep providers in separate series.

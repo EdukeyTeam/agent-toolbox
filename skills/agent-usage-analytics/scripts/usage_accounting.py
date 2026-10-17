@@ -302,11 +302,11 @@ def quota_analysis(quotas: list[dict[str, Any]], requests: list[dict[str, Any]],
     grouped: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
     for quota in quotas:
         grouped[(quota.get("agent"), quota.get("account"), quota.get("bucket"), quota.get("resets_at"),
-                 quota.get("window_minutes"))].append(quota)
+                 quota.get("window_minutes"), quota.get("provider"))].append(quota)
     result = []
-    for (agent, account, bucket, reset, duration), rows in grouped.items():
+    for (agent, account, bucket, reset, duration, provider), rows in grouped.items():
         rows = sorted(rows, key=lambda q: q.get("observed_at") or "")
-        item = {"agent": agent, "account": account, "bucket": bucket, "resets_at": reset,
+        item = {"agent": agent, "account": account, "bucket": bucket, "resets_at": reset, "provider": provider,
                 "window_minutes": duration, "samples": len(rows), "status": "unavailable",
                 "tokens_per_point": None, "cost_per_point": None}
         reason = "Declare complete device/cloud coverage to attempt empirical calibration."
@@ -321,6 +321,7 @@ def quota_analysis(quotas: list[dict[str, Any]], requests: list[dict[str, Any]],
                     relevant = [r for r in requests if r.get("agent") == agent and r.get("account", "local") == account
                                 and r.get("timestamp") and valid[0]["observed_at"] < r["timestamp"] <= valid[-1]["observed_at"]]
                     mix = {(r.get("model"), r.get("speed"), r.get("service_tier"), r.get("provider")) for r in relevant}
+                    routes = {r.get("provider") for r in relevant if r.get("provider")}
                     if duration:
                         start = datetime.fromisoformat(valid[0]["observed_at"].replace("Z", "+00:00")) - timedelta(minutes=duration)
                         end = datetime.fromisoformat(valid[-1]["observed_at"].replace("Z", "+00:00")) - timedelta(minutes=duration)
@@ -328,7 +329,9 @@ def quota_analysis(quotas: list[dict[str, Any]], requests: list[dict[str, Any]],
                                     timestamp(start.isoformat()) < r["timestamp"] <= timestamp(end.isoformat()) for r in requests)
                     else:
                         aging = True
-                    if len(mix) != 1 or not relevant or aging or any(r.get("input_tokens") is None or r.get("output_tokens") is None for r in relevant):
+                    if routes and routes != {provider}:
+                        reason = "Quota provider is unknown or differs from the confirmed serving route."
+                    elif len(mix) != 1 or not relevant or aging or any(r.get("input_tokens") is None or r.get("output_tokens") is None for r in relevant):
                         reason = "Mixed models/speeds, aging usage or incomplete measurements prevent calibration."
                     else:
                         span = percentages[-1] - percentages[0]

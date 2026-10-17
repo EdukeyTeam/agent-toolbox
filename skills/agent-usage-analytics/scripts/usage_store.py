@@ -26,6 +26,7 @@ RECONCILIATION_FIELDS = "native_total_input_tokens native_total_output_tokens le
 FIELDS["usage"] += " " + RECONCILIATION_FIELDS
 FIELDS["usage"] += " provider reported_model model_attribution"
 FIELDS["contexts"] += " provider reported_model model_attribution"
+FIELDS["quotas"] += " provider"
 NUMERIC.update(RECONCILIATION_FIELDS.split())
 TIMES = {"timestamp", "observed_at", "resets_at", "start", "end", "cumulative_observed_at"}
 BOOLEANS = {"cache_write_reported", "model_inferred", "post_compaction_pending_turn"}

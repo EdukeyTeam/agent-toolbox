@@ -438,12 +438,12 @@ def _quotas_md(report: dict) -> list[str]:
              "from local token totals and are not converted into tokens.", ""]
     quotas = _rows(report.get("quotas"))
     if quotas:
-        body = [[md(row.get("agent")), md(row.get("account")), md(row.get("bucket")),
+        body = [[md(row.get("agent")), md(row.get("provider")), md(row.get("account")), md(row.get("bucket")),
                  fmt_duration(row.get("window_minutes")), fmt_time(row.get("resets_at")),
                  fmt_pct(row.get("used_percent")), fmt_time(row.get("observed_at"))]
                 for row in sorted(quotas, key=lambda row: (str(row.get("agent")), str(row.get("bucket")),
                                                            str(row.get("observed_at") or "")))]
-        lines += table(["Agent", "Account", "Bucket", "Window", "Resets at", "Used", "Observed at"], body, {5})
+        lines += table(["Agent", "Provider", "Account", "Bucket", "Window", "Resets at", "Used", "Observed at"], body, {6})
     else:
         lines += ["No quota observations are available. Record them from the owning agent's status "
                   "interface or a numeric import.", ""]

@@ -905,7 +905,7 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
     } else {
       var latest = new Map();
       quotas.forEach(function (q) {
-        var key = [text(q.agent), text(q.account), text(q.bucket)].join('\u0000');
+        var key = [text(q.agent), text(q.provider), text(q.account), text(q.bucket)].join('\u0000');
         var prev = latest.get(key);
         if (!prev || String(q.observed_at || '') > String(prev.observed_at || '')) latest.set(key, q);
       });
@@ -914,7 +914,7 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
         var level = p === null ? '' : (p >= 90 ? ' high' : (p >= 70 ? ' mid' : ''));
         var label = text(q.agent) + ' ' + text(q.bucket) + ': ' + (p === null ? 'usage unknown' : fmtPct(p) + ' used');
         return el('div', { class: 'card quota' + level },
-          el('p', { class: 'quota-title', text: text(q.agent) + ' - ' + text(q.bucket) }),
+          el('p', { class: 'quota-title', text: text(q.agent) + ' / ' + text(q.provider) + ' - ' + text(q.bucket) }),
           el('p', { class: 'quota-sub', text: 'Account ' + text(q.account) + ' - window ' + fmtDuration(q.window_minutes) }),
           meter(p, label),
           el('p', { class: 'quota-value', text: p === null ? 'Used: Unknown' : fmtPct(p) + ' used' }),
@@ -923,6 +923,7 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
       })));
       body.appendChild(dataTable('All quota observations', [
         { label: 'Agent', value: function (r) { return text(r.agent); } },
+        { label: 'Provider', value: function (r) { return text(r.provider); } },
         { label: 'Account', value: function (r) { return text(r.account); } },
         { label: 'Bucket', value: function (r) { return text(r.bucket); } },
         { label: 'Window', value: function (r) { return fmtDuration(r.window_minutes); } },

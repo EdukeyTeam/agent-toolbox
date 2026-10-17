@@ -68,6 +68,18 @@ class Attribution(unittest.TestCase):
                         {"claude:routed": {"provider": "zai", "credentials": "PRIVATE-CANARY"}}):
             with self.assertRaises(ValueError):apply_attribution(self.data(), invalid)
 
+    def test_routed_tokens_cannot_calibrate_a_different_or_unknown_quota_provider(self):
+        from usage_accounting import quota_analysis
+        quotas = [{"agent": "claude", "provider": "anthropic", "account": "local", "bucket": "weekly", "window_minutes": 10080,
+                   "resets_at": "2026-10-08T00:00:00.000Z", "used_percent": 2 * i,
+                   "observed_at": f"2026-10-01T12:0{i}:00.000Z"} for i in range(5)]
+        rows = [request(id=str(i), provider="zai", model="glm-5.3", timestamp=f"2026-10-01T12:0{i}:00.000Z") for i in range(1, 5)]
+        self.assertEqual(quota_analysis(quotas, rows, True)[0]["status"], "unavailable")
+        for q in quotas:q["provider"] = None
+        self.assertEqual(quota_analysis(quotas, rows, True)[0]["status"], "unavailable")
+        for q in quotas:q["provider"] = "zai"
+        self.assertEqual(quota_analysis(quotas, rows, True)[0]["status"], "experimental")
+
     def test_cli_attribution_and_existing_ledger_update(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
