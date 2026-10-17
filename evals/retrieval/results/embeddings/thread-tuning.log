@@ -1,0 +1,7 @@
+TUNE {'threads': 1, 'load_seconds': 1.5016626069991617, 'batch16_seconds': 25.430460331001086}
+TUNE {'threads': 2, 'load_seconds': 0.6431805019965395, 'batch16_seconds': 8.404677818005439}
+TUNE {'threads': 4, 'load_seconds': 0.22617160000663716, 'batch16_seconds': 4.876194103999296}
+TUNE {'threads': 7, 'load_seconds': 0.3306270009925356, 'batch16_seconds': 5.765715415996965}
+
+TUNE-EXIT 0
+LOG-EXIT 0

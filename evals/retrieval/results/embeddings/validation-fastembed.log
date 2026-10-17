@@ -1,0 +1,39 @@
+test_invalid_configuration (test_legacy_embed.ConfigTests.test_invalid_configuration) ... ok
+test_loopback_spelling_and_invalid_urls (test_legacy_embed.ConfigTests.test_loopback_spelling_and_invalid_urls) ... ok
+test_none_and_environment_preserve_consent (test_legacy_embed.ConfigTests.test_none_and_environment_preserve_consent) ... ok
+test_remote_consent_before_network (test_legacy_embed.ConfigTests.test_remote_consent_before_network) ... ok
+test_batches_order_normalization_truncation_and_empty (test_legacy_embed.HTTPTests.test_batches_order_normalization_truncation_and_empty) ... ok
+test_dimension_changes_fail (test_legacy_embed.HTTPTests.test_dimension_changes_fail) ... ok
+test_error_bodies_and_transport_details_never_exposed (test_legacy_embed.HTTPTests.test_error_bodies_and_transport_details_never_exposed) ... ok
+test_localhost_resolution_must_stay_local (test_legacy_embed.HTTPTests.test_localhost_resolution_must_stay_local) ... ok
+test_malformed_vectors_and_indexes (test_legacy_embed.HTTPTests.test_malformed_vectors_and_indexes) ... ok
+test_no_ambient_proxy_and_auth_name_only (test_legacy_embed.HTTPTests.test_no_ambient_proxy_and_auth_name_only) ... ok
+test_nomic_task_prefixes_are_asymmetric_and_bounded (test_legacy_embed.HTTPTests.test_nomic_task_prefixes_are_asymmetric_and_bounded) ... ok
+test_redirects_are_refused (test_legacy_embed.HTTPTests.test_redirects_are_refused) ... ok
+test_request_and_response_limits (test_legacy_embed.HTTPTests.test_request_and_response_limits) ... ok
+test_blocked_pipe_write_is_timed_out_and_reaped (test_legacy_embed.JSTests.test_blocked_pipe_write_is_timed_out_and_reaped) ... ok
+test_invalid_helper_output_reaps_process (test_legacy_embed.JSTests.test_invalid_helper_output_reaps_process) ... ok
+test_persistent_worker_batches_sanitized_environment_and_close (test_legacy_embed.JSTests.test_persistent_worker_batches_sanitized_environment_and_close) ... ok
+test_timeout_reaps_helper (test_legacy_embed.JSTests.test_timeout_reaps_helper) ... ok
+test_download_uses_exact_revision_and_manifest_only (test_legacy_embed.LocalTests.test_download_uses_exact_revision_and_manifest_only) ... ok
+test_fastembed_offline_contract_telemetry_and_task_methods (test_legacy_embed.LocalTests.test_fastembed_offline_contract_telemetry_and_task_methods) ... ok
+test_incomplete_manual_files_never_download (test_legacy_embed.LocalTests.test_incomplete_manual_files_never_download) ... ok
+test_local_path_no_network_manifest_and_queries (test_legacy_embed.LocalTests.test_local_path_no_network_manifest_and_queries) ... ok
+test_missing_cache_requires_consent_and_download_requires_pin (test_legacy_embed.LocalTests.test_missing_cache_requires_consent_and_download_requires_pin) ... ok
+test_real_fastembed_offline (test_legacy_embed.LocalTests.test_real_fastembed_offline) ... ok
+test_real_model2vec_offline (test_legacy_embed.LocalTests.test_real_model2vec_offline) ... skipped 'set LEGACY_TEST_POTION_DIR to test real offline model'
+test_float32_little_endian_roundtrip (test_legacy_embed.VectorTests.test_float32_little_endian_roundtrip) ... ok
+test_normalization_validation (test_legacy_embed.VectorTests.test_normalization_validation) ... ok
+test_numpy_matches_float64_oracle_across_batches (test_legacy_embed.VectorTests.test_numpy_matches_float64_oracle_across_batches) ... ok
+test_sqlite_vec_matches_float64_oracle_across_batches (test_legacy_embed.VectorTests.test_sqlite_vec_matches_float64_oracle_across_batches) ... ok
+test_stdlib_does_not_import_optional_runtimes (test_legacy_embed.VectorTests.test_stdlib_does_not_import_optional_runtimes) ... ok
+test_stdlib_matches_float64_oracle_across_batches (test_legacy_embed.VectorTests.test_stdlib_matches_float64_oracle_across_batches) ... ok
+test_top_k_validation_and_ties (test_legacy_embed.VectorTests.test_top_k_validation_and_ties) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 4.063s
+
+OK (skipped=1)
+
+VALIDATION-EXIT fastembed 0
+LOG-EXIT 0
