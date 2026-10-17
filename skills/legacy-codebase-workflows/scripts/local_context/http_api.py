@@ -11,7 +11,7 @@ from . import assemble, engine, store
 from .units import RetrievalError
 
 HTTP_SQLITE_TIMEOUT = 1.
-MAX_REQUEST = 2048
+MAX_REQUEST = 16 * 1024
 
 
 def valid_authority(authority, expected_port, *, origin=False):
@@ -56,8 +56,8 @@ def serve(database, host="127.0.0.1", port=8765, default_mode="lexical", default
             self.wfile.write(raw)
         def do_GET(self):
             try:
-                if len(self.path)>MAX_REQUEST:
-                    raise RetrievalError("Request target exceeds 2048 characters", "request_too_large",413)
+                if len(self.path.encode("utf-8"))>MAX_REQUEST:
+                    raise RetrievalError("Request target exceeds the server limit of 16 KiB; shorten the URL", "request_too_large",413)
                 if len(self.headers.get_all("Host",[]))!=1 or not valid_authority(self.headers.get("Host"),self.server.server_port) or (self.headers.get("Origin") and not valid_authority(self.headers["Origin"],self.server.server_port,origin=True)):
                     raise RetrievalError("Only local loopback authority is allowed", "loopback_required",403)
                 parsed = urlsplit(self.path)

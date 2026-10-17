@@ -32,7 +32,7 @@ def main(argv=None):
             for flag in ("embed-model","model-revision","embed-provider","embed-base-url","embed-api-key-env","reranker-model","reranker-revision"):
                 cmd.add_argument("--"+flag)
             for flag in ("model-cache","embedding-runtime","model-dir"):
-                cmd.add_argument("--"+flag,type=Path)
+                cmd.add_argument(*(["--model-cache", "--cache-dir"] if flag == "model-cache" else ["--"+flag]), dest=flag.replace("-", "_"), type=Path)
             for flag in ("download-model","allow-remote-embeddings"):
                 cmd.add_argument("--"+flag,action="store_true")
             cmd.add_argument("--vector-engine",default="stdlib")

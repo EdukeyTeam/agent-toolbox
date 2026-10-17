@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -17,7 +18,7 @@ from urllib.request import Request, urlopen
 SCRIPTS=Path(__file__).resolve().parents[1]/"skills/legacy-codebase-workflows/scripts"
 sys.path.insert(0,str(SCRIPTS))
 import context7_backend as backend
-from local_context import http_api,store
+from local_context import http_api,store,engine,freshness
 from local_context.units import RetrievalError,estimate
 
 
@@ -97,7 +98,7 @@ class HTTPTests(unittest.TestCase):
         for host in (f"localhost:{self.server.server_port}",f"127.0.0.1:{self.server.server_port}"):
             self.assertEqual(self.get(headers={"Host":host},libraryId="/local/demo",query="retry")[0],200)
     def test_duplicate_parameters_malformed_type_and_size(self):
-        for suffix,expected in (("?libraryId=/local/demo&query=x&query=y",400),("?libraryId=/local/demo&query=x&type=broken",400),("?"+"x"*2050,413)):
+        for suffix,expected in (("?libraryId=/local/demo&query=x&query=y",400),("?libraryId=/local/demo&query=x&type=broken",400),("?"+"x"*16385,413)):
             request=Request(self.url+"/api/v2/context"+suffix)
             with self.assertRaises(HTTPError) as raised:
                 urlopen(request,timeout=5)
@@ -130,6 +131,37 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(status,404)
         self.assertIn("error",payload)
         self.assertEqual(payload["codeSnippets"],[])
+    def test_long_request_and_warm_hybrid_provider_lifecycle(self):
+        class Provider:
+            identity={"provider":"fake","model":"warm-test","dimension":2}
+            truncated=0
+            calls=0
+            closed=False
+            def embed_documents(self,texts):return [[1.,0.] for _ in texts]
+            def embed_query(self,text):
+                self.calls+=1
+                return [1.,0.]
+            def close(self):self.closed=True
+        indexer=Provider()
+        with mock.patch.object(freshness,"provider_for",return_value=indexer):
+            freshness.index(self.root,self.db,"/local/demo",self.docs,parser="0",_saved={"provider":"fake"})
+        provider=Provider()
+        with mock.patch.object(engine,"provider_for",return_value=provider) as loader:
+            for _ in range(2):
+                status,payload=self.get(libraryId="/local/demo",query="retry_transfer "+"transfer "*100,mode="hybrid",vectorEngine="stdlib")
+                self.assertEqual(status,200)
+                self.assertTrue(payload["codeSnippets"])
+                with store.connect(self.db) as con:
+                    embedded=json.loads(store.library(con)["embedding_json"])
+                    embedded["truncated"]=999
+                    embedded["consent"]["recordedAt"]="republished-metadata"
+                    con.execute("UPDATE libraries SET embedding_json=?",(json.dumps(embedded),))
+            self.assertEqual(loader.call_count,1)
+            self.assertEqual(provider.calls,2)
+            self.assertFalse(provider.closed)
+            self.stop()
+            self.assertTrue(provider.closed)
+
     def test_nonloopback_binding_and_bad_defaults_fail_before_bind(self):
         for options in ({"host":"0.0.0.0"},{"default_rerank":"cross-encoder"},{"tokens":1}):
             with self.assertRaises(RetrievalError):

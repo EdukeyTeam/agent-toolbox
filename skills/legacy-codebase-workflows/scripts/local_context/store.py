@@ -8,7 +8,7 @@ import re
 import sqlite3
 import uuid
 from .units import INDEX_VERSION, RetrievalError, canonical, digest, estimate
-from .symbols import searchable_tokens, words, stem
+from .symbols import searchable_tokens, words, stem, properties_shadow
 
 SCHEMA = """
 CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
@@ -56,7 +56,15 @@ def fts_name(library_id):
 def create_library_fts(con, library_id):
     name = fts_name(library_id)
     try:
-        con.execute(f"CREATE VIRTUAL TABLE IF NOT EXISTS {name} USING fts5(title_symbols,identifier_tokens,path_tokens,body,stemmed,tokenize='unicode61')")
+        old = con.execute("SELECT sql FROM sqlite_master WHERE name=?", (name,)).fetchone()
+        migrate = bool(old and "tokenchars" not in old[0])
+        if migrate:
+            con.execute(f"CREATE TEMP TABLE {name}_saved AS SELECT rowid AS id,* FROM {name}")
+            con.execute(f"DROP TABLE {name}")
+        con.execute(f"CREATE VIRTUAL TABLE IF NOT EXISTS {name} USING fts5(title_symbols,identifier_tokens,path_tokens,body,stemmed,tokenize=\"unicode61 remove_diacritics 2 tokenchars '_'\")")
+        if migrate:
+            con.execute(f"INSERT INTO {name}(rowid,title_symbols,identifier_tokens,path_tokens,body,stemmed) SELECT id,title_symbols,identifier_tokens,path_tokens,body,stemmed FROM {name}_saved")
+            con.execute(f"DROP TABLE {name}_saved")
     except sqlite3.OperationalError as exc:
         raise RetrievalError("SQLite FTS5 unavailable; use a Python runtime compiled with FTS5", "fts5_unavailable", 503) from exc
 
@@ -87,12 +95,15 @@ def initialize(con):
     existing = con.execute("SELECT name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
     if existing:
         validate(con)
-        return
-    for statement in SCHEMA.split(";"):
-        if statement.strip():
-            con.execute(statement)
-    con.execute("PRAGMA user_version=8")
-    con.executemany("INSERT INTO meta VALUES(?,?)", [("index_version", INDEX_VERSION), ("database_uuid", uuid.uuid4().hex), ("schema_fingerprint", digest(SCHEMA.encode()))])
+    else:
+        for statement in SCHEMA.split(";"):
+            if statement.strip():
+                con.execute(statement)
+        con.execute("PRAGMA user_version=8")
+        con.executemany("INSERT INTO meta VALUES(?,?)", [("index_version", INDEX_VERSION), ("database_uuid", uuid.uuid4().hex), ("schema_fingerprint", digest(SCHEMA.encode()))])
+    # An auxiliary performance index, safe to add to existing format-8 stores.
+    # Without it every ON DELETE parent cascade scans the entire units table.
+    con.execute("CREATE INDEX IF NOT EXISTS units_parent ON units(parent_unit_id)")
 
 
 LIBRARY_COLUMNS = "id,title,description,kind,roots_json,scope_json,parser_json,embedding_json,reranker_json,generation,corpus_hash,indexed_at,refreshed_at"
@@ -196,7 +207,11 @@ def insert_units(con, library_id, root_id, file_id, path, file_hash, drafts, fin
         if unit.searchable and not duplicate:
             body = unit.header + "\n" + unit.description + "\n" + (unit.text or "")
             title = " ".join([unit.title, *unit.breadcrumb, *(d.qualified + " " + d.signature for d in unit.definitions)]) if not unit.redacted else "Redacted source content"
-            split = searchable_tokens(body) if not unit.redacted else ""
+            searchable = body
+            if unit.language == "properties" and not unit.redacted:
+                # Search shadow only: source text and cited line offsets stay raw.
+                searchable = properties_shadow(searchable)
+            split = searchable_tokens(searchable) if not unit.redacted else ""
             shadow = " ".join(stem(w) for w in words(split)) if not unit.redacted else ""
             con.execute(f"INSERT INTO {name}(rowid,title_symbols,identifier_tokens,path_tokens,body,stemmed) VALUES(?,?,?,?,?,?)", (unit_id,title,split,path + " " + searchable_tokens(path),body if not unit.redacted else "Redacted source content",shadow))
         for d in unit.definitions:

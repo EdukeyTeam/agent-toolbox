@@ -157,10 +157,12 @@ class CommandAdapter:
 
 class Context7BackendAdapter:
     def __init__(self, database: Path, backend: Path, mode: str = "lexical", rerank: str | None = None,
-                 corpus_root: Path | None = None, timeout: float = 120):
+                 corpus_root: Path | None = None, timeout: float = 120, vector_engine: str | None = None):
         self.argv = [sys.executable, str(backend.resolve()), "query", "--database", str(database.resolve()), "--mode", mode]
         if rerank:
             self.argv += ["--rerank", rerank]
+        if vector_engine:
+            self.argv += ["--vector-engine", vector_engine]
         self.timeout = timeout
         # Read provenance roots once. Backend query still performs all freshness checks.
         with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as con:
@@ -314,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corpus-root", type=Path, help="Original corpus root when indexing a subtree; normalizes citations")
     parser.add_argument("--mode", choices=("lexical", "semantic", "hybrid"), default="lexical")
     parser.add_argument("--rerank", choices=("lexical-symbol", "cross-encoder"))
+    parser.add_argument("--vector-engine", choices=("auto", "stdlib", "numpy", "sqlite-vec"), help="Context7 adapter exact vector scanner")
     command = parser.add_mutually_exclusive_group()
     command.add_argument("--command", help="shlex-split argv template; never interpreted by a shell")
     command.add_argument("--command-json", help="JSON argv array template (recommended on Windows)")
@@ -339,7 +342,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("context7-backend requires --database")
             if len({question['corpus'] for question in questions}) != 1:
                 raise ValueError("one backend database can evaluate only one corpus at a time")
-            adapter = Context7BackendAdapter(args.database, args.backend, args.mode, args.rerank, args.corpus_root, args.timeout)
+            adapter = Context7BackendAdapter(args.database, args.backend, args.mode, args.rerank, args.corpus_root, args.timeout, args.vector_engine)
         report = evaluate(questions, adapter, list(dict.fromkeys(args.budgets)))
         report["configuration"] = {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()}
         for path in (args.json_output, args.markdown_output):

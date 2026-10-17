@@ -183,9 +183,22 @@ def syntax_definitions(text: str, language: str, target=1500):
                 result.append(Definition(start, end, name, ".".join((*scope, name)), signature, scope, "\n".join(leading)))
                 child_scope = (*scope, name)
             stack.extend((child, child_scope) for child in reversed(node.named_children))
-        if len(error_lines) > max(1, len(lines)) * .2:
-            return None, (), "parse-error-over-20-percent"
-        return result, cuts, None
+        if error_lines:
+            # Generic recognition is restricted to contiguous ERROR spans; valid
+            # syntax definitions remain authoritative everywhere else.
+            spans = []
+            for number in sorted(error_lines):
+                if spans and number == spans[-1][1] + 1:
+                    spans[-1] = (spans[-1][0], number)
+                else:
+                    spans.append((number, number))
+            result = [d for d in result if not any(a <= d.start <= b for a,b in spans)]
+            for a,b in spans:
+                cuts.update((a,b+1))
+                partial = "\n".join(lines[a-1:b])
+                for d in generic_definitions(partial, language):
+                    result.append(replace(d, start=d.start+a-1, end=min(b,d.end+a-1)))
+        return result, cuts, "error-span-fallback" if error_lines else None
     except (ImportError, OSError, LookupError, ValueError, TypeError, RuntimeError, RecursionError):
         return None, (), "grammar-unavailable-or-failed"
 
@@ -196,11 +209,12 @@ def code_units(text: str, path: str, language: str, target=1500, tier="0", kind=
         return [], None
     definitions = [] if kind == "config" or language == "text" else python_definitions(text) if language == "python" else generic_definitions(text, language)
     fallback, syntax_cuts = None, ()
-    if tier == "1":
+    if tier == "1" and language != "sql":
         parsed, syntax_cuts, fallback = syntax_definitions(text, language,target)
-        if parsed:
-            # Stdlib AST supplies Python docstrings, missing from generic nodes.
-            if language != "python":
+        if parsed is not None:
+            # Prefer complete stdlib Python AST metadata when available, but
+            # keep valid syntax nodes when an ERROR prevents ast.parse().
+            if language != "python" or not definitions:
                 definitions = parsed
     definitions.sort(key=lambda d:(d.start, -d.end, d.name))
     boundaries = {1, len(lines) + 1}

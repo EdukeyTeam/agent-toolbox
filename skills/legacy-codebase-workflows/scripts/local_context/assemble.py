@@ -106,6 +106,29 @@ def excerpt(item, chars, question):
     return {**item,"text":"\n".join(lines[first:last+1]),"source":source,"excerpt":True,"description":item["description"]+" [Whole-line excerpt; use expand for more.]"}
 
 
+def candidate_window(ranked, maximum):
+    """Apply evidence diversity before bounded live-source verification.
+
+    A class can contribute hundreds of sibling units. Taking a raw prefix
+    before the per-file cap can otherwise hide every other component.
+    """
+    selected, per_file = [], {}
+    for row in ranked:
+        key = (row["root_id"], row["path"])
+        if per_file.get(key, 0) >= 3:
+            continue
+        if any(key == (old["root_id"], old["path"]) and row["cell_index"] == old["cell_index"] and
+               max(0, min(row["end_line"], old["end_line"]) - max(row["start_line"], old["start_line"]) + 1) >=
+               .8 * min(row["end_line"] - row["start_line"] + 1, old["end_line"] - old["start_line"] + 1)
+               for old in selected):
+            continue
+        selected.append(row)
+        per_file[key] = per_file.get(key, 0) + 1
+        if len(selected) >= maximum:
+            break
+    return selected
+
+
 def pack(items, library, mode, rerank, vector_engine, limit, tokens, question, changed=(), unavailable=0):
     if tokens is not None and not 256 <= tokens <= 32000:
         raise RetrievalError("Token budget must be 256..32000")

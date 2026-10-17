@@ -10,7 +10,7 @@ from . import assemble, search, store
 from .decode import read_source, secret_spans
 from .discover import revision, safe_path
 from .freshness import provider_for, refresh
-from .units import EMPTY, RetrievalError, estimate
+from .units import EMPTY, RetrievalError, estimate, canonical
 
 
 def database_path(con):
@@ -18,8 +18,8 @@ def database_path(con):
 
 
 def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=None, *, library_id=None, kind=None, language=None, tokens=None, refresh_policy="auto", provider_cache=None, ablations=(), explain=False, _restart=False):
-    if not isinstance(question,str) or not question.strip() or len(question)>500:
-        raise RetrievalError("Query must contain 1-500 characters")
+    if not isinstance(question,str) or not question.strip() or len(question)>8000:
+        raise RetrievalError("Query must contain 1-8000 characters")
     if mode not in {"lexical","semantic","hybrid"} or rerank not in {None,"lexical-symbol"}:
         raise RetrievalError("Cross-encoder is not supported in v1; use hybrid" if rerank=="cross-encoder" else "Unknown mode or reranker")
     if not 1 <= limit <= 50 or refresh_policy not in {"auto","off","strict"} or kind not in {None,"code","docs"}:
@@ -39,15 +39,22 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
                 if config.get("provider","none") == "none":
                     raise RetrievalError("Embeddings are disabled for this library; use lexical", "model_unavailable",503)
                 if provider_cache is not None:
-                    identity = lib["id"]+"/"+lib["embedding_json"]
+                    prefix = lib["id"] + "/"
+                    identity = prefix + canonical({"config":config, "identity":embedded.get("identity")})
                     if identity not in provider_cache:
                         provider_cache[identity] = provider_for(config)
+                        # Publication timestamps and truncation counters do not
+                        # reload a warm model. A real identity/config change
+                        # replaces and closes only this library's old provider.
+                        for old_key in list(provider_cache):
+                            if old_key.startswith(prefix) and old_key != identity:
+                                provider_cache.pop(old_key).close()
                     provider = provider_cache[identity]
                 else:
                     provider,owned_provider = provider_for(config),True
             ranked,used_engine = search.candidates(con,lib,question,mode,vector_engine,kind,language,provider,ablations)
             # Bounded overfetch: no corpus inventory/stat sweep during a query.
-            candidates = ranked[:max(20,limit*3)]
+            candidates = assemble.candidate_window(ranked, max(20,limit*3))
             items,changed,unavailable = assemble.verify(candidates,lib,refresh_policy)
             current_revisions,revision_cache = {},{}
             for root in json.loads(lib["roots_json"]):

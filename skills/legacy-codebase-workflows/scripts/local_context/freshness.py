@@ -74,7 +74,7 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
     config = _saved if _saved is not None else embedding_config(embed_model, model_revision, model_cache, embedding_runtime, **kwargs)
     scope = {"excludes":list(excludes), "includes":list(includes), "encodings":list(encodings), "no_secret_scan":no_secret_scan, "chunk_chars":chunk_chars, "max_file_bytes":max_file_bytes, "discovery_limit":discovery_limit, "max_files":max_files, "max_units":max_units, "vector_engine":vector_engine, "parser":parser}
     tier = parser_tier(parser)
-    parser_config = {"version":6, "tier":tier, "chunk_chars":chunk_chars, "encodings":list(encodings), "scan":not no_secret_scan}
+    parser_config = {"version":8, "tier":tier, "chunk_chars":chunk_chars, "encodings":list(encodings), "scan":not no_secret_scan}
     fingerprint = digest(canonical(parser_config).encode())
     if database.exists():
         with store.connect(database) as check:
@@ -157,7 +157,11 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
                     metadata_only += 1
                     actions.append({"rootId":owner.id,"path":rel,"action":"metadata-only"})
                     continue
-                drafts, fallback = chunk_file(decoded.text,rel,language,fmt,chunk_chars,tier,not no_secret_scan)
+                large = stat.st_size > max_file_bytes
+                drafts, fallback = chunk_file(decoded.text,rel,"text" if large else language,"code" if large else fmt,chunk_chars,"0" if large else tier,not no_secret_scan)
+                if large:
+                    fallback = "large-file-window-split"
+                    drafts = [replace(u, language=language) for u in drafts]
                 status = "redacted" if any(u.redacted for u in drafts) else "indexed"
             except RetrievalError as exc:
                 status = "binary" if exc.code == "binary" else "unreadable" if exc.code == "source_unreadable" else "skipped"
@@ -169,8 +173,11 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
                 added += 1
             action = "changed" if previous else "added"
             actions.append({"rootId":owner.id,"path":rel,"action":action,"status":status})
-            file_tier = tier if decoded is not None and fmt == "code" and language != "text" and not fallback else "0"
-            file_id = con.execute("INSERT INTO files(library_id,root_id,kind,path,hash,size,mtime_ns,encoding,language,format,status,status_reason,parser_tier,parser_fingerprint,embedding_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(library_id,owner.id,kind,rel,decoded.sha256 if decoded else None,stat.st_size,stat.st_mtime_ns,decoded.encoding if decoded else None,language,fmt,status,reason or fallback,file_tier,fingerprint,"complete" if embedding_enabled else "disabled")).lastrowid
+            file_tier = tier if decoded is not None and fmt == "code" and language not in {"text", "sql"} and fallback in {None, "error-span-fallback"} else "0"
+            file_reason = reason or fallback
+            if decoded is not None and decoded.assumed:
+                file_reason = ((file_reason + "; ") if file_reason else "") + "assumed-encoding:" + decoded.encoding
+            file_id = con.execute("INSERT INTO files(library_id,root_id,kind,path,hash,size,mtime_ns,encoding,language,format,status,status_reason,parser_tier,parser_fingerprint,embedding_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(library_id,owner.id,kind,rel,decoded.sha256 if decoded else None,stat.st_size,stat.st_mtime_ns,decoded.encoding if decoded else None,language,fmt,status,file_reason,file_tier,fingerprint,"complete" if embedding_enabled else "disabled")).lastrowid
             try:
                 store.insert_units(con,library_id,owner.id,file_id,rel,decoded.sha256 if decoded else "",drafts,fingerprint)
             except sqlite3.IntegrityError as exc:
@@ -204,7 +211,9 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
         skipped = [dict(r) for r in con.execute("SELECT root_id AS rootId,kind,path,status_reason AS reason FROM files WHERE library_id=? AND status NOT IN ('indexed','redacted') ORDER BY root_id,path LIMIT 20",(library_id,))]
         def counts(field):
             return {str(k) if k is not None else "unknown":v for k,v in con.execute(f"SELECT {field},count(*) FROM files WHERE library_id=? GROUP BY {field}",(library_id,))}
-        report = {"libraryId":library_id,"indexVersion":8,"generation":generation,"revision":roots[0].revision,"revisions":{r.id:r.revision for r in roots},"corpusId":corpus_id,"files":indexed,"eligible":total,"chunks":chunks,"changed":changed+added,"added":added,"deleted":deleted,"metadataOnly":metadata_only,"refreshed":bool(modified),"skippedCount":total-indexed,"skipped":skipped,"redactedCount":con.execute("SELECT count(*) FROM files WHERE library_id=? AND status='redacted'",(library_id,)).fetchone()[0],"chunkChars":chunk_chars,"oversizedChunks":con.execute("SELECT count(*) FROM units WHERE library_id=? AND oversized=1",(library_id,)).fetchone()[0],"excludes":list(excludes),"byFormat":counts("format"),"byEncoding":counts("encoding"),"byTier":counts("parser_tier"),"discovery":counters,"discoveryLimit":discovery_limit,"actions":actions,"elapsedSeconds":time.monotonic()-started,"warnings":[],"embeddingModel":config.get("model"),"vectorEngine":vector_engine}
+        report = {"libraryId":library_id,"indexVersion":8,"generation":generation,"revision":roots[0].revision,"revisions":{r.id:r.revision for r in roots},"corpusId":corpus_id,"files":indexed,"indexed":indexed,"discovered":counters.get("discovered",total),"eligible":total,"chunks":chunks,"changed":changed+added,"added":added,"deleted":deleted,"metadataOnly":metadata_only,"refreshed":bool(modified),"skippedCount":total-indexed,"skipped":skipped,"redactedCount":con.execute("SELECT count(*) FROM files WHERE library_id=? AND status='redacted'",(library_id,)).fetchone()[0],"chunkChars":chunk_chars,"oversizedChunks":con.execute("SELECT count(*) FROM units WHERE library_id=? AND oversized=1",(library_id,)).fetchone()[0],"excludes":list(excludes),"byFormat":counts("format"),"byEncoding":counts("encoding"),"byTier":counts("parser_tier"),"discovery":counters,"discoveryLimit":discovery_limit,"actions":actions,"elapsedSeconds":time.monotonic()-started,"warnings":[],"embeddingModel":config.get("model"),"vectorEngine":vector_engine}
+        report["splitFiles"] = [dict(r) for r in con.execute("SELECT root_id AS rootId,path FROM files WHERE library_id=? AND status_reason LIKE 'large-file-window-split%' ORDER BY root_id,path", (library_id,))]
+        report["assumedEncodingFiles"] = [dict(r) for r in con.execute("SELECT root_id AS rootId,path,encoding FROM files WHERE library_id=? AND status_reason LIKE '%assumed-encoding:%' ORDER BY root_id,path", (library_id,))]
         if max_files and total > max_files or max_units and chunks > max_units:
             report["warnings"].append("Soft resource threshold exceeded; all eligible files were accounted for")
         con.execute("UPDATE libraries SET generation=?,roots_json=?,corpus_hash=?,refreshed_at=?,last_report_json=? WHERE id=?",(generation,canonical([asdict(r) for r in roots]),corpus_id,stamp,canonical(report),library_id))

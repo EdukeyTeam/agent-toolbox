@@ -166,3 +166,141 @@ The owned Herdr workspaces were `wMZ` (corpus runs/ablations), `wM0` (parser set
 Cleanup verified: owned workspaces wMZ, wM0 and wN2 were closed after foreground/process and background-child checks. `/home/lucas/DEV/Projects/agent-toolbox-eval/logs/i1-cleanup.jsonl` records zero remaining child jobs for each. Final workspace listing contains none of those IDs. Existing worktrees and other workspaces were preserved.
 
 The final source also validates cached bodies against live cited lines, rejects nonregular/FIFO replacements without blocking, validates persisted library metadata, and avoids fetching the full per-file index report during queries. These corrections preserve candidate-only query cost and do not change the indexed source content or selected ranking parameters.
+
+## Quality round 2
+
+This round uses the original 47 positive development questions and the independent 68-positive dev2 set, with 15 additional absent-name checks across the two sets. No held-out question or label was opened. These are development results, not held-out acceptance. Before means commit `1a41859` run against the preserved Tier-0 indexes; after means the final source and freshly reprocessed format-8 indexes. Every reported quality/latency row uses the unchanged evaluator source-range scoring and a new CLI process per question. Full records and streamed logs remain under `/home/lucas/DEV/Projects/agent-toolbox-eval/round2/` and `/home/lucas/DEV/Projects/agent-toolbox-eval/logs/`; compact final evidence is in `evals/retrieval/results/local-core/round2/`.
+
+### Lexical before and after
+
+dev: 47 positive questions.
+
+| Kind | N | Before hit@5 | After hit@5 | Before MRR@10 | After MRR@10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| concept | 8 | 87.5% | 87.5% | 0.515 | 0.604 |
+| config | 10 | 80.0% | 80.0% | 0.633 | 0.700 |
+| cross-file | 4 | 100.0% | 100.0% | 1.000 | 0.875 |
+| docs-howto | 9 | 77.8% | 77.8% | 0.720 | 0.738 |
+| exact-symbol | 8 | 100.0% | 100.0% | 0.938 | 0.938 |
+| paraphrase | 8 | 25.0% | 25.0% | 0.156 | 0.177 |
+| Overall | 47 | 76.6% | 76.6% | 0.631 | 0.657 |
+
+| Corpus | N | Before hit@5 | After hit@5 | Before MRR@10 | After MRR@10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| httpx | 13 | 76.9% | 76.9% | 0.769 | 0.769 |
+| vite | 13 | 92.3% | 92.3% | 0.554 | 0.673 |
+| jftp | 13 | 53.8% | 53.8% | 0.460 | 0.421 |
+| django | 8 | 87.5% | 87.5% | 0.812 | 0.833 |
+| Overall | 47 | 76.6% | 76.6% | 0.631 | 0.657 |
+
+dev2: 68 positive questions.
+
+| Kind | N | Before hit@5 | After hit@5 | Before MRR@10 | After MRR@10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| concept | 18 | 61.1% | 61.1% | 0.363 | 0.407 |
+| config | 7 | 57.1% | 57.1% | 0.375 | 0.429 |
+| cross-file | 16 | 50.0% | 56.2% | 0.309 | 0.368 |
+| docs-howto | 4 | 100.0% | 100.0% | 0.833 | 0.833 |
+| exact-symbol | 7 | 100.0% | 100.0% | 1.000 | 1.000 |
+| paraphrase | 16 | 37.5% | 43.8% | 0.300 | 0.309 |
+| Overall | 68 | 58.8% | 61.8% | 0.430 | 0.463 |
+
+| Corpus | N | Before hit@5 | After hit@5 | Before MRR@10 | After MRR@10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| httpx | 18 | 66.7% | 72.2% | 0.426 | 0.450 |
+| vite | 18 | 55.6% | 50.0% | 0.439 | 0.466 |
+| jftp | 18 | 66.7% | 72.2% | 0.479 | 0.486 |
+| django | 14 | 42.9% | 50.0% | 0.360 | 0.448 |
+| Overall | 68 | 58.8% | 61.8% | 0.430 | 0.463 |
+
+The aggregate lexical gain includes tradeoffs: Vite dev2 hit@5 falls from 55.6% to 50.0%, and jFTP dev MRR falls from 0.460 to 0.421. These regressions remain visible in the corpus tables and need the orchestrator's independent held-out check.
+
+### Parser and hybrid comparison
+
+Hybrid uses Tier-0 chunks, the cached Potion model pinned at `e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b`, and the NumPy exact scanner. Tier 1 is lexical with the pinned parser venv. Embeddings remain explicitly enabled; lexical queries do not import or load a model. Hybrid trades extra latency and corpus-specific regressions for aggregate gains; the jFTP dev2 row is a material regression and prevents a universal quality claim.
+
+dev.
+
+| Kind | Tier-0 hit@5 | Tier-1 hit@5 | Hybrid hit@5 | Tier-0 MRR | Hybrid MRR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| concept | 87.5% | 87.5% | 87.5% | 0.604 | 0.656 |
+| config | 80.0% | 70.0% | 90.0% | 0.700 | 0.733 |
+| cross-file | 100.0% | 100.0% | 100.0% | 0.875 | 0.875 |
+| docs-howto | 77.8% | 77.8% | 77.8% | 0.738 | 0.796 |
+| exact-symbol | 100.0% | 100.0% | 100.0% | 0.938 | 0.875 |
+| paraphrase | 25.0% | 50.0% | 62.5% | 0.177 | 0.325 |
+| Overall | 76.6% | 78.7% | 85.1% | 0.657 | 0.699 |
+
+| Corpus | Tier-0 hit@5 | Tier-1 hit@5 | Hybrid hit@5 | Tier-0 MRR | Hybrid MRR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| httpx | 76.9% | 76.9% | 92.3% | 0.769 | 0.810 |
+| vite | 92.3% | 92.3% | 92.3% | 0.673 | 0.808 |
+| jftp | 53.8% | 61.5% | 61.5% | 0.421 | 0.394 |
+| django | 87.5% | 87.5% | 100.0% | 0.833 | 0.838 |
+
+dev2.
+
+| Kind | Tier-0 hit@5 | Tier-1 hit@5 | Hybrid hit@5 | Tier-0 MRR | Hybrid MRR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| concept | 61.1% | 66.7% | 66.7% | 0.407 | 0.454 |
+| config | 57.1% | 57.1% | 71.4% | 0.429 | 0.565 |
+| cross-file | 56.2% | 56.2% | 68.8% | 0.368 | 0.454 |
+| docs-howto | 100.0% | 100.0% | 100.0% | 0.833 | 0.750 |
+| exact-symbol | 100.0% | 100.0% | 85.7% | 1.000 | 0.857 |
+| paraphrase | 43.8% | 50.0% | 56.2% | 0.309 | 0.380 |
+| Overall | 61.8% | 64.7% | 69.1% | 0.463 | 0.507 |
+
+| Corpus | Tier-0 hit@5 | Tier-1 hit@5 | Hybrid hit@5 | Tier-0 MRR | Hybrid MRR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| httpx | 72.2% | 72.2% | 72.2% | 0.450 | 0.466 |
+| vite | 50.0% | 61.1% | 72.2% | 0.466 | 0.544 |
+| jftp | 72.2% | 72.2% | 61.1% | 0.486 | 0.436 |
+| django | 50.0% | 50.0% | 71.4% | 0.448 | 0.605 |
+
+### Changes and selection
+
+The candidate window now applies the existing per-file cap and envelope deduplication before bounded source verification. The former raw 30-unit prefix could be filled by one large class, after which packing kept only three units and never reached the other component. The old backend overfetched more candidates without that packing cap. New regression cases cover class siblings and duplicate envelopes; the change preserves ranking order while making the candidate bound apply to usable evidence.
+
+Symbol anchoring now requires a real definition before expanding descendant titles. A documentation heading is not a definition. Unmarked all-capital prose acronyms no longer become case-folded lowercase function anchors; explicit code notation retains case-folded lookup, and title-case UI labels can still connect to actual lowercase methods. The symbol channel weight is reduced from 2.5 to 1.0, which improves aggregate dev2 hit@5 and MRR while keeping original dev hit@5. Body-heavy BM25 and lighter coverage were rejected because they did not improve both sets consistently. No corpus-specific terms, synonyms, paths or question IDs enter ranking.
+
+Dense fusion happens after the complete lexical/reference pipeline. Dense-only code candidates cannot suppress lexical documentation-to-definition references. Lexical coverage no longer penalizes dense scores, including in semantic-only mode. A dense RRF weight of 2 balances the overlapping lexical channels better than 1 and improved both development sets in the controlled trial. Focused tests exercise semantic coverage independence, preservation of lexical reference bridges, and import/preamble windows that should not count as definition evidence.
+
+History, tests, generated-path, config-flow and gated reference behavior remain independently ablatable. The A16-stage ablations in `ablations.json` cover both sets: removing history, test priors, references or coverage hurts dev2; config-flow removal leaves hit@5 tied but reduces MRR on both sets. Removing the 1.25 documentation-intent multiplier ties hit@5 on both final lexical sets but trades lower dev MRR for higher dev2 MRR; it was rejected because the secondary results do not tie. The existing conservative gate is retained, with real definitions replacing code provenance as its blocking signal. The report preserves each trial stage so earlier ablations are not presented as measurements of the final combined ranking.
+
+The server cache keys the actual embedding config/identity, excluding publication timestamps and truncation counters, and closes the superseded provider when that library identity changes. HTTP regressions verify one model load across repeated requests and metadata republication, plus closure on shutdown. Real cached-model CLI index/query trials pass for both `--model-dir` and the new `--cache-dir` alias. The evaluator only gains an adapter option for `--vector-engine`; scoring and aggregation are unchanged. No changes were needed in the separately owned `embed.py`, `vectors.py` or embedding requirements.
+
+A16(a)-(f) are implemented: underscore-preserving FTS with transactional upgrade of existing per-library tables; source-faithful line windows above the configured file threshold up to the default 20 MiB text ceiling, reported in `splitFiles`; generic recognition restricted to tree-sitter ERROR spans while valid syntax nodes survive; SQL-family Tier-0 procedure recognition including `.pck`; 8,000-character queries and 16 KiB request targets with a clear server-limit 413; default-excluded Git entries pruned before counting the discovery bound; BOM-less UTF-16 lane detection before binary rejection; and a Unicode-unescaped `.properties` search shadow that leaves cited source bytes/lines intact. Tests also cover both UTF-16 byte orders, upper-size boundaries, escaped backslashes and surrogate pairs, Git/walk exclusion parity, 32 analyzed terms and retained raw source envelopes. Secondary identifier pieces are derived only from retained primary terms, preventing the shadow channel from resurrecting terms past the 32-term bound. Assumed Latin-1 files are recorded separately from explicitly declared encodings.
+
+Full reprocessing exposed an unindexed parent foreign-key lookup. An auxiliary `units(parent_unit_id)` index removes the whole-table scan during delete cascades and is added safely to existing format-8 stores without changing the logical schema fingerprint or reprocessing unchanged source. The focused regression checks the query plan and an unchanged refresh. The slow pre-fix reprocessing attempts were interrupted with rollback, preserved as `i3-index-*-before-parent-index.log`, then completed with the auxiliary index. No speedup ratio is claimed from the overlapping jobs.
+
+### Latency and index receipts
+
+CLI p50 values below pool dev and dev2 for each corpus and include startup, candidate hashes and normal freshness checks. Hybrid CLI includes a new model load per process; the HTTP column uses the persistent server after its first request.
+
+| Corpus | Tier-0 lexical p50 s | Tier-1 lexical p50 s | Hybrid CLI p50 s | Warm hybrid HTTP p50 s |
+| --- | ---: | ---: | ---: | ---: |
+| httpx | 0.341 | 0.268 | 1.189 | 0.230 |
+| vite | 0.380 | 0.386 | 1.462 | 0.448 |
+| jftp | 0.567 | 0.565 | 1.599 | 0.473 |
+| django | 0.672 | 0.666 | 2.060 | 0.968 |
+
+Each real HTTP server handled 20 requests with exactly one provider load and closed after the benchmark. `warm-serve.json` records cold, warm p50/p95 and all samples. Both lexical parser tiers remain below the one-second p50 requirement for every corpus; hybrid latency is reported separately.
+
+The initial clean embedded-index receipts below come from the first complete A16 pass, before the auxiliary parent lookup index was added. They ran concurrently with other validation on the shared W365 VM and are not isolated throughput measurements. The final allocated and active database sizes are also shown: allocation includes reusable pages from subsequent reprocessing, while active size excludes the freelist. The model cache and venv are outside the database size. Both the initial and final operational receipts are preserved in `indexes.json`.
+
+| Corpus | Embedded units | Initial clean seconds | Initial SQLite MiB | Final allocated MiB | Final active MiB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| httpx | 1985 | 10.7 | 10.7 | 12.0 | 11.7 |
+| vite | 12922 | 68.3 | 74.1 | 80.7 | 78.9 |
+| jftp | 13583 | 91.3 | 107.5 | 117.2 | 115.8 |
+| django | 67929 | 306.3 | 408.0 | 463.2 | 462.4 |
+
+### Verification and handoff
+
+System Python and `/home/lucas/DEV/Projects/agent-toolbox-eval/venv-core/` each passed the complete `python3 -m unittest discover -s tests -p "test_legacy_*.py"` discovery: 365 tests, with 133 and 13 optional skips respectively. `npm ci` and `npm test` passed all 111 Node tests. The fake timeout line and Python 3.14 unclosed-connection ResourceWarnings in the logs are test diagnostics, not failed checks. Only Linux/WSL was executed. All final evaluator runs have zero errors; absent-name checks are reported separately and do not prove API absence.
+
+Question-set hashes, source hashes, raw per-question metrics and top-ten source ranges are in the compact result directory. The final analyzer-bound correction was checked for token-stream equivalence on every benchmark query before retaining the CLI measurements; the longest query has 14 distinct non-stopword primary terms, so the 32-term boundary is not reached. Full bodies are retained only in the durable evaluation scratch directory. Reproduce the final CLI comparisons with `/home/lucas/DEV/Projects/agent-toolbox-eval/round2/final_eval.py`; its flags select system Python for Tier 0, the parser venv for Tier 1, and the Model2Vec venv for hybrid. The exact index, ablation, CLI smoke, warm-server and test drivers and streaming logs are beside it under `round2/` and `logs/`. The final model route is `index --embed-provider local-python --embed-model minishlab/potion-code-16M-v2 --model-revision e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b --cache-dir <model-cache>` followed by `query --mode hybrid --vector-engine numpy`; `--model-dir` also works without a download grant.
+
+Independent held-out rerun remains with the orchestrator. The report does not extrapolate development hit rates to that set. Commits, pushes, Beads tracking, PRD/ADR updates and installed-skill rollout remain with the orchestrator under the delegate brief. Unrelated analytics, README and embedding-owner changes were preserved.
+
+Owned Herdr workspaces `wNK` (index, CLI and real-server runs), `wNM` (parser and test runs), and `wNN` (ranking trials) are closed. Final foreground checks and explicit descendant audits for the remaining task shells found no background children. `cleanup.json` records the final workspace-list check, with no owned workspace remaining. No worktree was created; existing worktrees and other owners' workspaces were preserved.

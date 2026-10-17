@@ -320,6 +320,104 @@ class EngineTests(unittest.TestCase):
                 freshness.refresh(self.db)
         with backend.connect(self.db) as con:
             self.assertEqual(store.library(con)["generation"],before)
+    def test_code_preamble_does_not_disable_documentation_reference_bridge(self):
+        (self.root/"service.py").write_text('class TargetWorker:\n    pass\n')
+        (self.root/"preamble.py").write_text('watch = "file updates"\n')
+        (self.docs/"guide.md").write_text('# Workflow\nTo watch file updates use `TargetWorker`.\n')
+        self.index()
+        with store.connect(self.db) as con:
+            rows,_=search.candidates(con,store.library(con),"watch file updates")
+        self.assertTrue(any(r["title"]=="TargetWorker" and "doc-reference" in r["channels"] for r in rows))
+
+    def test_dense_candidates_do_not_disable_lexical_reference_bridge(self):
+        class Provider:
+            identity={"provider":"fake","model":"late-fusion","dimension":2}
+            truncated=0
+            def embed_documents(self,texts):return [[1.,0.] if "NoiseWorker" in t else [0.,1.] for t in texts]
+            def embed_query(self,text):return [1.,0.]
+            def close(self):pass
+        (self.root/"service.py").write_text('class TargetWorker:\n    pass\n')
+        (self.root/"noise.py").write_text('class NoiseWorker:\n    pass\n')
+        (self.docs/"guide.md").write_text('# Workflow\nTo watch file updates use `TargetWorker`.\n')
+        provider=Provider()
+        with mock.patch.object(freshness,"provider_for",return_value=provider):
+            freshness.index(self.root,self.db,"/local/billing",self.docs,parser="0",_saved={"provider":"fake"})
+        with store.connect(self.db) as con:
+            lib=store.library(con)
+            rows,_=search.candidates(con,lib,"watch file updates",mode="hybrid",provider=provider,vector_engine="stdlib")
+        self.assertTrue(any(r["title"]=="TargetWorker" and "doc-reference" in r["channels"] for r in rows))
+
+    def test_semantic_channel_is_not_penalized_by_lexical_coverage(self):
+        class Provider:
+            identity={"provider":"fake","model":"coverage","dimension":2}
+            truncated=0
+            def embed_documents(self,texts):return [[1.,0.] if "zebra" in t else [0.,1.] for t in texts]
+            def embed_query(self,text):return [1.,0.]
+            def close(self):pass
+        (self.root/"service.py").write_text('def orchard():\n    """banana banana banana"""\n    return 1\n\ndef meadow():\n    """zebra zebra zebra"""\n    return 2\n')
+        provider=Provider()
+        with mock.patch.object(freshness,"provider_for",return_value=provider):
+            freshness.index(self.root,self.db,"/local/billing",self.docs,parser="0",_saved={"provider":"fake"})
+        with mock.patch.object(engine,"provider_for",return_value=provider):
+            result=self.query("banana",mode="semantic",vector_engine="stdlib")
+        self.assertIn("zebra",result["results"][0]["text"])
+
+    def test_existing_index_adds_parent_lookup_without_reprocessing(self):
+        self.index()
+        with store.connect(self.db) as con:
+            con.execute("DROP INDEX units_parent")
+        report=freshness.refresh(self.db)
+        self.assertEqual(report["changed"],0)
+        with store.connect(self.db) as con:
+            plan=con.execute("EXPLAIN QUERY PLAN SELECT rowid FROM units WHERE parent_unit_id=?",(1,)).fetchall()
+            self.assertTrue(any("INDEX" in r[3] for r in plan))
+        self.assertTrue(self.query()["results"])
+
+    def test_prose_acronyms_and_document_headings_are_not_symbol_anchors(self):
+        (self.root/"helper.py").write_text('def csrf():\n    """A template context helper."""\n    return "token"\n')
+        (self.docs/"security.md").write_text('# Security\nToken validation middleware.\n')
+        self.index()
+        with store.connect(self.db) as con:
+            lib=store.library(con)
+            for question in ("Trace CSRF token validation", "Trace Security middleware behavior"):
+                rows,_=search.candidates(con,lib,question)
+                self.assertTrue(rows)
+                self.assertFalse(any("symbol" in r["channels"] for r in rows))
+            rows,_=search.candidates(con,lib,"Where is `CSRF` defined?")
+            self.assertTrue(any("symbol" in r["channels"] for r in rows))
+
+    def test_evaluation_adapter_forwards_explicit_vector_engine(self):
+        from eval_retrieval import Context7BackendAdapter
+        self.index()
+        adapter=Context7BackendAdapter(self.db,SCRIPTS/"context7_backend.py",vector_engine="numpy")
+        offset=adapter.argv.index("--vector-engine")
+        self.assertEqual(adapter.argv[offset+1],"numpy")
+
+    def test_provider_cache_replaces_only_changed_library_identity(self):
+        class Provider:
+            truncated=0
+            closed=False
+            def __init__(self,model):self.identity={"provider":"fake","model":model,"dimension":2}
+            def embed_documents(self,texts):return [[1.,0.] for _ in texts]
+            def embed_query(self,text):return [1.,0.]
+            def close(self):self.closed=True
+        first,second=Provider("first"),Provider("second")
+        with mock.patch.object(freshness,"provider_for",return_value=first):
+            freshness.index(self.root,self.db,"/local/billing",self.docs,parser="0",_saved={"provider":"fake","model":"first"})
+        first.closed=False
+        cache={}
+        with store.connect(self.db) as con, mock.patch.object(engine,"provider_for",side_effect=[first,second]):
+            engine.query(con,"invoice",mode="hybrid",vector_engine="stdlib",provider_cache=cache)
+            embedded=json.loads(store.library(con)["embedding_json"])
+            embedded["config"]["model"]="second"
+            embedded["identity"]=second.identity
+            con.execute("UPDATE libraries SET embedding_json=?",(json.dumps(embedded),))
+            engine.query(con,"invoice",mode="hybrid",vector_engine="stdlib",provider_cache=cache)
+        self.assertTrue(first.closed)
+        self.assertFalse(second.closed)
+        self.assertEqual(list(cache.values()),[second])
+        second.close()
+
     def test_unchanged_refresh_does_not_load_embedding_provider(self):
         self.index()
         with backend.connect(self.db) as con:
@@ -386,5 +484,152 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(json.loads(proc.stdout)["results"])
 
 
-if __name__=="__main__":
+
+
+class Amendment16Tests(unittest.TestCase):
+    setUp = EngineTests.setUp
+    index = EngineTests.index
+    query = EngineTests.query
+    def test_underscore_is_one_fts_token_and_split_shadow_remains(self):
+        self.index()
+        with store.connect(self.db) as con:
+            name = store.fts_name('/local/billing')
+            con.execute(f"CREATE VIRTUAL TABLE temp.vocab USING fts5vocab(main, {name}, 'row')")
+            tokens = {r[0] for r in con.execute('SELECT term FROM temp.vocab')}
+        self.assertIn('create_invoice', tokens)
+        self.assertIn('invoice', tokens)
+
+    def test_tokenizer_upgrade_preserves_other_file_rows(self):
+        self.index()
+        with store.connect(self.db) as con:
+            name = store.fts_name('/local/billing')
+            rows = con.execute(f'SELECT rowid,* FROM {name}').fetchall()
+            con.execute(f'DROP TABLE {name}')
+            con.execute(f"CREATE VIRTUAL TABLE {name} USING fts5(title_symbols,identifier_tokens,path_tokens,body,stemmed,tokenize='unicode61')")
+            con.executemany(f'INSERT INTO {name}(rowid,title_symbols,identifier_tokens,path_tokens,body,stemmed) VALUES(?,?,?,?,?,?)',rows)
+            store.create_library_fts(con,'/local/billing')
+            self.assertEqual(len(rows),con.execute(f'SELECT count(*) FROM {name}').fetchone()[0])
+        self.assertTrue(self.query()['results'])
+
+    def test_large_text_windows_keep_original_ranges_and_report(self):
+        text = '\n'.join(f'line_{n} original payload' for n in range(1000))+'\n'
+        (self.root/'large.txt').write_text(text)
+        report = self.index(max_file_bytes=128)
+        self.assertIn('large.txt',{r['path'] for r in report['splitFiles']})
+        self.assertEqual(report['eligible'],report['indexed']+report['skippedCount'])
+        with store.connect(self.db) as con:
+            rows=con.execute("SELECT start_line,end_line,text FROM units u JOIN files f ON f.id=u.file_id WHERE f.path='large.txt' AND searchable=1 ORDER BY start_line").fetchall()
+        self.assertGreater(len(rows),2)
+        self.assertEqual(rows[-1]['end_line'],1000)
+        for row in rows:
+            self.assertEqual(row['text'],'\n'.join(text.splitlines()[row['start_line']-1:row['end_line']]))
+
+    def test_text_window_upper_bound_is_enforced(self):
+        source=self.root/"boundary.txt"
+        with mock.patch.object(decode,"MAX_TEXT_BYTES",32):
+            source.write_bytes(b"x"*32)
+            self.assertEqual(len(decode.read_source(self.root,"boundary.txt",max_file_bytes=8).text),32)
+            source.write_bytes(b"x"*33)
+            with self.assertRaises(RetrievalError) as raised:
+                decode.read_source(self.root,"boundary.txt",max_file_bytes=8)
+            self.assertEqual(raised.exception.status,413)
+            self.assertEqual(raised.exception.code,"file_too_large")
+
+    def test_bomless_utf16_both_byte_orders_before_binary_check(self):
+        for encoding in ('utf-16-le','utf-16-be'):
+            name=encoding+'.txt';text='legacy invoice settings\nżółw\n'
+            (self.root/name).write_bytes(text.encode(encoding))
+            result=decode.read_source(self.root,name)
+            self.assertEqual(result.text,text)
+            self.assertEqual(result.encoding,encoding)
+        (self.root/'binary.bin').write_bytes(b'\x00\x01\x02\x00'*20)
+        with self.assertRaises(RetrievalError):decode.read_source(self.root,'binary.bin')
+
+    def test_properties_escape_shadow_keeps_raw_source(self):
+        text=r'label=Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105'+'\n'
+        (self.root/'messages.properties').write_text(text)
+        self.index()
+        result=self.query('zażółć gęślą')
+        item=next(r for r in result['results'] if r['source']['path']=='messages.properties')
+        self.assertEqual(item['text'],text.rstrip())
+
+    def test_properties_surrogate_pairs_and_escaped_backslash(self):
+        from local_context.symbols import properties_shadow
+        self.assertEqual(properties_shadow(r"\uD83D\uDE00"),"😀")
+        self.assertEqual(properties_shadow(r"\\u0041"),r"\\u0041")
+        self.assertEqual(properties_shadow(r"\u0041"),"A")
+
+    def test_assumed_encoding_report_distinguishes_declarations(self):
+        (self.root/"fallback.txt").write_bytes(b"legacy record "*20+b"\x81\n")
+        (self.root/"declared.xml").write_bytes(b'<?xml version="1.0" encoding="latin-1"?>\n<x>caf\xe9</x>\n')
+        report=self.index()
+        self.assertEqual([r['path'] for r in report['assumedEncodingFiles']],['fallback.txt'])
+
+    def test_git_default_exclusions_do_not_consume_discovery_bound(self):
+        subprocess.run(['git','init','-q',str(self.root)],check=True)
+        folder=self.root/'node_modules';folder.mkdir()
+        for n in range(8):(folder/f'{n}.py').write_text('value=1\n')
+        subprocess.run(['git','-C',str(self.root),'add','--force','node_modules'],check=True)
+        counters={}
+        roots=discover.roots_for(self.root,[])
+        rows=list(discover.inventory(roots,discovery_limit=1,counters=counters))
+        self.assertEqual(len(rows),1)
+        self.assertEqual(counters['discovered'],1)
+        self.assertGreaterEqual(counters['excluded'],8)
+
+    def test_walk_default_exclusions_do_not_consume_bound(self):
+        folder=self.root/'node_modules';folder.mkdir()
+        (folder/'ignored.py').write_text('value=1\n')
+        rows=list(discover.inventory(discover.roots_for(self.root,[]),discovery_limit=1))
+        self.assertEqual([r[1] for r in rows],['service.py'])
+
+    def test_long_query_limit_and_first_32_terms(self):
+        self.index()
+        self.assertTrue(self.query('InvoiceMaker '+('invoice '*800))['results'])
+        with self.assertRaisesRegex(RetrievalError,'8000'):self.query('x'*8001)
+        from local_context.symbols import analyze
+        primary,secondary=analyze(' '.join('term'+str(n) for n in range(100)))
+        self.assertEqual(len(primary),32)
+        self.assertEqual(secondary,[])
+
+    def test_sql_family_recognizer_does_not_call_syntax_parser(self):
+        sql='CREATE OR REPLACE PROCEDURE run_invoice AS\nBEGIN\n NULL;\nEND;\n'
+        with mock.patch.object(chunk,'syntax_definitions',side_effect=AssertionError('SQL grammar called')):
+            units,_=chunk.chunk_file(sql,'invoice.pck','sql','code',tier='1')
+        self.assertTrue(any(d.name=='run_invoice' for u in units for d in u.definitions))
+        self.assertEqual(discover.classify('invoice.pck','code')[1],'sql')
+
+    @unittest.skipUnless(chunk.parser_tier('1')=='1','pinned parser optional')
+    def test_invalid_python_keeps_valid_syntax_definitions(self):
+        text='def intact():\n    return 1\n\n@@@@\n def ???\n'
+        units,reason=chunk.code_units(text,'broken.py','python',tier='1')
+        self.assertIn('intact',{d.name for u in units for d in u.definitions})
+        self.assertEqual(reason,'error-span-fallback')
+
+    @unittest.skipUnless(chunk.parser_tier('1')=='1','pinned parser optional')
+    def test_syntax_errors_preserve_valid_definitions(self):
+        text='function intact() { return 1; }\nfunction broken( {\n @@@@\n'*1
+        defs,cuts,reason=chunk.syntax_definitions(text,'javascript',100)
+        self.assertIsNotNone(defs)
+        self.assertIn('intact',{d.name for d in defs})
+        self.assertEqual(reason,'error-span-fallback')
+
+
+class CandidateDiversityTests(unittest.TestCase):
+    def test_class_siblings_cannot_hide_other_components_before_verification(self):
+        def row(path,n):
+            return dict(root_id='r0',path=path,start_line=n*10+1,end_line=n*10+5,cell_index=None)
+        ranked=[row('api.py',n) for n in range(100)]+[row('transport.py',0),row('settings.py',0)]
+        selected=assemble.candidate_window(ranked,20)
+        self.assertEqual([r['path'] for r in selected],['api.py']*3+['transport.py','settings.py'])
+
+    def test_duplicate_envelopes_do_not_spend_candidate_slots(self):
+        first=dict(root_id='r0',path='one.py',start_line=1,end_line=20,cell_index=None)
+        rows=[first,dict(first,start_line=2),dict(first,start_line=40,end_line=60),dict(first,path='two.py')]
+        selected=assemble.candidate_window(rows,3)
+        self.assertEqual(len(selected),3)
+        self.assertEqual(selected[-1]['path'],'two.py')
+
+
+if __name__ == "__main__":
     unittest.main()

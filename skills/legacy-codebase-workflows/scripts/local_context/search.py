@@ -10,12 +10,13 @@ from .symbols import analyze, words, split_identifier, stem, GENERIC
 from .units import RetrievalError
 
 DEPTH = 600
-W_SYMBOL, W_PATH, W_FTS, W_SHADOW, W_VECTOR = 2.5, 1.5, 1., .55, 1.
+W_SYMBOL, W_PATH, W_FTS, W_SHADOW, W_VECTOR = 1., 1.5, 1., .55, 2.
 # Ablation switches are explicit engine inputs, never corpus/question rules.
 DEFAULT_ABLATIONS = frozenset()
 COVERAGE_BASE, COVERAGE_SCALE, COVERAGE_POWER = .5, 1.5, 1.0
 W_DOC_REFERENCE = 2.0
 W_CONFIG_BEHAVIOR = .8
+FTS_WEIGHTS = (4., 1.5, 1., 1., 0.)
 
 
 def prior(path, provenance, doc_intent, exact, disabled):
@@ -51,20 +52,32 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
     identifiers = [i for i in identifiers if i.casefold() not in {"where","how","what","why","which","trace","http","ftp"}]
     if re.fullmatch(r"[\w$]+",question.strip()):
         identifiers = list(dict.fromkeys([*identifiers,question.strip()]))
+    identifiers = list(dict.fromkeys(identifiers))[:32]
+    explicit_names = set(re.findall(r"`+([\w.:$]+)(?:\(\))?`+", question))
+    single_name = bool(re.fullmatch(r"[\w$]+", question.strip()))
     exact_rows = []
     for ident in identifiers:
         leaf = re.split(r"[.:]",ident)[-1]
+        explicit = single_name or ident in explicit_names or bool(re.search(r"[_:.]|[a-z][A-Z]", ident))
+        matched = False
         # Indexed equality paths are cheap; qualified suffix matching occurs on
         # the bounded result set for this leaf, never arbitrary LIKE substrings.
         rows = con.execute(f"SELECT DISTINCT u.id,s.qualified_name,s.name,s.line FROM symbols s JOIN units u ON u.id=s.unit_id JOIN files f ON f.id=u.file_id WHERE {where} AND s.library_id=? AND s.name_fold=? ORDER BY s.line,s.path,u.unit_uid LIMIT ?",(*args,library_id,leaf.casefold(),DEPTH)).fetchall()
         for row in rows:
+            # An acronym in prose is not a case-insensitive API reference.
+            # Explicit code notation still supports case-folded lookup.
+            if ident.isupper() and row["name"] != leaf and not explicit:
+                continue
+            matched = True
             qualified = row["qualified_name"]
             score = 0 if qualified == ident else 1 if qualified.casefold() == ident.casefold() else 2 if qualified.endswith("."+ident) else 3 if row["name"] == ident else 4
             exact_rows.append((row["id"],score, row["line"]))
         # A class/name query anchors descendant parts as well as its declaration.
         # Otherwise a tiny class header outranks the implementing constructor.
+        if not matched:
+            continue
         prefix = ident.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
-        anchored = con.execute(f"SELECT u.id,u.title,u.start_line FROM units u JOIN files f ON f.id=u.file_id WHERE {where} AND (u.title=? OR u.title LIKE ? ESCAPE '\\') ORDER BY u.start_line,f.path,u.unit_uid LIMIT ?",(*args,ident,prefix+".%",DEPTH)).fetchall()
+        anchored = con.execute(f"SELECT u.id,u.title,u.start_line FROM units u JOIN files f ON f.id=u.file_id WHERE {where} AND u.kind='code-definition' AND (u.title=? OR u.title LIKE ? ESCAPE '\\') ORDER BY u.start_line,f.path,u.unit_uid LIMIT ?",(*args,ident,prefix+".%",DEPTH)).fetchall()
         exact_rows.extend((row["id"],4,row["start_line"]) for row in anchored)
     exact_rows.sort(key=lambda r:(r[1],r[2],r[0]))
     exact = bool(exact_rows)
@@ -82,7 +95,8 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
             add("symbol",exact_rows,W_SYMBOL)
         if original:
             expression = " OR ".join('"'+w.replace('"','')+'"' for w in original)
-            rows = con.execute(f"SELECT u.id,bm25({name},4.,1.5,1.,1.,0.) AS bm FROM {name} JOIN units u ON u.id={name}.rowid JOIN files f ON f.id=u.file_id WHERE {name} MATCH ? AND {where} ORDER BY bm,f.path,u.start_line,u.unit_uid LIMIT ?",(expression,*args,DEPTH)).fetchall()
+            weighted_columns = ",".join(str(w) for w in FTS_WEIGHTS)
+            rows = con.execute(f"SELECT u.id,bm25({name},{weighted_columns}) AS bm FROM {name} JOIN units u ON u.id={name}.rowid JOIN files f ON f.id=u.file_id WHERE {name} MATCH ? AND {where} ORDER BY bm,f.path,u.start_line,u.unit_uid LIMIT ?",(expression,*args,DEPTH)).fetchall()
             add("fts",rows,W_FTS)
             if "shadow" not in disabled:
                 shadow = list(dict.fromkeys(stem(w) for w in [*original,*secondary] if w not in GENERIC))
@@ -130,23 +144,34 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
         split = set(row["split_tokens"].split())
         stems = set(row["stem_tokens"].split())
         coverage = sum(1. if t in tokens or t in split else .8 if stem(t) in stems else 0 for t in original_set) / max(1,len(original_set))
+        # Preserve the complete lexical pipeline before fusing dense evidence.
+        # Dense-only rows must neither acquire a lexical coverage penalty nor
+        # disable the lexical documentation-to-definition reference channel.
+        dense_score = W_VECTOR / (60 + item["channels"]["vector"]) if "vector" in item["channels"] else 0.
+        item["score"] = max(0., item["score"] - dense_score)
         if "coverage" not in disabled:
             item["score"] *= COVERAGE_BASE + COVERAGE_SCALE*coverage**COVERAGE_POWER
-        item["score"] *= prior(row["path"],row["provenance"],doc_intent,exact,disabled)
+        bias = prior(row["path"],row["provenance"],doc_intent,exact,disabled)
+        item["score"] *= bias
+        item["vector_score"] = dense_score * bias
         if "config-behavior" not in disabled and row["kind"]=="config" and re.match(r"(?:where|trace)\b",question,re.I):
             # Labels/settings are useful context, but a location/flow question
             # should not bury executable behavior beneath resource-bundle labels.
             item["score"] *= W_CONFIG_BEHAVIOR
+            item["vector_score"] *= W_CONFIG_BEHAVIOR
         item["coverage"] = coverage
         result.append(item)
     result.sort(key=lambda r:(-r["score"],r["path"],r["start_line"],r["unit_uid"]))
-    if mode != "semantic" and not exact and not doc_intent and kind != "docs" and "references" not in disabled and not any(r["provenance"]=="code" for r in result[:3]):
+    lexical_result = [r for r in result if r["score"] > 0]
+    if mode != "semantic" and not exact and not doc_intent and kind != "docs" and "references" not in disabled and not any(r["kind"]=="code-definition" for r in lexical_result[:3]):
         # Explicit names in relevant documentation bridge prose intent to code.
+        # Import/preamble windows are not definition evidence and must not block
+        # the bridge merely because their file has code provenance.
         # No inferred names or corpus-specific vocabulary: the referenced symbol
         # must exist in this library. Keep this bounded and independently ablatable.
         referenced = set()
         by_id = {r["id"]:r for r in result}
-        docs = [r for r in result if r["provenance"]=="docs"][:3]
+        docs = [r for r in lexical_result if r["provenance"]=="docs"][:3]
         for doc_rank,doc in enumerate(docs,1):
             for token in re.findall(r"`+([^`\n]+)`+",(doc["text"] or "")[:1400]):
                 token = token.removesuffix("()")
@@ -182,4 +207,7 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
                             result.append(item)
                             by_id[item["id"]] = item
         result.sort(key=lambda r:(-r["score"],r["path"],r["start_line"],r["unit_uid"]))
+    for item in result:
+        item["score"] += item.get("vector_score", 0.)
+    result.sort(key=lambda r:(-r["score"],r["path"],r["start_line"],r["unit_uid"]))
     return result, used_engine

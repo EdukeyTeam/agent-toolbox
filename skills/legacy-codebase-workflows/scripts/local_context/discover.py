@@ -11,7 +11,7 @@ from .units import Root, RetrievalError
 
 SKIP_DIRS = {".git", ".svn", "CVS", ".hg", "node_modules", "__pycache__", ".venv", "venv", "target", "dist", "build", "bin", "obj", "out", ".gradle", ".idea", ".vs", ".next", ".cache"}
 DOCS = {".md", ".mdx", ".rst", ".adoc", ".asciidoc", ".rmd", ".qmd"}
-LANGUAGES = {".py":"python", ".java":"java", ".js":"javascript", ".mjs":"javascript", ".cjs":"javascript", ".jsx":"javascript", ".ts":"typescript", ".tsx":"tsx", ".cs":"c_sharp", ".c":"c", ".h":"c", ".cc":"cpp", ".cpp":"cpp", ".hpp":"cpp", ".rs":"rust", ".go":"go", ".rb":"ruby", ".php":"php", ".pas":"pascal", ".dpr":"pascal", ".dpk":"pascal", ".dfm":"pascal", ".vb":"vb", ".bas":"vb", ".cls":"vb", ".frm":"vb", ".cbl":"cobol", ".cob":"cobol", ".cpy":"cobol", ".pl":"perl", ".pm":"perl", ".pod":"perl", ".r":"r", ".kt":"kotlin", ".kts":"kotlin", ".swift":"swift", ".dart":"dart", ".scala":"scala", ".groovy":"groovy", ".gradle":"groovy", ".ps1":"powershell", ".psm1":"powershell", ".bat":"batch", ".cmd":"batch", ".sh":"bash", ".bash":"bash", ".sql":"sql", ".pls":"sql", ".pkb":"sql", ".pks":"sql", ".prc":"sql", ".fnc":"sql", ".trg":"sql", ".html":"html", ".htm":"html", ".css":"css", ".xml":"xml", ".xaml":"xml", ".config":"xml", ".cshtml":"html", ".razor":"html", ".aspx":"html", ".ascx":"html", ".asp":"html", ".jsp":"html", ".json":"json", ".toml":"toml", ".yaml":"yaml", ".yml":"yaml", ".ini":"ini", ".properties":"properties", ".cfg":"ini", ".conf":"text"}
+LANGUAGES = {".py":"python", ".java":"java", ".js":"javascript", ".mjs":"javascript", ".cjs":"javascript", ".jsx":"javascript", ".ts":"typescript", ".tsx":"tsx", ".cs":"c_sharp", ".c":"c", ".h":"c", ".cc":"cpp", ".cpp":"cpp", ".hpp":"cpp", ".rs":"rust", ".go":"go", ".rb":"ruby", ".php":"php", ".pas":"pascal", ".dpr":"pascal", ".dpk":"pascal", ".dfm":"pascal", ".vb":"vb", ".bas":"vb", ".cls":"vb", ".frm":"vb", ".cbl":"cobol", ".cob":"cobol", ".cpy":"cobol", ".pl":"perl", ".pm":"perl", ".pod":"perl", ".r":"r", ".kt":"kotlin", ".kts":"kotlin", ".swift":"swift", ".dart":"dart", ".scala":"scala", ".groovy":"groovy", ".gradle":"groovy", ".ps1":"powershell", ".psm1":"powershell", ".bat":"batch", ".cmd":"batch", ".sh":"bash", ".bash":"bash", ".sql":"sql", ".pls":"sql", ".pkb":"sql", ".pks":"sql", ".pck":"sql", ".prc":"sql", ".fnc":"sql", ".trg":"sql", ".html":"html", ".htm":"html", ".css":"css", ".xml":"xml", ".xaml":"xml", ".config":"xml", ".cshtml":"html", ".razor":"html", ".aspx":"html", ".ascx":"html", ".asp":"html", ".jsp":"html", ".json":"json", ".toml":"toml", ".yaml":"yaml", ".yml":"yaml", ".ini":"ini", ".properties":"properties", ".cfg":"ini", ".conf":"text"}
 CONFIG = {"json", "toml", "yaml", "ini", "properties", "xml"}
 
 
@@ -99,7 +99,7 @@ def safe_path(root: Path, relative: str) -> Path:
 
 def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000_000, counters=None):
     counters = counters if counters is not None else {}
-    counters.update(visited=0, excluded=0, excludedExamples=[])
+    counters.update(visited=0, discovered=0, eligible=0, excluded=0, excludedExamples=[])
     for owner in roots:
         base = Path(owner.path)
         git_repo = git_context(base)
@@ -134,8 +134,6 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
                         for entry in entries:
                             rel = Path(entry.path).relative_to(base).as_posix()
                             if entry.is_dir(follow_symlinks=False):
-                                counters["visited"] += 1
-                                check_bound()
                                 if entry.name not in {".git", ".hg", ".svn", "CVS"} and not secret_name(PurePosixPath(rel)) and (includes or (entry.name not in SKIP_DIRS and not matches(rel, excludes) and not _ignored_non_git(base, PurePosixPath(rel), ignore_cache=ignore_cache, is_directory=True))):
                                     stack.append(Path(entry.path))
                                 else:
@@ -153,8 +151,6 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
             if len(counters["excludedExamples"]) < 20:
                 counters["excludedExamples"].append(safe_path_display(rel))
         for relative in paths():
-            counters["visited"] += 1
-            check_bound()
             try:
                 relative.encode("utf-8")
                 if contains_control_characters(relative):
@@ -167,6 +163,9 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
             if secret_name(rel) or (not override and (any(p in SKIP_DIRS for p in rel.parts) or matches(relative, excludes))):
                 excluded(relative)
                 continue
+            counters["visited"] += 1
+            counters["discovered"] += 1
+            check_bound()
             try:
                 path = safe_path(base, relative)
                 if not path.is_file():
@@ -181,4 +180,5 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
                 continue
             if owner.role == "docs" and any(r.role == "code" and base.is_relative_to(Path(r.path)) for r in roots) and PurePosixPath(relative).suffix.lower() in LANGUAGES and fmt not in {"markdown", "rst", "asciidoc", "html", "notebook"}:
                 continue
+            counters["eligible"] += 1
             yield owner, relative, kind, language, fmt, stat
