@@ -115,15 +115,16 @@ def candidate_window(ranked, maximum):
     selected, per_file = [], {}
     for row in ranked:
         key = (row["root_id"], row["path"])
-        if per_file.get(key, 0) >= 3:
+        siblings = per_file.setdefault(key, [])
+        if len(siblings) >= 3:
             continue
-        if any(key == (old["root_id"], old["path"]) and row["cell_index"] == old["cell_index"] and
+        if any(row["cell_index"] == old["cell_index"] and
                max(0, min(row["end_line"], old["end_line"]) - max(row["start_line"], old["start_line"]) + 1) >=
                .8 * min(row["end_line"] - row["start_line"] + 1, old["end_line"] - old["start_line"] + 1)
-               for old in selected):
+               for old in siblings):
             continue
         selected.append(row)
-        per_file[key] = per_file.get(key, 0) + 1
+        siblings.append(row)
         if len(selected) >= maximum:
             break
     return selected

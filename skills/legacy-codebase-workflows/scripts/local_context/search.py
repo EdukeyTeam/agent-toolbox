@@ -1,5 +1,6 @@
 """Filtered lexical/symbol/path retrieval, measured priors and weighted RRF."""
 from __future__ import annotations
+import ast
 import json
 import math
 from pathlib import PurePosixPath
@@ -18,6 +19,86 @@ W_DOC_REFERENCE = 2.0
 W_CONFIG_BEHAVIOR = .8
 FTS_WEIGHTS = (4., 1.5, 1., 1., 0.)
 _SOURCE_COMMENTS = re.compile(r"/\*[\s\S]*?\*/|//[^\n]*")
+W_PREAMBLE = .5
+FILE_DIVERSITY = .005
+_PREAMBLE_TOKENS = re.compile(r'''/\*[\s\S]*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`''')
+
+
+def preamble_fragment(text: str, language: str) -> bool:
+    """Recognize dependency declarations and headers without executable code.
+
+    Be conservative on incomplete syntax or unsupported languages. A function
+    containing imports is still implementation evidence, even when short.
+    Quoted strings are kept opaque so URLs cannot become line comments.
+    """
+    if not text.strip():
+        return False
+    if language == "python":
+        try:
+            nodes = ast.parse(text).body
+        except (SyntaxError, ValueError, RecursionError):
+            return False
+        return all(isinstance(n, (ast.Import, ast.ImportFrom)) or
+                   isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)
+                   for n in nodes)
+    if language not in {"javascript", "typescript", "tsx", "java", "c", "cpp", "c_sharp", "go", "rust", "kotlin", "swift", "scala", "groovy", "dart", "php"}:
+        return False
+    remaining = _PREAMBLE_TOKENS.sub(lambda m: '"S"' if m[0].startswith(('"', "'", "`")) else "", text).strip()
+    if not remaining:
+        return True
+    if remaining.endswith("*/") and all(line.strip().startswith("*") for line in remaining.splitlines() if line.strip()):
+        return True
+    if language in {"javascript", "typescript", "tsx"}:
+        binding = r'(?:[\w$]+(?:\s*,\s*)?)?(?:\{[^{};]*\}|\*\s+as\s+[\w$]+)?'
+        declarations = [
+            r'\bimport\s+(?:type\s+)?' + binding + r'\s+from\s+"S"\s*;?',
+            r'\bimport\s*"S"\s*;?',
+            r'\bexport\s+(?:type\s+)?(?:\*\s*(?:as\s+[\w$]+)?|\{[^{};]*\})\s+from\s+"S"\s*;?',
+            r'\b(?:const|let|var)\s+(?:[\w$]+|\{[^{};]*\})\s*=\s*require\(\s*"S"\s*\)\s*;?',
+        ]
+    else:
+        declarations = [
+            r'^\s*#\s*include\s*(?:<[^>\n]+>|"S")[^\S\n]*$',
+            r'\b(?:package|import|using|use)\s+(?:static\s+)?[\w.*:]+\s*;?',
+            r'\bimport\s*\(\s*(?:"S"\s*)+\)',
+        ]
+    for pattern in declarations:
+        remaining = re.sub(pattern, "", remaining, flags=re.M)
+    return not remaining.strip()
+
+
+def diverse_candidates(ranked, anchored=False):
+    """Let near-tied unseen files precede siblings with no coverage advantage.
+
+    The second unit must beat a new file by FILE_DIVERSITY, the third by twice
+    that margin. An unseen file also needs at least equal query-term coverage.
+    Exact symbol/path rows and the hybrid lexical fence retain their priority.
+    Deduplicate before charging a slot so overlapping evidence cannot demote
+    its own implementation. Raw retrieval scores and source ranges survive.
+    """
+    from .assemble import candidate_window
+    pending = candidate_window(ranked, len(ranked))
+    counts, selected = {}, []
+    while pending:
+        row = pending[0]
+        key = (row["root_id"], row["path"])
+        count = counts.get(key, 0)
+        chosen = 0
+        if count and not ("symbol" in row["channels"] or "path" in row["channels"]):
+            threshold = row["score"] / (1 + FILE_DIVERSITY * count)
+            for index, other in enumerate(pending[1:], 1):
+                if anchored and (other["lexical_score"] <= 0) != (row["lexical_score"] <= 0):
+                    break
+                if other["score"] < threshold:
+                    break
+                if not counts.get((other["root_id"], other["path"]), 0) and other["coverage"] >= row["coverage"]:
+                    chosen = index
+                    break
+        row = pending.pop(chosen)
+        selected.append(row)
+        key = (row["root_id"], row["path"])
+        counts[key] = counts.get(key, 0) + 1
+    return selected
 
 
 def comment_fragment(text, language):
@@ -283,9 +364,13 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
     for item in result:
         item["lexical_score"] = item["score"]
         item["score"] += item.get("vector_score", 0.)
+        if "preambles" not in disabled and item["provenance"] == "code" and not ("symbol" in item["channels"] or "path" in item["channels"]) and preamble_fragment(item["text"] or "", item["language"]):
+            item["score"] *= W_PREAMBLE
     # Named source evidence precedes dense-only neighbors. Within that bound,
     # keep fusion order unless it actually displaces a leading exact hit.
     result.sort(key=lambda r:((0 if r["lexical_score"] > 0 else 1) if anchored else 0, -r["score"],r["path"],r["start_line"],r["unit_uid"]))
+    if "diversity" not in disabled:
+        result = diverse_candidates(result, anchored)
     if protected:
         result = preserve_exact_window(result, protected)
     return result, used_engine

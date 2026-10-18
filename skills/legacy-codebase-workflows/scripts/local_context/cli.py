@@ -53,7 +53,7 @@ def main(argv=None):
             cmd.add_argument("--kind",choices=("code","docs"))
             cmd.add_argument("--language")
             cmd.add_argument("--explain",action="store_true")
-            cmd.add_argument("--ablate",action="append",default=[],choices=("symbols","paths","shadow","coverage","history","tests","generated","docs","references","config-behavior"),help="Development ablation: symbols, paths, shadow, coverage, history, tests, generated, docs")
+            cmd.add_argument("--ablate",action="append",default=[],choices=("symbols","paths","shadow","coverage","history","tests","generated","docs","references","config-behavior","preambles","diversity"),help="Development ablation: symbols, paths, shadow, coverage, history, tests, generated, docs")
         elif name=="serve":
             cmd.add_argument("--host",default="127.0.0.1")
             cmd.add_argument("--port",type=int,default=8765)

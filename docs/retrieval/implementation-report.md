@@ -399,3 +399,39 @@ The same dev/dev2 question files and unchanged evaluator score both snapshots. F
 `npm ci` and all 111 Node tests pass with system Node 24.21.0. Loading nvm returned status 3, so the checks explicitly use the installed system runtime. `git diff --check` passes. Only Linux/WSL was executed. The required system/parser suites and the additional real cached-model suite are complete; optional/native skips are reported above. The engine and source snapshots, exact drivers, index receipts, CLI evidence, FTS integrity checks and streaming logs remain under `/home/lucas/DEV/Projects/agent-toolbox-eval/i7/` and `/home/lucas/DEV/Projects/agent-toolbox-eval/logs/i7-*.log`.
 
 Repository changes stay within the permitted local-context modules, legacy tests, retrieval-reference corrections and these requested reports. Scratch drivers and receipts remain in the evaluation workspace. The existing README and analytics work were preserved. The project branch and Git index were not changed; no commit, push, worktree, installed-skill update or production-service change was made. Owned Herdr task workspaces were audited for foreground processes and background/session children, with final cleanup evidence in `cleanup-*.json` and `cleanup.json`; no owned task workspace remains open.
+
+
+## Rank stability
+
+The final ranking preserves hit@1/5/10 on both development sets in every lane, and improves Tier 1 dev2 MRR@10 from 0.528268 to 0.528472. No positive question loses MRR, no previously successful hit@5 question is lost, and every corpus/lane/set also holds hit@5 and MRR. Across 390 lane/query pairs, duplicate-file slots in the top five fall from 513 to 503, import-only slots from 17 to 0, and header-only slots from 1 to 0. These are development results, without a claim about unseen questions.
+
+The retained rule runs after fusion: a second unit yields to an unseen file only within a 0.5% score margin, a third within 1%, and only when the unseen file has at least equal query-term coverage. Exact symbol/path rows are exempt. The existing exact-window rescue, hybrid lexical fence, 80% overlap removal and three-results-per-file cap remain active. Overlap removal precedes diversity counts, and assembly checks only the at-most-three selected siblings of that file. Raw scores, source ranges, unit IDs, source verification and budget packing retain their existing contracts.
+
+Pure import/header fragments receive a 0.5 score multiplier unless they carry exact symbol/path evidence. The conservative detector handles Python imports/module strings/comments, JS/TS static imports, require declarations and re-export barrels, plus common package/import/using/use/include forms and source-comment headers. It retains executable, incomplete and unsupported fragments rather than guessing. New development ablations are --ablate preambles and --ablate diversity. Chunking, parser fingerprints, storage and embeddings are unchanged, so all existing big2 indexes remain valid; no big3 or Payload/Next.js rebuild is required.
+
+| Set | Lane | Positive N | hit@1 before/after | hit@5 before/after | hit@10 before/after | MRR@10 before/after | Import-only top-5 before/after | Header-only top-5 before/after | Duplicate slots before/after |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| dev | t0 | 47 | 61.7% / 61.7% | 76.6% / 76.6% | 78.7% / 78.7% | 0.670745 / 0.670745 | 2 / 0 | 0 / 0 | 78 / 76 |
+| dev | t1 | 47 | 68.1% / 68.1% | 78.7% / 78.7% | 80.9% / 80.9% | 0.726064 / 0.726064 | 4 / 0 | 0 / 0 | 78 / 76 |
+| dev | hybrid | 47 | 61.7% / 61.7% | 85.1% / 85.1% | 89.4% / 89.4% | 0.700709 / 0.700709 | 1 / 0 | 0 / 0 | 76 / 74 |
+| dev2 | t0 | 68 | 39.7% / 39.7% | 70.6% / 70.6% | 77.9% / 77.9% | 0.521936 / 0.521936 | 4 / 0 | 0 / 0 | 88 / 86 |
+| dev2 | t1 | 68 | 39.7% / 39.7% | 72.1% / 72.1% | 77.9% / 77.9% | 0.528268 / 0.528472 | 5 / 0 | 0 / 0 | 92 / 90 |
+| dev2 | hybrid | 68 | 38.2% / 38.2% | 77.9% / 77.9% | 83.8% / 83.8% | 0.551937 / 0.551937 | 1 / 0 | 1 / 0 | 101 / 101 |
+
+Positive denominators are 47 for dev and 68 for dev2. Import/header and duplicate-slot counts include the 15 absent-name questions per lane, giving 390 total lane/query pairs and 345 positive pairs. All absent-name checks pass, with zero query errors. Baseline and final use the same twelve big2-<corpus>-<lane>.sqlite indexes for httpx/vite/jftp/django, the unchanged score_question/summarize evaluator, limit 10 and official adapter root mapping. Every standalone CLI lane/corpus matches warm-engine unit order, text, ranges and scores in twelve additional parity checks. Question SHA-256 values match before and after.
+
+The vector cache is an in-memory snapshot of the original float32 BLOB bytes with float64 norms, not an int8 or disk sidecar. Across all 130 development queries, cached and exact NumPy scans have identical top-300 IDs/order and six-decimal scores; the largest raw floating-point difference is 7.77e-16. A separate hybrid rerun with the exact BLOB scanner produces identical result-unit order and metrics for all 130 queries on the final source. The cache is retained without a storage or normalization change.
+
+Wider diversity rules were rejected. Unconditional 10%/25% penalties lower hit@5 or MRR in at least one lane/set. A coverage-guarded 1% rule passes the pooled gate but moves one Tier 1 dev2 answer from rank 8 to 9; the retained 0.5% rule avoids that loss and still reduces duplicate slots. Trial receipts, including rejected profiles, are retained rather than presenting the final margin as independently validated.
+
+| Runtime | Tests run | Optional skips | Test seconds |
+| --- | ---: | ---: | ---: |
+| System Python | 444 | 136 | 27.175 |
+| Parser venv | 444 | 16 | 85.441 |
+| Model2Vec venv | 444 | 131 | 27.092 |
+
+All three full Python discoveries pass, each running 444 tests with the skips above and including 13 new regressions; NumPy-specific coverage executes in the Model2Vec venv. npm ci and all 111 Node tests pass, and git diff --check passes. The fixture timeout diagnostic in the Python log is expected test output. Only Linux/WSL was executed. Regression cases cover source-language preambles and executable lookalikes, URL/comment handling, near ties and strong-score exceptions, query-coverage protection, exact symbol/path protection, overlapping units, root identity, hybrid lexical fencing, budgets and float32 score/order parity across multiple batches.
+
+Durable drivers, raw per-corpus/per-question before/after results, source/question hashes, vector controls, CLI receipts, tests and cleanup evidence are under /home/lucas/DEV/Projects/agent-toolbox-eval/i8/. Key receipts are quality-summary.json, vector-audit.json, exact-parity.json, cli-parity.json, provenance.json, checks.json, eval-final.log and checks.log. The original implementation snapshot is before-source/local_context/, and the superseded 1% final receipts are under one-percent/. The delegate report is /home/lucas/DEV/Projects/agent-toolbox/.agent-briefs/reports/i8-rank-stability.md.
+
+Only local_context/search.py, local_context/assemble.py, local_context/cli.py, tests/test_legacy_rank_stability.py and the two requested reports were changed by this delegate. Existing README and analytics changes were preserved. No hidden/held-out question directory was opened, no commit/push/branch/index/worktree change was made, and no installed skill was updated. The orchestrator retains tracking, documentation approval, review and publishing. Owned Herdr workspaces wQ3 and wQ4 were closed after foreground, descendant and session-process audits; cleanup.json records the final workspace inventory with no owned workspace left open.
