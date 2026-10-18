@@ -162,7 +162,7 @@ def ensure_python_packages(label: str, probe: str, target: Path | None, pip_argu
 def imported_modules(sources: list[Path]) -> set[str]:
     """Absolute imports of the bundled scripts; PyInstaller cannot see them
     because the scripts ship as source files, not as frozen modules."""
-    local = {path.stem for path in sources}
+    local = {path.stem for path in sources} | {"local_context"}
     found: set[str] = set()
     for path in sources:
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), filename=str(path))):
@@ -586,6 +586,7 @@ def stage_skill(stage: Path, search: list[Path]) -> tuple[list[Path], list[dict]
     scripts = sorted((SKILL / "scripts").glob("*.py"))
     for path in scripts:
         shutil.copy2(path, skill / "scripts" / path.name)
+    shutil.copytree(SKILL / "scripts" / "local_context", skill / "scripts" / "local_context", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     for path in sorted((SKILL / "scripts" / "retrieval").iterdir()):
         if path.is_file():
             shutil.copy2(path, skill / "scripts" / "retrieval" / path.name)
@@ -654,7 +655,7 @@ def build_python_bundle(work: Path, out: Path, mode: str, deps: Path | None, too
     stage = work / "stage"
     shutil.rmtree(stage, ignore_errors=True)
     scripts, additional_notices = stage_skill(stage, search)
-    sources = scripts + sorted((SKILL / "vendor").glob("*.py"))
+    sources = scripts + sorted((SKILL / "scripts" / "local_context").glob("*.py")) + sorted((SKILL / "vendor").glob("*.py"))
     wanted = imported_modules(sources)
     for parser in map_parser_names():
         wanted.add(SEPARATE_PARSERS.get(parser, f"tree_sitter_language_pack.bindings.{parser}"))
