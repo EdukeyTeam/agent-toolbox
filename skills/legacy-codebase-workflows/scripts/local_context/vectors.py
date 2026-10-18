@@ -15,6 +15,58 @@ import struct
 from itertools import islice
 
 
+def cached_top_k(query, rows_factory, k, owner, key, *, cache=True):
+    """Exact NumPy scan with a bounded, generation-owned prepared snapshot.
+
+    SQLite remains authoritative. No approximate candidate restriction, disk
+    sidecar, or stale cross-generation vector survives provider replacement.
+    Filters are part of the key; retain at most one 512 MiB snapshot per model.
+    """
+    np = importlib.import_module("numpy")
+    q = normalize(query)
+    saved = getattr(owner, "_retrieval_vectors", None) if cache else None
+    if saved is None or saved[0] != key:
+        blocks, size = [], 0
+        iterator = iter(rows_factory())
+        while batch := list(islice(iterator, 4096)):
+            ids, blobs = zip(*batch)
+            if any(isinstance(i, bool) or not isinstance(i, int) for i in ids):
+                raise ValueError("Unit ID must be an integer")
+            if any(not isinstance(b, (bytes, bytearray, memoryview)) or len(b) != 4 * len(q) for b in blobs):
+                raise ValueError("Vector dimension mismatch")
+            matrix = np.frombuffer(b"".join(blobs), dtype="<f4").reshape((-1, len(q)))
+            if not np.isfinite(matrix).all():
+                raise ValueError("Vector must contain finite numbers")
+            norms = np.sqrt(np.einsum("ij,ij->i", matrix, matrix, dtype=np.float64))
+            if not (norms > 0).all():
+                raise ValueError("Vector must have a nonzero norm")
+            blocks.append((np.asarray(ids, dtype=np.int64), matrix, norms))
+            size += matrix.nbytes + norms.nbytes + len(ids) * 8
+            if size > 512 * 1024 * 1024:
+                # Larger corpora stay bounded and use the streaming authority.
+                return top_k(q, rows_factory(), k, "numpy")
+        saved = (key, blocks, len(q))
+        if cache:
+            owner._retrieval_vectors = saved
+    if saved[2] != len(q):
+        raise ValueError("Vector dimension mismatch")
+    selected = []
+    for ids, matrix, norms in saved[1]:
+        # Mixed-dtype einsum avoids a float64 matrix copy and BLAS thread
+        # startup for every 4096-row block. Norms were validated on publication.
+        scores = np.einsum("ij,j->i", matrix, q, dtype=np.float64) / norms
+        buckets = np.round(np.clip(scores, -1., 1.), 6)
+        count = min(k, len(ids))
+        if count:
+            threshold = np.partition(buckets, len(ids) - count)[len(ids) - count]
+            indices = np.flatnonzero(buckets >= threshold)
+            if len(indices) > count:
+                indices = indices[np.lexsort((ids[indices], -buckets[indices]))[:count]]
+            selected.extend((int(ids[i]), float(scores[i])) for i in indices)
+    # Keep the authoritative engines' six-decimal bucket / ascending-ID policy.
+    return heapq.nsmallest(k, selected, key=lambda row: (-round(row[1], 6), row[0]))
+
+
 def _values(vec) -> list[float]:
     result = list(vec)
     try:

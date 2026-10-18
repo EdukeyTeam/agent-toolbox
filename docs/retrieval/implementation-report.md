@@ -328,3 +328,74 @@ There are zero query errors and no lost previously successful hybrid questions; 
 Final checks pass 405 tests in system Python 3.14.4, 405 in `venv-core` Python 3.14.4, and 405 in Model2Vec Python 3.12.15, with 139/57/136 expected optional/native skips. The real cached Potion test passes offline. `npm ci` and all 111 Node tests pass, including workflow filters. The broad Python workflow already covers all legacy tests; the semantic workflow now explicitly includes local-context, embedding and evaluator tests and their filters. `git diff --check` passes. No build was launched and no Windows/macOS execution is claimed.
 
 All four owned Herdr workspaces (`wNZ`, `wP1`, `wP2`, `wN0`) are closed after foreground/descendant audits; cleanup evidence remains in the scratch directory. No worktree was created. The orchestrator retains commits, publishing, tracking and fresh held-out evaluation.
+
+## Large-repository fixes
+
+The large-repository pass fixes discovery, modern declaration extraction, query costs and duplicated FTS bodies. Final source uses chunker revision 6. All six requested full-repository indexes and all twelve development indexes were rebuilt. No hidden question set or held-out labels were opened. Commits, publishing, task tracking and installed-skill rollout remain with the orchestrator.
+
+### Discovery and symbols
+
+Git-visible files under `build`, `bin`, `out`, `dist`, `target` and `obj` are retained; VCS, dependency/cache, explicit-scope and secret filters remain active. Non-Git output-name pruning requires a directory consisting entirely of known generated-output suffixes. `discovery.prunedDirectories` records root ID, path, file count and reason. Git counts cover entries Git actually enumerated. Explicit includes supplement Git inventory instead of replacing it, preserving tracked files covered by ignore rules.
+
+Every final Next.js lane contains all 289 tracked files under `packages/next/src/build/`, including its 278 `.ts` files; the brief's 289 count includes other file types. Payload audits locate `executeAccess` at `packages/payload/src/auth/executeAccess.ts:14` and `combineQueries` at `packages/payload/src/database/combineQueries.ts:8` in both parser tiers.
+
+Tier 0 and Tier 1 recognize direct variable-bound arrow/function expressions, async and typed arrows, multiline parameter lists, named default exports, class arrow fields, exported-object methods and TypeScript type/interface declarations. Go function-valued variables, Kotlin anonymous-function values and Rust const/static declarations, including mutable statics, are covered. Tier 0 balances parameter lists so a parenthesized call followed by an unrelated callback cannot become a function definition; quoted literals remain neutral tokens during scanning. JS/TS call statements such as `await executeAccess(...)` no longer pass the C/Java typed-return declaration scanner. Tier 0 remains conservative source scanning; Tier 1 uses the pinned syntax runtime with its existing fallback behavior.
+
+### Query costs and storage
+
+FTS retrieves a bounded ranked prefix and retains the original path/line/UID tie order, falling back to the full tie breaker when a score tie crosses the cutoff. Path and symbol-descendant lookups use the file-span index. Coverage scoring checks query words instead of allocating every body token, and Unicode folding checks character categories per distinct character. The candidate depth is 300; both the controlled depth trial and the final fresh-index comparisons are retained. Unnamed location/flow queries demote isolated source-comment fragments so new declaration boundaries do not promote detached JSDoc ahead of implementing code; named-symbol and usage queries retain normal evidence.
+
+Warm NumPy queries reuse an exact float32 vector snapshot with validated float64 norms, keyed by database UUID, library generation and filters. One snapshot is capped at 512 MiB per provider, with a streaming fallback above that bound. Automatic engine selection uses this path when NumPy is selected. Coverage counts share the same generation/filter invalidation. Candidate hashes and Git/root freshness checks still run; semantic incomplete-coverage errors still precede model loading. Tests exercise refresh, filter changes, malformed vectors and six-decimal/ascending-ID tie equivalence.
+
+External-content FTS shares the authoritative unit body through a SQLite view; a separate table holds search shadows and is read directly during candidate scoring. Migration is transactional, old format-8 indexes remain readable by the current code, and the new storage fingerprint rejects older writers. On an identical-content Next.js hybrid copy, FTS field checksums before/after are identical and `integrity-check` passes. Storage falls from 1246.1 MiB to 1079.6 MiB, saving 166.5 MiB (13.4%). This control isolates storage savings from the declaration and coverage changes in the complete rebuilds.
+
+### Sequential query measurements
+
+| Corpus | Mode | CLI before s | CLI after s | Warm HTTP before s | Warm HTTP after s |
+| --- | --- | ---: | ---: | ---: | ---: |
+| payload | lexical | 0.527 | 0.421 | 0.329 | 0.211 |
+| payload | hybrid | 2.536 | 2.395 | 1.429 | 0.352 |
+| nextjs | lexical | 1.077 | 0.721 | 0.745 | 0.600 |
+| nextjs | hybrid | 4.907 | 3.330 | 4.007 | 0.497 |
+
+Each CLI p50 has eight new-process samples: four generic natural-language/identifier queries repeated twice. Lexical CLI uses system Python; hybrid CLI and the real HTTP servers use the Model2Vec venv. Warm HTTP p50 excludes the first request and pools the remaining eleven requests. Timing runs follow completion of this task's indexing/check jobs on the shared W365 VM; OS caches are not flushed. cProfile runs separately from timed requests, covering one-shot CLI and warm handler work. Raw samples, query strings, profiles and interpreter paths are in `before-clean-timings.json`, `after-clean-timings.json` and the adjacent `*-clean-*.prof` files. These are constructed-query development measurements, not hidden-set or reference-laptop latency claims.
+
+### Full-repository index receipts
+
+| Corpus | Lane | Indexed files | Searchable units | Index s | Peak RSS MiB | Before MiB | After MiB |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| payload | t0 | 9616 | 70705 | 142.2 | 102.1 | 337.9 | 308.1 |
+| payload | t1 | 9616 | 68245 | 260.8 | 610.4 | 277.2 | 322.3 |
+| payload | hybrid | 9616 | 70705 | 246.2 | 197.3 | 433.7 | 400.4 |
+| nextjs | t0 | 32556 | 178672 | 385.2 | 180.9 | 980.9 | 784.1 |
+| nextjs | t1 | 32556 | 177121 | 598.9 | 394.2 | 928.0 | 914.1 |
+| nextjs | hybrid | 32556 | 178672 | 415.3 | 286.8 | 1246.1 | 1017.9 |
+
+All databases are `/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/big2-<corpus>-<lane>.sqlite`. Tier 0 uses system Python, Tier 1 the pinned parser venv, and hybrid uses Tier 0 plus offline `minishlab/potion-code-16M-v2` revision `e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b` from the existing cache. GNU time receipts record whole-command wall time and peak RSS. Indexing jobs overlapped on the shared VM; the table is an operational receipt, not an isolated indexing-speed comparison. `indexes.json` also retains active-page sizes, vector counts, status counts, build-directory coverage and symbol audits. Some Tier-1 sizes grow because previously missing declarations now create real units; the identical-content control above separates that effect from FTS body savings.
+
+### Fresh development quality
+
+| Set | Lane | N | Before hit@5 | After hit@5 | Before MRR@10 | After MRR@10 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| dev | t0 | 47 | 76.6% | 76.6% | 0.664 | 0.671 |
+| dev | t1 | 47 | 78.7% | 78.7% | 0.707 | 0.726 |
+| dev | hybrid | 47 | 85.1% | 85.1% | 0.695 | 0.701 |
+| dev2 | t0 | 68 | 70.6% | 70.6% | 0.513 | 0.522 |
+| dev2 | t1 | 68 | 72.1% | 72.1% | 0.528 | 0.528 |
+| dev2 | hybrid | 68 | 77.9% | 77.9% | 0.549 | 0.552 |
+
+Before is a complete re-index using the source snapshot saved before this task. The existing archived `i3-*` indexes were unsuitable as the sole baseline: with identical file hashes, Django's `ref/models/querysets.txt` had 119 archived units but 95 units in both fresh snapshots; `django/db/models/query.py` had 251 archived units but 228 in both fresh snapshots. `baseline-audit.json` records the evidence. This prevents attributing earlier chunker changes to these fixes.
+
+The same dev/dev2 question files and unchanged evaluator score both snapshots. Final warm queries use the official adapter's root mapping and verify CLI/warm evidence parity per corpus and lane. Question SHA-256 values are recorded and checked. All previously successful lexical and hybrid questions are retained; hit@5 and MRR@10 do not decrease in any pooled lane/set, and all previously successful exact-symbol questions remain successful. All 15 absent-name cases pass per lane, with zero query errors; this check does not establish API absence. Raw per-corpus and per-question results are in `quality-summary.json` and the `fresh-before-*`/lane JSON files.
+
+### Verification and handoff
+
+| Runtime | Tests passed/skipped | Optional skips | Seconds |
+| --- | ---: | ---: | ---: |
+| System Python | 431 | 135 | 38.361 |
+| Parser venv | 431 | 15 | 116.935 |
+| Model2Vec venv | 431 | 131 | 28.931 |
+
+`npm ci` and all 111 Node tests pass with system Node 24.21.0. Loading nvm returned status 3, so the checks explicitly use the installed system runtime. `git diff --check` passes. Only Linux/WSL was executed. The required system/parser suites and the additional real cached-model suite are complete; optional/native skips are reported above. The engine and source snapshots, exact drivers, index receipts, CLI evidence, FTS integrity checks and streaming logs remain under `/home/lucas/DEV/Projects/agent-toolbox-eval/i7/` and `/home/lucas/DEV/Projects/agent-toolbox-eval/logs/i7-*.log`.
+
+Repository changes stay within the permitted local-context modules, legacy tests, retrieval-reference corrections and these requested reports. Scratch drivers and receipts remain in the evaluation workspace. The existing README and analytics work were preserved. The project branch and Git index were not changed; no commit, push, worktree, installed-skill update or production-service change was made. Owned Herdr task workspaces were audited for foreground processes and background/session children, with final cleanup evidence in `cleanup-*.json` and `cleanup.json`; no owned task workspace remains open.

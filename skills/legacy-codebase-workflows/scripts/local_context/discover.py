@@ -9,7 +9,11 @@ from repo_files import (_git, git_context, _safe_relative, SECRET_NAMES, SECRET_
                         contains_control_characters, safe_path_display, _ignored_non_git, MAX_IGNORE_BYTES, MAX_IGNORE_TOTAL_BYTES)
 from .units import Root, RetrievalError
 
-SKIP_DIRS = {".git", ".svn", "CVS", ".hg", "node_modules", "__pycache__", ".venv", "venv", "target", "dist", "build", "bin", "obj", "out", ".gradle", ".idea", ".vs", ".next", ".cache"}
+SKIP_DIRS = {".git", ".svn", "CVS", ".hg", "node_modules", "__pycache__", ".venv", "venv", ".gradle", ".idea", ".vs", ".next", ".cache"}
+# These names occur in real source trees. Git's ignore rules, rather than a
+# basename blacklist, decide which Git-visible files belong in the inventory.
+OUTPUT_DIRS = {"target", "dist", "build", "bin", "obj", "out"}
+GENERATED_SUFFIXES = {".o", ".obj", ".class", ".pyc", ".pyo", ".dll", ".exe", ".so", ".dylib", ".a", ".lib", ".pdb", ".map", ".wasm"}
 DOCS = {".md", ".mdx", ".rst", ".adoc", ".asciidoc", ".rmd", ".qmd"}
 LANGUAGES = {".py":"python", ".java":"java", ".js":"javascript", ".mjs":"javascript", ".cjs":"javascript", ".jsx":"javascript", ".ts":"typescript", ".tsx":"tsx", ".cs":"c_sharp", ".c":"c", ".h":"c", ".cc":"cpp", ".cpp":"cpp", ".hpp":"cpp", ".rs":"rust", ".go":"go", ".rb":"ruby", ".php":"php", ".pas":"pascal", ".dpr":"pascal", ".dpk":"pascal", ".dfm":"pascal", ".vb":"vb", ".bas":"vb", ".cls":"vb", ".frm":"vb", ".cbl":"cobol", ".cob":"cobol", ".cpy":"cobol", ".pl":"perl", ".pm":"perl", ".pod":"perl", ".r":"r", ".kt":"kotlin", ".kts":"kotlin", ".swift":"swift", ".dart":"dart", ".scala":"scala", ".groovy":"groovy", ".gradle":"groovy", ".ps1":"powershell", ".psm1":"powershell", ".bat":"batch", ".cmd":"batch", ".sh":"bash", ".bash":"bash", ".sql":"sql", ".pls":"sql", ".pkb":"sql", ".pks":"sql", ".pck":"sql", ".prc":"sql", ".fnc":"sql", ".trg":"sql", ".html":"html", ".htm":"html", ".css":"css", ".xml":"xml", ".xaml":"xml", ".config":"xml", ".cshtml":"html", ".razor":"html", ".aspx":"html", ".ascx":"html", ".asp":"html", ".jsp":"html", ".json":"json", ".toml":"toml", ".yaml":"yaml", ".yml":"yaml", ".ini":"ini", ".properties":"properties", ".cfg":"ini", ".conf":"text"}
 CONFIG = {"json", "toml", "yaml", "ini", "properties", "xml"}
@@ -136,15 +140,32 @@ def safe_path(root: Path, relative: str) -> Path:
 
 def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000_000, counters=None):
     counters = counters if counters is not None else {}
-    counters.update(visited=0, discovered=0, eligible=0, excluded=0, excludedExamples=[])
+    counters.update(visited=0, discovered=0, eligible=0, excluded=0, excludedExamples=[], prunedDirectories=[])
     for owner in roots:
         base = Path(owner.path)
         git_repo = git_context(base)
         ignore_cache = {"files": {}, "bytes": 0}
+        pruned = {}
+        def record_pruned(rel, count, reason):
+            if rel not in pruned:
+                row = {"rootId": owner.id, "path": safe_path_display(rel), "fileCount": 0, "reason": reason}
+                pruned[rel] = row
+                counters["prunedDirectories"].append(row)
+            pruned[rel]["fileCount"] += count
+
+        def directory_files(directory):
+            # Metadata only; never follow directory symlinks or open contents.
+            count = 0
+            generated = True
+            for folder, folders, files in os.walk(directory, followlinks=False):
+                folders[:] = [p for p in folders if not (Path(folder) / p).is_symlink()]
+                count += len(files)
+                generated &= all(Path(p).suffix.lower() in GENERATED_SUFFIXES for p in files)
+            return count, generated and count > 0
         # git ls-files handles exact Git ignore semantics; bounded line reader avoids
         # the old helper's hard 100k candidate ceiling. Walk only for --include.
         def paths():
-            if git_repo and not includes:
+            if git_repo:
                 env = {k:v for k,v in os.environ.items() if not k.upper().startswith("GIT_")}
                 env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_OPTIONAL_LOCKS="0")
                 proc = subprocess.Popen(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", str(base), "ls-files", "-z", "--cached", "--others", "--exclude-standard"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=env)
@@ -165,7 +186,7 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
                         proc.terminate()
                         proc.wait()
                     proc.stdout.close()
-            else:
+            if not git_repo or includes:
                 stack = [base]
                 while stack:
                     directory = stack.pop()
@@ -180,11 +201,18 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
                             rel = Path(entry.path).relative_to(base).as_posix()
                             if entry.is_dir(follow_symlinks=False):
                                 include_branch = any(p == rel or p.startswith(rel + "/") or rel.startswith(p + "/") for p in includes)
-                                if entry.name not in {".git", ".hg", ".svn", "CVS"} and not secret_name(PurePosixPath(rel)) and (include_branch or (entry.name not in SKIP_DIRS and not matches(rel, excludes) and not ignore_match(base, rel, ignore_cache, True))):
+                                if git_repo and not include_branch:
+                                    continue  # Git inventory already owns all ordinary paths.
+                                generated_count, generated_only = (directory_files(entry.path) if not git_repo and not include_branch and entry.name in OUTPUT_DIRS else (0, False))
+                                if entry.name not in {".git", ".hg", ".svn", "CVS"} and not secret_name(PurePosixPath(rel)) and (include_branch or (entry.name not in SKIP_DIRS and not generated_only and not matches(rel, excludes) and not ignore_match(base, rel, ignore_cache, True))):
                                     stack.append(Path(entry.path))
                                 else:
                                     excluded(rel)
+                                    count = generated_count if generated_only else directory_files(entry.path)[0]
+                                    record_pruned(rel, count, "generated-output" if generated_only else "default-or-scope-exclude")
                             else:
+                                if git_repo and not matches(rel, includes):
+                                    continue
                                 if not matches(rel, includes) and ignore_match(base, rel, ignore_cache):
                                     excluded(rel)
                                     continue
@@ -196,7 +224,11 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
             counters["excluded"] += 1
             if len(counters["excludedExamples"]) < 20:
                 counters["excludedExamples"].append(safe_path_display(rel))
+        yielded = set()
         for relative in paths():
+            if relative in yielded:
+                continue
+            yielded.add(relative)
             try:
                 relative.encode("utf-8")
                 if contains_control_characters(relative):
@@ -208,6 +240,11 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
             override = matches(relative, includes)
             if secret_name(rel) or (not override and (any(p in SKIP_DIRS for p in rel.parts) or matches(relative, excludes))):
                 excluded(relative)
+                for index, part in enumerate(rel.parts[:-1]):
+                    directory = PurePosixPath(*rel.parts[:index + 1]).as_posix()
+                    if part in SKIP_DIRS or matches(directory, excludes):
+                        record_pruned(directory, 1, "default-or-scope-exclude")
+                        break
                 continue
             counters["visited"] += 1
             counters["discovered"] += 1

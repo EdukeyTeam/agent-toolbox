@@ -512,7 +512,7 @@ class ArgonTests(unittest.TestCase):
         result = freshness.refresh(self.db)
         self.assertEqual(result["changed"], 1)
         with store.connect(self.db) as con:
-            self.assertEqual(json.loads(store.library(con)["parser_json"])["chunker_revision"], 2)
+            self.assertEqual(json.loads(store.library(con)["parser_json"])["chunker_revision"], 6)
 
 
 if __name__ == "__main__":

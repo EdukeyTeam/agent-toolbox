@@ -78,7 +78,7 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
     config = _saved if _saved is not None else embedding_config(embed_model, model_revision, model_cache, embedding_runtime, **kwargs)
     scope = {"excludes":list(excludes), "includes":list(includes), "encodings":list(encodings), "no_secret_scan":no_secret_scan, "chunk_chars":chunk_chars, "max_file_bytes":max_file_bytes, "discovery_limit":discovery_limit, "max_files":max_files, "max_units":max_units, "vector_engine":vector_engine, "parser":parser}
     tier = parser_tier(parser)
-    parser_config = {"version":8, "chunker_revision":2, "tier":tier, "chunk_chars":chunk_chars, "encodings":list(encodings), "scan":not no_secret_scan}
+    parser_config = {"version":8, "chunker_revision":6, "tier":tier, "chunk_chars":chunk_chars, "encodings":list(encodings), "scan":not no_secret_scan}
     fingerprint = digest(canonical(parser_config).encode())
     if database.exists():
         with store.connect(database) as check:

@@ -74,13 +74,105 @@ _SQL = re.compile(r"^\s*(?:create\s+(?:or\s+(?:replace|alter)\s+)?|alter\s+)?(?:
 _COBOL = re.compile(r"^.{0,7}\s*([\w-]+)(?:\s+(?:DIVISION|SECTION))?\.\s*$", re.I)
 
 
+def callable_prefix(value):
+    """Recognize a direct callable initializer, balancing its parameters."""
+    def balanced(at, opening, closing):
+        depth = 0
+        for position in range(at, len(value)):
+            char = value[position]
+            if char == opening:
+                depth += 1
+            elif char == closing and not (closing == ">" and position and value[position - 1] == "="):
+                depth -= 1
+                if depth == 0:
+                    return position + 1
+        return None
+    function = re.match(r"(?:async\s+)?(?:function\b(?:\s+[\w$]+)?|fun\b|func\s*(?=\())", value)
+    position = function.end() if function else 0
+    if not function:
+        asynchronous = re.match(r"async\s+", value)
+        position = asynchronous.end() if asynchronous else 0
+    while position < len(value) and value[position].isspace():
+        position += 1
+    if not function and position < len(value) and value[position] == "<":
+        position = balanced(position, "<", ">")
+        if position is None:
+            return None
+        while position < len(value) and value[position].isspace():
+            position += 1
+    if position < len(value) and value[position] == "(":
+        position = balanced(position, "(", ")")
+        if position is None:
+            return None
+    elif not function:
+        parameter = re.match(r"[\w$]+", value[position:])
+        if not parameter:
+            return None
+        position += parameter.end()
+    else:
+        return None
+    if function:
+        return position, False
+    while position < len(value) and value[position].isspace():
+        position += 1
+    if value[position:position + 1] == ":":
+        # A return type can itself contain nested generics and function types.
+        stack = []
+        position += 1
+        pairs = {"(": ")", "[": "]", "{": "}", "<": ">"}
+        while position < len(value):
+            if not stack and value.startswith("=>", position):
+                return position + 2, True
+            char = value[position]
+            if not stack and char in ";=":
+                return None
+            if char in pairs:
+                stack.append(pairs[char])
+            elif stack and char == stack[-1] and not (char == ">" and value[position - 1] == "="):
+                stack.pop()
+            position += 1
+        return None
+    return (position + 2, True) if value.startswith("=>", position) else None
+
+
+def expression_binding(lines, start, language):
+    """Bounded declaration recognition, never arbitrary callback assignments."""
+    if language not in {"javascript", "typescript", "tsx", "kotlin", "go", "rust"}:
+        return None
+    header = re.match(r"^\s*(?:(?:export|default|declare|public|private|protected|readonly|static|override|pub(?:\([^)]*\))?)\s+)*(?:(?:const|let|var|val|static)\s+(?:mut\s+)?([\w$]+)|([\w$]+)\s*(?=[?:=]))", lines[start])
+    if not header:
+        return None
+    window = "\n".join(lines[start:start+12])
+    # Do not mistake an arrow in a function type for the initializer's equals.
+    assignment = re.search(r"(?<![=<>!])=(?![=>])", lines[start][header.end():])
+    if not assignment and header.group(2):
+        assignment = re.match(r"\s*:", lines[start][header.end():])
+    if not assignment:
+        return None
+    value_start = header.end() + assignment.end()
+    value = window[value_start:].lstrip()
+    offset = len(window[value_start:]) - len(value) + value_start
+    callable_value = callable_prefix(value)
+    container = language in {"javascript", "typescript", "tsx"} and value.startswith("{") and bool(re.match(r"\s*export\s+", lines[start]))
+    constant = language == "rust" and bool(re.match(r"\s*(?:pub(?:\([^)]*\))?\s+)?(?:const|static)\s+", lines[start]))
+    if not callable_value and not container and not constant:
+        return None
+    after = offset + (callable_value[0] if callable_value else 0)
+    body = window.find("{", after) if callable_value else offset if value.startswith("{") else -1
+    if callable_value and callable_value[1] and not window[after:].lstrip().startswith("{"):
+        body = -1  # An object in a returned expression is not the function body.
+    header_end = start + window[:body if body >= 0 else after].count("\n")
+    return header.group(1) or header.group(2), header_end, body >= 0, container
+
+
 def generic_definitions(text: str, language: str) -> list[Definition]:
     lines = split_source_lines(text)
     found = []
+    expression_starts = set()
     # Remove comments and quoted literals before counting braces, retaining lines.
     hash_comment = r"|\#[^\n]*" if language in {"powershell", "php", "bash", "ruby", "perl", "r", "python"} else ""
     literals = r'''/\*[\s\S]*?\*/|//[^\n]*|"(?:\\[^\n]|[^"\\\n])*"|'(?:\\[^\n]|[^'\\\n])*'|`(?:\\[^\n]|[^`\\\n])*`'''
-    cleaned = re.sub(literals + hash_comment, lambda m:"\n" * m[0].count("\n"), text)
+    cleaned = re.sub(literals + hash_comment, lambda m: ("0" if m[0].startswith(('"', "'", "`")) else "") + "\n" * m[0].count("\n"), text)
     clean_lines = cleaned.split("\n")
     depths, depth = [], 0
     for line in clean_lines:
@@ -100,23 +192,32 @@ def generic_definitions(text: str, language: str) -> list[Definition]:
             scopes.pop()
         if len(line)>2000:
             continue  # Indivisible long lines are still indexed by windows.
+        binding = expression_binding(clean_lines, i, language)
+        if binding and not binding[2]:
+            expression_starts.add(i + 1)
         match = (_SQL.match(line) if language == "sql" else _COBOL.match(line) if language == "cobol" else _DECL.match(line))
+        if language in {"javascript", "typescript", "tsx"} and match and (match.group(2) or match.group(3)) and not binding:
+            # Typed-return declarations belong to C/Java-like languages. In JS
+            # they mislabel `await foo(...)` and `return foo(...)` as definitions.
+            match = None
+        if language in {"javascript", "typescript", "tsx"} and not match:
+            match = re.match(r"^\s*(?:export\s+)?(?:declare\s+)?type\s+([\w$]+)\b", line)
         if not match:
             # JavaScript/TypeScript methods lack a return type in many classes.
             match = re.match(r"^\s+(?:(?:public|private|async|static|get|set)\s+)*([\w$]+)\s*\([^;]*\)\s*(?::[^=]+)?\s*\{", line)
-        if not match:
+        if not match and not binding:
             continue
-        name = next((g for g in match.groups() if g), "")
+        name = binding[0] if binding else next((g for g in match.groups() if g), "")
         if name.lower() in {"if", "for", "while", "switch", "catch", "return", "else", "throw", "new", "try", "synchronized"}:
             continue
         signature_lines = [line.strip()]
         j = i
-        while j + 1 < min(len(lines), i + 12) and not any(c in signature_lines[-1] for c in "{;:"):
+        while j + 1 < min(len(lines), i + 12) and (j < binding[1] if binding else not any(c in signature_lines[-1] for c in "{;:")):
             j += 1
             signature_lines.append(lines[j].strip())
         end = len(lines)
-        if "{" in "\n".join(clean_lines[i:j + 1]):
-            opening = next((n for n in range(i,j+1) if "{" in clean_lines[n]),i)
+        if (binding and binding[2]) or (not binding and "{" in "\n".join(clean_lines[i:j + 1])):
+            opening = j if binding else next((n for n in range(i,j+1) if "{" in clean_lines[n]),i)
             end = brace_ends.get(opening,len(lines))
         elif language in {"vb", "pascal", "ruby"}:
             for k in range(i + 1, len(lines)):
@@ -138,7 +239,7 @@ def generic_definitions(text: str, language: str) -> list[Definition]:
             leading.insert(0, lines[s].strip())
             s -= 1
         found.append(Definition(i + 1, max(i + 1, end), name, ".".join((*scope, name)), "\n".join(signature_lines)[:1000], scope, "\n".join(leading)[:600], s + 2, j + 1))
-        if re.search(r"\b(class|interface|struct|module|package)\b", found[-1].signature, re.I):
+        if (binding and binding[3]) or re.search(r"\b(class|interface|struct|module|package)\b", found[-1].signature, re.I):
             scopes.append(found[-1])
     # Uncertain braceless blocks end at the next declaration at their own or
     # lesser indentation, with an enclosing brace boundary as an upper bound.
@@ -157,7 +258,7 @@ def generic_definitions(text: str, language: str) -> list[Definition]:
         while pending and pending[-1][0] >= indent:
             _, previous = pending.pop()
             bounded[previous] = replace(bounded[previous], end=min(bounded[previous].end, definition.start-1))
-        if definition.end == len(lines) and "{" not in definition.signature:
+        if definition.end == len(lines) and (definition.start in expression_starts or "{" not in definition.signature):
             boundary = containing[0] if containing else len(lines)
             bounded[index] = replace(definition, end=min(definition.end, boundary))
             pending.append((indent, index))
@@ -212,10 +313,25 @@ def syntax_definitions(text: str, language: str, target=1500):
                 error_lines.update(range(start, end + 1))
             name_node = node.child_by_field_name("name")
             definition = re.search(r"(?:function|method|constructor|class|interface|struct|enum|trait|module|procedure|package).*(?:definition|declaration|item)$", node.type)
+            value = node.child_by_field_name("value")
+            if value is not None and value.type == "expression_list" and len(value.named_children) == 1:
+                value = value.named_children[0]
+            if language == "kotlin" and node.type == "property_declaration":
+                value = next((c for c in node.named_children if c.type == "anonymous_function"), value)
+                variable = next((c for c in node.named_children if c.type == "variable_declaration"), None)
+                if variable is not None and variable.named_children:
+                    name_node = variable.named_children[0]
+            expression = node.type in {"variable_declarator", "public_field_definition", "field_definition", "property_declaration", "property_definition", "pair", "var_spec"} and value is not None and value.type in {"arrow_function", "function_expression", "function", "func_literal", "anonymous_function"}
+            container = node.type == "variable_declarator" and value is not None and value.type == "object" and node.parent is not None and node.parent.parent is not None and node.parent.parent.type == "export_statement"
+            definition = definition or expression or container or node.type in {"type_alias_declaration", "const_item", "static_item"}
+            if node.type == "pair":
+                name_node = node.child_by_field_name("key")
             child_scope = scope
             if definition and name_node:
                 name = name_node.text.decode("utf-8")
-                body = node.child_by_field_name("body")
+                body = value.child_by_field_name("body") if expression else value if container else node.child_by_field_name("body")
+                if body is None and expression and language == "kotlin":
+                    body = next((c for c in node.named_children if c.type == "function_body"), None)
                 body_line = body.start_point.row + 1 if body else start
                 signature = "\n".join(lines[start - 1:max(start, body_line)])[:1000]
                 leading = []

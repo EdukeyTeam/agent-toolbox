@@ -25,6 +25,9 @@ CREATE TABLE unit_vectors(unit_id INTEGER PRIMARY KEY REFERENCES units(id) ON DE
 CREATE VIEW chunks AS SELECT u.id,f.kind,f.path,u.start_line AS start,u.end_line AS end,u.text AS body,coalesce(u.qualified_name,'') AS symbols FROM units u JOIN files f ON f.id=u.file_id WHERE u.searchable=1;
 CREATE VIEW chunk_vectors AS SELECT unit_id AS chunk_id,embedding FROM unit_vectors;
 """
+# The logical format is still 8, but older writers do not maintain external
+# FTS content. Their fingerprint check must reject a newly published layout.
+STORAGE_FINGERPRINT = digest((SCHEMA + "\n-- external-content FTS v1\n").encode())
 
 
 class ClosingConnection(sqlite3.Connection):
@@ -46,6 +49,10 @@ def connect(path: Path, *, timeout=5.0):
     con = sqlite3.connect(path, timeout=timeout, isolation_level=None, factory=ClosingConnection)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys=ON")
+    # Share hot index pages through the OS cache instead of repeatedly copying
+    # a gigabyte-scale FTS index through SQLite's small per-connection cache.
+    # SQLite may decline mmap on unsupported builds; WAL snapshots still apply.
+    con.execute("PRAGMA mmap_size=1073741824")
     return con
 
 
@@ -53,18 +60,33 @@ def fts_name(library_id):
     return "fts_" + digest(library_id.encode())[:24]
 
 
+def fts_payload_name(con, library_id):
+    name = fts_name(library_id)
+    sql = con.execute("SELECT sql FROM sqlite_master WHERE name=?", (name,)).fetchone()
+    return name + "_source" if sql and "content=" in sql[0] else name
+
+
 def create_library_fts(con, library_id):
     name = fts_name(library_id)
     try:
         old = con.execute("SELECT sql FROM sqlite_master WHERE name=?", (name,)).fetchone()
-        migrate = bool(old and "tokenchars" not in old[0])
+        migrate = bool(old and ("tokenchars" not in old[0] or "content=" not in old[0]))
         if migrate:
             con.execute(f"CREATE TEMP TABLE {name}_saved AS SELECT rowid AS id,* FROM {name}")
             con.execute(f"DROP TABLE {name}")
-        con.execute(f"CREATE VIRTUAL TABLE IF NOT EXISTS {name} USING fts5(title_symbols,identifier_tokens,path_tokens,body,stemmed,tokenize=\"unicode61 remove_diacritics 2 tokenchars '_'\")")
+        if old is None or migrate:
+            # The source body already belongs to units. Keep only search
+            # shadows here, exposing the exact original FTS body through a view.
+            con.execute(f"CREATE TABLE IF NOT EXISTS {name}_source(rowid INTEGER PRIMARY KEY REFERENCES units(id) ON DELETE CASCADE,title_symbols TEXT NOT NULL,identifier_tokens TEXT NOT NULL,path_tokens TEXT NOT NULL,stemmed TEXT NOT NULL)")
+            con.execute(f"CREATE VIEW IF NOT EXISTS {name}_view AS SELECT s.rowid,s.title_symbols,s.identifier_tokens,s.path_tokens,CASE WHEN u.redacted=1 THEN 'Redacted source content' ELSE json_extract(u.header_json,'$.text')||char(10)||u.description||char(10)||coalesce(u.text,'') END AS body,s.stemmed FROM {name}_source s JOIN units u ON u.id=s.rowid")
+        external = f",content='{name}_view',content_rowid='rowid'" if old is None or migrate else ""
+        con.execute(f"CREATE VIRTUAL TABLE IF NOT EXISTS {name} USING fts5(title_symbols,identifier_tokens,path_tokens,body,stemmed,tokenize=\"unicode61 remove_diacritics 2 tokenchars '_'\"{external})")
         if migrate:
+            con.execute(f"DELETE FROM {name}_source")
+            con.execute(f"INSERT INTO {name}_source(rowid,title_symbols,identifier_tokens,path_tokens,stemmed) SELECT id,title_symbols,identifier_tokens,path_tokens,stemmed FROM {name}_saved")
             con.execute(f"INSERT INTO {name}(rowid,title_symbols,identifier_tokens,path_tokens,body,stemmed) SELECT id,title_symbols,identifier_tokens,path_tokens,body,stemmed FROM {name}_saved")
             con.execute(f"DROP TABLE {name}_saved")
+        put_meta(con, "schema_fingerprint", STORAGE_FINGERPRINT)
     except sqlite3.OperationalError as exc:
         raise RetrievalError("SQLite FTS5 unavailable; use a Python runtime compiled with FTS5", "fts5_unavailable", 503) from exc
 
@@ -82,7 +104,7 @@ def validate(con):
         raise RetrievalError(f"Index version {meta.get('index_version', 'unknown')} unsupported; reindex required into a new database path (format 8)", "index_version_unsupported", 409)
     if not re.fullmatch(r"[a-f0-9]{32}", meta.get("database_uuid", "")) or con.execute("PRAGMA user_version").fetchone()[0] != 8:
         raise RetrievalError("Invalid index metadata; restore or reindex into a new database path", "index_invalid", 409)
-    if meta.get("schema_fingerprint") != digest(SCHEMA.encode()):
+    if meta.get("schema_fingerprint") not in {digest(SCHEMA.encode()), STORAGE_FINGERPRINT}:
         raise RetrievalError("Index schema fingerprint changed; reindex required", "index_invalid", 409)
     try:
         con.execute("SELECT id,roots_json,scope_json FROM libraries LIMIT 1").fetchall()
@@ -100,7 +122,7 @@ def initialize(con):
             if statement.strip():
                 con.execute(statement)
         con.execute("PRAGMA user_version=8")
-        con.executemany("INSERT INTO meta VALUES(?,?)", [("index_version", INDEX_VERSION), ("database_uuid", uuid.uuid4().hex), ("schema_fingerprint", digest(SCHEMA.encode()))])
+        con.executemany("INSERT INTO meta VALUES(?,?)", [("index_version", INDEX_VERSION), ("database_uuid", uuid.uuid4().hex), ("schema_fingerprint", STORAGE_FINGERPRINT)])
     # An auxiliary performance index, safe to add to existing format-8 stores.
     # Without it every ON DELETE parent cascade scans the entire units table.
     con.execute("CREATE INDEX IF NOT EXISTS units_parent ON units(parent_unit_id)")
@@ -184,6 +206,7 @@ def delete_file(con, library_id, file_id):
 
 def insert_units(con, library_id, root_id, file_id, path, file_hash, drafts, fingerprint):
     name = fts_name(library_id)
+    payload = fts_payload_name(con, library_id)
     inserted = []
     for unit in drafts:
         definition = unit.definitions[0] if unit.definitions else None
@@ -213,6 +236,8 @@ def insert_units(con, library_id, root_id, file_id, path, file_hash, drafts, fin
                 searchable = properties_shadow(searchable)
             split = searchable_tokens(searchable) if not unit.redacted else ""
             shadow = " ".join(stem(w) for w in words(split)) if not unit.redacted else ""
+            if payload != name:
+                con.execute(f"INSERT INTO {payload}(rowid,title_symbols,identifier_tokens,path_tokens,stemmed) VALUES(?,?,?,?,?)", (unit_id,title,split,path + " " + searchable_tokens(path),shadow))
             con.execute(f"INSERT INTO {name}(rowid,title_symbols,identifier_tokens,path_tokens,body,stemmed) VALUES(?,?,?,?,?,?)", (unit_id,title,split,path + " " + searchable_tokens(path),body if not unit.redacted else "Redacted source content",shadow))
         for d in unit.definitions:
             con.execute("INSERT OR IGNORE INTO symbols(library_id,name,name_fold,qualified_name,qualified_fold,kind,unit_id,path,line) VALUES(?,?,?,?,?,'definition',?,?,?)",(library_id,d.name,d.name.casefold(),d.qualified,d.qualified.casefold(),unit_id,path,d.start))

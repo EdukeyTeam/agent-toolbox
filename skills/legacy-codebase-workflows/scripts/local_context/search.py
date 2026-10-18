@@ -6,10 +6,10 @@ from pathlib import PurePosixPath
 import re
 import sqlite3
 from . import store
-from .symbols import analyze, words, split_identifier, stem, GENERIC
+from .symbols import analyze, words, folded_text, split_identifier, stem, GENERIC
 from .units import RetrievalError
 
-DEPTH = 600
+DEPTH = 300
 W_SYMBOL, W_PATH, W_FTS, W_SHADOW, W_VECTOR = 1., 1.5, 1., .55, 2.
 # Ablation switches are explicit engine inputs, never corpus/question rules.
 DEFAULT_ABLATIONS = frozenset()
@@ -17,6 +17,17 @@ COVERAGE_BASE, COVERAGE_SCALE, COVERAGE_POWER = .5, 1.5, 1.0
 W_DOC_REFERENCE = 2.0
 W_CONFIG_BEHAVIOR = .8
 FTS_WEIGHTS = (4., 1.5, 1., 1., 0.)
+_SOURCE_COMMENTS = re.compile(r"/\*[\s\S]*?\*/|//[^\n]*")
+
+
+def comment_fragment(text, language):
+    if language not in {"javascript", "typescript", "tsx", "java", "c", "cpp", "c_sharp", "go", "rust", "kotlin", "swift", "scala", "groovy", "dart"} or not text.strip():
+        return False
+    remaining = _SOURCE_COMMENTS.sub("", text).strip()
+    if not remaining:
+        return True
+    lines = [line.strip() for line in remaining.splitlines() if line.strip()]
+    return lines[-1] == "*/" and all(line.startswith("*") for line in lines)
 
 
 def prior(path, provenance, doc_intent, exact, disabled):
@@ -46,10 +57,24 @@ def preserve_exact_window(ranked, protected):
     return [r for r in lexical if r["id"] in chosen] + [r for r in lexical if r["id"] not in chosen] + dense_only
 
 
+def fts_candidates(con, name, expression, where, args, weights):
+    """Let FTS stop at top-k, preserving the original deterministic tie order."""
+    columns = ",".join(str(w) for w in weights)
+    rows = con.execute(f"SELECT u.id,rank AS bm,f.path,u.start_line,u.unit_uid FROM {name} JOIN units u ON u.id={name}.rowid JOIN files f ON f.id=u.file_id WHERE {name} MATCH ? AND rank MATCH 'bm25({columns})' AND {where} ORDER BY rank LIMIT ?", (expression, *args, DEPTH + 1)).fetchall()
+    if len(rows) > DEPTH and rows[DEPTH - 1]["bm"] == rows[DEPTH]["bm"]:
+        # A cutoff through an equal-score group needs the full tie breaker.
+        # This is uncommon, and avoids corpus-size-dependent ranking changes.
+        return con.execute(f"SELECT u.id,bm25({name},{columns}) AS bm FROM {name} JOIN units u ON u.id={name}.rowid JOIN files f ON f.id=u.file_id WHERE {name} MATCH ? AND {where} ORDER BY bm,f.path,u.start_line,u.unit_uid LIMIT ?", (expression, *args, DEPTH)).fetchall()
+    rows = rows[:DEPTH]
+    rows.sort(key=lambda r: (r["bm"], r["path"], r["start_line"], r["unit_uid"]))
+    return rows
+
+
 def candidates(con, library, question, mode="lexical", vector_engine=None, kind=None, language=None, provider=None, ablations=()):
     disabled = frozenset(ablations)
     library_id = library["id"]
     name = store.fts_name(library_id)
+    payload_name = store.fts_payload_name(con, library_id)
     original, secondary = analyze(question)
     filters = ["u.library_id=?", "u.searchable=1", "u.redacted=0"]
     args = [library_id]
@@ -94,7 +119,7 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
         if not matched:
             continue
         prefix = ident.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
-        anchored = con.execute(f"SELECT u.id,u.title,u.start_line FROM units u JOIN files f ON f.id=u.file_id WHERE {where} AND u.file_id IN (" + ",".join("?" for _ in matched_files) + ") AND u.kind='code-definition' AND (u.title=? OR u.title LIKE ? ESCAPE '\\') ORDER BY u.start_line,f.path,u.unit_uid LIMIT ?",(*args,*sorted(matched_files),ident,prefix+".%",DEPTH)).fetchall()
+        anchored = con.execute(f"SELECT u.id,u.title,u.start_line FROM units u INDEXED BY units_file_span JOIN files f ON f.id=u.file_id WHERE {where} AND u.file_id IN (" + ",".join("?" for _ in matched_files) + ") AND u.kind='code-definition' AND (u.title=? OR u.title LIKE ? ESCAPE '\\') ORDER BY u.start_line,f.path,u.unit_uid LIMIT ?",(*args,*sorted(matched_files),ident,prefix+".%",DEPTH)).fetchall()
         exact_rows.extend((row["id"],4,row["start_line"]) for row in anchored)
     exact_rows.sort(key=lambda r:(r[1],r[2],r[0]))
     exact = bool(exact_rows)
@@ -112,20 +137,21 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
             add("symbol",exact_rows,W_SYMBOL)
         if original:
             expression = " OR ".join('"'+w.replace('"','')+'"' for w in original)
-            weighted_columns = ",".join(str(w) for w in FTS_WEIGHTS)
-            rows = con.execute(f"SELECT u.id,bm25({name},{weighted_columns}) AS bm FROM {name} JOIN units u ON u.id={name}.rowid JOIN files f ON f.id=u.file_id WHERE {name} MATCH ? AND {where} ORDER BY bm,f.path,u.start_line,u.unit_uid LIMIT ?",(expression,*args,DEPTH)).fetchall()
+            rows = fts_candidates(con, name, expression, where, args, FTS_WEIGHTS)
             add("fts",rows,W_FTS)
             if "shadow" not in disabled:
                 shadow = list(dict.fromkeys(stem(w) for w in [*original,*secondary] if w not in GENERIC))
                 expression = "stemmed : (" + " OR ".join('"'+w.replace('"','')+'"' for w in shadow) + ")" if shadow else None
                 if expression:
-                    rows = con.execute(f"SELECT u.id,bm25({name},0.,0.,0.,0.,1.) AS bm FROM {name} JOIN units u ON u.id={name}.rowid JOIN files f ON f.id=u.file_id WHERE {name} MATCH ? AND {where} ORDER BY bm,f.path,u.start_line,u.unit_uid LIMIT ?",(expression,*args,DEPTH)).fetchall()
+                    rows = fts_candidates(con, name, expression, where, args, (0.,0.,0.,0.,1.))
                     add("shadow",rows,W_SHADOW)
         if "paths" not in disabled:
             path_tokens = [p.removeprefix("./").strip(".") for p in re.findall(r"[\w./-]+",question)]
             paths = list(dict.fromkeys(p for p in path_tokens if p and ("/" in p or "." in p or p in explicit_names or single_name)))[:16]
             for path in paths:
-                rows = con.execute(f"SELECT u.id,f.path FROM units u JOIN files f ON f.id=u.file_id WHERE {where} AND (f.path=? OR f.path LIKE ? ESCAPE '\\') ORDER BY length(f.path),u.id LIMIT ?",(*args,path,"%/"+path.replace("\\","\\\\").replace("%","\\%").replace("_","\\_"),DEPTH)).fetchall()
+                # Resolve paths over files first, not once per unit in a large
+                # library. The span index then fetches only matching files.
+                rows = con.execute(f"SELECT u.id,f.path FROM files f JOIN units u INDEXED BY units_file_span ON u.file_id=f.id WHERE {where} AND f.library_id=? AND (f.path=? OR f.path LIKE ? ESCAPE '\\') ORDER BY length(f.path),u.id LIMIT ?",(*args,library_id,path,"%/"+path.replace("\\","\\\\").replace("%","\\%").replace("_","\\_"),DEPTH)).fetchall()
                 add("path",rows,W_PATH)
     elif exact_rows:
         add("symbol",exact_rows,W_SYMBOL)
@@ -133,14 +159,25 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
     if mode in {"semantic","hybrid"}:
         if provider is None:
             raise RetrievalError("Semantic mode requires explicitly enabled embeddings; index with a provider or use lexical", "model_unavailable", 503)
-        from .vectors import top_k
+        from .vectors import top_k, cached_top_k, available_engines
         vector = provider.embed_query(question)
         embedded = json.loads(library["embedding_json"])
         if embedded.get("identity") != provider.identity:
             raise RetrievalError("Embedding identity changed; reindex with this identity", "model_identity_mismatch",409)
-        rows = con.execute(f"SELECT v.unit_id,v.embedding FROM unit_vectors v JOIN units u ON u.id=v.unit_id JOIN files f ON f.id=u.file_id WHERE {where}",args)
+        def vector_rows():
+            return con.execute(f"SELECT v.unit_id,v.embedding FROM unit_vectors v JOIN units u ON u.id=v.unit_id JOIN files f ON f.id=u.file_id WHERE {where}",args)
         try:
-            dense = top_k(vector,((r[0],r[1]) for r in rows),DEPTH,vector_engine or "auto")
+            selected_engine = vector_engine or "auto"
+            if selected_engine == "auto":
+                engines = available_engines()
+                selected_engine = "sqlite-vec" if "sqlite-vec" in engines else engines[-1]
+            if selected_engine == "numpy":
+                # The model already lives for the server's lifetime. Cache its
+                # immutable, exact vector snapshot under the published generation.
+                key = (store.metadata(con)["database_uuid"], library_id, library["generation"], kind, language)
+                dense = cached_top_k(vector, vector_rows, DEPTH, provider, key, cache=not con.total_changes)
+            else:
+                dense = top_k(vector, vector_rows(), DEPTH, selected_engine)
         except (ImportError,OSError,AttributeError,ValueError,sqlite3.Error) as exc:
             raise RetrievalError("Vector scan unavailable or invalid; restore the selected adapter or use lexical mode","vector_adapter_unavailable",503) from exc
         add("vector",dense,W_VECTOR)
@@ -153,15 +190,21 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
     ids = sorted(ranks)
     for first in range(0,len(ids),400):
         batch = ids[first:first+400]
-        rows.extend(con.execute(f"SELECT u.*,f.path,f.root_id,f.hash AS file_hash,f.kind AS provenance,f.encoding,f.status,f.mtime_ns,f.size,ft.identifier_tokens AS split_tokens,ft.stemmed AS stem_tokens FROM units u JOIN files f ON f.id=u.file_id JOIN {name} ft ON ft.rowid=u.id WHERE u.id IN ("+",".join("?" for _ in batch)+") AND u.library_id=?",(*batch,library_id)).fetchall())
+        rows.extend(con.execute(f"SELECT u.*,f.path,f.root_id,f.hash AS file_hash,f.kind AS provenance,f.encoding,f.status,f.mtime_ns,f.size,ft.identifier_tokens AS split_tokens,ft.stemmed AS stem_tokens FROM units u JOIN files f ON f.id=u.file_id JOIN {payload_name} ft ON ft.rowid=u.id WHERE u.id IN ("+",".join("?" for _ in batch)+") AND u.library_id=?",(*batch,library_id)).fetchall())
     result = []
+    query_stems = {t: stem(t) for t in original_set}
+    query_pattern = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(t) for t in sorted(original_set)) + r")(?!\w)") if original_set else None
     for row in rows:
         item = dict(row)
         item.update(ranks[row["id"]])
-        tokens = set(words((row["text"] or "") + " " + row["title"] + " " + json.loads(row["header_json"])["text"] + " " + row["description"]))
         split = set(row["split_tokens"].split())
         stems = set(row["stem_tokens"].split())
-        coverage = sum(1. if t in tokens or t in split else .8 if stem(t) in stems else 0 for t in original_set) / max(1,len(original_set))
+        # Only unresolved query terms need raw whole-word checks. Constructing
+        # every token of a large generated/minified unit dominated query time.
+        missing = original_set - split
+        raw = folded_text((row["text"] or "") + " " + row["title"] + " " + json.loads(row["header_json"])["text"] + " " + row["description"]) if missing else ""
+        tokens = set(query_pattern.findall(raw)) if missing else set()
+        coverage = sum(1. if t in tokens or t in split else .8 if query_stems[t] in stems else 0 for t in original_set) / max(1,len(original_set))
         # Preserve the complete lexical pipeline before fusing dense evidence.
         # Dense-only rows must neither acquire a lexical coverage penalty nor
         # disable the lexical documentation-to-definition reference channel.
@@ -170,6 +213,11 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
         if "coverage" not in disabled:
             item["score"] *= COVERAGE_BASE + COVERAGE_SCALE*coverage**COVERAGE_POWER
         bias = prior(row["path"],row["provenance"],doc_intent,exact,disabled)
+        if "comments" not in disabled and not exact and not doc_intent and row["provenance"] == "code" and re.match(r"(?:where|trace)\b", question, re.I) and comment_fragment(row["text"] or "", row["language"]):
+            # New declaration boundaries can isolate JSDoc from its field.
+            # Location/flow questions need implementing code ahead of these
+            # fragments; exact-symbol and usage questions keep normal evidence.
+            bias *= .5
         item["score"] *= bias
         item["vector_score"] = dense_score * bias
         if "config-behavior" not in disabled and row["kind"]=="config" and re.match(r"(?:where|trace)\b",question,re.I):
@@ -203,13 +251,13 @@ def candidates(con, library, question, mode="lexical", vector_engine=None, kind=
                 for ref in refs:
                     ref_name = ref["qualified_name"]
                     escaped = ref_name.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
-                    related = con.execute(f"SELECT u.*,f.path,f.root_id,f.hash AS file_hash,f.kind AS provenance,f.encoding,f.status,f.mtime_ns,f.size,ft.identifier_tokens AS split_tokens,ft.stemmed AS stem_tokens FROM units u JOIN files f ON f.id=u.file_id JOIN {name} ft ON ft.rowid=u.id WHERE {where} AND u.file_id=? AND (u.id=? OR u.title=? OR u.title LIKE ? ESCAPE '\\') LIMIT 200",(*args,ref["file_id"],ref["unit_id"],ref_name,escaped+".%")).fetchall()
+                    related = con.execute(f"SELECT u.*,f.path,f.root_id,f.hash AS file_hash,f.kind AS provenance,f.encoding,f.status,f.mtime_ns,f.size,ft.identifier_tokens AS split_tokens,ft.stemmed AS stem_tokens FROM units u JOIN files f ON f.id=u.file_id JOIN {payload_name} ft ON ft.rowid=u.id WHERE {where} AND u.file_id=? AND (u.id=? OR u.title=? OR u.title LIKE ? ESCAPE '\\') LIMIT 200",(*args,ref["file_id"],ref["unit_id"],ref_name,escaped+".%")).fetchall()
                     scored = []
                     for row in related:
                         item = dict(row)
                         tokens = set(row["split_tokens"].split()) | set(words(row["title"]))
                         stems = set(row["stem_tokens"].split())
-                        cov = sum(1. if t in tokens else .8 if stem(t) in stems else 0 for t in original_set)/max(1,len(original_set))
+                        cov = sum(1. if t in tokens else .8 if query_stems[t] in stems else 0 for t in original_set)/max(1,len(original_set))
                         score = W_DOC_REFERENCE * doc["score"] * (.5+cov) / doc_rank
                         if row["qualified_name"] and row["title"] != ref_name:
                             score *= 1.5

@@ -14,12 +14,19 @@ def split_identifier(value: str) -> list[str]:
     return [w.casefold() for w in re.findall(r"[^\W_]+", value)]
 
 
-def words(text: str) -> list[str]:
+def folded_text(text: str) -> str:
     # Match FTS unicode61 accent folding without discarding non-Latin letters.
     text = text.casefold()
     if not text.isascii():
-        text = "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
-    return WORD.findall(text)
+        text = unicodedata.normalize("NFD", text)
+        # Category lookups per distinct character, then a C-level translation,
+        # preserve the exact folding policy without a Python visit per byte.
+        text = text.translate({ord(c): None for c in set(text) if unicodedata.category(c) == "Mn"})
+    return text
+
+
+def words(text: str) -> list[str]:
+    return WORD.findall(folded_text(text))
 
 
 def stem(word: str) -> str:

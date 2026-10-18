@@ -45,17 +45,20 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
     try:
         with store.snapshot(con):
             lib = store.library(con,library_id)
-            coverage = embedding_coverage(con, lib, kind, language)
-            if mode == "semantic" and coverage < 1 and json.loads(lib["embedding_json"]).get("config", {}).get("provider", "none") != "none":
+            embedded = json.loads(lib["embedding_json"])
+            config = embedded.get("config",{})
+            identity = lib["id"] + "/" + canonical({"config":config, "identity":embedded.get("identity")})
+            existing_provider = provider_cache.get(identity) if provider_cache is not None else None
+            coverage_key = (store.metadata(con)["database_uuid"], lib["id"], lib["generation"], kind, language)
+            cached_coverage = getattr(existing_provider, "_retrieval_coverage", None) if existing_provider and not con.total_changes else None
+            coverage = cached_coverage[1] if cached_coverage and cached_coverage[0] == coverage_key else embedding_coverage(con, lib, kind, language)
+            if mode == "semantic" and coverage < 1 and config.get("provider", "none") != "none":
                 raise RetrievalError("Embeddings are incomplete; refresh pending vectors or rebuild the index, or use lexical mode.", "embedding_incomplete", 409)
             if mode != "lexical":
-                embedded = json.loads(lib["embedding_json"])
-                config = embedded.get("config",{})
                 if config.get("provider","none") == "none":
                     raise RetrievalError("Embeddings are disabled for this library; use lexical", "model_unavailable",503)
                 if provider_cache is not None:
                     prefix = lib["id"] + "/"
-                    identity = prefix + canonical({"config":config, "identity":embedded.get("identity")})
                     if identity not in provider_cache:
                         provider_cache[identity] = provider_for(config)
                         # Publication timestamps and truncation counters do not
@@ -67,6 +70,8 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
                     provider = provider_cache[identity]
                 else:
                     provider,owned_provider = provider_for(config),True
+                if not con.total_changes:
+                    provider._retrieval_coverage = (coverage_key, coverage)
             ranked,used_engine = search.candidates(con,lib,question,mode,vector_engine,kind,language,provider,ablations)
             # Bounded overfetch: no corpus inventory/stat sweep during a query.
             candidates = assemble.candidate_window(ranked, max(20,limit*3))
