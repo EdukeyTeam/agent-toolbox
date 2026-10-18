@@ -36,6 +36,7 @@ Example:
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
@@ -169,7 +170,8 @@ class Context7BackendAdapter:
         self.timeout = timeout
         self.root_prefixes = {}
         # Read provenance roots once. Backend query still performs all freshness checks.
-        with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as con:
+        # SQLite's transaction context manager does not close the connection.
+        with closing(sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True)) as con:
             meta = dict(con.execute("SELECT key,value FROM meta"))
             if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='libraries'").fetchone():
                 rows = con.execute("SELECT id,roots_json FROM libraries" + (" WHERE id=?" if library_id else " LIMIT 2"), (library_id,) if library_id else ()).fetchall()
@@ -188,13 +190,13 @@ class Context7BackendAdapter:
                 self.prefixes = {}
                 return
         # Format-7 baseline databases keep only the legacy primary root keys.
-        root = Path(meta["root"])
+        root = Path(meta["root"]).resolve()
         corpus_root = (corpus_root or root).resolve()
         self.prefixes = {"code": root.relative_to(corpus_root).as_posix(),
                          "repo-docs": root.relative_to(corpus_root).as_posix()}
         if meta.get("docs_root"):
             # For external docs, use their own namespace rather than guessing a repository path.
-            docs = Path(meta["docs_root"])
+            docs = Path(meta["docs_root"]).resolve()
             self.prefixes["docs"] = docs.relative_to(corpus_root).as_posix() if docs.is_relative_to(corpus_root) else "@docs"
 
     def search(self, query: str, limit: int) -> list[Result]:

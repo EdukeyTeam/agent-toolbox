@@ -282,7 +282,7 @@ class EngineTests(unittest.TestCase):
             self.assertEqual(covered,set(range(1,len(text.splitlines())+1)))
             self.assertTrue(any("Invoice operation" in u.header for u in units))
     def test_names_and_fts_operators_are_data(self):
-        (self.root/"numbers.py").write_text("def Łódź_2026(): return '9999 café'\n")
+        (self.root/"numbers.py").write_text("def Łódź_2026(): return '9999 café'\n",encoding="utf-8")
         self.index()
         for q in ("Łódź_2026",'" OR NOT * ( 9999 )',"9999","cafe"):
             result=self.query(q)

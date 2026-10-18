@@ -1,6 +1,7 @@
 """Offline regression tests for the engine-independent retrieval evaluator."""
 
 import importlib.util
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -201,7 +202,7 @@ class InputAndAdapterTests(unittest.TestCase):
         code = root / "src"
         docs = root / "docs"
         db = self.root / "db.sqlite"
-        with sqlite3.connect(db) as con:
+        with closing(sqlite3.connect(db)) as con, con:
             con.execute("CREATE TABLE meta(key TEXT,value TEXT)")
             con.executemany("INSERT INTO meta VALUES(?,?)", [("root", str(code)), ("docs_root", str(docs))])
         adapter = evaluation.Context7BackendAdapter(db, SCRIPT, corpus_root=root)
@@ -210,6 +211,38 @@ class InputAndAdapterTests(unittest.TestCase):
         with mock.patch.object(evaluation, "run_json", return_value=payload):
             results = adapter.search("query", 10)
         self.assertEqual([result.path for result in results], ["docs/howto.md", "src/a.py"])
+
+    def test_backend_adapter_closes_metadata_connection_on_success_and_error(self):
+        connect = sqlite3.connect
+        for case in ("format7", "format8", "missing-library", "invalid-roots"):
+            with self.subTest(case=case):
+                db = self.root / (case + ".sqlite")
+                with closing(connect(db)) as con, con:
+                    con.execute("CREATE TABLE meta(key TEXT,value TEXT)")
+                    con.execute("INSERT INTO meta VALUES('root', ?)", (str(self.root),))
+                    if case != "format7":
+                        con.execute("CREATE TABLE libraries(id TEXT,roots_json TEXT)")
+                        roots = "{" if case == "invalid-roots" else json.dumps([
+                            {"id": "r0", "path": str(self.root), "role": "code"}])
+                        con.execute("INSERT INTO libraries VALUES('/fixture', ?)", (roots,))
+                connections = []
+
+                def track_connection(*args, **kwargs):
+                    con = connect(*args, **kwargs)
+                    self.addCleanup(con.close)
+                    connections.append(con)
+                    return con
+
+                with mock.patch.object(evaluation.sqlite3, "connect", side_effect=track_connection):
+                    if case in {"missing-library", "invalid-roots"}:
+                        with self.assertRaises(ValueError):
+                            evaluation.Context7BackendAdapter(db, SCRIPT,
+                                library_id="/missing" if case == "missing-library" else None)
+                    else:
+                        evaluation.Context7BackendAdapter(db, SCRIPT)
+                self.assertEqual(len(connections), 1)
+                with self.assertRaises(sqlite3.ProgrammingError):
+                    connections[0].execute("SELECT 1")
 
     def test_backend_adapter_accepts_leading_dash_query_with_actual_backend(self):
         backend_script = SCRIPT.with_name("context7_backend.py")
