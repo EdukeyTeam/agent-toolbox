@@ -1,0 +1,27 @@
+{
+  "corpus": "jftp",
+  "mode": "embedded",
+  "command": [
+    "/usr/bin/python3",
+    "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "index",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/jftp",
+    "--database",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/jftp-embedded.sqlite",
+    "--library-id",
+    "/eval/jftp",
+    "--docs-root",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/jftp/docs",
+    "--embed-model",
+    "Xenova/all-MiniLM-L6-v2",
+    "--model-cache",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/cache/models",
+    "--embedding-runtime",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/cache/inference-runtime"
+  ],
+  "started_utc": "2026-10-17T20:49:10.163459+00:00",
+  "seconds": 2.4075348879996454,
+  "exit_code": 2,
+  "stderr": "retrieval error: Embedding input exceeds 12000 UTF-16 characters at docs:repo-maps/artifacts/2026-10-08/windows-final/final-report.md:L25-L25; use lexical indexing, --exclude this asset, or provide smaller verified documentation chunks\n",
+  "database_bytes": 0
+}

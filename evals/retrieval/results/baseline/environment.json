@@ -1,0 +1,34 @@
+{
+  "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+  "sqlite": "3.46.1",
+  "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "gitHead": "d551ebda08be2e7bbf9440673d4290a3b1c79f3e",
+  "backendFileHashes": {
+    "skills/legacy-codebase-workflows/scripts/context7_backend.py": "f6fff9f6ca7ec067e129c0d606953924ee42cd7b241ddccd145bf3eb1635d97b",
+    "skills/legacy-codebase-workflows/scripts/repo_files.py": "3bf2d516c5762e30472432cbc580a4a2d4cba2d70f873b57eb070d85f92aec57",
+    "skills/legacy-codebase-workflows/scripts/legacy_common.py": "0ccc15759c7571130369195bbbd7b2f26b71f33fbe68461a9d24cdbf26312fee",
+    "skills/legacy-codebase-workflows/scripts/retrieval/embed.mjs": "4764b461f206916201e7f8648a31415f81e3d113cacc9c2893dd786cad309525",
+    "skills/legacy-codebase-workflows/scripts/retrieval/package.json": "da2a5babe72ceccdea1d6cacdd27533ed5458bbb78ee8547183c5611a0175217",
+    "skills/legacy-codebase-workflows/scripts/retrieval/pnpm-lock.yaml": "e8873126e14562f8c4154ddbee10ab58c57a54b7ed42dc80c5e3ed0e75393b8e"
+  },
+  "node": "24.21.0",
+  "pnpm": "12.4.1",
+  "transformers": "3.8.1",
+  "model": "Xenova/all-MiniLM-L6-v2",
+  "modelRevision": "751bff37182d3f1213fa05d7196b954e230abad9",
+  "inferenceRuntime": "/home/lucas/DEV/Projects/agent-toolbox-eval/cache/inference-runtime",
+  "modelCache": "/home/lucas/DEV/Projects/agent-toolbox-eval/cache/models",
+  "indexes": "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes",
+  "notes": [
+    "Single-pass query latency includes subprocess startup and corpus freshness scans.",
+    "Embedding indexing and some validation overlap query runs on a shared host; timings are observations under load, not isolated performance comparisons.",
+    "Default 1200-character/48-line/eight-line-overlap chunking; no exclusions; stdlib exact cosine vector engine."
+  ],
+  "evaluationHarnessSha256": "a43b12b661e8f70b3ff57d18704766c68abaaa345762c705f81afc89d86c210b",
+  "questionFileHashes": {
+    "evals/retrieval/questions/django.dev.jsonl": "edc0c8b1d66f808de9ae160fb249841398eef80a5b3c85b79633bde4b9fc39ce",
+    "evals/retrieval/questions/httpx.dev.jsonl": "9f3885b13839777cca56d1933b831204f73b09a29d57619c0b9c414f0dd17e94",
+    "evals/retrieval/questions/jftp.dev.jsonl": "5e891926398b175454dcfc9f9919148c8e33ffb109911ebc7b844f604fe284c8",
+    "evals/retrieval/questions/vite.dev.jsonl": "289477cc635680b0494a59f46e25465e745910c8e083eb9bac31e871bc5c6790"
+  }
+}

@@ -1,0 +1,243 @@
+[
+  {
+    "id": "httpx-003",
+    "lexical_terms": [
+      "redirect",
+      "limit",
+      "enforced",
+      "synchronous",
+      "request"
+    ],
+    "expected_indexed_chunks": 1,
+    "bm25_hit_ranks": [
+      54
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      54
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 507
+  },
+  {
+    "id": "httpx-006",
+    "lexical_terms": [
+      "prevents",
+      "credentials",
+      "being",
+      "forwarded",
+      "different",
+      "website",
+      "after",
+      "redirect"
+    ],
+    "expected_indexed_chunks": 2,
+    "bm25_hit_ranks": [
+      60,
+      62
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      60
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 186
+  },
+  {
+    "id": "httpx-007",
+    "lexical_terms": [
+      "timeout",
+      "combine",
+      "default",
+      "duration",
+      "separate",
+      "connect",
+      "read",
+      "write",
+      "pool",
+      "durations"
+    ],
+    "expected_indexed_chunks": 3,
+    "bm25_hit_ranks": [
+      2,
+      4,
+      5
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      2,
+      4,
+      5
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 357
+  },
+  {
+    "id": "httpx-011",
+    "lexical_terms": [
+      "test",
+      "supply",
+      "process",
+      "function",
+      "that",
+      "returns",
+      "response",
+      "without",
+      "opening",
+      "network",
+      "connection"
+    ],
+    "expected_indexed_chunks": 2,
+    "bm25_hit_ranks": [
+      54,
+      118
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      54
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 825
+  },
+  {
+    "id": "httpx-012",
+    "lexical_terms": [
+      "client",
+      "choose",
+      "whether",
+      "use",
+      "proxy",
+      "addresses",
+      "environment"
+    ],
+    "expected_indexed_chunks": 2,
+    "bm25_hit_ranks": [
+      16,
+      84
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      16
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 552
+  },
+  {
+    "id": "vite-004",
+    "lexical_terms": [
+      "why",
+      "changing",
+      "prebundled",
+      "dependency",
+      "cause",
+      "browser",
+      "lose",
+      "its",
+      "current",
+      "page",
+      "state"
+    ],
+    "expected_indexed_chunks": 4,
+    "bm25_hit_ranks": [
+      13,
+      16,
+      1412,
+      1499
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      15,
+      18
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 1550
+  },
+  {
+    "id": "vite-005",
+    "lexical_terms": [
+      "i",
+      "make",
+      "dev",
+      "server",
+      "fail",
+      "its",
+      "chosen",
+      "port",
+      "occupied",
+      "instead",
+      "trying",
+      "another"
+    ],
+    "expected_indexed_chunks": 2,
+    "bm25_hit_ranks": [
+      7,
+      161
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      12
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 2643
+  },
+  {
+    "id": "vite-006",
+    "lexical_terms": [
+      "i",
+      "proxy",
+      "api",
+      "backend",
+      "strip",
+      "prefix"
+    ],
+    "expected_indexed_chunks": 2,
+    "bm25_hit_ranks": [
+      11,
+      13
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [
+      15,
+      17
+    ],
+    "candidate_limit": 60,
+    "bm25_result_count": 888
+  },
+  {
+    "id": "jftp-012",
+    "lexical_terms": [
+      "post",
+      "login",
+      "commands",
+      "executed",
+      "before",
+      "switching",
+      "initial",
+      "remote",
+      "directory"
+    ],
+    "expected_indexed_chunks": 2,
+    "bm25_hit_ranks": [
+      76,
+      331
+    ],
+    "candidate_hit_ranks_after_symbol_bonus": [],
+    "candidate_limit": 60,
+    "bm25_result_count": 1302
+  },
+  {
+    "id": "django-006",
+    "lexical_terms": [
+      "i",
+      "make",
+      "every",
+      "http",
+      "request",
+      "commit",
+      "success",
+      "roll",
+      "back",
+      "if",
+      "view",
+      "raises",
+      "exception"
+    ],
+    "expected_indexed_chunks": 0,
+    "bm25_hit_ranks": [],
+    "candidate_hit_ranks_after_symbol_bonus": [],
+    "candidate_limit": 60,
+    "bm25_result_count": 12877
+  }
+]

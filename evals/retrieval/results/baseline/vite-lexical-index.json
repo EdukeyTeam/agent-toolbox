@@ -1,0 +1,50 @@
+{
+  "corpus": "vite",
+  "mode": "lexical",
+  "command": [
+    "/usr/bin/python3",
+    "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "index",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/vite",
+    "--database",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/vite-lexical.sqlite",
+    "--library-id",
+    "/eval/vite",
+    "--docs-root",
+    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/vite/docs"
+  ],
+  "seconds": 6.137909266006318,
+  "exit_code": 0,
+  "stderr": "",
+  "database_bytes": 18710528,
+  "index": {
+    "libraryId": "/eval/vite",
+    "revision": "df7503cc499e0b49e45701e3be7546918ee9d322",
+    "corpusId": "2f944c8482ac5ae58f949fb7e215849ffb1ff6c777ab21d5b9bc1d5a069dd904",
+    "files": 2430,
+    "chunks": 7284,
+    "chunkChars": 1200,
+    "oversizedChunks": 11,
+    "changed": 2430,
+    "deleted": 0,
+    "skippedCount": 2,
+    "skipped": [
+      {
+        "kind": "code",
+        "path": "pnpm-lock.yaml",
+        "reason": "file exceeds max_file_bytes"
+      },
+      {
+        "kind": "repo-docs",
+        "path": "packages/vite/CHANGELOG.md",
+        "reason": "file exceeds max_file_bytes"
+      }
+    ],
+    "embeddingModel": null,
+    "modelRevision": null,
+    "rerankerModel": null,
+    "rerankerRevision": null,
+    "vectorEngine": "stdlib",
+    "excludes": []
+  }
+}

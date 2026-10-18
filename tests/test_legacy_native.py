@@ -673,6 +673,8 @@ class DispatcherTests(FixtureCase):
         return subprocess.run([*program, *arguments], env=env, capture_output=True, text=True, encoding="utf-8", cwd=self.base)
 
     def test_csharp_cache_identity_is_available_without_external_python_packages(self):
+        if not python_map_available() and not TOOLS_BINARY:
+            self.skipTest("Python map dependencies are not installed and no frozen bundle was supplied")
         folder = self.source / "csharp"
         folder.mkdir()
         (folder / "Example.cs").write_text("class Example { public void Run() {} }\n", encoding="utf-8", newline="\n")
@@ -785,7 +787,10 @@ class DispatcherTests(FixtureCase):
                         found = self.call(program, env, "query", "--database", str(database), "--query", body)
                         self.assertEqual(found.returncode, 0, found.stderr)
                         results = json.loads(found.stdout)["results"]
-                        self.assertEqual(len(results), 1)
+                        # Format 8 also decodes the existing Latin-1 docs fixture.
+                        expected_paths = {name, "docs/latin1.txt"} if body == "café" else {name}
+                        self.assertEqual({item["source"]["path"] for item in results}, expected_paths)
+                        results.sort(key=lambda item: item["source"]["path"] != name)
                         self.assertEqual(results[0]["text"], body)
                         self.assertEqual(results[0]["source"]["path"], name)
                         self.assertEqual((results[0]["source"]["startLine"], results[0]["source"]["endLine"]), (1, 1))

@@ -1,0 +1,40 @@
+{
+  "workspace_id": "wMX",
+  "pane_id": "wMX:p1",
+  "owner": "codex delegate i2-embeddings",
+  "scratch": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench",
+  "install_log": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/install.log",
+  "report": "/home/lucas/DEV/Projects/agent-toolbox/docs/retrieval/embedding-benchmark.md",
+  "panes": {
+    "wMX:p1": "Full BGE and Jina CPU benchmark",
+    "wMX:p2": "Automatic final report build after successful model runs; owner codex delegate i2-embeddings"
+  },
+  "logs": {
+    "download": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/download.log",
+    "potion": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/potion.log",
+    "bge": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/bge.log",
+    "jina": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/jina.log",
+    "thread_tuning": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/thread-tuning.log",
+    "jina_batch_tuning": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/jina-batch-tuning.log",
+    "numpy_tuning": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/numpy-tuning.log",
+    "vector_scan": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/vector-scan.log",
+    "finalize": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/finalize.log"
+  },
+  "status": "closed",
+  "cleanup": {
+    "closed_utc": "2026-10-17T22:51:49.006967+00:00",
+    "workspace_id": "wMX",
+    "foreground_shells_verified": true,
+    "background_children_verified_absent": true,
+    "remaining_owned_workspaces": [],
+    "source_hashes_match_validation": true
+  },
+  "benchmark_outcome": {
+    "complete_models": [
+      "potion",
+      "bge"
+    ],
+    "partial_jina": "HTTPX complete; Vite stopped at 2400/4499 by the orchestrator; JFTP not started",
+    "stop_evidence": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/jina.log"
+  }
+}

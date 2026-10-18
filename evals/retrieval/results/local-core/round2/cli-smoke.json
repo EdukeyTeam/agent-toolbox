@@ -1,0 +1,12 @@
+[
+  {
+    "flag": "--model-dir",
+    "indexed": 1,
+    "result": "dispatch_invoice"
+  },
+  {
+    "flag": "--cache-dir",
+    "indexed": 1,
+    "result": "dispatch_invoice"
+  }
+]

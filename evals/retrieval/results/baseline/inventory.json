@@ -1,0 +1,375 @@
+{
+  "httpx": {
+    "tracked_paths": 125,
+    "docs_extensions": {
+      "": 1,
+      ".css": 1,
+      ".gif": 2,
+      ".html": 1,
+      ".jpg": 1,
+      ".md": 23,
+      ".png": 7
+    },
+    "indexed_groups": [
+      {
+        "kind": "code",
+        "files": 65,
+        "chunks": 902
+      },
+      {
+        "kind": "docs",
+        "files": 23,
+        "chunks": 170
+      },
+      {
+        "kind": "repo-docs",
+        "files": 6,
+        "chunks": 105
+      }
+    ],
+    "skipped": [],
+    "skipped_reasons": {}
+  },
+  "vite": {
+    "tracked_paths": 2868,
+    "docs_extensions": {
+      "": 2,
+      ".css": 1,
+      ".fig": 1,
+      ".jpg": 5,
+      ".js": 1,
+      ".json": 2,
+      ".md": 57,
+      ".mp3": 1,
+      ".svg": 24,
+      ".ts": 7,
+      ".vue": 20,
+      ".webp": 25,
+      ".yaml": 1
+    },
+    "indexed_groups": [
+      {
+        "kind": "code",
+        "files": 2324,
+        "chunks": 5576
+      },
+      {
+        "kind": "docs",
+        "files": 57,
+        "chunks": 874
+      },
+      {
+        "kind": "repo-docs",
+        "files": 26,
+        "chunks": 834
+      }
+    ],
+    "skipped": [
+      {
+        "kind": "code",
+        "path": "pnpm-lock.yaml",
+        "reason": "file exceeds max_file_bytes"
+      },
+      {
+        "kind": "repo-docs",
+        "path": "packages/vite/CHANGELOG.md",
+        "reason": "file exceeds max_file_bytes"
+      }
+    ],
+    "skipped_reasons": {
+      "file exceeds max_file_bytes": 2
+    }
+  },
+  "jftp": {
+    "tracked_paths": 923,
+    "docs_extensions": {
+      "": 3,
+      ".json": 99,
+      ".log": 19,
+      ".md": 90,
+      ".mjs": 4,
+      ".png": 5,
+      ".py": 2,
+      ".txt": 4,
+      ".xml": 8
+    },
+    "indexed_groups": [
+      {
+        "kind": "code",
+        "files": 446,
+        "chunks": 1786
+      },
+      {
+        "kind": "docs",
+        "files": 90,
+        "chunks": 4156
+      },
+      {
+        "kind": "repo-docs",
+        "files": 65,
+        "chunks": 390
+      }
+    ],
+    "skipped": [
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/gui/EditPopupMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/AboutDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/AutoUpdater_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/CertificatePrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeLocalDirectoryDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ConnectionDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/DownloadAndUnzipDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ExecuteCommandDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FTPMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FTPSession_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritePropertiesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/GeneralConnectionPrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/HelpMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/JFTPToolBar_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileFilterDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFilePropertiesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileTableModel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalPane_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalSystemMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/LocalePrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/PreferencesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ProxyPrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileFilterDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFilePropertiesDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileTableModel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteSystemMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/SecurityPrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/StatusWindow_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ToolsMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModeMenu_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModesPrefsPanel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ZipAndUploadDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateManagerDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificatePane_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateTableModel_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/SecurityWarningDlg_de.properties",
+        "reason": "non-UTF-8 file"
+      },
+      {
+        "kind": "code",
+        "path": "src/main/resources_de/com/myjavaworld/util/CommonResources_de.properties",
+        "reason": "non-UTF-8 file"
+      }
+    ],
+    "skipped_reasons": {
+      "non-UTF-8 file": 41
+    }
+  },
+  "django": {
+    "tracked_paths": 7084,
+    "docs_extensions": {
+      "": 2,
+      ".1": 1,
+      ".bat": 1,
+      ".conf": 2,
+      ".css": 6,
+      ".graffle": 1,
+      ".html": 5,
+      ".pdf": 3,
+      ".png": 31,
+      ".py": 4,
+      ".rst": 1,
+      ".svg": 2,
+      ".txt": 677
+    },
+    "indexed_groups": [
+      {
+        "kind": "code",
+        "files": 2860,
+        "chunks": 23586
+      },
+      {
+        "kind": "repo-docs",
+        "files": 6,
+        "chunks": 11
+      }
+    ],
+    "skipped": [
+      {
+        "kind": "code",
+        "path": "tests/admin_views/tests.py",
+        "reason": "file exceeds max_file_bytes"
+      },
+      {
+        "kind": "code",
+        "path": "tests/migrations/test_operations.py",
+        "reason": "file exceeds max_file_bytes"
+      },
+      {
+        "kind": "code",
+        "path": "tests/staticfiles_tests/project/nonutf8/nonutf8.css",
+        "reason": "non-UTF-8 file"
+      }
+    ],
+    "skipped_reasons": {
+      "file exceeds max_file_bytes": 2,
+      "non-UTF-8 file": 1
+    }
+  }
+}

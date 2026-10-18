@@ -25,7 +25,7 @@ For read-only or private local-only work, keep results in the authorized externa
 
 ## Offer repository instructions
 
-After creating either a map or a source pack, prepare a short pointer and ask whether the user wants it added to `AGENTS.md`, unless they already authorized or declined that edit. For example: "Would you like me to add this short usage guide to AGENTS.md so future agents can find these files?" Show the proposed wording and actual relative paths. A pending answer does not block delivering the generated files; do not edit the instruction file without authorization or repeat a settled question.
+At the start of a map/source-pack workflow, ask whether the user wants a short repository instruction pointer before adding it to `AGENTS.md`, unless they already answered that specific proposal in this repository. For example: "Would you like me to add this short usage guide to AGENTS.md so future agents can find these files?" Show the proposed wording and actual relative paths. A pending answer does not block delivering the generated files; do not edit the instruction file without authorization or repeat a settled question.
 
 Update one existing context/navigation section rather than adding duplicate instructions. Describe both what each file contains and the situations in which it helps:
 
