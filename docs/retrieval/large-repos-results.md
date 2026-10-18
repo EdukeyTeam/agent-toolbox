@@ -23,10 +23,14 @@ The old backend (commit d551ebd) refuses both repositories: `Chunk limit 30000 e
 
 | Lane | Payload before fixes | Payload after | Next.js before | Next.js after | Next.js p50 after |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Lexical Tier 0 | 72% | 62% | 45% | 55% | 1.5 s CLI |
+| Lexical Tier 0 | 72% | 62% (66% final) | 45% | 55% (59% final) | 1.7 s CLI |
 | Tier 1 | 59% | 66% | 59% | 69% | 1.6 s CLI |
 | Hybrid | 83% | 76% | 48% | 62% | 3.9 s CLI with model load; 0.5 s warm `serve` |
 
 "Before" is commit a5a310a/c47a7eb on the first big-repo indexes; "after" is commit 61beb39 on rebuilt indexes. The fixes restored 289 Next.js build source files that a name-based exclude had dropped and added JavaScript/TypeScript arrow-function definitions as symbols, which lifted Next.js by 10-14 points. On Payload the same changes shifted several near-miss answers from ranks 1-5 to ranks 6-10 (hybrid hit@10 rose from 90% to 93%), crowded out by multiple units from one file and import-only header units. On the small-corpus held-out set the same commit moved lexical Tier 0 from 57.4% to 58.8%, Tier 1 from 63.2% to 60.3% and hybrid from 73.5% to 69.1% hit@5, while MRR rose for Tier 0 and hybrid.
 
 What it means for users: on large modern monorepos the engine answers roughly six to seven of ten hard questions in the top five with tree-sitter or hybrid search, exact-symbol questions are reliable, documentation how-to questions are near perfect, and paraphrased questions without shared vocabulary remain the weakest category (hybrid helps). Small question counts make single-digit differences noise; the direction across lanes and repositories is the meaningful signal.
+
+## Final state (commit with rank stability)
+
+A last query-time change (file diversity in the top results, demotion of import-only units, validated on development sets only) moved lexical Tier 0 to 66% on Payload, 59% on Next.js and 60.3% on the small-corpus held-out set; Tier 1 (66% / 69% / 60.3%) and hybrid (76% / 62% / 69.1%) are unchanged. Final hit@10 for hybrid: Payload 93%, Next.js 72%.
