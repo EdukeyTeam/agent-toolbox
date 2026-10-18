@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -88,12 +89,15 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual(before, {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
         self.assertEqual((self.root / "AGENTS.md").read_text().count("<!-- local-context7 -->"), 1)
 
-    def test_missing_python_alias_uses_python3_in_configuration_and_guidance(self):
+    def test_explicit_interpreter_is_used_in_configuration_and_guidance(self):
         with mock.patch.object(setup.shutil, "which", return_value=None):
-            self.prepare("--agent", "codex", "--with-agents-md", "--consent-agents-md")
+            self.prepare("--agent", "codex", "--python", "python3", "--with-agents-md", "--consent-agents-md")
         config = tomllib.loads((self.root / ".codex/config.toml").read_text())
         self.assertEqual(config["mcp_servers"]["context7-local"]["command"], "python3")
-        self.assertIn("python3 tools/local_context7.py refresh", (self.root / "AGENTS.md").read_text())
+        note = (self.root / "AGENTS.md").read_text()
+        self.assertIn("python3", note)
+        self.assertIn(str(self.root / "tools/local_context7.py"), note)
+        self.assertIn("refresh", note)
 
     def test_conflicting_existing_server_refuses_all_writes(self):
         (self.root / ".mcp.json").write_text(json.dumps({"mcpServers": {"context7-local": {"url": "https://other.example.invalid"}}}))
@@ -153,6 +157,177 @@ class ProjectTests(unittest.TestCase):
         path = Path(report["runtime"]) / "backend/scripts/repo_files.py"
         path.write_text("# modified fixture\n")
         self.assertIn("Missing or changed pinned backend", self.cli("index", expected=1).stderr)
+
+    def test_all_agent_formats_preview_merge_and_repeat(self):
+        for agent, (relative, key) in setup.JSON_CLIENTS.items():
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"unrelated": {"keep": True}, key: {"other": {"command": "unchanged"}}}))
+        original = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        flags = tuple(x for a in setup.AGENTS for x in ("--agent", a)) + ("--with-hooks", "--consent-hooks", "--with-agents-md", "--consent-agents-md")
+        report = self.prepare(*flags, "--dry-run")
+        self.assertEqual(original, {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
+        self.assertEqual(set(report["manualRefreshClients"]), {"opencode", "antigravity"})
+        self.prepare(*flags)
+        for agent, (relative, key) in setup.JSON_CLIENTS.items():
+            config = json.loads((self.root / relative).read_text())
+            self.assertEqual(config["unrelated"], {"keep": True})
+            self.assertEqual(config[key]["other"], {"command": "unchanged"})
+            entry = config[key]["context7-local"]
+            if agent == "opencode":
+                self.assertEqual(entry["type"], "local")
+                self.assertIsInstance(entry["command"], list)
+            else:
+                self.assertEqual(entry["args"][-1], "mcp")
+        before = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        self.prepare(*flags)
+        self.assertEqual(before, {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
+
+    def test_replaces_only_marked_instructions_and_claude_is_opt_in(self):
+        (self.root / "AGENTS.md").write_text("Before\n<!-- local-context7 -->\nObsolete guidance\n<!-- /local-context7 -->\nAfter\n")
+        flags = ("--with-agents-md", "--consent-agents-md")
+        self.prepare(*flags)
+        note = (self.root / "AGENTS.md").read_text()
+        self.assertTrue(note.startswith("Before\n"))
+        self.assertTrue(note.endswith("After\n"))
+        self.assertNotIn("Obsolete", note)
+        for text in ("/local/demo", "query", "expand --unit-id", "refresh", "untrusted data", "empty results do not prove absence"):
+            self.assertIn(text, note)
+        self.assertFalse((self.root / "CLAUDE.md").exists())
+        self.prepare(*flags, "--with-claude-md")
+        self.assertEqual((self.root / "CLAUDE.md").read_text(), "@AGENTS.md\n")
+        (self.root / "CLAUDE.md").write_text("Human rules\n")
+        self.assertIn("Existing file differs", self.prepare(*flags, "--with-claude-md", expected=1))
+        self.assertEqual((self.root / "CLAUDE.md").read_text(), "Human rules\n")
+
+    def test_malformed_instruction_markers_refuse_before_writing(self):
+        (self.root / "AGENTS.md").write_text("<!-- local-context7 -->\nUser text\n")
+        self.assertIn("Malformed", self.prepare("--with-agents-md", "--consent-agents-md", expected=1))
+        self.assertFalse((self.root / "tools").exists())
+
+    def test_embedding_settings_are_explicit_and_do_not_download_at_setup(self):
+        model = self.base / "model"
+        model.mkdir()
+        report = self.prepare("--parser", "0", "--embed-provider", "local-python", "--model-dir", str(model))
+        project = json.loads((self.root / "tools/context7/project.json").read_text())
+        self.assertEqual(report["defaultMode"], "hybrid")
+        self.assertEqual(project["engine"]["parser"], "0")
+        self.assertEqual(project["engine"]["model_dir"], str(model))
+        self.assertEqual(project["engine"]["embed_model"], "minishlab/potion-code-16M-v2")
+        self.assertFalse(project["consent"]["modelDownload"])
+        self.assertEqual(list(model.iterdir()), [])
+        self.assertIn("not approved", self.cli("index", "--download-model", expected=1).stderr)
+
+    def test_remote_consent_and_key_name_validated_before_writes(self):
+        flags = ("--embed-provider", "openai-compatible", "--embed-base-url", "https://gateway.example.invalid/v1", "--embed-model", "fixture")
+        self.assertIn("Ask the user first", self.prepare(*flags, expected=1))
+        self.assertFalse((self.root / "tools").exists())
+        self.assertIn("environment variable", self.prepare(*flags, "--allow-remote-embeddings", "--embed-api-key-env", "invalid=value", expected=1))
+        report = self.prepare(*flags, "--allow-remote-embeddings", "--embed-api-key-env", "FIXTURE_API_KEY")
+        self.assertTrue(report["engine"]["allow_remote_embeddings"])
+        self.assertEqual(report["engine"]["embed_api_key_env"], "FIXTURE_API_KEY")
+
+    def test_loopback_needs_no_remote_grant_and_no_provider_rejects_options(self):
+        self.assertIn("Embedding options require", self.prepare("--download-model", expected=1))
+        report = self.prepare("--embed-provider", "openai-compatible", "--embed-base-url", "http://127.0.0.1:11434/v1", "--embed-model", "fixture")
+        self.assertFalse(report["engine"]["allow_remote_embeddings"])
+
+    def test_download_permission_is_recorded_without_network_during_setup(self):
+        report = self.prepare("--embed-provider", "local-python", "--cache-dir", str(self.base / "model-cache"), "--download-model")
+        config = json.loads((self.root / "tools/context7/project.json").read_text())
+        self.assertTrue(config["consent"]["modelDownload"])
+        self.assertEqual(report["engine"]["model_cache"], str(self.base / "model-cache"))
+        self.assertFalse((self.base / "model-cache").exists())
+
+    def test_invalid_endpoint_reports_clean_error_before_writes(self):
+        error = self.prepare("--embed-provider", "openai-compatible", "--embed-base-url", "https://user:synthetic@example.invalid/v1", "--embed-model", "fixture", expected=1)
+        self.assertIn("without credentials", error)
+        self.assertNotIn("synthetic", error)
+        self.assertFalse((self.root / "tools").exists())
+
+    def test_ambient_embedding_defaults_do_not_enable_provider(self):
+        with mock.patch.dict(os.environ, {"LEGACY_EMBED_PROVIDER": "openai-compatible", "LEGACY_EMBED_BASE_URL": "https://unused.example.invalid/v1", "LEGACY_EMBED_MODEL": "unused"}):
+            self.prepare()
+            self.cli("index")
+            status = json.loads(self.cli("status").stdout)
+        self.assertEqual(status["libraries"][0]["embedding"]["config"]["provider"], "none")
+
+    def test_hook_merges_retain_unrelated_handlers_and_metadata(self):
+        fixtures = ((".cursor/hooks.json", "afterFileEdit", False), (".gemini/settings.json", "AfterTool", True), (".github/hooks/context7-local.json", "PostToolUse", False))
+        for path, event, nested in fixtures:
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            handler = {"type": "command", "command": "existing-user-handler"}
+            entry = {"hooks": [handler], "matcher": "existing"} if nested else handler
+            target.write_text(json.dumps({"metadata": "preserve", "hooks": {event: [entry]}}))
+        self.prepare("--agent", "cursor", "--agent", "gemini", "--agent", "copilot", "--with-hooks", "--consent-hooks")
+        for path, event, nested in fixtures:
+            config = json.loads((self.root / path).read_text())
+            self.assertEqual(config["metadata"], "preserve")
+            self.assertEqual(len(config["hooks"][event]), 2)
+            first = config["hooks"][event][0]
+            self.assertEqual((first["hooks"][0] if nested else first)["command"], "existing-user-handler")
+
+    def test_parser_propagates_and_policy_change_refreshes_fresh_index(self):
+        self.prepare("--parser", "0")
+        self.cli("index")
+        before = json.loads(self.cli("status").stdout)["libraries"][0]
+        self.prepare("--parser", "auto")
+        self.cli("refresh")
+        report = self.prepare("--parser", "auto")
+        with setup.backend.connect(Path(report["database"])) as con:
+            scope = json.loads(con.execute("SELECT scope_json FROM libraries").fetchone()[0])
+        self.assertEqual(scope["parser"], "auto")
+        self.assertTrue(before)
+
+    def test_expand_uses_project_database_and_library(self):
+        self.prepare()
+        self.cli("index")
+        result = json.loads(self.cli("expand", "--path", "src/Demo.java", "--root-id", "r0", "--start-line", "1", "--end-line", "3").stdout)
+        self.assertIn("retryTransfer", json.dumps(result))
+
+    def test_policy_change_blocks_queries_until_refresh(self):
+        self.prepare("--parser", "0")
+        self.cli("index")
+        self.prepare("--parser", "auto")
+        self.assertIn("policy changed", self.cli("query", "retryTransfer", expected=1).stderr)
+        self.cli("refresh")
+        self.assertTrue(json.loads(self.cli("query", "retryTransfer").stdout)["results"])
+
+    def test_refresh_does_not_skip_pending_vectors_with_current_source(self):
+        report = self.prepare()
+        self.cli("index")
+        with setup.backend.connect(Path(report["database"])) as con:
+            con.execute("UPDATE files SET embedding_status='pending'")
+            con.commit()
+        launcher_spec = importlib.util.spec_from_file_location("pending_launcher", self.root / "tools/local_context7.py")
+        launcher = importlib.util.module_from_spec(launcher_spec)
+        launcher_spec.loader.exec_module(launcher)
+        # A candidate refresh can update lexical hashes before vectors. The
+        # wrapper must call the provider-preserving refresh even when hashes match.
+        with mock.patch.object(setup.backend, "refresh", return_value={"changed": 0, "deleted": 0}) as native:
+            result = launcher.refresh(setup.backend, Path(report["runtime"]))
+        self.assertTrue(result["refreshed"])
+        native.assert_called_once_with(Path(report["database"]), "/local/demo")
+
+    def test_each_hook_payload_refreshes_and_ignores_other_checkouts(self):
+        flags = tuple(x for a in ("codex", "gemini", "copilot", "cursor") for x in ("--agent", a))
+        self.prepare(*flags, "--with-hooks", "--consent-hooks")
+        self.cli("index")
+        paths = ((".codex/hooks.json", "PostToolUse", True), (".gemini/settings.json", "AfterTool", True), (".github/hooks/context7-local.json", "PostToolUse", False), (".cursor/hooks.json", "afterFileEdit", False))
+        for i, (relative, name, nested) in enumerate(paths):
+            self.java.write_text(f"public class Demo {{ public void hookVariant{i}() {{}} }}\n")
+            handler = json.loads((self.root / relative).read_text())["hooks"][name][0]
+            if nested:
+                handler = handler["hooks"][0]
+            command = shlex.split(handler["command"]) if os.name != "nt" else handler["command"]
+            event = {"hook_event_name": name, "cwd": str(self.base / "different")}
+            result = subprocess.run(command, input=json.dumps(event), cwd=self.root, capture_output=True, text=True, timeout=20, check=True)
+            self.assertEqual(result.stdout, "")
+            event = {"hook_event_name": name, **({"workspace_roots": [str(self.root)]} if relative.startswith(".cursor") else {"cwd": str(self.root / "src")})}
+            subprocess.run(command, input=json.dumps(event), cwd=self.root / "src", capture_output=True, text=True, timeout=20, check=True)
+            self.assertFalse(json.loads(self.cli("refresh").stdout)["refreshed"])
+            self.assertTrue(json.loads(self.cli("query", f"hookVariant{i}").stdout)["results"])
 
     @unittest.skipUnless(os.environ.get("LEGACY_CONTEXT7_CLIENTS") == "1", "explicit pinned-client integration opt-in")
     def test_real_official_mcp_and_cli_use_prepared_local_backend(self):

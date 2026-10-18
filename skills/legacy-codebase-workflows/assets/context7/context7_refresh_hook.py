@@ -8,19 +8,29 @@ import local_context7 as local
 
 
 def handle(event: dict) -> dict | None:
-    if event.get("hook_event_name") not in {"PostToolUse", "Stop"}:
+    name = event.get("hook_event_name")
+    if name not in {"PostToolUse", "Stop", "AfterTool", "AfterAgent", "afterFileEdit", "afterShellExecution", "stop"}:
         return None
     # Never refresh a different checkout based on paths or commands in input.
-    cwd = Path(event.get("cwd", "")).resolve()
-    if not event.get("cwd") or not cwd.is_relative_to(local.ROOT):
+    working = event.get("cwd")
+    if not working and name in {"afterFileEdit", "afterShellExecution", "stop"}:
+        # Cursor supplies workspace_roots rather than cwd for these events.
+        roots = event.get("workspace_roots", [])
+        if not isinstance(roots, list) or str(local.ROOT) not in roots:
+            return None
+        working = str(local.ROOT)
+    if not isinstance(working, str) or not Path(working).resolve().is_relative_to(local.ROOT):
         return None
     runtime = local.runtime_path()
     result = local.refresh(local.load_backend(runtime), runtime)
     if not result["refreshed"]:
         return None
     message = f'Local Context7 refreshed: {result["changed"]} changed, {result["deleted"]} deleted; library {local.LIBRARY_ID}.'
-    if event["hook_event_name"] == "PostToolUse":
-        return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": message}}
+    if name in {"afterFileEdit", "afterShellExecution", "stop"}:
+        # Cursor expects event-specific output; no followup_message/loop request.
+        return None
+    if name in {"PostToolUse", "AfterTool"}:
+        return {"hookSpecificOutput": {"hookEventName": name, "additionalContext": message}}
     return {"systemMessage": message}
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Project-local Context7 runtime. Setup is explicit; searches never use cloud APIs."""
+"""Project-local Context7 runtime with explicit engine and endpoint policy."""
 from __future__ import annotations
 
 import argparse
@@ -22,6 +22,8 @@ PROJECT = json.loads((CONFIG / "project.json").read_text(encoding="utf-8"))
 LIBRARY_ID = PROJECT["libraryId"]
 DOCS_ROOT = ROOT / PROJECT["docsRoot"] if PROJECT["docsRoot"] else None
 EXCLUDES = tuple(PROJECT["excludes"])
+ENGINE = PROJECT.get("engine", {"parser": "auto", "embed_provider": "none"})
+DEFAULT_MODE = PROJECT.get("defaultMode", "lexical")
 
 
 def runtime_path(override: Path | None = None) -> Path:
@@ -122,7 +124,7 @@ def local_server(backend, database: Path, port: int = 0):
 
     def run():
         try:
-            backend.serve(database, "127.0.0.1", port)
+            backend.serve(database, "127.0.0.1", port, default_mode=DEFAULT_MODE, default_library=LIBRARY_ID)
         except Exception as exc:
             ready.put(exc)
 
@@ -142,8 +144,33 @@ def local_server(backend, database: Path, port: int = 0):
         backend.ThreadingHTTPServer = original
 
 
-def index(backend, runtime: Path) -> dict:
-    return backend.index(ROOT, runtime / "index.sqlite", LIBRARY_ID, DOCS_ROOT, None, None, excludes=EXCLUDES)
+def index(backend, runtime: Path, *, download_model=False) -> dict:
+    if download_model and not PROJECT.get("consent", {}).get("modelDownload"):
+        raise ValueError("Model download was not approved in project setup; record consent first")
+    # Project policy, never ambient LEGACY_EMBED_* settings, owns this index.
+    # Build the saved provider contract explicitly to avoid environment defaults.
+    from local_context.embed import EmbedConfig
+    from dataclasses import asdict
+    provider = asdict(EmbedConfig(
+        provider=ENGINE.get("embed_provider", "none"), model=ENGINE.get("embed_model"),
+        revision=ENGINE.get("model_revision"), base_url=ENGINE.get("embed_base_url") or None,
+        api_key_env=ENGINE.get("embed_api_key_env") or None, model_dir=ENGINE.get("model_dir"),
+        cache_dir=ENGINE.get("model_cache"), allow_remote=ENGINE.get("allow_remote_embeddings", False)))
+    return backend.index(ROOT, runtime / "index.sqlite", LIBRARY_ID, DOCS_ROOT,
+                         excludes=EXCLUDES, parser=ENGINE.get("parser", "auto"),
+                         model_cache=ENGINE.get("model_cache"), model_dir=ENGINE.get("model_dir"),
+                         _saved=provider, download_model=download_model)
+
+
+def policy_matches(con) -> bool:
+    row = con.execute("SELECT scope_json,embedding_json FROM libraries WHERE id=?", (LIBRARY_ID,)).fetchone()
+    if row is None:
+        return False
+    scope, embeddings = json.loads(row[0]), json.loads(row[1]).get("config", {})
+    mapping = {"provider": "embed_provider", "model": "embed_model", "revision": "model_revision", "base_url": "embed_base_url", "api_key_env": "embed_api_key_env", "model_dir": "model_dir", "cache_dir": "model_cache", "allow_remote": "allow_remote_embeddings"}
+    return (scope.get("parser", "auto") == ENGINE.get("parser", "auto")
+            and scope.get("excludes", []) == list(EXCLUDES)
+            and all((embeddings.get(k) or None) == (ENGINE.get(v) or None) for k, v in mapping.items()))
 
 
 def refresh(backend, runtime: Path) -> dict:
@@ -154,9 +181,7 @@ def refresh(backend, runtime: Path) -> dict:
             metadata = backend.indexed_metadata(con)
             if (metadata["root"], metadata["docs_root"], metadata["library_id"]) != (str(ROOT), str(DOCS_ROOT or ""), LIBRARY_ID):
                 raise ValueError("Database belongs to another corpus; use a new runtime")
-            # Scope changes need indexing even when the old scope is fresh.
-            same_scope = json.loads(metadata.get("excludes", "[]")) == list(backend.normalize_excludes(EXCLUDES))
-            if same_scope:
+            if policy_matches(con):
                 try:
                     backend.assert_fresh(con, metadata)
                 except backend.RetrievalError:
@@ -166,6 +191,8 @@ def refresh(backend, runtime: Path) -> dict:
                     if callable(native_refresh):
                         return {**native_refresh(database, LIBRARY_ID), "refreshed": True}
                 else:
+                    if con.execute("SELECT 1 FROM files WHERE library_id=? AND embedding_status='pending' LIMIT 1", (LIBRARY_ID,)).fetchone():
+                        return {**backend.refresh(database, LIBRARY_ID), "refreshed": True}
                     return {"libraryId": LIBRARY_ID, "refreshed": False, "changed": 0, "deleted": 0, "revision": metadata["revision"]}
     return {**index(backend, runtime), "refreshed": True}
 
@@ -176,7 +203,8 @@ def main(argv=None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     install = commands.add_parser("setup", help="Copy the pinned backend and install locked clients; network permitted here only")
     install.add_argument("--skill-root", type=Path, default=Path.home() / ".agents" / "skills" / "legacy-codebase-workflows")
-    commands.add_parser("index", help="Explicitly refresh original code and docs")
+    indexing = commands.add_parser("index", help="Explicitly refresh original code and docs")
+    indexing.add_argument("--download-model", action="store_true", help="Use previously recorded download consent for this explicit index run only")
     commands.add_parser("refresh", help="Check freshness and incrementally update only if stale")
     commands.add_parser("status", help="Verify source freshness and print index metadata")
     serve = commands.add_parser("serve", help="Serve Context7 HTTP compatibility routes until Ctrl+C")
@@ -185,6 +213,14 @@ def main(argv=None) -> int:
     for name in ("library", "docs", "query"):
         command = commands.add_parser(name)
         command.add_argument("query", help="Exact identifier or focused question")
+        if name == "query":
+            command.add_argument("--mode", choices=("lexical", "semantic", "hybrid"), default=DEFAULT_MODE)
+            command.add_argument("--refresh", choices=("auto", "off", "strict"), default="auto")
+    expansion = commands.add_parser("expand", help="Read a verified unit or exact source range")
+    for name in ("unit-id", "path", "root-id"):
+        expansion.add_argument("--" + name)
+    for name in ("start-line", "end-line", "tokens"):
+        expansion.add_argument("--" + name, type=int, default=4000 if name == "tokens" else None)
     args = parser.parse_args(argv)
     try:
         runtime = runtime_path(args.runtime)
@@ -193,20 +229,24 @@ def main(argv=None) -> int:
             return 0
         backend = load_backend(runtime)
         database = runtime / "index.sqlite"
+        if args.command in {"query", "expand", "serve", "mcp", "library", "docs"}:
+            with backend.connect(database) as con:
+                if not policy_matches(con):
+                    raise ValueError("Project engine policy changed; run local_context7.py refresh before querying")
         if args.command == "index":
-            print(json.dumps(index(backend, runtime), indent=2))
+            print(json.dumps(index(backend, runtime, download_model=args.download_model), indent=2))
         elif args.command == "refresh":
             print(json.dumps(refresh(backend, runtime), indent=2))
-        elif args.command in ("status", "query"):
+        elif args.command in ("status", "query", "expand"):
             with backend.connect(database) as con:
                 if args.command == "status":
-                    metadata = backend.indexed_metadata(con)
-                    backend.assert_fresh(con, metadata)
-                    print(json.dumps({"runtime": str(runtime), "fresh": True, "metadata": metadata}, indent=2))
+                    print(json.dumps({"runtime": str(runtime), **backend.status(con, LIBRARY_ID, verify_all=True)}, indent=2))
+                elif args.command == "expand":
+                    print(json.dumps(backend.expand(con, library_id=LIBRARY_ID, unit_id=args.unit_id, path=args.path, root_id=args.root_id, start_line=args.start_line, end_line=args.end_line, tokens=args.tokens), indent=2))
                 else:
-                    print(json.dumps(backend.query(con, args.query, "lexical", None, 5), indent=2))
+                    print(json.dumps(backend.query(con, args.query, args.mode, None, 5, library_id=LIBRARY_ID, refresh_policy=args.refresh), indent=2))
         elif args.command == "serve":
-            backend.serve(database, "127.0.0.1", args.port)
+            backend.serve(database, "127.0.0.1", args.port, default_mode=DEFAULT_MODE, default_library=LIBRARY_ID)
         else:
             package = "@upstash/context7-mcp" if args.command == "mcp" else "ctx7"
             entry = client_entry(runtime, package)

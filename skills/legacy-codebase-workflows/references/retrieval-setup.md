@@ -1,6 +1,6 @@
 # Retrieval setup (one-time)
 
-One-time installation and consent for the local retrieval engine (`scripts/context7_backend.py`). Nothing here modifies agent instructions or hooks; project wiring is separate and linked below. After setup, everyday use needs only the [usage reference](private-retrieval.md).
+Optional runtime installation and offline delivery for the local retrieval engine (`scripts/context7_backend.py`). For a complete project installation, start with [local Context7 setup](local-context7-setup.md), the single guide for interpreter/client installation, consent questions, per-agent configuration, refresh hooks, AGENTS.md, verification and uninstall. After setup, everyday use needs only the [usage reference](private-retrieval.md).
 
 ## Install levels
 
@@ -20,9 +20,7 @@ After enabling embeddings, recommend hybrid queries and keep a warm server with 
 
 ## Consent procedure (mandatory)
 
-Before downloading a model, ask once and record the answer: state the model name (default `minishlab/potion-code-16M-v2`), its approximate size (about 34 MB), its source (Hugging Face), that it runs locally on CPU and that code never leaves the machine. Store the decision and do not re-ask for the same model. Only explicit `index --download-model` performs the download, and only for a granted model; queries and refresh never download anything. Declining keeps the library lexical-only.
-
-Before using any non-loopback embedding endpoint, always ask: name the endpoint and state that indexed content is sent to it, so code leaves the machine. Record that consent; indexing additionally requires `--allow-remote-embeddings`. Loopback endpoints (`127.0.0.1`, `::1`, `localhost` resolving to loopback) count as local and need no endpoint consent. A consent flag never grants itself permission, and any provider change requires re-embedding.
+Follow the model/endpoint questions in [local Context7 setup](local-context7-setup.md#1-inspect-and-ask-first) before enabling either permission. These rules also apply when invoking the advanced backend directly: only an explicit `index --download-model` may download a model, and non-loopback indexing needs `--allow-remote-embeddings` after consent naming that endpoint. Query and refresh never download; a consented remote provider may embed both documents and queries at its recorded endpoint. Store API key environment variable names, never key values. Ambient environment settings grant no permission; a provider identity change requires re-embedding.
 
 ## Existing Ollama, llama.cpp, vLLM or LM Studio endpoint
 

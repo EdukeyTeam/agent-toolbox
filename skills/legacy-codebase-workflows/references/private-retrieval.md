@@ -2,7 +2,7 @@
 
 The bundled local retrieval engine (`scripts/context7_backend.py`, backed by the `scripts/local_context/` package) indexes a repository's source and documentation into one SQLite database and answers natural-language and exact-symbol questions with budgeted, source-cited snippets. It runs entirely on the machine, works offline in lexical mode, and complements direct search, repository maps, Repomix packs and code graphs rather than replacing them.
 
-One-time installation, consent gates, air-gapped setup and Windows/WSL notes are in [retrieval setup](retrieval-setup.md). Wiring a project with a launcher, pinned clients and refresh hooks is described in [local Context7 setup](local-context7-setup.md). This reference covers everyday usage.
+Start project wiring in [local Context7 setup](local-context7-setup.md), the single step-by-step guide for all supported agents, separately consented hooks/instructions, parser/embedding settings, verification and rollback. Optional packages and air-gapped delivery are in [retrieval setup](retrieval-setup.md). This reference covers everyday advanced backend usage; generated projects use their launcher commands from AGENTS.md.
 
 ## Concepts
 
