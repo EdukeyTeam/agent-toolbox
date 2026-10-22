@@ -56,6 +56,8 @@ Sources: [headless operation](https://code.claude.com/docs/en/headless), [CLI re
 
 ## OpenCode
 
+Run only in an already approved review environment whose effective policy denies all edits/file writes, shell/process execution, subagent/task dispatch and write-capable MCP/custom tools, while permitting packet reads. Verify the final merged and agent-specific permissions: the built-in Plan defaults can be overridden by user configuration. If those controls cannot be verified, declare this runner unavailable and use only an already authorized alternative; do not modify shared/global settings to prepare the run.
+
 ```bash
 (
   cd "$PLAN_PACKET" || exit 1
@@ -66,7 +68,7 @@ Sources: [headless operation](https://code.claude.com/docs/en/headless), [CLI re
 )
 ```
 
-The model is a verified `provider/model` identifier. `--file` attaches the brief; the positional argument supplies the instruction. **`-p` is a server-password option, not a prompt flag.** The built-in `plan` agent limits editing according to its configuration; verify effective permissions. Use the scoped packet rather than the live application checkout. Do not add `--auto` or silently switch to the default build agent after a permission denial.
+The model is a verified `provider/model` identifier. `--file` attaches the brief; the positional argument supplies the instruction. **`-p` is a server-password option, not a prompt flag.** The built-in `plan` name alone is not a read-only guarantee. Use the scoped packet rather than the live application checkout. Do not add `--auto` or silently switch to the default build agent after a permission denial.
 
 JSON output is an event stream, not one final JSON object. Extract the final assistant text using the installed version's event schema, confirm normal completion, then save it as the review. A soft-denied tool, empty artifact or incomplete finish is not a successful review even if the process exits 0.
 
