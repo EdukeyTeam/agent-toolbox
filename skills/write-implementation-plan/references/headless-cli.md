@@ -1,6 +1,6 @@
 # Headless CLI examples for an authorized strong reviewer
 
-Routine plan authoring/review stays with the main strong model; no CLI worker is required. Use these examples only for a separately requested/permitted strong expert review. Never select Luna, Haiku or another small execution model for a review, audit, plan comments or planning decisions. Future implementation workers use task-specific execution briefs after human approval.
+Routine plan authoring/review stays with the main strong model; no CLI worker is required. Use these examples only for a separately requested/permitted strong expert review. Never select a model in the execution class for a review, audit, plan comments or planning decisions. Future implementation workers use task-specific execution briefs after human approval; this file does not supply their write-enabled invocation.
 
 Read only the sections for runners the human permitted. These are document-only worker examples, not commands to execute merely because this skill was loaded. They are portable Bash examples; another shell must preserve quoting, stdin, permissions, exit status and output handling.
 
@@ -8,7 +8,7 @@ Read only the sections for runners the human permitted. These are document-only 
 
 Confirm the selected runner, exact available model/provider, cost/data boundary and purpose with the human's delegation policy. Check the installed executable's version and help; flags and model identifiers change. Use current official documentation, preferring an available documentation connector such as Context7 before general search. Authentication must already be provisioned; do not start an unattended login or expose credentials.
 
-Prepare a self-contained brief and an isolated input packet containing only the required documents. Set the variables below to verified absolute paths; model variables are exact IDs selected for that runner, not suggested model defaults:
+Prepare a self-contained brief and a scoped input packet containing only the required task documents. This limits supplied sources, not the runner's inherited context: it may also load user/ancestor instructions, memory, plugins and account metadata. Inspect effective context and use an approved clean review environment when stricter isolation is needed; do not disable mandatory policy or claim a packet alone enforces isolation. Set the variables below to verified absolute paths; model variables are exact IDs selected for that runner, not suggested model defaults:
 
 ```bash
 PLAN_PACKET="/absolute/path/to/scoped-documents"
@@ -18,7 +18,7 @@ PLAN_REPORT="$PLAN_RUN/review.md"
 mkdir -p "$PLAN_RUN"
 ```
 
-The brief requests a Markdown review on stdout, with source references, concrete findings and unresolved decisions. It forbids application edits, installs, services, other worker launches, commits, publication and approval changes. Its output is a review, not authorization to execute a plan. The main agent authors the plan; do not turn this review invocation into a plan-writing worker.
+The brief states the review-only task boundary and handles inherited workflow conflicts under the applicable instruction hierarchy; it cannot override higher-priority policy. It requests a Markdown review on stdout, with source references, concrete findings and unresolved decisions. It forbids application edits, installs, services, other worker launches, commits, publication and approval changes. Its output is a review, not authorization to execute a plan. The main agent authors the plan; do not turn this review invocation into a plan-writing worker.
 
 Start a fresh worker, not `--continue`/`--resume` against an unrelated session. Follow the environment's required job/session manager for long jobs and record process/session IDs, log paths and cleanup ownership. If no manager is provided or required, run in a monitored foreground session; if safe monitoring is unavailable, report that prerequisite instead of launching unattended work. Do not alter global CLI settings or disable sandbox/approval systems to make a headless job finish.
 
@@ -42,15 +42,17 @@ Sources: [noninteractive operation](https://developers.openai.com/codex/noninter
 (
   cd "$PLAN_PACKET" || exit 1
   claude -p --model "$PLAN_CLAUDE_MODEL" \
-    --permission-mode plan --tools 'Read,Glob,Grep' \
+    --permission-mode dontAsk --tools 'Read,Glob,Grep' \
+    --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+    --permission-prompts none \
     --output-format text \
     < "$PLAN_BRIEF" > "$PLAN_REPORT" 2> "$PLAN_RUN/stderr.log"
 )
 ```
 
-Print mode reads the supplied stdin and exits. `--tools` selects the available tools; `--allowedTools` alone is an approval list, not an exclusive tool list. Here shell/edit/write tools are omitted deliberately. Capture text directly as Markdown; if using `--output-format json` instead, parse its documented result/error shape rather than treating JSON as a report. Do not add permission-bypass flags.
+Claude may still load user-global and ancestor instruction/memory context; this recipe does not suppress it. Setting-source controls are not proof that all instruction discovery is disabled. Print mode reads the supplied stdin and exits. `--tools` selects the available tools; `--allowedTools` alone is an approval list, not an exclusive tool list. Here shell/edit/write/agent-launch tools are omitted deliberately, and the empty strict MCP configuration excludes configured MCP servers. `dontAsk` denies requests that would prompt, without injecting a plan-authoring workflow. Claude plan mode can instruct the model to write a plan and launch planning agents, so it is unsuitable for this review recipe. Do not relax managed policy if it rejects a runner configuration. Capture text directly as Markdown; if using `--output-format json` instead, parse its documented result/error shape rather than treating JSON as a report. Do not add permission-bypass flags.
 
-Sources: [headless operation](https://code.claude.com/docs/en/headless), [CLI reference](https://code.claude.com/docs/en/cli-reference), [tool reference](https://code.claude.com/docs/en/tools-reference). Context7: `/websites/code_claude`.
+Sources: [headless operation](https://code.claude.com/docs/en/headless), [CLI reference](https://code.claude.com/docs/en/cli-reference), [tool reference](https://code.claude.com/docs/en/tools-reference), [permission modes](https://code.claude.com/docs/en/permission-modes). Context7: `/websites/code_claude`.
 
 ## OpenCode
 
@@ -95,4 +97,4 @@ A CLI's plan/read-only mode is an additional control, not the human-review gate.
 
 ## Verification note
 
-Examples were checked against Context7 documentation and local help on 2026-10-22: Codex CLI 0.163.0, Claude Code 2.1.304, OpenCode 1.18.30, Antigravity 1.4.2. This verifies option availability, not authentication, model access or a successful remote agent run. Recheck installed help before use. OpenCode documentation also describes newer major versions; the examples avoid newer variant flags. Antigravity 1.4.2 help reports a zero/unlimited default print timeout, whereas indexed docs describe a finite default.
+Examples were checked against Context7 documentation and local help on 2026-10-22: Codex CLI 0.163.0, Claude Code 2.1.304, OpenCode 1.18.30, Antigravity 1.4.2. These checks establish option availability, not general authentication/model access. The Claude `dontAsk` recipe was additionally exercised with native Opus: only the three read tools were available and no plan-mode workflow was injected, but inherited global/ancestor context remained visible; the other runners were not executed as remote model jobs. Recheck installed help before use. OpenCode documentation also describes newer major versions; the examples avoid newer variant flags. Antigravity 1.4.2 help reports a zero/unlimited default print timeout, whereas indexed docs describe a finite default.

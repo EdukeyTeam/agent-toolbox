@@ -6,7 +6,7 @@ The main strong model is the reader and author. It consults canonical sources it
 
 Use this minimal structure:
 
-1. Objective, PoC boundary by source reference, baseline and `approval: draft` / awaiting human review.
+1. Objective, PoC boundary by source reference, baseline and `approval: draft` / awaiting human review, with the top-level do-not-execute directive. Cite excluded criterion IDs where supplied, or their canonical exclusion section; do not invent IDs.
 2. Canonical source links and applicable instruction scope; revisions/hashes in a compact source list or companion review, not repeated per task.
 3. Confirmed future role/runner/model policy and consequential unresolved decisions.
 4. A few phases, each with an observable milestone and entry/exit gate.
@@ -19,20 +19,20 @@ Use this minimal structure:
 |---|---|
 | ID / outcome | One bounded capability or coherent verification result. |
 | Source / coverage | Exact PRD criterion IDs and ADR/design/instruction anchors; no copied requirement prose. |
-| Future owner / model | Specialist role and execution model/runner; strong orchestrator owns decisions and acceptance. |
+| Future owner / model | Specialist role and execution model/runner or recorded delegated routing rule; strong orchestrator owns decisions and acceptance. |
 | Direct prerequisites | Task IDs and required handoff, including phase joins where relevant. |
 | Scope / contention | Planned modules and exclusive shared-file/runtime ownership; expand into actual paths at dispatch. |
 | Verification / commit | Short task-specific observable check or source pointer, commit boundary and successor handoff. |
 
 Give every in-scope criterion an implementation and verification owner through these rows. Group IDs only when each has the same true coverage; inspect all source criteria individually during review. Do not add a second full coverage table, dependency list and nine-field task card for every row. Reference the row where the review needs a mapping.
 
-Task size should fit a small model's bounded execution brief. Split a subsystem by observable behavior or contract boundary, not into empty process commits. Freeze transport/schema contracts before consumers. A step must verify with its own changes and committed predecessors, not another worker's dirty files.
+Task size should fit a small model's bounded execution brief. Split a subsystem by observable behavior or contract boundary, not into empty process commits. Freeze transport/schema contracts before consumers. A step must verify with its own changes and accepted committed predecessors, not another worker's dirty files. A predecessor receipt identifies its commit SHA, verification evidence path and strong-orchestrator acceptance note in the existing handoff/tracker convention or a location named in the plan. A commit alone is not acceptance: no dependent dispatch before that accepted receipt exists.
 
 Keep common workflow rules once, by links to applicable instructions. At most use a small, non-authoritative phase picture with eight or fewer nodes; never reproduce the per-task graph. Do not move duplicated specification into a collection of plan appendices to meet the line target.
 
 ## Verification by task type
 
-The plan references the project's actual verification policy and records task-specific exceptions or prerequisites:
+The plan references the project's actual verification policy and records task-specific exceptions or prerequisites. Applicable instructions govern; the following are defaults when that policy is silent:
 
 - Feature/fix: meaningful behavior test first, observed expected Red, minimal implementation, Green, refactor and affected regressions. A bug needs a reproducing regression.
 - Behavior-preserving refactor: passing characterization baseline, with mutation proof where required.
@@ -46,7 +46,7 @@ For runtime changes, validate the interface that exists at that step: storage/CL
 
 Check all referenced IDs, acyclicity, joins and both producer/consumer readiness. Give manifests, lockfiles, routes, migrations, composition roots, servers, ports and databases explicit owners and serialization. Disjoint filenames alone do not prove independence.
 
-In a shared checkout, serialize promotion and validation when isolated results cannot be established. Parallel preparation is not parallel implementation. Respect local permission for isolation; do not create worktrees or switch another task's branch implicitly. Failed predecessors block their dependents; the strong orchestrator assigns repair and refreshes downstream briefs.
+In a shared checkout, serialize promotion and validation when isolated results cannot be established. Parallel preparation is not parallel implementation. Respect local permission for isolation; do not create worktrees or switch another task's branch implicitly. Failed predecessors block their dependents; the strong orchestrator assigns repair and refreshes downstream briefs. If repair changes the approved plan materially, re-review and human re-approval precede affected dispatch.
 
 ## Just-in-time execution brief
 
@@ -58,7 +58,7 @@ The strong orchestrator owns choices, coordination and acceptance.
 Preserve others' edits. Report contradictions/missing inputs; do not guess.
 
 Task ID / role / exact model, provider and runner:
-Repository / verified baseline / required predecessor receipts:
+Repository / verified baseline / required accepted predecessor receipts (commit, evidence, orchestrator acceptance):
 Goal and task-relevant observable acceptance criteria:
 Non-goals, forbidden actions and allowed writable files / exclusive leases:
 Required PRD, ADR, design and instruction excerpts:
@@ -70,6 +70,7 @@ Separate startup and real manual validation steps where applicable:
 Evidence/report paths and required screenshots/API/CLI results:
 Committing actor and handoff (follow workspace policy):
 Stop/report conditions and owner of the required decision:
+Worker findings are factual inputs, not plan review or approval:
 ```
 
 Verify every path, output parent, active role, contract, tool version and command just before dispatch. Include only necessary inputs. Workers get the brief path and instruction to perform the bounded task; the main orchestrator retains the plan and reads PRD/ADRs. A brief never grants implementation authority before human approval.
