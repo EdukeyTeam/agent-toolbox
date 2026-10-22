@@ -1,71 +1,44 @@
 # Mandatory plan consistency review
 
-Review the saved plan before delivering it for human review. The review verdict is separate from human execution approval. A completed review still ends this skill's turn.
+The main **strong** model reviews the actual saved plan. Small models must not author, audit, comment on or approve plans. A requested/permitted strong expert may give another opinion; the main agent resolves findings. Mechanical checks and prescribed test outcomes are evidence, not decision authority.
 
-## Evidence and sources
+## Sources and revision evidence
 
-Use the actual applicable instructions, PRD, ADRs, selected design references and current source/tooling baseline. Verify exact filenames and section anchors. An agent summary is a navigation aid, not a replacement for the underlying source.
+Read actual applicable instructions, PRD, ADRs, selected design guidance and relevant existing code/tooling. Verify filenames and section anchors. Agent summaries do not replace sources.
 
-Record the plan revision and source revisions reviewed. For an uncommitted document use its content hash; for committed inputs record the commit and relevant paths. Verify that each input is actually tracked and represented by the cited commit. A parent repository HEAD does not identify ignored or untracked fixtures; record their content hashes instead. Recheck if either changes during review.
+Identify the reviewed plan and inputs by commit/path or content hash. Verify each cited commit actually represents the file: a parent HEAD does not identify ignored/untracked fixtures. Recheck after changes; keep this evidence in the concise companion review rather than repeating it across task rows.
 
-## Review dimensions
+## Checks
 
-| Dimension | Questions that must be answered |
+| Dimension | Required judgment |
 |---|---|
-| Product coverage | Does every in-scope AC have implementation and verification ownership? Are manual and automated entry paths, failure recovery, persistence and exclusions covered where required? |
-| Architecture | Are chosen libraries, versions, boundaries, data models, API behavior and deployment constraints followed? Does the plan accidentally introduce an alternative stack or duplicate business rules? |
-| Instructions | Were global/workspace/repo/nested instructions considered for the affected paths? Do TDD, manual QA, evidence, data, commits and delegation rules agree? Are conflicting instructions surfaced with their scope and authority? |
-| Dependencies | Does every prerequisite exist? Is the graph acyclic? Do cards, matrix, diagrams and phase gates agree? Can a task reach its claimed result before its successors exist? |
-| Contracts | Which task freezes an API/schema/symbol? Does its consumer receive the actual committed interface? Are errors, revisions, retries and unknown values unambiguous where the product needs them? |
-| Ownership | Does each file/hotspot have an owner? Are integration surfaces and shared config serialized? Are concurrent verification, servers, fixtures and databases isolated or gated? |
-| Task size/context | Is each task bounded enough for its chosen model? Can the brief compiler supply all required details without pasting the whole application? Are decisions assigned to the orchestrator rather than left to workers? |
-| Validation feasibility | Do tests assert behavior and meaningful boundaries? Are Red, Green, regressions, build, startup and manual QA distinct? Are tools, scripts and fixtures available by the time each check runs? |
-| Design | Do UI steps cite selected tokens/assets and required accessibility behavior? Are unknown or missing assets honestly handled? Are visual claims backed by planned real renders? |
-| Authority | Does the plan stay draft and stop for human review? Could a worker, CLI default, broad original request or positive review accidentally start execution? Are commits and external actions separately scoped? |
+| Model authority | Main strong agent authored/decomposed/reviewed the plan; small workers are reserved for future bounded execution. No role label or cheap default transfers planning/acceptance authority. |
+| Product / architecture | Every in-scope criterion has a true implementation and verification mapping in the matrix; chosen stack, boundaries and PoC exclusions follow source sections. No hidden product/architecture choices are left to workers. |
+| Source ownership / size | Product prose, schemas, endpoint catalogues, setup procedures and detailed test cases stay in canonical documents. No copy-and-paste specifications, repetitive cards, complete future briefs or overflow appendices. Typical PoC target: 100-200 lines / at most 2,000 words; justify exceptions after compression. |
+| Instructions / design | Actual global/repo/nested workflow, commits, data, TDD, manual QA, selected assets and accessibility guidance apply at the correct paths. Missing assets and conflicting instructions are explicit. |
+| Dependencies / contracts | One matrix has unique IDs, valid prerequisites, no cycles and real joins. Contracts/fixtures/screens/commands exist before consumers. Check both directions, not only phase order. |
+| Ownership / concurrency | Shared files, generated outputs, ports, servers and databases have an owner/serialization. A worker cannot rely on another worker's uncommitted state. |
+| Brief feasibility | The strong orchestrator can later compile all task-relevant excerpts, actual predecessor interfaces, choices and exact steps into one bounded brief. Workers need neither the whole plan nor broad PRD/ADR reading. |
+| Verification | Meaningful feature Red, characterization, QA and documentation checks are distinguished. Startup/manual QA and automated tests are separate where required; unavailable tools become earlier preflight gates, not false passes. |
+| Readability | The matrix alone carries the full task graph. No second giant Mermaid/UML graph; optional phase overview has at most eight nodes and is labelled derived/non-authoritative. |
+| Human gate / automation | Plan stays draft and the planning turn ends after review. Positive findings, broad build requests and active goals cannot self-approve a revision or trigger implementation on a resumed turn. |
 
-These questions are checks, not a demand to add features. For example, no authentication requirement should appear merely because a checklist mentions data handling.
+These checks do not add product requirements. Use source IDs and anchors in mappings, not duplicate requirement paragraphs. Link existence is insufficient: check that labels reach the intended artifact and criteria map to the actual flow.
 
-## Finding format and resolution
+## Findings and fixes
 
-For a substantive issue record:
+For each substantive finding record its impact, source/plan references, consequence, concrete fix or human decision, and affected recheck. Correct plan-local mistakes and connected matrix rows. Do not rewrite PRD/ADR/AGENTS to hide a conflict. Consequential source contradictions remain blocked for the appropriate human decision.
 
-| Field | Content |
-|---|---|
-| ID / impact | Blocking conflict, execution blocker, coverage gap, or minor correction. |
-| Evidence | Relevant source section/criterion and exact conflicting plan task/statement. |
-| Consequence | What would fail, conflict or be left for the worker to guess. |
-| Resolution | Concrete plan correction, or the precise source decision required from the human. |
-| Recheck | Which dependency, ownership or coverage checks were repeated after correction. |
+Check local links, unique task IDs, prerequisite references, graph acyclicity and per-criterion coverage mechanically where tools exist; report manual checks honestly. Do not require a redundant visual graph to validate dependencies. Runtime or CLI verification not performed must not be claimed.
 
-Correct plan-local mistakes within the authorized documentation scope. Recheck connected tasks, matrix rows and diagrams; a renamed task or split can invalidate many references. Do not change a PRD/ADR/AGENTS requirement just to make the plan appear consistent.
+## Concise companion review
 
-A consequential source contradiction, unsupported architecture choice or missing decision remains blocking until resolved by the appropriate authority. Explain the conflict and ask the focused question. An unknown command can be resolved by an earlier tooling-verification task only if no earlier task already needs it.
+Record only:
 
-## Mechanical and human checks
+1. Exact plan and source/instruction revisions reviewed.
+2. Performed checks and substantive findings/fixes, distinguishing scripts from strong-model judgment.
+3. Missing decisions, limitations and unresolved blockers.
+4. Verdict: `review passed - awaiting human review` or `blocked - human decision required`.
+5. Confirmation that implementation has not started and the turn stops.
 
-Where available, check:
-
-- Local links and exact heading anchors resolve; future files are clearly labelled as planned paths.
-- Task IDs are unique and every dependency references an existing task.
-- The full graph, including phase gates, is acyclic.
-- Task cards, matrix, diagram and model/role assignments agree.
-- All in-scope AC/TAC IDs from the actual source set have implementation and verification mappings.
-- Leases do not authorize conflicting writers or hidden uncommitted dependencies.
-- No review or worker path can self-approve or dispatch an implementation step.
-
-A syntactic link checker cannot establish semantic coverage or the intended destination. A link labelled “handoff” must point to the actual output handoff, not an existing input brief with a similar name. Read the mappings: an import-failure criterion must map to the import flow, not an unrelated settings screen. Confirm that stated test outcomes would detect the failure they claim to protect against.
-
-For a larger plan use a fresh permitted reviewer or separate pass. Give the reviewer the saved plan and scoped source documents, not the author's conclusions as its evidence. Record its actual mechanism/model and limits; do not claim a different model family unless one was used.
-
-## Companion review output
-
-Keep it concise and linked to the plan:
-
-1. Reviewed plan path/revision and source/instruction paths/revisions.
-2. Checks performed, distinguishing automated checks from manual reading.
-3. Coverage/dependency/ownership result and substantive findings/fixes.
-4. Unresolved questions, blockers and unavailable verification.
-5. Verdict: `review passed — awaiting human review` or `blocked — human decision required`.
-6. Explicit statement that implementation has not started and the agent has stopped.
-
-Link supporting evidence instead of copying raw logs or the entire source documents. A verdict applies only to the reviewed plan and inputs; don't claim it covers later edits.
+Name any actual expert reviewer/model and its limits; do not claim an independent model family without one. Link evidence rather than copying logs or the plan. Review is never human execution approval.

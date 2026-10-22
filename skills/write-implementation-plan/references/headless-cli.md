@@ -1,4 +1,6 @@
-# Headless CLI examples for planning and review
+# Headless CLI examples for an authorized strong reviewer
+
+Routine plan authoring/review stays with the main strong model; no CLI worker is required. Use these examples only for a separately requested/permitted strong expert review. Never select Luna, Haiku or another small execution model for a review, audit, plan comments or planning decisions. Future implementation workers use task-specific execution briefs after human approval.
 
 Read only the sections for runners the human permitted. These are document-only worker examples, not commands to execute merely because this skill was loaded. They are portable Bash examples; another shell must preserve quoting, stdin, permissions, exit status and output handling.
 
@@ -16,7 +18,7 @@ PLAN_REPORT="$PLAN_RUN/review.md"
 mkdir -p "$PLAN_RUN"
 ```
 
-The brief requests a Markdown review on stdout, with source references, concrete findings and unresolved decisions. It forbids application edits, installs, services, other worker launches, commits, publication and approval changes. Its output is a review, not authorization to execute a plan. A plan authoring worker may produce draft Markdown on stdout under the same boundary; the orchestrator writes the allowed plan artifact.
+The brief requests a Markdown review on stdout, with source references, concrete findings and unresolved decisions. It forbids application edits, installs, services, other worker launches, commits, publication and approval changes. Its output is a review, not authorization to execute a plan. The main agent authors the plan; do not turn this review invocation into a plan-writing worker.
 
 Start a fresh worker, not `--continue`/`--resume` against an unrelated session. Follow the environment's required job/session manager for long jobs and record process/session IDs, log paths and cleanup ownership. If no manager is provided or required, run in a monitored foreground session; if safe monitoring is unavailable, report that prerequisite instead of launching unattended work. Do not alter global CLI settings or disable sandbox/approval systems to make a headless job finish.
 

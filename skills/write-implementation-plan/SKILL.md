@@ -1,73 +1,69 @@
 ---
 name: write-implementation-plan
-description: Create and review phased implementation plans from product requirements, architecture decisions and workspace instructions, with task dependencies and agent delegation. Deliver a reviewable repository file and stop for human review before implementation.
+description: Create a concise implementation plan from PRD, ADRs and workspace instructions. The main strong model authors and reviews it, plans future worker delegation, and stops for human review before implementation.
 ---
 
 # Write an implementation plan
 
-Produce an implementation specification, not application code. A plan passing the agent's review is **not** human approval to execute it. End this workflow after delivering the plan and its review; implementation belongs to a subsequent, explicitly authorized execution request.
+The plan is a coordination document for the **main orchestrator**, not a specification for implementation workers. The orchestrator reads the plan and canonical sources, makes decisions and later compiles complete worker briefs. A passed consistency review is not human approval to execute.
 
-## 1. Establish the planning boundary
+## 1. Keep planning with the strong model
 
-Read applicable global/workspace, repository and nested agent instructions. Locate the actual PRD, ADRs, design references and existing build/test documentation. Resolve a misspelled document reference to an unambiguous existing file; do not create a second source of truth. Report missing or conflicting sources.
+The main agent creates the whole plan and performs its consistency review. Do not delegate task decomposition, plan fragments, architectural choices, plan audits, review comments or acceptance judgments to small models. Luna and Haiku are execution workers: after human approval they may write code or run prescribed tests from complete briefs. A specialist role name does not change a model's capability or authority.
 
-State the deliverables and allowed mutations before working. Normally these are the plan and its review. Create or edit role definitions only when the human has requested that work. Do not scaffold the application, install application dependencies, change runtime configuration, launch implementation workers or start services to satisfy a planning request. Version/help inspection and read-only source research are planning work. Follow the workspace's commit/publication rules; planning permission does not authorize deployment, installation of this skill or changes to other sessions.
+Use a strong planning-capable model such as Sol or Opus, or a human-approved equivalent. If the current model is a small execution model, report the required handoff instead of authoring or judging a plan. Do not downgrade decisions to save cost. Routine planning needs no subagents. A separately requested expert opinion may use an explicitly permitted strong reviewer; the main agent remains accountable. Do not launch plan-writing workers or behavioral trials by default.
 
-Where the harness supports it, restrict planning workers to read-only source access and the exact documentation output paths, or have them return Markdown for the orchestrator to save. A written stop rule is not a technical sandbox guarantee; disclose which controls are actually enforced.
+Read applicable global/workspace, repository and nested instructions, then the actual PRD, ADRs, selected design guidance and current build/test documentation. Resolve unambiguous filename mistakes; report missing or conflicting sources. Use [skill-appropriate review checks](references/review-checklist.md) for evidence, not an agent summary as a replacement source.
 
-Inspect the worktree before writing. Preserve existing changes and active writers. Do not switch another task's branch or create isolation implicitly. Follow the repository's rules for branches/worktrees and concurrent edits. A conversation fork is not proof that another writer stopped; verify ownership rather than controlling other sessions without authorization.
+State allowed writes: normally the plan and its review. Role definitions require a human request. Do not scaffold applications, install application dependencies, start services or dispatch implementation workers during planning. Version/help inspection and read-only source research are allowed. Respect commit/publication rules and preserve other writers' files and branches; a fork does not stop its parent session.
 
-## 2. Ask the intake questions
+Inspect visible goals/automation too. An active implementation goal can trigger another turn after a final response. Do not create a broad execution goal for planning or treat automatic continuation as approval. Preserve the review gate on resumed turns; report conflicting automation without silently changing or pausing another goal.
 
-Before detailed planning, ask concise questions in the user's language. Reuse answers explicitly supplied for this plan; do not repeat them. Do not impose an arbitrary minimum number of questions.
+Where supported, constrain source access to read-only and writes to the exact document paths, or save a worker's returned Markdown yourself. Written instructions are not a technical sandbox guarantee; disclose actual controls.
 
-1. **Missing decisions:** identify only gaps that materially affect scope, sequencing, architecture, validation or authority. Cite the source ambiguity and its consequence. If documentation is sufficient, say so instead of inventing questions.
-2. **Agent policy:** ask whether to use only named, predefined roles, allow task-specific ad hoc specialists, or combine both. For predefined roles obtain the names and whether missing definitions may be created. Verify the roles are available in the active harness: writing a definition does not prove it has been loaded. Do not silently replace a named role with a generic worker.
-3. **External CLIs:** ask whether external CLI workers are permitted, and which ones: Codex, Claude Code, OpenCode, Antigravity, another named tool, or none. Native and external workers can be combined. Approval of one runner does not approve the others.
-4. **Routing constraints:** obtain any missing model/provider, cost, data-handling or concurrency limits. Preserve the user's preferred default model; use stronger models only for a reason recorded in the task. If the user delegates model choice, choose explicitly within available, permitted options.
+## 2. Ask focused intake questions
 
-The orchestrator may choose minor implementation details compatible with the existing architecture, such as CLI flag spelling, and record them as proposed defaults for plan review. Do not turn every unspecified detail into a human blocker. Ask when the answer changes observable product behavior, an agreed architecture boundary, cost, permissions or execution feasibility.
+Reuse explicit answers already supplied. Ask in the user's language, without an arbitrary question minimum:
 
-Use a short combined intake when possible. An unanswered required question is not approval. Continue independent source inventory while waiting; do not decide dependent work by silence. Use one follow-up for a consequential ambiguity, not a large generic questionnaire.
+- What consequential information is missing from the sources for scope, architecture, sequencing, verification or authority? Cite the gap and its consequence. If none is missing, say so.
+- For **later execution**, use only named predefined roles, ad hoc specialists, or a hybrid? Obtain names and permission to create missing definitions; verify role availability in the active harness before dispatch.
+- Which external CLI workers are permitted for later execution: Codex, Claude Code, OpenCode, Antigravity, another named runner, or none? Permission for one does not approve another or authorize planning delegation.
+- What execution-model, provider, cost, data or concurrency constraints are missing? A cheap default applies only to bounded execution; planning and acceptance stay with the strong orchestrator.
 
-## 3. Save a visible draft early
+Choose minor technical defaults compatible with existing decisions and record them for review; do not escalate CLI flag spelling as a product decision. Required unanswered questions remain unresolved, never approved by silence. Continue independent source inventory while waiting.
 
-Choose the human's requested path or the repository's plan convention; otherwise propose `docs/plans/000-implementation-plan.md`. Inspect an existing destination first. Update it only when it is clearly the plan requested for this task; preserve another plan or active writer and choose a new path, or ask if ownership is unclear. Once the destination and planning boundary are settled, verify or create its permitted parent directory, write an initial draft there and provide its clickable path. Do not keep the only plan in a private harness transcript or temporary fragments until the end.
+## 3. Save a concise draft early
 
-Start with `approval: draft`, the objective, canonical source links, the confirmed delegation policy, unresolved questions and an outline. Follow local metadata conventions without introducing a mandatory tracker or private service. If planning is interrupted, this visible draft must still explain what is missing. Temporary worker fragments are inputs to this file, not a substitute for it.
+Use the requested path or repository convention; otherwise use `docs/plans/000-implementation-plan.md`. Inspect an existing destination: update only the requested plan, preserve another plan or active writer, and choose another path or ask if ownership is unclear. Create the permitted parent directory and save an early draft with `approval: draft`, source links, unresolved decisions and phase outline. Provide its clickable link before detailed work. Temporary fragments are not the deliverable.
 
-## 4. Build the phased task plan
+Read [the plan and brief contract](references/plan-and-brief.md). For a typical PoC aim for roughly **100-200 lines and at most 2,000 words**, including the task matrix. Above 250 lines, compress repetition before handoff; explain a justified larger-project exception rather than hiding overflow in companion plan files. Preserve essential dependencies, ownership and coverage when compressing.
 
-Read [the plan and brief contract](references/plan-and-brief.md). Keep functional and architectural details in their existing documents; link precise sections instead of reproducing schemas, endpoint catalogues or every acceptance-criterion sentence.
+PRD owns product behavior; ADRs own architectural decisions; design guidance owns visual rules; applicable agent instructions own workflow. The plan owns sequencing and coordination. Link exact sections/criterion IDs instead of copying requirements, schemas, endpoint lists, DTOs, test catalogues or setup instructions. Put unresolved source changes back with their authoritative document and owner.
 
-Plan small, reviewable changes. Each task names prerequisites, a specialist and model, a bounded file scope, required context, observable outcomes, task-appropriate verification, manual validation for runtime-changing or runtime-verifying work, a commit boundary and the handoff consumed by its successors. Include backend, frontend, unit/component, integration, E2E and manual QA where the agreed product needs them. Preserve PoC exclusions instead of adding production systems.
+## 4. Plan small tasks in one matrix
 
-The dependency/ownership matrix is authoritative: task cards and diagrams must agree with it. Include phase entry/exit gates, joins and realistic parallel opportunities. Shared manifests, lockfiles, routes, migrations, composition roots, integration pages, databases and test servers need explicit owners and serialization. Distinguish parallel preparation from parallel implementation. A task cannot depend on a screen, API, command or fixture that only a later task creates.
+Name phases with entry/exit gates, then keep **one authoritative task/dependency matrix**. Each row identifies task/outcome, source references, future specialist/model, direct prerequisites, bounded ownership/shared hotspots, and the task-specific verification/commit handoff. Define common TDD, manual QA and commit rules once by reference. Add a short task note only for an exception the matrix and sources cannot express; do not repeat every row as a long task card.
 
-The orchestrator owns decisions, brief compilation, quality and coordination. Implementation workers receive exact choices and bounded steps; they must flag contradictions instead of guessing. Preparing the plan may be done by the orchestrator or scoped planning specialists according to the confirmed policy. Do not create an unnecessary team merely to produce a document.
+Check dependencies in both directions, cycles, joins and shared files/ports/databases. A task cannot require a later screen, contract, fixture or command. Serialize conflicting work and distinguish parallel preparation from parallel code changes. Keep PoC exclusions and avoid artificial process tasks.
 
-## 5. Specify execution briefs without executing them
+Do not generate a second full dependency graph or giant Mermaid/UML diagram. The matrix is readable by the orchestrator and carries the complete dependencies. If a visual helps a human, use only a phase overview of at most eight nodes; label it non-authoritative and derive it from the matrix. No per-task edge duplication.
 
-For each task, record a context recipe: source sections/criterion IDs, predecessor contracts and files, required fixtures and verification interface. At execution time the orchestrator compiles a self-contained brief in a temporary or ignored task directory. It embeds only the required excerpts, exact current symbols/payloads, decisions, allowed paths and test instructions. A worker should not have to read the whole PRD or make architectural choices.
+## 5. Plan brief compilation, not all future briefs
 
-Do not pre-generate every future brief against nonexistent code. Require committed predecessor outputs and validate paths, interfaces, source revisions and commands immediately before each future dispatch. Regenerate stale briefs. Keep permanent role definitions concise; task-specific procedures belong in briefs.
+Record only the context recipe needed at execution: exact source sections, predecessor outputs and verification interface. Do not put full worker prompts or all future implementation steps into the plan.
 
-If CLI delegation is allowed, read only the selected runner sections in [headless CLI examples](references/headless-cli.md). Record runner, model/provider, cwd, input/output paths and permission scope. The examples explain future dispatch; they do not authorize launching an agent now. Follow any installed delegation workflow for execution, monitoring and cleanup, while keeping this skill usable without it.
+After the human authorizes execution, the strong orchestrator reads the relevant PRD/ADR/design/instruction sections and committed predecessor code, resolves decisions, and writes a self-contained Markdown brief for one task. Give the worker its brief path and instruction to execute it; the brief contains required source excerpts, exact contracts, files, ordered steps, fixtures, expected behavior and checks. The worker should not read the whole plan or documentation set or rediscover architecture. It must report contradictions rather than guess; the orchestrator resolves them.
 
-## 6. Review the plan before handing it over
+Compile and verify each brief just before dispatch. Do not freeze nonexistent symbols or commands in advance. See [the execution brief template](references/plan-and-brief.md#just-in-time-execution-brief). Keep role definitions short.
 
-Perform the mandatory review in [the consistency checklist](references/review-checklist.md). Check the **actual saved plan** against PRD, ADRs, design guidance and all applicable agent instructions, not just against another planning summary. Check task dependencies in both directions and whether each planned task can really be executed with its inputs.
+If external runners are permitted, consult only their sections in [headless CLI examples](references/headless-cli.md). These examples do not authorize a launch now. Strong-reviewer selection applies to review examples; small models are not reviewers. Follow local runner, monitoring and cleanup requirements at execution.
 
-Record findings with source/plan references, impact and a concrete resolution. Correct plan-local defects, then recheck affected dependencies and coverage. Do not rewrite product requirements or architecture to conceal a conflict. Escalate source conflicts or missing human decisions and leave the review blocked where necessary.
+## 6. Review the saved plan and stop
 
-Use a separate review pass or permitted reviewer for a complex plan. Disclose what was actually checked; do not describe a same-model check as a different-model-family review. CLI review still requires the chosen runner's authorization. Never let a reviewer launch implementation, change approval metadata, relax acceptance criteria or silently approve its own plan.
+The main strong model performs [the mandatory consistency review](references/review-checklist.md) against actual PRD, ADRs, design and applicable instructions. Fix plan-local defects and recheck affected dependencies/coverage. Do not rewrite requirements to hide conflicts. Leave consequential source decisions blocked for the human.
 
-Write a concise companion review using the repository convention, otherwise `<plan-stem>.review.md`. It records reviewed source revisions, coverage/dependency/ownership checks, findings and fixes, remaining blockers, limitations and the exact plan revision reviewed. This is engineering evidence, not a second task-state tracker. If an executable validator is unavailable, report a manual check as manual; do not claim automatic verification.
+Save a concise companion review, normally `<plan-stem>.review.md`, identifying the exact plan/source revisions, checks, findings/fixes, limits and remaining decisions. This is review evidence, not another task tracker. Use a separate strong expert only when requested/permitted, never a small-model audit. Mechanical link/graph checks are helpers, not judgment or approval.
 
-## 7. Deliver and stop
+Deliver plan/review links, verdict and unresolved decisions. State **awaiting human review; implementation has not started**, in the saved plan and final response. Then **end the turn**, even if review passed. Do not dispatch the first task, create application code or continue automatically.
 
-Provide clickable links to the plan and review, a short explanation of the phase/delegation choices, review result and remaining decisions. Clearly state **awaiting human review; implementation has not started**. Show that status in the saved artifact as well.
-
-Then end the turn. Do not launch the first implementation task, install dependencies, create application code or continue automatically because the review passed. A broad build request, an existing accepted PRD/ADR, permission to use workers, budget approval or positive reviewer feedback is not approval of this plan revision.
-
-Only an explicit human request to execute an identified plan revision permits a later execution workflow. Material changes to scope, architecture, dependencies or ownership must be reviewed and reconciled with that authorization. Avoid asking again for unchanged decisions already approved. Do not mark the plan human-approved yourself, and do not let workers do so.
+Only a later explicit human instruction to execute the identified reviewed plan permits execution. Accepted PRD/ADRs, worker/budget permission, an active broad goal or a positive reviewer verdict do not replace that gate. Do not self-approve; review material changes before dispatch and reuse unchanged human decisions.
