@@ -42,6 +42,14 @@ The plan references the project's actual verification policy and records task-sp
 
 For runtime changes, validate the interface that exists at that step: storage/CLI before HTTP, real requests after API, and running browser flow for UI. Automated E2E does not replace manual QA when instructions require both. Record exact executable commands in the just-in-time brief after they are established; never add passing placeholder scripts or require a command from a later task.
 
+## QA screenshot storage and retention
+
+Use the repository's existing QA artifact convention; otherwise choose `artifacts/qa/<task-id>/<run-id>/` under the repository root. Record that location once in the plan, assign its setup to the appropriate bootstrap/configuration owner, and include exact paths in future QA briefs. Each capture task must either perform and verify this setup before capture or depend on the task that did; no separate artificial setup-only task is required. Screenshots must remain easy for the human and coordinator to inspect after an agent or test server exits; do not use disposable system temp directories as the only copy.
+
+Before the first capture, the implementation owner adds an anchored ignore entry to the `.gitignore` whose directory anchors the chosen artifact root and verifies a representative screenshot path with `git check-ignore -v`. Confirm captures are not tracked: ignore rules do not untrack an already committed file. Keep captures out of commits and pushes; never force-add them. This planning workflow only specifies that later setup, not permission to mutate the application now.
+
+Use a retention directory independent of any test-runner output directory that gets cleared on reruns; explicitly save or copy captures into it. Do not run `git clean -x` / `git clean -X` or similar cleanup over retained evidence without human authorization. Name evidence by task, run, screen and state so later runs do not overwrite earlier captures. Link the actual local files from the QA report/handoff. Preserve them across test teardown, commits, pushes and agent cleanup until the human explicitly authorizes removal; "temporary artifact" means unversioned, not automatically deleted. Keep any cleanup request separate from ordinary process/server shutdown. Before an isolated worktree, container or sandbox copy disappears, the coordinator preserves its screenshots in the agreed ignored directory of the durable main checkout and updates report links. Verify ignore rules in the destination checkout before transfer, and never overwrite existing captures.
+
 ## Dependency and concurrency checks
 
 Check all referenced IDs, acyclicity, joins and both producer/consumer readiness. Give manifests, lockfiles, routes, migrations, composition roots, servers, ports and databases explicit owners and serialization. Disjoint filenames alone do not prove independence.
@@ -68,6 +76,7 @@ Task-appropriate Red/Green or characterization/QA sequence:
 Focused/regression commands and expected assertions/results/test counts:
 Separate startup and real manual validation steps where applicable:
 Evidence/report paths and required screenshots/API/CLI results:
+Repository-local ignored screenshot directory / names / retention and local links:
 Committing actor and handoff (follow workspace policy):
 Stop/report conditions and owner of the required decision:
 Worker findings are factual inputs, not plan review or approval:

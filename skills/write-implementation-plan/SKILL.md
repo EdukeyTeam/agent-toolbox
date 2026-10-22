@@ -44,6 +44,8 @@ PRD owns product behavior; ADRs own architectural decisions; design guidance own
 
 Name phases with entry/exit gates, then keep **one authoritative task/dependency matrix**. Each row identifies task/outcome, source references, future specialist/model, direct prerequisites, bounded ownership/shared hotspots, and the task-specific verification/commit handoff. Define common TDD, manual QA and commit rules once by reference. Add a short task note only for an exception the matrix and sources cannot express; do not repeat every row as a long task card.
 
+Name one repository-local, Git-ignored QA evidence directory and its setup owner in the plan; put exact per-task screenshot paths and retention rules in briefs. Follow [QA screenshot storage](references/plan-and-brief.md#qa-screenshot-storage-and-retention); planning itself does not create application artifacts.
+
 Check dependencies in both directions, cycles, joins and shared files/ports/databases. A task cannot require a later screen, contract, fixture or command. Serialize conflicting work and distinguish parallel preparation from parallel code changes. Keep PoC exclusions and avoid artificial process tasks.
 
 Do not generate a second full dependency graph or giant Mermaid/UML diagram. The matrix is readable by the orchestrator and carries the complete dependencies. If a visual helps a human, use only a phase overview of at most eight nodes; label it non-authoritative and derive it from the matrix. No per-task edge duplication.
