@@ -75,15 +75,18 @@ Sources: [CLI](https://opencode.ai/docs/cli/), [agents](https://opencode.ai/docs
 ## Google Antigravity (`agy`)
 
 ```bash
-agy --mode "$PLAN_AGY_REVIEW_MODE" --add-dir "$PLAN_PACKET" \
-  --model "$PLAN_AGY_MODEL" --output-format text \
-  -p "Read $PLAN_BRIEF. Follow that brief and return Markdown only. Do not edit files or run shell commands." \
-  < /dev/null > "$PLAN_REPORT" 2> "$PLAN_RUN/stderr.log"
+(
+  cd "$PLAN_PACKET" || exit 1
+  agy --mode "$PLAN_AGY_REVIEW_MODE" --add-dir "$PLAN_PACKET" \
+    --model "$PLAN_AGY_MODEL" --output-format text \
+    -p "Read $PLAN_BRIEF. Follow that brief and return Markdown only. Do not edit files or run shell commands." \
+    < /dev/null > "$PLAN_REPORT" 2> "$PLAN_RUN/stderr.log"
+)
 ```
 
 Use this example only in an already approved review environment whose effective permission policy denies `write_file(*)`, `command(*)`, `mcp(*)` and `execute_url(*)` while permitting reads of the packet. Do not modify shared/global settings to prepare this run. Set `PLAN_AGY_REVIEW_MODE` to an installed, verified non-plan mode that honors that deny policy; mode names differ by release, so do not guess `default` or `auto`. If those controls cannot be verified, report this runner as unavailable and use only an alternative already permitted by the human.
 
-`--mode plan` automatically prepends `/plan` and requests an execution outline; it is unsuitable for a review-only brief. Use the exact supported model identifier. `--add-dir` makes the packet workspace explicit but does not enforce read-only access; the prompt alone is not a permission control. The model returns stdout, so its report does not require a workspace write grant. Do not use `--mode accept-edits` or permission-bypass flags for convenience.
+`--mode plan` automatically prepends `/plan` and requests an execution outline; it is unsuitable for a review-only brief. Use the exact supported model identifier. The subshell first changes into the packet so the application checkout is not retained as the launch directory. `--add-dir` adds a workspace directory; it does not replace cwd, remove other configured roots or enforce read-only access; the prompt alone is not a permission control. The model returns stdout, so its report does not require a workspace write grant. Do not use `--mode accept-edits` or permission-bypass flags for convenience.
 
 Headless tools that need unavailable interactive approval can be soft-denied while the run exits 0. Require substantive output and inspect diagnostics. Do not ask this reviewer to use shell commands as a workaround; the orchestrator performs mechanical validators. Timeout defaults vary between documentation and releases: inspect installed help, avoid arbitrary short cutoffs, and never interpret a truncated run as completion. Ordinary text output may be buffered; silence alone is not failure.
 
