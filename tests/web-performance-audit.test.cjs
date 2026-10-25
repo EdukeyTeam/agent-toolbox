@@ -103,6 +103,30 @@ test('lighthouse runner validates arguments and adds the desktop preset', async 
   assert.ok(!attached.some((a) => a.startsWith('--chrome-flags')), 'flags are ignored when attaching');
 });
 
+test('runner never hands audit arguments to a Windows shell', async () => {
+  const { npxCommand } = await load('scripts/run-lighthouse.mjs');
+  assert.deepEqual(npxCommand('linux', '/usr/bin/node', () => true), { cmd: 'npx', pre: [] });
+  const win = npxCommand('win32', 'C:\\Program Files\\nodejs\\node.exe', () => true);
+  assert.deepEqual(win, { cmd: 'C:\\Program Files\\nodejs\\node.exe', pre: ['C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npx-cli.js'] });
+  assert.throws(() => npxCommand('win32', 'C:\\node\\node.exe', () => false), /npx-cli\.js not found/);
+  const source = fs.readFileSync(path.join(skillDir, 'scripts/run-lighthouse.mjs'), 'utf8');
+  assert.doesNotMatch(source, /shell:/, 'no spawn may enable a shell');
+});
+
+test('runner refuses an output folder with earlier runs unless --clean', async () => {
+  const { parseArgs, priorRunFiles } = await load('scripts/run-lighthouse.mjs');
+  const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'wpa-test-'));
+  try {
+    for (const f of ['mobile-1.report.json', 'mobile-3.report.html', 'desktop-2.log', 'lighthouse-version.txt', 'notes.md']) fs.writeFileSync(path.join(dir, f), '');
+    assert.deepEqual(priorRunFiles(dir).sort(), ['desktop-2.log', 'mobile-1.report.json', 'mobile-3.report.html']);
+    assert.deepEqual(priorRunFiles(path.join(dir, 'missing')), []);
+    assert.equal(parseArgs(['--url', 'https://a.test/', '--out', dir, '--clean']).clean, true);
+    assert.equal(parseArgs(['--url', 'https://a.test/', '--out', dir]).clean, false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('runner launches Linux Chrome itself on WSL, never the Windows build', async () => {
   const { isWsl, findLinuxChrome } = await load('scripts/run-lighthouse.mjs');
   assert.equal(isWsl('6.18.54.1-microsoft-standard-WSL2', false), true);

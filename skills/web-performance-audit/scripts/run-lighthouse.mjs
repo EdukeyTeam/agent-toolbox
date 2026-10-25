@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runs Lighthouse N times per form factor, sequentially, in a clean headless Chrome.
-// Usage: node run-lighthouse.mjs --url <url> --out <dir> [--runs 3] [--forms mobile,desktop] [--lighthouse latest]
+// Usage: node run-lighthouse.mjs --url <url> --out <dir> [--runs 3] [--forms mobile,desktop] [--lighthouse latest] [--clean]
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,10 +21,11 @@ export const CHROME_FLAGS = [
 ];
 
 export function parseArgs(argv) {
-  const opts = { runs: 3, forms: ['mobile', 'desktop'], lighthouse: 'latest' };
+  const opts = { runs: 3, forms: ['mobile', 'desktop'], lighthouse: 'latest', clean: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     const value = argv[i + 1];
+    if (key === '--clean') { opts.clean = true; continue; }
     if (key === '--url') opts.url = value;
     else if (key === '--out') opts.out = value;
     else if (key === '--runs') opts.runs = Number(value);
@@ -39,6 +40,21 @@ export function parseArgs(argv) {
   const unknown = opts.forms.filter((f) => !['mobile', 'desktop'].includes(f));
   if (unknown.length) throw new Error(`Unknown form factor(s): ${unknown.join(', ')}`);
   return opts;
+}
+
+// The summarizer aggregates every <form>-<n>.report.json in the folder, so earlier runs would skew the medians.
+export const RUN_ARTIFACT = /^(mobile|desktop)-\d+(\.report\.json|\.report\.html|\.log)$/;
+export function priorRunFiles(dir) {
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => RUN_ARTIFACT.test(f)) : [];
+}
+
+// npx is a .cmd shim on Windows, which Node only runs through cmd.exe, and cmd.exe splits a URL at & or
+// runs what follows it. Run npm's npx-cli.js with node.exe instead, so no shell parses the arguments.
+export function npxCommand(platform = process.platform, execPath = process.execPath, exists = fs.existsSync) {
+  if (platform !== 'win32') return { cmd: 'npx', pre: [] };
+  const cli = path.win32.join(path.win32.dirname(execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js');
+  if (!exists(cli)) throw new Error(`npx-cli.js not found next to ${execPath}; install Node.js with its bundled npm.`);
+  return { cmd: execPath, pre: [cli] };
 }
 
 // With a port, Lighthouse attaches to an already running Chrome instead of launching one.
@@ -104,12 +120,15 @@ async function launchChrome(chromePath) {
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
+  const prior = priorRunFiles(opts.out);
+  if (prior.length && !opts.clean) throw new Error(`${opts.out} already holds ${prior.length} files from an earlier run. Use a new --out, or pass --clean to delete them.`);
+  for (const f of prior) fs.rmSync(path.join(opts.out, f));
   fs.mkdirSync(opts.out, { recursive: true });
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const npx = npxCommand();
   const wsl = isWsl();
   const chromePath = wsl ? findLinuxChrome() : null;
   if (wsl && !chromePath) throw new Error('WSL: no Linux Chrome found. Install Google Chrome inside WSL or set CHROME_PATH to a Linux build.');
-  const version = spawnSync(npx, ['--yes', `lighthouse@${opts.lighthouse}`, '--version'], { encoding: 'utf8', shell: process.platform === 'win32' });
+  const version = spawnSync(npx.cmd, [...npx.pre, '--yes', `lighthouse@${opts.lighthouse}`, '--version'], { encoding: 'utf8' });
   fs.writeFileSync(path.join(opts.out, 'lighthouse-version.txt'), (version.stdout || '').trim() + '\n');
   console.log(`Lighthouse ${(version.stdout || '?').trim()} -> ${opts.out}${chromePath ? ` (WSL: own Chrome ${chromePath})` : ''}`);
   let failures = 0;
@@ -119,7 +138,7 @@ async function main() {
       const chrome = chromePath ? await launchChrome(chromePath) : null;
       let res;
       try {
-        res = spawnSync(npx, lighthouseArgs(opts, form, run, chrome?.port), { encoding: 'utf8', shell: process.platform === 'win32' });
+        res = spawnSync(npx.cmd, [...npx.pre, ...lighthouseArgs(opts, form, run, chrome?.port)], { encoding: 'utf8' });
       } finally {
         await chrome?.close();
       }
