@@ -1,10 +1,24 @@
 #!/usr/bin/env node
 // Runs Lighthouse N times per form factor, sequentially, in a clean headless Chrome.
 // Usage: node run-lighthouse.mjs --url <url> --out <dir> [--runs 3] [--forms mobile,desktop] [--lighthouse latest]
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// chrome-launcher's DEFAULT_FLAGS (v1.2.2) plus its Linux sandbox flag, so a self-launched Chrome measures
+// like one Lighthouse launches itself.
+export const CHROME_FLAGS = [
+  '--disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider,CalculateNativeWinOcclusion,InterestFeedContentSuggestions,CertificateTransparencyComponentUpdater,AutofillServerCommunication,PrivacySandboxSettings4,RenderDocument',
+  '--disable-extensions', '--disable-component-extensions-with-background-pages', '--disable-background-networking',
+  '--disable-component-update', '--disable-client-side-phishing-detection', '--disable-sync', '--metrics-recording-only',
+  '--disable-default-apps', '--mute-audio', '--no-default-browser-check', '--no-first-run',
+  '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+  '--disable-ipc-flooding-protection', '--password-store=basic', '--use-mock-keychain',
+  '--force-fieldtrials=*BackgroundTracing/default/', '--disable-hang-monitor', '--disable-prompt-on-repost',
+  '--disable-domain-reliability', '--propagate-iph-for-testing', '--disable-setuid-sandbox',
+];
 
 export function parseArgs(argv) {
   const opts = { runs: 3, forms: ['mobile', 'desktop'], lighthouse: 'latest' };
@@ -27,10 +41,11 @@ export function parseArgs(argv) {
   return opts;
 }
 
-export function lighthouseArgs(opts, form, run) {
+// With a port, Lighthouse attaches to an already running Chrome instead of launching one.
+export function lighthouseArgs(opts, form, run, port) {
   const args = [
     '--yes', `lighthouse@${opts.lighthouse}`, opts.url,
-    '--quiet', '--chrome-flags=--headless=new',
+    '--quiet', port ? `--port=${port}` : '--chrome-flags=--headless=new',
     '--output=json', '--output=html',
     `--output-path=${path.join(opts.out, `${form}-${run}`)}`,
     '--only-categories=performance,accessibility,best-practices,seo',
@@ -39,18 +54,75 @@ export function lighthouseArgs(opts, form, run) {
   return args;
 }
 
-function main() {
+// chrome-launcher assumes Chrome on WSL is the Windows build: it derives a Windows temp dir from /mnt/c PATH
+// entries (failing with "mkdtemp 'undefined:/Users/undefined/...'" when there are none) and rewrites
+// --user-data-dir to a Windows path, which a Linux Chrome creates as junk folders in the working directory.
+// Open upstream: GoogleChrome/chrome-launcher#250, #324, #334. Docker on a WSL kernel is plain Linux.
+export function isWsl(release = os.release(), inDocker = fs.existsSync('/.dockerenv')) {
+  return /microsoft/i.test(release) && !inDocker;
+}
+
+// Windows Chrome under /mnt is skipped on purpose: it cannot use a Linux profile path.
+export function findLinuxChrome(env = process.env, exists = fs.existsSync) {
+  if (env.CHROME_PATH && exists(env.CHROME_PATH)) return env.CHROME_PATH;
+  const dirs = (env.PATH ?? '').split(':').filter((d) => d && !d.startsWith('/mnt/'));
+  for (const name of ['google-chrome-stable', 'google-chrome', 'chromium', 'chromium-browser']) {
+    const hit = dirs.map((d) => path.join(d, name)).find((p) => exists(p));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function groupAlive(pid) {
+  try { process.kill(-pid, 0); return true; } catch { return false; }
+}
+
+// Starts headless Chrome on a fresh Linux profile and returns its DevTools port, as chrome-launcher would.
+// Chrome runs in its own process group: its helper processes keep writing the cache after the browser
+// process exits, so the whole group is stopped before the profile is removed.
+async function launchChrome(chromePath) {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'lighthouse-chrome-'));
+  const child = spawn(chromePath, [...CHROME_FLAGS, '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore', detached: true });
+  const close = async () => {
+    for (const signal of ['SIGTERM', 'SIGKILL']) {
+      if (groupAlive(child.pid)) process.kill(-child.pid, signal);
+      for (let waited = 0; waited < 5000 && groupAlive(child.pid); waited += 100) await sleep(100);
+    }
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5 });
+  };
+  const portFile = path.join(profile, 'DevToolsActivePort');
+  for (let waited = 0; waited < 30000 && child.exitCode === null; waited += 100) {
+    const port = fs.existsSync(portFile) ? Number(fs.readFileSync(portFile, 'utf8').split('\n')[0]) : 0;
+    if (port) return { port, close };
+    await sleep(100);
+  }
+  await close();
+  throw new Error(`Chrome did not expose a DevTools port: ${chromePath}`);
+}
+
+async function main() {
   const opts = parseArgs(process.argv.slice(2));
   fs.mkdirSync(opts.out, { recursive: true });
   const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const wsl = isWsl();
+  const chromePath = wsl ? findLinuxChrome() : null;
+  if (wsl && !chromePath) throw new Error('WSL: no Linux Chrome found. Install Google Chrome inside WSL or set CHROME_PATH to a Linux build.');
   const version = spawnSync(npx, ['--yes', `lighthouse@${opts.lighthouse}`, '--version'], { encoding: 'utf8', shell: process.platform === 'win32' });
   fs.writeFileSync(path.join(opts.out, 'lighthouse-version.txt'), (version.stdout || '').trim() + '\n');
-  console.log(`Lighthouse ${(version.stdout || '?').trim()} -> ${opts.out}`);
+  console.log(`Lighthouse ${(version.stdout || '?').trim()} -> ${opts.out}${chromePath ? ` (WSL: own Chrome ${chromePath})` : ''}`);
   let failures = 0;
   for (const form of opts.forms) {
     for (let run = 1; run <= opts.runs; run += 1) {
       const started = Date.now();
-      const res = spawnSync(npx, lighthouseArgs(opts, form, run), { encoding: 'utf8', shell: process.platform === 'win32' });
+      const chrome = chromePath ? await launchChrome(chromePath) : null;
+      let res;
+      try {
+        res = spawnSync(npx, lighthouseArgs(opts, form, run, chrome?.port), { encoding: 'utf8', shell: process.platform === 'win32' });
+      } finally {
+        await chrome?.close();
+      }
       fs.writeFileSync(path.join(opts.out, `${form}-${run}.log`), `${res.stdout || ''}\n${res.stderr || ''}`);
       const ok = res.status === 0 && fs.existsSync(path.join(opts.out, `${form}-${run}.report.json`));
       if (!ok) failures += 1;
@@ -60,4 +132,6 @@ function main() {
   process.exitCode = failures ? 1 : 0;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => { console.error(err.message); process.exitCode = 1; });
+}

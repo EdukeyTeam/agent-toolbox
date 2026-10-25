@@ -99,3 +99,9 @@ Other skills that informed this workflow, which you can read or install from the
 ## 5. Lighthouse CLI
 
 No install needed. [scripts/run-lighthouse.mjs](../scripts/run-lighthouse.mjs) runs `npx --yes lighthouse@<version>` in a clean headless Chrome. Pass `--lighthouse <version>` to pin a version for before/after comparisons.
+
+### WSL
+
+Do not call `lighthouse` directly in WSL; use the runner. Lighthouse launches Chrome through `chrome-launcher`, which assumes the Windows Chrome build under WSL. It builds a Windows temp path from `/mnt/c/Users/<user>/AppData` entries in `PATH`, so a shell without them fails with `mkdtemp 'undefined:/Users/undefined/AppData/Local/lighthouse.XXXXXX'`. It also rewrites `--user-data-dir` to a Windows path, which a Linux Chrome creates as stray folders in the working directory, where a careless `git add` commits them. No CLI flag changes this (upstream issues [#250](https://github.com/GoogleChrome/chrome-launcher/issues/250), [#324](https://github.com/GoogleChrome/chrome-launcher/issues/324) and [#334](https://github.com/GoogleChrome/chrome-launcher/issues/334) are open).
+
+On WSL the runner therefore starts a Linux Chrome itself: chrome-launcher's default flags, headless, and a fresh profile under `/tmp` for each run. It passes Lighthouse `--port`, which makes Lighthouse attach instead of launching, and then stops Chrome and deletes the profile. It needs Google Chrome or Chromium installed inside WSL (`CHROME_PATH` overrides the lookup). The Windows Chrome is never used. If you must run Lighthouse by hand, do the same: start `google-chrome --headless=new --remote-debugging-port=9222 --user-data-dir=/tmp/lh-profile` and pass `--port=9222`.

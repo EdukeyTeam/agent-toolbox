@@ -98,6 +98,21 @@ test('lighthouse runner validates arguments and adds the desktop preset', async 
   assert.ok(desktop.includes('lighthouse@13.5.0'));
   assert.ok(desktop.includes('--preset=desktop'));
   assert.ok(!lighthouseArgs(opts, 'mobile', 1).includes('--preset=desktop'));
+  const attached = lighthouseArgs(opts, 'mobile', 1, 9333);
+  assert.ok(attached.includes('--port=9333'));
+  assert.ok(!attached.some((a) => a.startsWith('--chrome-flags')), 'flags are ignored when attaching');
+});
+
+test('runner launches Linux Chrome itself on WSL, never the Windows build', async () => {
+  const { isWsl, findLinuxChrome } = await load('scripts/run-lighthouse.mjs');
+  assert.equal(isWsl('6.18.54.1-microsoft-standard-WSL2', false), true);
+  assert.equal(isWsl('6.18.54.1-microsoft-standard-WSL2', true), false, 'Docker on a WSL kernel is plain Linux');
+  assert.equal(isWsl('6.8.0-45-generic', false), false);
+  const files = new Set(['/usr/bin/google-chrome', '/mnt/c/Program Files/Google/Chrome/Application/google-chrome', '/opt/chrome']);
+  const exists = (p) => files.has(p);
+  assert.equal(findLinuxChrome({ PATH: '/mnt/c/Program Files/Google/Chrome/Application:/usr/bin' }, exists), '/usr/bin/google-chrome');
+  assert.equal(findLinuxChrome({ PATH: '/usr/bin', CHROME_PATH: '/opt/chrome' }, exists), '/opt/chrome');
+  assert.equal(findLinuxChrome({ PATH: '/mnt/c/Program Files/Google/Chrome/Application' }, exists), null);
 });
 
 test('renderer produces a self-contained report with every section of the example', async () => {

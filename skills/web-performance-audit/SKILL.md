@@ -59,7 +59,7 @@ node <skill-dir>/scripts/run-lighthouse.mjs --url https://example.com/ --out doc
 node <skill-dir>/scripts/summarize-lighthouse.mjs docs/example-com-performance/raw/lighthouse docs/example-com-performance/raw/lighthouse-summary.json
 ```
 
-The summary prints medians and ranges, failing audits with estimated savings, main-thread breakdown, bootup time per script, third parties, resource totals by type and host, and LCP subparts. Run it in the background and do nothing CPU-heavy meanwhile.
+On WSL the runner launches Linux Chrome itself, because Lighthouse's own launcher breaks there ([setup](references/setup.md#wsl)); never run `lighthouse` directly in WSL. The summary prints medians and ranges, failing audits with estimated savings, main-thread breakdown, bootup time per script, third parties, resource totals by type and host, and LCP subparts. Run it in the background and do nothing CPU-heavy meanwhile.
 
 ### 3. Field data and traces (DevTools CLI)
 
