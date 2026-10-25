@@ -55,6 +55,39 @@ test('summarizer computes medians, picks the median-LCP run and splits first/thi
   assert.deepEqual(agg.representative.failing.map((f) => f.id), ['unused-css-rules']);
 });
 
+// Shape taken from a real Lighthouse 13.5.0 report: entities with isFirstParty, an entity name on every
+// request, third-parties-insight instead of third-party-summary (which 13 removed).
+function lhr13({ host, vendorHost }) {
+  const lhr = fakeLhr({ lcp: 3000, tbt: 500, perf: 60, host });
+  lhr.lighthouseVersion = '13.5.0';
+  lhr.entities = [
+    { name: 'Site', origins: [`https://${host}`], isFirstParty: true, isUnrecognized: true },
+    { name: 'Vendor', origins: [`https://${vendorHost}`], category: 'ad' },
+  ];
+  lhr.audits['network-requests'].details.items = [
+    { url: `https://${host}/`, entity: 'Site', resourceType: 'Document', transferSize: 10240, resourceSize: 40960 },
+    { url: `https://${vendorHost}/t.js`, entity: 'Vendor', resourceType: 'Script', transferSize: 51200, resourceSize: 153600 },
+  ];
+  lhr.audits['third-parties-insight'] = { score: 1, scoreDisplayMode: 'informative', details: { type: 'table', isEntityGrouped: true, items: [
+    { entity: 'Vendor', mainThreadTime: 412.7, transferSize: 51200, subItems: { type: 'subitems', items: [] } },
+  ] } };
+  return lhr;
+}
+
+test('summarizer reads Lighthouse 13 third parties and uses its first-party entity', async () => {
+  const { summarizeRun, siteKey } = await load('scripts/summarize-lighthouse.mjs');
+  for (const [host, vendorHost] of [['shop.example.co.uk', 'tags.vendor.co.uk'], ['foo.github.io', 'bar.github.io']]) {
+    const run = summarizeRun(lhr13({ host, vendorHost }));
+    assert.equal(Math.round(run.thirdPartyTransferKiB), 50, `${vendorHost} is third party for ${host}`);
+    assert.equal(run.byHost[vendorHost].firstParty, false);
+    assert.equal(run.byHost[host].firstParty, true);
+    assert.deepEqual(run.thirdParties, [{ entity: 'Vendor', transferKiB: 50, mainThreadMs: 413 }]);
+    assert.equal(run.metrics.TTFB, 200);
+  }
+  assert.equal(siteKey('shop.example.co.uk'), 'example.co.uk', 'fallback keeps ccTLD second levels');
+  assert.notEqual(siteKey('tags.vendor.co.uk'), siteKey('shop.example.co.uk'));
+});
+
 test('lighthouse runner validates arguments and adds the desktop preset', async () => {
   const { parseArgs, lighthouseArgs } = await load('scripts/run-lighthouse.mjs');
   assert.throws(() => parseArgs(['--out', 'x']), /--url/);

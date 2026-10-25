@@ -20,19 +20,29 @@ export function median(values) {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
-// First party = same registrable-ish domain as the audited page (last two labels; good enough for reports).
+// Fallback first-party key for reports without lhr.entities (Lighthouse < 10): last two labels, or three
+// under common ccTLD second levels such as co.uk. Not PSL-aware; Lighthouse's own entity classification wins.
+const CCTLD_SECOND_LEVELS = new Set(['ac', 'co', 'com', 'edu', 'gov', 'net', 'org']);
 export function siteKey(host) {
   const parts = String(host).toLowerCase().split('.').filter(Boolean);
-  return parts.slice(-2).join('.');
+  const n = parts.length >= 3 && parts.at(-1).length === 2 && CCTLD_SECOND_LEVELS.has(parts.at(-2)) ? 3 : 2;
+  return parts.slice(-n).join('.');
 }
 
 function hostOf(url) {
   try { return new URL(url).hostname; } catch { return 'other'; }
 }
 
+// Lighthouse tags every request with an entity and marks the page's own entity isFirstParty (PSL-aware).
+export function firstPartyTest(lhr) {
+  const firstParty = new Set((lhr.entities ?? []).filter((e) => e.isFirstParty).map((e) => e.name));
+  const site = siteKey(hostOf(lhr.finalDisplayedUrl || lhr.finalUrl || lhr.requestedUrl));
+  return (r) => (firstParty.size && r.entity ? firstParty.has(r.entity) : siteKey(hostOf(r.url)) === site);
+}
+
 export function summarizeRun(lhr) {
   const a = lhr.audits;
-  const site = siteKey(hostOf(lhr.finalDisplayedUrl || lhr.finalUrl || lhr.requestedUrl));
+  const isFirstParty = firstPartyTest(lhr);
   const metrics = Object.fromEntries(Object.entries(METRICS).map(([k, id]) => [k, a[id]?.numericValue ?? null]));
   const scores = Object.fromEntries(Object.entries(lhr.categories).map(([k, c]) => [k, Math.round((c.score ?? 0) * 100)]));
   const requests = a['network-requests']?.details?.items ?? [];
@@ -45,7 +55,7 @@ export function summarizeRun(lhr) {
     byType[type].count += 1;
     byType[type].transferKiB += (r.transferSize ?? 0) / 1024;
     byType[type].resourceKiB += (r.resourceSize ?? 0) / 1024;
-    byHost[host] ??= { count: 0, transferKiB: 0, firstParty: siteKey(host) === site };
+    byHost[host] ??= { count: 0, transferKiB: 0, firstParty: isFirstParty(r) };
     byHost[host].count += 1;
     byHost[host].transferKiB += (r.transferSize ?? 0) / 1024;
   }
@@ -80,7 +90,8 @@ export function summarizeRun(lhr) {
     mainThread: (a['mainthread-work-breakdown']?.details?.items ?? []).map((i) => ({ group: i.groupLabel ?? i.group, ms: Math.round(i.duration) })),
     bootup: (a['bootup-time']?.details?.items ?? []).slice(0, 15).map((i) => ({ url: i.url, totalMs: Math.round(i.total), scriptingMs: Math.round(i.scripting ?? 0) })),
     longTasks: (a['long-tasks']?.details?.items ?? []).slice(0, 10).map((t) => ({ url: t.url, startMs: Math.round(t.startTime), durationMs: Math.round(t.duration) })),
-    thirdParties: (a['third-party-summary']?.details?.items ?? []).map((i) => ({
+    // Lighthouse 13 replaced third-party-summary with third-parties-insight; the item fields are the same.
+    thirdParties: ((a['third-parties-insight'] ?? a['third-party-summary'])?.details?.items ?? []).map((i) => ({
       entity: typeof i.entity === 'string' ? i.entity : i.entity?.text,
       transferKiB: (i.transferSize ?? 0) / 1024,
       mainThreadMs: Math.round(i.mainThreadTime ?? 0),

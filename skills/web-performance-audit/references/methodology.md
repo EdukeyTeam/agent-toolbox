@@ -92,7 +92,7 @@ Run this on desktop unthrottled and on mobile at 4x CPU.
 
 - Run sequentially, never in parallel, and never while you are tracing in another browser.
 - Use the median run (closest to the median LCP) as the representative run for details.
-- Read `render-blocking-insight`, `unused-css-rules`, `unused-javascript`, `bootup-time`, `mainthread-work-breakdown`, `third-party-summary`, `network-dependency-tree-insight`, `cache-insight`, `forced-reflow-insight`, `legacy-javascript-insight`, `bf-cache`, `long-tasks` and `network-requests`. The summarizer extracts these.
+- Read `render-blocking-insight`, `unused-css-rules`, `unused-javascript`, `bootup-time`, `mainthread-work-breakdown`, `third-parties-insight` (`third-party-summary` before Lighthouse 13), `network-dependency-tree-insight`, `cache-insight`, `forced-reflow-insight`, `legacy-javascript-insight`, `bf-cache`, `long-tasks` and `network-requests`. The summarizer extracts these.
 - Don't prioritize anything with 0 ms estimated impact, but do list it as hygiene.
 
 ## Payload budget (starting guardrails for a content page)
