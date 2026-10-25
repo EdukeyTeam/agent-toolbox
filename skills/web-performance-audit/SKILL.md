@@ -50,13 +50,19 @@ Audit progress:
 
 ### 1. Scope
 
-Ask only if unclear: which URL, which visitor states matter, and whether the user's real Chrome profile may be used. Create `docs/<site-slug>-performance/raw/` and the `.gitignore` (one line: `raw/`).
+Ask only if unclear: which URL, which visitor states matter, and whether the user's real Chrome profile may be used. Then fix the audit folder as an absolute path and create its raw folders, so every trace, log and redirect below lands inside the ignored `raw/` whatever the working directory:
+
+```bash
+AUDIT="$PWD/docs/example-com-performance"; mkdir -p "$AUDIT/raw/lighthouse" "$AUDIT/raw/traces" && printf 'raw/\n' > "$AUDIT/.gitignore"
+```
+
+On Windows PowerShell, set `$AUDIT = "$PWD\docs\example-com-performance"` and create the same folders with `New-Item -ItemType Directory -Force`.
 
 ### 2. Lab baseline (Lighthouse CLI)
 
 ```bash
-node <skill-dir>/scripts/run-lighthouse.mjs --url https://example.com/ --out docs/example-com-performance/raw/lighthouse --runs 3
-node <skill-dir>/scripts/summarize-lighthouse.mjs docs/example-com-performance/raw/lighthouse docs/example-com-performance/raw/lighthouse-summary.json
+node <skill-dir>/scripts/run-lighthouse.mjs --url https://example.com/ --out "$AUDIT/raw/lighthouse" --runs 3
+node <skill-dir>/scripts/summarize-lighthouse.mjs "$AUDIT/raw/lighthouse" "$AUDIT/raw/lighthouse-summary.json"
 ```
 
 The runner refuses an `--out` folder that already holds runs, because the summarizer would mix them into the medians; use a new folder per audit state, or `--clean` to replace them. On WSL the runner launches Linux Chrome itself, because Lighthouse's own launcher breaks there ([setup](references/setup.md#wsl)); never run `lighthouse` directly in WSL. The summary prints medians and ranges, failing audits with estimated savings, main-thread breakdown, bootup time per script, third parties, resource totals by type and host, and LCP subparts. Run it in the background and do nothing CPU-heavy meanwhile.
@@ -67,7 +73,7 @@ Use the CLI for scripted steps and the MCP tools for interactive exploration; th
 
 ```bash
 chrome-devtools new_page "https://example.com/" --isolatedContext perf
-chrome-devtools performance_start_trace <pageId> --reload true --autoStop true --ignoreCache true --filePath raw/traces/desktop-cold.json.gz
+chrome-devtools performance_start_trace <pageId> --reload true --autoStop true --ignoreCache true --filePath "$AUDIT/raw/traces/desktop-cold.json.gz"
 ```
 
 The trace summary includes CrUX p75 field data (URL or origin scope) when Google has it. The form factor follows the emulated device: a desktop trace returns desktop field data, and a mobile-emulated trace returns phone field data. Record both.
@@ -76,7 +82,7 @@ For throttled mobile traces the CLI client can time out before the page settles.
 
 ### 4. Diagnose
 
-Call `performance_analyze_insight` only for insights tied to a failing or suspicious metric: `LCPBreakdown`, `RenderBlocking`, `NetworkDependencyTree`, `ThirdParties`, `DOMSize`, `ForcedReflow`, `Cache`, `ImageDelivery`, `INPBreakdown`, `CLSCulprits`. Save each output under `raw/traces/`. Use the insight-set ID printed by the trace (`NAVIGATION_0`, `NAVIGATION_1` or `NO_NAVIGATION`); do not assume it is `NAVIGATION_0`.
+Call `performance_analyze_insight` only for insights tied to a failing or suspicious metric: `LCPBreakdown`, `RenderBlocking`, `NetworkDependencyTree`, `ThirdParties`, `DOMSize`, `ForcedReflow`, `Cache`, `ImageDelivery`, `INPBreakdown`, `CLSCulprits`. Save each output under `$AUDIT/raw/traces/`. Use the insight-set ID printed by the trace (`NAVIGATION_0`, `NAVIGATION_1` or `NO_NAVIGATION`); do not assume it is `NAVIGATION_0`.
 
 Pick the bottleneck LCP subpart first (TTFB, load delay, load duration, render delay). Recommend fixes for that subpart only, and verify the cause with an experiment before writing it up.
 

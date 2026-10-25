@@ -38,12 +38,12 @@ Logged-in states cannot be recreated this way without handling session tokens. T
 ## Traces
 
 ```bash
-chrome-devtools performance_start_trace <pageId> --reload true --autoStop true --ignoreCache true --filePath raw/traces/<name>.json.gz > raw/traces/<name>.md
+chrome-devtools performance_start_trace <pageId> --reload true --autoStop true --ignoreCache true --filePath "$AUDIT/raw/traces/<name>.json.gz" > "$AUDIT/raw/traces/<name>.md"
 ```
 
 ```bash
 chrome-devtools performance_start_trace <pageId> --reload true --autoStop false --ignoreCache true
-chrome-devtools performance_stop_trace <pageId> --filePath raw/traces/<name>.json.gz > raw/traces/<name>.md
+chrome-devtools performance_stop_trace <pageId> --filePath "$AUDIT/raw/traces/<name>.json.gz" > "$AUDIT/raw/traces/<name>.md"
 ```
 
 Use the second form for slow throttled loads: wait about 45 s between the two commands.
@@ -57,7 +57,7 @@ The summary (`.md`) lists:
 Then, for each relevant insight:
 
 ```bash
-chrome-devtools performance_analyze_insight <pageId> <insightSetId> <InsightName> > raw/traces/insight-<run>-<InsightName>.md
+chrome-devtools performance_analyze_insight <pageId> <insightSetId> <InsightName> > "$AUDIT/raw/traces/insight-<run>-<InsightName>.md"
 ```
 
 Open saved traces in DevTools > Performance > Load profile to review them visually.
@@ -80,11 +80,13 @@ chrome-devtools navigate_page <pageId> --url <url> --ignoreCache true --initScri
 chrome-devtools evaluate_script "() => window.__lcpLog" --pageId <pageId>
 ```
 
-Replace `.slick-initialized` with the selector that marks the suspected component as initialized. The default covers slick, Swiper and `[data-initialized]`. Interpret the log like this:
+Replace `.slick-initialized` with the selector that marks the suspected component as initialized. The default covers slick, Swiper and `[data-initialized]`. The timings narrow the cause down; they do not prove it:
 
 - **LCP equals FCP** and is earlier than component init: the component is not gating LCP.
-- **LCP is well after FCP** but before component init: main-thread contention.
-- **LCP lands right after component init**: JS gating. Fix the markup or CSS so the first state renders without JS.
+- **LCP is well after FCP** but before component init: the component is not gating LCP either. Look at the LCP resource first. If its response ends just before LCP in the trace, the delay is loading (load delay or duration), not rendering. Main-thread contention is the cause only if long tasks fill the gap between the response end and LCP.
+- **LCP lands right after component init**: JS gating is the hypothesis, not yet the finding. Initialization can also keep the main thread busy until just before LCP without ever hiding the image.
+
+Before writing either cause down as a finding, confirm it with a controlled experiment and re-measure: navigate again with an `--initScript` that injects a CSS override forcing the first slide or element visible before the component runs, and check that LCP moves. Recommend "render the first state without JS" only when making the element visible without the script moves LCP earlier.
 
 Run this on desktop unthrottled and on mobile at 4x CPU.
 
