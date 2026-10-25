@@ -56,7 +56,8 @@
     if (!box) return; box.innerHTML = '';
     const R = 80, rowH = 30, H = rows.length * rowH + 4; const max = Math.max(...rows.map((r) => r[1]), 1) * 1.02;
     const x = (v) => labelW + (v / max) * (W - labelW - R);
-    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img' }, box);
+    // role="img" hides the SVG text from screen readers, so the label carries every row and value.
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': rows.map(([k, v]) => `${k}: ${fmt(v, d)} ${unit}`).join('; ') }, box);
     rows.forEach(([k, v], i) => {
       const y = i * rowH + 4;
       text(svg, { x: 0, y: y + 14, class: 'lbl' }, k);
@@ -73,7 +74,8 @@
     const totals = rows.map((r) => r.v.reduce((a, b) => a + b, 0));
     const max = pct ? 100 : Math.max(...totals, ...refs.map((r) => r.v), 1) * 1.05;
     const x = (v) => labelW + (v / max) * (W - labelW - R);
-    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img' }, box);
+    const described = rows.map((r, i) => `${r.label}: ${r.v.map((v, j) => `${keys[j]} ${fmt(v)} ${unit}`).join(', ')} (total ${fmt(totals[i])} ${unit})`);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': described.join('; ') }, box);
     (pct ? [0, 25, 50, 75, 100] : niceTicks(max)).forEach((t) => {
       svgEl('line', { x1: x(t), x2: x(t), y1: top - 2, y2: H - 20, class: 'grid' }, svg);
       text(svg, { x: x(t), y: H - 4, 'text-anchor': 'middle' }, pct ? t + '%' : fmt(t));
@@ -159,7 +161,9 @@
       const W = 880, labelW = 230, R = 80, rowH = 34, H = tp.length * rowH + 4;
       const max = Math.max(...tp.map((t) => Math.max(t.stateA_KB, t.stateB_KB)), 1) * 1.02;
       const x = (v) => labelW + (v / max) * (W - labelW - R);
-      const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img' }, box);
+      const kb = (v) => (v ? `${fmt(v)} KB` : 'not loaded');
+      const label = tp.map((t) => `${t.vendor}: ${D.thirdPartyStates[0]} ${kb(t.stateA_KB)}, ${D.thirdPartyStates[1]} ${kb(t.stateB_KB)}`).join('; ');
+      const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': label }, box);
       tp.forEach((t, i) => {
         const y = i * rowH + 3;
         text(svg, { x: 0, y: y + 17, class: 'lbl' }, t.vendor);

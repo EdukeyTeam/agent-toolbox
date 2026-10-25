@@ -163,6 +163,12 @@ test('renderer escapes text and keeps embedded JSON from closing the script tag'
   assert.ok(!html.includes('</script><script>alert'), 'payload is escaped');
 });
 
+test('every client chart has an accessible name', () => {
+  const svgs = assets().client.split('\n').filter((line) => line.includes("svgEl('svg'"));
+  assert.ok(svgs.length >= 5);
+  for (const s of svgs) assert.match(s, /'aria-label'/, s.trim());
+});
+
 test('renderer omits tabs for sections without data', async () => {
   const { renderReport } = await load('scripts/render-html-report.mjs');
   const data = example();
