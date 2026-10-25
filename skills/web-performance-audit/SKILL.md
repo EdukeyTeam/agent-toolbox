@@ -20,7 +20,7 @@ docs/<site-slug>-performance/
 
 ## Prerequisites
 
-You need Node.js 20+, Google Chrome 144+, the `chrome-devtools` CLI from the `chrome-devtools-mcp` package, and ideally the Chrome DevTools MCP server and its upstream skills. Check with `chrome-devtools --version`. If anything is missing, follow [setup](references/setup.md) once, then continue.
+You need Node.js 22.19+ (required by current Lighthouse; on older Node pass `--lighthouse 12` to the runner), Google Chrome 144+, the `chrome-devtools` CLI from the `chrome-devtools-mcp` package, and ideally the Chrome DevTools MCP server and its upstream skills. Check with `chrome-devtools --version`. If anything is missing, follow [setup](references/setup.md) once, then continue.
 
 ## Rules that keep the numbers honest
 
