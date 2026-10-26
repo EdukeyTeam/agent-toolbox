@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "repository": "EdukeyTeam/agent-toolbox",
-  "release_tag": "legacy-tools-v0.3.0",
-  "native_version": "0.3.0",
+  "release_tag": "legacy-tools-v0.3.1",
+  "native_version": "0.3.1",
   "source_contract": "repo_map.py 1.2.0",
   "release_manifest": "legacy-tools-release.json",
   "platforms": {

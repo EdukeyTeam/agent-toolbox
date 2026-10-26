@@ -119,7 +119,7 @@ The native mapper keeps no tag cache. In the Python fallback, JSON tag caches ar
 
 ## Python reference fallback
 
-Use the [isolated Python fallback setup](setup.md#python-fallback) when native delivery/execution is unavailable, unsupported or policy-blocked, when native mapping fails, or for an exact reference comparison. Keep the same scope and budget when comparing; grammar builds and non-Git ignore matching can differ. The fallback map command is:
+Report the exact native error and obtain explicit user acknowledgment before using the [isolated Python fallback setup](setup.md#python-fallback) when native delivery/execution is unavailable, unsupported or policy-blocked, when native mapping fails, or for an exact reference comparison. Keep the same scope and budget when comparing; grammar builds and non-Git ignore matching can differ. The fallback map command is:
 
 ```bash
 /path/to/tool-env/bin/python /path/to/skill/scripts/repo_map.py /path/to/repository --output-dir /path/to/python-staging --budget 16384 --subtree src
