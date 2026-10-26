@@ -13,6 +13,47 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "skills/legacy-codebase-workflow
 
 
 class ApproximateEvaluationTests(unittest.TestCase):
+    def test_approximate_budget_uses_enclosing_span_and_union_precision(self):
+        targets = [{"path": "manual.html", "start": 12, "end": 15},
+                   {"path": "manual.html", "start": 14, "end": 17},
+                   {"path": "other.html", "start": 10, "end": 19},
+                   {"path": "manual.html", "start": 20, "end": 21}]
+        # One decoded line cannot be assigned to any specific source line.
+        result = evaluation.Result("manual.html", 10, 19, "abcdefgh", "approximate")
+        for budget, returned in ((1, 4), (2, 8)):
+            with self.subTest(budget=budget):
+                score = evaluation.budget_context([result], targets, budget)
+                self.assertTrue(score["hit"])
+                self.assertEqual(score["range_recall"], .5)
+                self.assertEqual(score["returned_chars"], returned)
+                self.assertAlmostEqual(score["character_precision"], .6)
+                self.assertAlmostEqual(score["relevant_chars"], returned * .6)
+                self.assertEqual(score["results_used"], 1)
+
+    def test_approximate_decoded_lines_never_cover_outside_enclosing_span(self):
+        result = evaluation.Result("manual.html", 5, 5, "a\nb\nc\nd", "approximate")
+        targets = [{"path": "manual.html", "start": 6, "end": 9}]
+        score = evaluation.budget_context([result], targets, 100)
+        self.assertFalse(score["hit"])
+        self.assertEqual(score["range_recall"], 0)
+        self.assertEqual(score["character_precision"], 0)
+        targets[0].update(start=5, end=5)
+        score = evaluation.budget_context([result], targets, 100)
+        self.assertEqual(score["character_precision"], 1)
+        self.assertEqual(score["range_recall"], 1)
+
+    def test_mixed_mapping_budgets_charge_duplicates_and_skip_empty_results(self):
+        targets = [{"path": "manual.html", "start": 2, "end": 2}]
+        approximate = evaluation.Result("manual.html", 1, 2, "abcd", "approximate")
+        exact = evaluation.Result("manual.html", 2, 2, "abcd")
+        empty = evaluation.Result("manual.html", 2, 2, "", "approximate")
+        score = evaluation.budget_context([empty, approximate, approximate, exact], targets, 3)
+        self.assertEqual(score["returned_chars"], 12)
+        self.assertEqual(score["relevant_chars"], 8)
+        self.assertEqual(score["character_precision"], 2 / 3)
+        self.assertEqual(score["range_recall"], 1)
+        self.assertEqual(score["results_used"], 3)
+
     def test_adapter_preserves_mapping_for_multiline_html_and_compact_notebook(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary).resolve()

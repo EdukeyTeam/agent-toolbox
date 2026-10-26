@@ -2,7 +2,8 @@
 """Engine-independent source-range retrieval evaluation (Python 3.12+, stdlib).
 
 Adapters implement search(query: str, limit: int) -> list[Result]. Paths in Result
-are corpus-relative; ranges are inclusive, one-based; text starts at startLine.
+are corpus-relative; ranges are inclusive, one-based; exact text starts at startLine.
+Approximate mappings cite an enclosing source span, not decoded line positions.
 Add an adapter without changing score_question or summarize. The command adapter
 splits its template with shlex BEFORE replacing {query}/{limit}; it never uses a
 shell. Quote paths/arguments with spaces, including Windows paths, in the template.
@@ -13,6 +14,9 @@ Budget policy: concatenate text in rank order, truncating the final result to th
 remaining characters (4 * budget). No headers/separators are charged. Tokens are
 ceil(total chars / 4). Character precision counts returned characters whose
 original line lies in the union of expected intervals, including newline chars.
+For approximate mappings, any returned prefix covers the whole enclosing span;
+relevant characters are estimated as returned chars * union overlap lines / span
+lines. This span-weighted estimate never assigns source lines to decoded text.
 Duplicates are charged and counted each time; no deduplication/packing/reordering.
 A hit requires any inclusive overlap, NOT full answer coverage. Recall@10 is
 macro-averaged over positive questions; micro range recall is also reported.
@@ -230,6 +234,21 @@ def budget_context(results: list[Result], expected: list[dict], budget: int) -> 
         count += 1
         returned += len(text)
         remaining -= len(text)
+        if result.lineMapping == "approximate":
+            targets = {i for i, target in enumerate(expected) if overlaps(result, target)}
+            covered.update(targets)
+            intervals = sorted((max(result.startLine, expected[i]["start"]),
+                                min(result.endLine, expected[i]["end"])) for i in targets)
+            # Measure the union without double-counting overlapping targets or
+            # expanding potentially large source envelopes into individual lines.
+            overlap_lines, previous_end = 0, result.startLine - 1
+            for start, end in intervals:
+                overlap_lines += max(0, end - max(start, previous_end + 1) + 1)
+                previous_end = max(previous_end, end)
+            relevant += len(text) * overlap_lines / (result.endLine - result.startLine + 1)
+            if not remaining:
+                break
+            continue
         # Keep newlines attached to their original source line, including CRLF.
         parts = text.split("\n")
         for offset, part in enumerate(parts):
@@ -303,7 +322,7 @@ def evaluate(questions: list[dict], adapter: Adapter, budgets: list[int]) -> dic
                         "latency_seconds": latency, "metrics": score_question(question, results, budgets, error)})
         print(f"{question['id']}: {latency:.3f}s" + (f" ERROR {error}" if error else ""), file=sys.stderr, flush=True)
     return {"schema_version": 1, "created_utc": datetime.now(timezone.utc).isoformat(),
-            "budget_policy": "ranked character prefix; ceil(chars/4); text only; no deduplication",
+            "budget_policy": "ranked character prefix; ceil(chars/4); text only; no deduplication; approximate mappings cover enclosing span with union-line-weighted character precision",
             "overall": summarize(records, budgets),
             "by_kind": {kind: summarize([row for row in records if row["question"]["kind"] == kind], budgets)
                         for kind in sorted({question["kind"] for question in questions})},
