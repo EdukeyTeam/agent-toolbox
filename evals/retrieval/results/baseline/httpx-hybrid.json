@@ -419,7 +419,7 @@
           "path": "docs/quickstart.md",
           "startLine": 278,
           "endLine": 318,
-          "text": "True\n```\n\nWe can raise an exception for any responses which are not a 2xx success code:\n\n```pycon\n>>> not_found = httpx.get('https://httpbin.org/status/404')\n>>> not_found.status_code\n404\n>>> not_found.raise_for_status()\nTraceback (most recent call last):\n  File \"/Users/tomchristie/GitHub/encode/httpcore/httpx/models.py\", line 837, in raise_for_status\n    raise HTTPStatusError(message, response=self)\nhttpx._exceptions.HTTPStatusError: 404 Client Error: Not Found for url: https://httpbin.org/status/404\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404\n```\n\nAny successful response codes will return the `Response` instance rather than raising an exception.\n\n```pycon\n>>> r.raise_for_status()\n```\n\nThe method returns the response instance, allowing you to use it inline. For example:\n\n```pycon\n>>> r = httpx.get('...').raise_for_status()\n>>> data = httpx.get('...').raise_for_status().json()\n```\n\n## Response Headers\n\nThe response headers are available as a dictionary-like interface.\n\n```pycon\n>>> r.headers\nHeaders({\n    'content-encoding': 'gzip',\n    'transfer-encoding': 'chunked',\n    'connection': 'close',\n    'server': 'nginx/1.0.4',"
+          "text": "True\n```\n\nWe can raise an exception for any responses which are not a 2xx success code:\n\n```pycon\n>>> not_found = httpx.get('https://httpbin.org/status/404')\n>>> not_found.status_code\n404\n>>> not_found.raise_for_status()\nTraceback (most recent call last):\n  File \"<home>/GitHub/encode/httpcore/httpx/models.py\", line 837, in raise_for_status\n    raise HTTPStatusError(message, response=self)\nhttpx._exceptions.HTTPStatusError: 404 Client Error: Not Found for url: https://httpbin.org/status/404\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404\n```\n\nAny successful response codes will return the `Response` instance rather than raising an exception.\n\n```pycon\n>>> r.raise_for_status()\n```\n\nThe method returns the response instance, allowing you to use it inline. For example:\n\n```pycon\n>>> r = httpx.get('...').raise_for_status()\n>>> data = httpx.get('...').raise_for_status().json()\n```\n\n## Response Headers\n\nThe response headers are available as a dictionary-like interface.\n\n```pycon\n>>> r.headers\nHeaders({\n    'content-encoding': 'gzip',\n    'transfer-encoding': 'chunked',\n    'connection': 'close',\n    'server': 'nginx/1.0.4',"
         },
         {
           "path": "tests/models/test_responses.py",
@@ -1830,10 +1830,10 @@
     }
   ],
   "configuration": {
-    "questions": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/questions/httpx.dev.jsonl",
+    "questions": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/questions/httpx.dev.jsonl",
     "engine": "context7-backend",
-    "database": "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/httpx-embedded.sqlite",
-    "backend": "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "database": "<home>/DEV/Projects/agent-toolbox-eval/indexes/httpx-embedded.sqlite",
+    "backend": "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
     "corpus_root": null,
     "mode": "hybrid",
     "rerank": null,
@@ -1844,7 +1844,7 @@
       2000,
       5000
     ],
-    "json_output": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/httpx-hybrid.json",
-    "markdown_output": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/httpx-hybrid.md"
+    "json_output": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/httpx-hybrid.json",
+    "markdown_output": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/httpx-hybrid.md"
   }
 }

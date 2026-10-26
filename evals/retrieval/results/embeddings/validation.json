@@ -2,17 +2,17 @@
   "stdlib": {
     "tests": 31,
     "skipped": 4,
-    "log": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/validation-stdlib.log"
+    "log": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/validation-stdlib.log"
   },
   "model2vec": {
     "tests": 31,
     "skipped": 1,
-    "log": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/validation-model2vec.log"
+    "log": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/validation-model2vec.log"
   },
   "fastembed": {
     "tests": 31,
     "skipped": 1,
-    "log": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/validation-fastembed.log"
+    "log": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/validation-fastembed.log"
   },
   "sha256": {
     "skills/legacy-codebase-workflows/scripts/local_context/embed.py": "a30d83fdd4cf5682fa94bb7a166bc11a823a13f1a9ba2c1f9544a07b571dbce5",

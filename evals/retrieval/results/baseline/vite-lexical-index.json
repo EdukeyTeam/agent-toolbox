@@ -3,15 +3,15 @@
   "mode": "lexical",
   "command": [
     "/usr/bin/python3",
-    "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
     "index",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/vite",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/vite",
     "--database",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/vite-lexical.sqlite",
+    "<home>/DEV/Projects/agent-toolbox-eval/indexes/vite-lexical.sqlite",
     "--library-id",
     "/eval/vite",
     "--docs-root",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/vite/docs"
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/vite/docs"
   ],
   "seconds": 6.137909266006318,
   "exit_code": 0,

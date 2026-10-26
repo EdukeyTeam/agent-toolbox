@@ -1,6 +1,6 @@
 Waiting for all three successful CPU benchmarks
 Traceback (most recent call last):
-  File "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/finalize.py", line 23, in <module>
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/finalize.py", line 23, in <module>
     raise RuntimeError('Benchmark failed: '+key)
 RuntimeError: Benchmark failed: jina
 

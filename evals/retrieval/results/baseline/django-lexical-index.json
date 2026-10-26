@@ -3,15 +3,15 @@
   "mode": "lexical",
   "command": [
     "/usr/bin/python3",
-    "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
     "index",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/django",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/django",
     "--database",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/django-lexical.sqlite",
+    "<home>/DEV/Projects/agent-toolbox-eval/indexes/django-lexical.sqlite",
     "--library-id",
     "/eval/django",
     "--docs-root",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/django/docs"
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/django/docs"
   ],
   "seconds": 11.93745983298868,
   "exit_code": 0,

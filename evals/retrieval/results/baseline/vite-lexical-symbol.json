@@ -1877,10 +1877,10 @@
     }
   ],
   "configuration": {
-    "questions": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/questions/vite.dev.jsonl",
+    "questions": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/questions/vite.dev.jsonl",
     "engine": "context7-backend",
-    "database": "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/vite-lexical.sqlite",
-    "backend": "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "database": "<home>/DEV/Projects/agent-toolbox-eval/indexes/vite-lexical.sqlite",
+    "backend": "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
     "corpus_root": null,
     "mode": "lexical",
     "rerank": "lexical-symbol",
@@ -1891,7 +1891,7 @@
       2000,
       5000
     ],
-    "json_output": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/vite-lexical-symbol.json",
-    "markdown_output": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/vite-lexical-symbol.md"
+    "json_output": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/vite-lexical-symbol.json",
+    "markdown_output": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/baseline/vite-lexical-symbol.md"
   }
 }

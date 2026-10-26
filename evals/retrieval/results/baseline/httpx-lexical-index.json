@@ -3,15 +3,15 @@
   "mode": "lexical",
   "command": [
     "/usr/bin/python3",
-    "/home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
     "index",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/httpx",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/httpx",
     "--database",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes/httpx-lexical.sqlite",
+    "<home>/DEV/Projects/agent-toolbox-eval/indexes/httpx-lexical.sqlite",
     "--library-id",
     "/eval/httpx",
     "--docs-root",
-    "/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/httpx/docs"
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/httpx/docs"
   ],
   "seconds": 0.7591751959989779,
   "exit_code": 0,

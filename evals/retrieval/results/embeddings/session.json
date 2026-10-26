@@ -2,23 +2,23 @@
   "workspace_id": "wMX",
   "pane_id": "wMX:p1",
   "owner": "codex delegate i2-embeddings",
-  "scratch": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench",
-  "install_log": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/install.log",
-  "report": "/home/lucas/DEV/Projects/agent-toolbox/docs/retrieval/embedding-benchmark.md",
+  "scratch": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench",
+  "install_log": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/install.log",
+  "report": "<home>/DEV/Projects/agent-toolbox/docs/retrieval/embedding-benchmark.md",
   "panes": {
     "wMX:p1": "Full BGE and Jina CPU benchmark",
     "wMX:p2": "Automatic final report build after successful model runs; owner codex delegate i2-embeddings"
   },
   "logs": {
-    "download": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/download.log",
-    "potion": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/potion.log",
-    "bge": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/bge.log",
-    "jina": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/jina.log",
-    "thread_tuning": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/thread-tuning.log",
-    "jina_batch_tuning": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/jina-batch-tuning.log",
-    "numpy_tuning": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/numpy-tuning.log",
-    "vector_scan": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/vector-scan.log",
-    "finalize": "/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/finalize.log"
+    "download": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/download.log",
+    "potion": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/potion.log",
+    "bge": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/bge.log",
+    "jina": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/jina.log",
+    "thread_tuning": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/thread-tuning.log",
+    "jina_batch_tuning": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/jina-batch-tuning.log",
+    "numpy_tuning": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/numpy-tuning.log",
+    "vector_scan": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/vector-scan.log",
+    "finalize": "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/finalize.log"
   },
   "status": "closed",
   "cleanup": {
@@ -35,6 +35,6 @@
       "bge"
     ],
     "partial_jina": "HTTPX complete; Vite stopped at 2400/4499 by the orchestrator; JFTP not started",
-    "stop_evidence": "/home/lucas/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/jina.log"
+    "stop_evidence": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/embeddings/jina.log"
   }
 }

@@ -16,9 +16,9 @@
   "transformers": "3.8.1",
   "model": "Xenova/all-MiniLM-L6-v2",
   "modelRevision": "751bff37182d3f1213fa05d7196b954e230abad9",
-  "inferenceRuntime": "/home/lucas/DEV/Projects/agent-toolbox-eval/cache/inference-runtime",
-  "modelCache": "/home/lucas/DEV/Projects/agent-toolbox-eval/cache/models",
-  "indexes": "/home/lucas/DEV/Projects/agent-toolbox-eval/indexes",
+  "inferenceRuntime": "<home>/DEV/Projects/agent-toolbox-eval/cache/inference-runtime",
+  "modelCache": "<home>/DEV/Projects/agent-toolbox-eval/cache/models",
+  "indexes": "<home>/DEV/Projects/agent-toolbox-eval/indexes",
   "notes": [
     "Single-pass query latency includes subprocess startup and corpus freshness scans.",
     "Embedding indexing and some validation overlap query runs on a shared host; timings are observations under load, not isolated performance comparisons.",

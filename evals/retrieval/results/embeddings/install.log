@@ -77,7 +77,7 @@ Installed 29 packages in 410ms
  + tqdm==4.70.1
  + typing-extensions==4.16.0
  + urllib3==2.8.0
-/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/model2vec-env/bin/python: No module named pip
+<home>/DEV/Projects/agent-toolbox-eval/embed-bench/model2vec-env/bin/python: No module named pip
 {'model': 'BAAI/bge-small-en-v1.5', 'sources': {'hf': 'Qdrant/bge-small-en-v1.5-onnx-Q', 'url': None, '_deprecated_tar_struct': False}, 'model_file': 'model_optimized.onnx', 'description': 'Text embeddings, Unimodal (text), English, 512 input tokens truncation, Prefixes for queries/documents: not so necessary, 2023 year.', 'license': 'mit', 'size_in_GB': 0.067, 'additional_files': [], 'dim': 384, 'tasks': {}}
 {'model': 'jinaai/jina-embeddings-v2-base-code', 'sources': {'hf': 'jinaai/jina-embeddings-v2-base-code', 'url': None, '_deprecated_tar_struct': False}, 'model_file': 'onnx/model.onnx', 'description': 'Text embeddings, Unimodal (text), Multilingual (English, 30 programming languages), 8192 input tokens truncation, Prefixes for queries/documents: not necessary, 2024 year.', 'license': 'apache-2.0', 'size_in_GB': 0.64, 'additional_files': [], 'dim': 768, 'tasks': {}}
 
