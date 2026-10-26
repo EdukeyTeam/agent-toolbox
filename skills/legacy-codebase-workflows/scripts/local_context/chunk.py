@@ -526,13 +526,29 @@ def docs_units(text: str, path: str, fmt: str, target=1500):
     lines = split_source_lines(text)
     headings = []
     fence = None
+    literal_indent = literal_pending = None
     for i, line in enumerate(lines):
         stripped = line.strip()
+        if fmt == "rst":
+            indent = len(line.expandtabs(8)) - len(line.expandtabs(8).lstrip())
+            if not stripped:
+                continue
+            if literal_pending is not None:
+                if indent > literal_pending:
+                    literal_indent = indent
+                literal_pending = None
+            if literal_indent is not None:
+                if indent >= literal_indent:
+                    continue
+                literal_indent = None
+            if stripped.endswith("::") or re.match(r"^\.\.\s+[\w-]+::", stripped):
+                literal_pending = indent
+                continue
         match = re.match(r"^(`{3,}|~{3,})", stripped)
         if match:
             if fence is None:
-                fence = match[1][0]
-            elif match[1][0] == fence:
+                fence = (match[1][0], len(match[1]))
+            elif match[1][0] == fence[0] and len(match[1]) >= fence[1] and not stripped[match.end():].strip():
                 fence = None
             continue
         if fence:
