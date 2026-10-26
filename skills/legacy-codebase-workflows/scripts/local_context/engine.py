@@ -113,7 +113,7 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
                 response["channels"] = {r["unit_uid"]:r["channels"] for r in candidates}
         if changed and refresh_policy=="auto" and len(changed)<=10 and not _restart and not caller_transaction:
             try:
-                refresh(database_path(con),lib["id"],candidate_paths=changed,verify_all=True,timeout=con.execute("PRAGMA busy_timeout").fetchone()[0]/1000)
+                refresh(database_path(con),lib["id"],candidate_paths=changed,query_mode=mode,verify_all=True,timeout=con.execute("PRAGMA busy_timeout").fetchone()[0]/1000)
             except (RetrievalError,RuntimeError,sqlite3.Error):
                 response["warnings"].append("Automatic candidate refresh unavailable; run refresh explicitly.")
             else:

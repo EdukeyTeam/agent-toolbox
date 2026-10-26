@@ -47,7 +47,7 @@ def embedding_config(embed_model=None, model_revision=None, model_cache=None, em
         raise RetrievalError("Embedding configuration unavailable", "provider_unavailable", 503) from exc
 
 
-def index(root, database, library_id, docs_root=None, embed_model=None, model_cache=None, embedding_runtime=None, *, model_revision=None, vector_engine="stdlib", reranker_model=None, reranker_revision=None, chunk_chars=DEFAULT_CHUNK_CHARS, excludes=(), docs_roots=(), includes=(), encodings=(), no_secret_scan=False, parser="auto", max_files=0, max_units=0, max_file_bytes=2_000_000, discovery_limit=2_000_000, title=None, description=None, jobs=1, verify_all=False, _timeout=5.0, _candidate_paths=None, _saved=None, _automatic=False, **kwargs):
+def index(root, database, library_id, docs_root=None, embed_model=None, model_cache=None, embedding_runtime=None, *, model_revision=None, vector_engine="stdlib", reranker_model=None, reranker_revision=None, chunk_chars=DEFAULT_CHUNK_CHARS, excludes=(), docs_roots=(), includes=(), encodings=(), no_secret_scan=False, parser="auto", max_files=0, max_units=0, max_file_bytes=2_000_000, discovery_limit=2_000_000, title=None, description=None, jobs=1, verify_all=False, _timeout=5.0, _candidate_paths=None, _saved=None, _automatic=False, _query_mode=None, **kwargs):
     started = time.monotonic()
     if _candidate_paths is not None:
         _candidate_paths = set(_candidate_paths)
@@ -108,7 +108,12 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
         embedding_enabled = config.get("provider", "none") != "none"
         from .embed import is_loopback_url
         remote_embeddings = config.get("provider") == "openai-compatible" and not is_loopback_url(config.get("base_url"))
-        defer_embeddings = embedding_enabled and (_candidate_paths is not None or _automatic and remote_embeddings)
+        # Candidate catch-up embeds only for a vector query using a local
+        # provider. Unspecified/lexical modes stay offline; hooks keep their
+        # existing local-embed/remote-defer policy.
+        defer_embeddings = embedding_enabled and (
+            _candidate_paths is not None and (remote_embeddings or _query_mode not in {"semantic", "hybrid"})
+            or _automatic and remote_embeddings)
         # Saved consent is an audit record, never permission for a new upload.
         # Check before even constructing a provider, including on unchanged runs.
         if remote_embeddings and not defer_embeddings and not kwargs.get("allow_remote_embeddings"):
@@ -268,7 +273,7 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
         con.close()
 
 
-def refresh(database, library_id=None, *, verify_all=False, candidate_paths=None, timeout=5.0, allow_remote_embeddings=False, automatic=False):
+def refresh(database, library_id=None, *, verify_all=False, candidate_paths=None, timeout=5.0, allow_remote_embeddings=False, automatic=False, query_mode=None):
     with store.connect(database) as con:
         lib = store.library(con,library_id)
         roots = json.loads(lib["roots_json"])
@@ -277,7 +282,7 @@ def refresh(database, library_id=None, *, verify_all=False, candidate_paths=None
         library_id = lib["id"]
     code = next((r["path"] for r in roots if r["role"]=="code"),None)
     docs = [r["path"] for r in roots if r["role"]=="docs"]
-    return index(code,database,library_id,docs_roots=docs,_saved=config,_candidate_paths=candidate_paths,verify_all=verify_all,_timeout=timeout,allow_remote_embeddings=allow_remote_embeddings,_automatic=automatic,**scope)
+    return index(code,database,library_id,docs_roots=docs,_saved=config,_candidate_paths=candidate_paths,verify_all=verify_all,_timeout=timeout,allow_remote_embeddings=allow_remote_embeddings,_automatic=automatic,_query_mode=query_mode,**scope)
 
 
 def assert_fresh(con, meta):

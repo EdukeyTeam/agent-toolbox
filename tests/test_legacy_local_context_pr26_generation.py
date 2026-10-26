@@ -24,7 +24,10 @@ class GenerationTests(unittest.TestCase):
             with mock.patch.object(freshness, "provider_for", return_value=provider):
                 freshness.index(root, db, "/local/generation", parser="0", _saved={"provider": "fake"})
             path.write_text("def worker(): return 222\n", encoding="utf-8")
-            candidate = freshness.refresh(db, candidate_paths={("r0", "worker.py")})
+            # A lexical catch-up publishes changed text with vectors pending.
+            with mock.patch.object(freshness, "provider_for", side_effect=AssertionError("Lexical catch-up must not embed")):
+                candidate = freshness.refresh(db, candidate_paths={("r0", "worker.py")}, query_mode="lexical")
+            self.assertEqual(candidate["pendingEmbeddings"], 1)
             cache = {}
             with store.connect(db) as warm, mock.patch.object(engine, "provider_for", return_value=provider):
                 # Read-only server connections cache coverage and NumPy vectors.
