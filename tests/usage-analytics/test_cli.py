@@ -88,6 +88,24 @@ class CLIAndArtifacts(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("not found", result.stderr)
 
+    def test_failed_validation_never_writes_the_ledger(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            normalized = root / "input.json"
+            normalized.write_text(json.dumps(demo_data()))
+            ledger = root / "history.sqlite"
+            result = self.run_cli("session", "--input", normalized, "--session", "missing", "--store", ledger, "--out", root / "x")
+            self.assertEqual(result.returncode, 2)
+            self.assertFalse(ledger.exists(), "a mistyped session must not create or change history")
+            bad_map = root / "tasks.json"
+            bad_map.write_text(json.dumps({"s": 1}))
+            result = self.run_cli("import", "--input", normalized, "--store", ledger, "--task-map", bad_map)
+            self.assertEqual(result.returncode, 2)
+            self.assertFalse(ledger.exists())
+            self.assertEqual(self.run_cli("import", "--input", normalized, "--store", ledger).returncode, 0)
+            result = self.run_cli("session", "--store", ledger, "--session", "sample-codex-3", "--out", root / "y")
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_empty_inputs_and_credential_filename_are_explicit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

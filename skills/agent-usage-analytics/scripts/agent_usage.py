@@ -232,6 +232,27 @@ def main(argv: list[str] | None = None) -> int:
                 sources = [(r["agent"], Path(r["path"])) for r in discover(args.home) if r["exists"]
                            and (not args.current or r["agent"] == "codex")]
             data = merge(*(collect(agent, path, args.device, args.account, args.session_id) for agent, path in sources))
+        # Validate everything before the ledger is written, so a failed invocation never changes history.
+        mapping = None
+        if args.attribution_map:
+            from usage_attribution import apply_attribution
+            mapping = json.loads(guarded_path(str(args.attribution_map)).read_text(encoding="utf-8-sig"))
+            apply_attribution(dataset(), mapping)
+        task_map = json.loads(guarded_path(str(args.task_map)).read_text(encoding="utf-8-sig")) if args.task_map else None
+        if task_map is not None and (not isinstance(task_map, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in task_map.items())):
+            raise ValueError("Task map must map session IDs to string labels")
+        if args.session_id:
+            candidate = data
+            if args.store and Path(args.store).exists():
+                ledger = Ledger(args.store)
+                try:
+                    candidate = merge(ledger.read(), data)
+                finally:
+                    ledger.close()
+            # A context observation alone is enough for the session-context report.
+            if not any(r.get("session_id") == args.session_id
+                       for r in (*candidate["sessions"], *candidate["usage"], *candidate.get("contexts", []))):
+                raise ValueError("Requested session was not found in the selected sources/history")
         if args.store:
             ledger = Ledger(args.store)
             try:
@@ -239,9 +260,7 @@ def main(argv: list[str] | None = None) -> int:
                 data = ledger.read()
             finally:
                 ledger.close()
-        if args.attribution_map:
-            from usage_attribution import apply_attribution
-            mapping = json.loads(guarded_path(str(args.attribution_map)).read_text(encoding="utf-8-sig"))
+        if mapping is not None:
             data = apply_attribution(data, mapping)
             if args.store:
                 ledger = Ledger(args.store)
@@ -249,13 +268,6 @@ def main(argv: list[str] | None = None) -> int:
                     ledger.add({"schema_version": 1, "usage": data["usage"], "contexts": data["contexts"]})
                 finally:
                     ledger.close()
-        # A context observation alone is enough for the session-context report.
-        if args.session_id and not any(r.get("session_id") == args.session_id
-                                       for r in (*data["sessions"], *data["usage"], *data.get("contexts", []))):
-            raise ValueError("Requested session was not found in the selected sources/history")
-        task_map = json.loads(guarded_path(str(args.task_map)).read_text(encoding="utf-8-sig")) if args.task_map else None
-        if task_map is not None and (not isinstance(task_map, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in task_map.items())):
-            raise ValueError("Task map must map session IDs to string labels")
         report = build_report(data, load_rates(args.rates), since=args.since, until=args.until, tz_name=args.timezone,
                               session_id=args.session_id, compare_since=args.compare_since, compare_until=args.compare_until,
                               share=args.share, complete_coverage=args.complete_coverage, task_map=task_map)
