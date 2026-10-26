@@ -22,7 +22,9 @@ FIELDS = {
 }
 NUMERIC = set("input_tokens cache_read_tokens cache_write_tokens cache_write_5m_tokens cache_write_1h_tokens output_tokens reasoning_tokens request_count web_search_requests used_tokens window_tokens provider_percent computed_percent baseline_reserved_tokens compactions visible_estimated_tokens window_minutes used_percent argument_chars result_chars files_seen files_parsed rows_seen malformed_rows line".split())
 NUMERIC.update("cumulative_" + key for key in ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "reasoning_tokens"))
-RECONCILIATION_FIELDS = "native_total_input_tokens native_total_output_tokens legacy_total_input_tokens legacy_total_output_tokens"
+# Every legacy cumulative counter is kept so merge() can re-derive deltas after a ledger round trip.
+RECONCILIATION_FIELDS = ("native_total_input_tokens native_total_output_tokens legacy_total_input_tokens legacy_total_output_tokens"
+                         " legacy_total_cache_read_tokens legacy_total_cache_write_tokens legacy_total_reasoning_tokens")
 FIELDS["usage"] += " " + RECONCILIATION_FIELDS
 FIELDS["usage"] += " provider reported_model model_attribution"
 FIELDS["contexts"] += " provider reported_model model_attribution"

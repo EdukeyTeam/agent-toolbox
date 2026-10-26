@@ -209,6 +209,27 @@ class CollectorTests(unittest.TestCase):
         merged = merge(collect("codex", first), collect("codex", rotated))
         self.assertIn("legacy_cross_source_reconciled", self.codes(merged))
 
+    def test_codex_legacy_reconciliation_survives_the_ledger(self):
+        from usage_store import Ledger
+        first = self.write("a/run1.jsonl", [meta(), turn(), snapshot(cx_counts(100, 10, 20, 4, 2), at=T1)])
+        later_only = self.write("c/run3.jsonl", [meta(), turn(), snapshot(cx_counts(150, 15, 30, 6, 3), at=T3)])
+        store = self.root / "history.sqlite"
+        for path in (first, later_only):
+            ledger = Ledger(store)
+            try:
+                ledger.add(collect("codex", path))
+            finally:
+                ledger.close()
+        ledger = Ledger(store)
+        try:
+            rows = ledger.read()["usage"]
+        finally:
+            ledger.close()
+        self.assertEqual(sum(r["input_tokens"] for r in rows), 150)
+        self.assertEqual(sum(r["cache_read_tokens"] for r in rows), 30, "cache totals must be stored to re-derive deltas")
+        self.assertEqual(sum(r["cache_write_tokens"] for r in rows), 6)
+        self.assertEqual(sum(r["reasoning_tokens"] for r in rows), 3)
+
     def test_codex_mixed_reconciled_transition(self):
         path = self.write("mixed.jsonl", [meta(), turn(), snapshot(cx_counts(100, 10)),
             native(usage=cx_counts(200, 20), at=T2, thread_total=cx_counts(300, 30)),
