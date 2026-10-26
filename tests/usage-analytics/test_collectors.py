@@ -535,6 +535,16 @@ class CollectorTests(unittest.TestCase):
         path = self.write("explicit-window.jsonl", [claude(context_window={"context_window_size": 200000})])
         self.assertEqual(collect("claude", path)["contexts"][0]["window_tokens"], 200000)
 
+    def test_claude_capacity_resets_when_the_model_changes(self):
+        switched = claude("m2", "r2", at=T2)
+        switched["message"]["model"] = "claude-opus-4-1"
+        same = claude("m2", "r2", at=T2)
+        first = claude(context_window={"context_window_size": 1000000})
+        changed = collect("claude", self.write("switch.jsonl", [first, switched]))["contexts"][0]
+        self.assertIsNone(changed["window_tokens"], "no stale capacity from the previous model")
+        kept = collect("claude", self.write("same.jsonl", [first, same]))["contexts"][0]
+        self.assertEqual(kept["window_tokens"], 1000000)
+
     def test_copilot_old_assistant_usage(self):
         path = self.write("older.jsonl", [{"type": "assistant.usage", "timestamp": T1, "data": {
             "requestId": "r", "model": "gpt-5", "input_tokens": 50, "output_tokens": 5}}])

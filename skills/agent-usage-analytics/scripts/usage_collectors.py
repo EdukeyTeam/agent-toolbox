@@ -518,6 +518,8 @@ def _claude(path: Path, data: JSON, source: JSON, device: str, account: str,
     obs: Observations | None = None
     parent = path.parent.parent.name if path.parent.name == "subagents" else None
     window: int | float | None = None
+    # The model a capacity was observed with; None until the next assistant request binds it.
+    window_model: str | None = None
     request_counts: dict[str, JSON] = {}
     for line, row in jsonl(path, data, source):
         message = obj(row.get("message"))
@@ -540,10 +542,10 @@ def _claude(path: Path, data: JSON, source: JSON, device: str, account: str,
             obs.compact(at, [])
             continue
         if number(row.get("model_context_window")) is not None:
-            window = number(row["model_context_window"])
+            window, window_model = number(row["model_context_window"]), None
         metadata_window = obj(row.get("context_window"))
         if number(metadata_window.get("context_window_size")) is not None:
-            window = number(metadata_window["context_window_size"])
+            window, window_model = number(metadata_window["context_window_size"]), None
         mid = message.get("id")
         # Claude stores distinct streamed content blocks under the same message
         # ID. UUID identifies the block observation, while repeated UUIDs replace
@@ -588,6 +590,10 @@ def _claude(path: Path, data: JSON, source: JSON, device: str, account: str,
         for k in TOKEN_FIELDS:
             if counts[k] is not None:
                 previous[k] = max(counts[k], previous.get(k) or 0)
+        # A capacity belongs to its model: drop it when the session switches models, as the Codex collector does.
+        if window_model is not None and record["model"] != window_model:
+            window = None
+        window_model = record["model"]
         obs.anchor(at, previous["input_tokens"], window, record["model"])
     if obs:
         obs.finish()
