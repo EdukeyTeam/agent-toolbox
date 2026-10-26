@@ -68,6 +68,7 @@ class Result:
     startLine: int
     endLine: int
     text: str
+    lineMapping: str = "exact"
 
 
 class Adapter(Protocol):
@@ -127,9 +128,10 @@ def parse_results(payload: object) -> list[Result]:
         if not isinstance(row.get("text"), str):
             raise ValueError(f"result {index}: missing text")
         lines = row["text"].count("\n") + bool(row["text"] and not row["text"].endswith("\n"))
-        if lines > row["endLine"] - row["startLine"] + 1:
+        mapping = row.get("lineMapping", "exact")
+        if mapping != "approximate" and lines > row["endLine"] - row["startLine"] + 1:
             raise ValueError(f"result {index}: text exceeds cited line range")
-        results.append(Result(normalize_path(row["path"]), row["startLine"], row["endLine"], row["text"]))
+        results.append(Result(normalize_path(row["path"]), row["startLine"], row["endLine"], row["text"], mapping))
     return results
 
 
@@ -208,7 +210,7 @@ class Context7BackendAdapter:
             source = row["source"]
             prefix = self.root_prefixes[source["rootId"]] if self.root_prefixes else self.prefixes[source["kind"]]
             rows.append({"path": posixpath.join(prefix, source["path"]), "startLine": source["startLine"],
-                         "endLine": source["endLine"], "text": row["text"]})
+                         "endLine": source["endLine"], "text": row["text"], "lineMapping": source.get("lineMapping", "exact")})
         return parse_results({"results": rows})[:limit]
 
 
