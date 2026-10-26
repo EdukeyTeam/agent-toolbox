@@ -62,6 +62,8 @@ const cases = [
   ['native workflow', ['.github/workflows/test-native.yml'], ['native', 'node', 'workflow']],
   ['release workflow', ['.github/workflows/release-legacy-tools.yml'], ['native', 'node', 'workflow']],
   ['release index helper', ['scripts/create-legacy-release-manifest.py'], ['native', 'python']],
+  ['release version gate', ['scripts/check-legacy-release.py'], ['python']],
+  ['release planner and publisher', ['scripts/legacy-release.py'], ['python']],
   ['distribution policy', [legacy + 'tool-distribution.json'], ['native', 'package', 'python']],
   ['embedded license', ['src/legacy-repo-map/licenses/manifest.json'], ['native']],
   ['root Git ignore rules', ['.gitignore'], []],

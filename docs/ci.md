@@ -1,6 +1,6 @@
 # Continuous integration scope
 
-Validation uses separate workflows with GitHub's built-in `paths` filters. GitHub decides whether to create a run before allocating a runner: documentation-only changes outside packaged skills start no validation workflow. There is no changed-file script, preliminary routing job or aggregate completion job.
+Most validation uses separate workflows with GitHub's built-in `paths` filters. GitHub decides whether to create these runs before allocating a runner: documentation-only changes outside packaged skills skip the build/test matrices. The fast native release contract check runs on every PR, and every main push checks publication, so path filtering cannot hide an unpublished pin. The release workflow plans its own build and publication jobs; other validation workflows have no routing dependencies.
 
 ## Workflows and their inputs
 
@@ -12,12 +12,13 @@ Validation uses separate workflows with GitHub's built-in `paths` filters. GitHu
 | [Native artifacts](../.github/workflows/test-native.yml) | Rust code/locks/embedded notices, bundled legacy runtime/vendor/license/distribution inputs, standalone builders, native tests or the native release workflow change. Builds on Linux and Windows and keeps artifact retention; the macOS build is opt-in the same way (`include_macos` or `TEST_MACOS=true`). The release workflow still builds all three platforms. Contributor README, skill instructions, references and intake templates are excluded. |
 | [Plugin package](../.github/workflows/test-plugin.yml) | Any skill payload, plugin manifests, root license, ZIP builder or its regression tests change. Skill Markdown is packaged, so its changes need this inexpensive Linux packaging check. The builder rejects every skill folder without `SKILL.md`; reference-only additions therefore cannot silently bypass entrypoint validation. |
 | [Workflow validation](../.github/workflows/validate-workflows.yml) | Workflow YAML or path-filter regression tests change. Uses checksum-pinned actionlint. |
+| [Native release contract and publication](../.github/workflows/release-legacy-tools.yml) | Every PR checks version/contract pins. Every main push checks for a missing pinned release and publishes only after all three platform builds pass; main-only manual recovery is available. This workflow deliberately has no path filter. |
 
-Each workflow also includes its own YAML. A root `.gitignore` change alone starts no validation. Only Python and native validation include `.gitattributes`: its current rules preserve the exact vendor/license bytes checked against provenance manifests. If attribute rules expand to other runtime inputs, update the affected workflow filters. The same ordered pattern list is shared by its PR and main-push triggers using a YAML anchor. `*` and `**` are glob patterns; an ordered `!` entry excludes a path. When at least one changed path remains included, the workflow runs. Shared inputs appear in every workflow that depends on them.
+Each filtered workflow also includes its own YAML. A root `.gitignore` change alone starts only the native release contract/publication check. Only Python and native matrix validation include `.gitattributes`: its current rules preserve the exact vendor/license bytes checked against provenance manifests. If attribute rules expand to other runtime inputs, update the affected workflow filters. The same ordered pattern list is shared by each filtered workflow's PR and main-push triggers using a YAML anchor. `*` and `**` are glob patterns; an ordered `!` entry excludes a path. When at least one changed path remains included, the workflow runs. Shared inputs appear in every workflow that depends on them.
 
 Typical cases:
 
-- Root/repository documentation (`README.md`, `AGENTS.md`, `docs/**`): no validation runs.
+- Root/repository documentation (`README.md`, `AGENTS.md`, `docs/**`): only the fast native release contract/publication check runs.
 - Skill `SKILL.md`: one Node metadata/behavior run plus one plugin packaging run.
 - Skill references or legacy intake templates: plugin packaging only.
 - Runtime Markdown templates under `skills/write-agents-md/assets/`: Node tests and plugin packaging.
@@ -32,7 +33,7 @@ PR filters use GitHub's complete three-dot comparison, so code changes remain in
 
 GitHub evaluates at most the first 3,000 changed files for path filters. A larger PR can omit a relevant suite if its matching file falls outside that list. For such PRs, split the changes into smaller PRs or manually dispatch all six validation workflows on the PR's head branch (`gh workflow run <workflow-file> --ref <head-branch>`). Check that each run's head SHA equals the current PR head; a dispatch on `main` does not validate the PR. This is an explicit manual safeguard, not an automatic fallback router.
 
-New commits cancel superseded runs of the same workflow/PR. Concurrency includes the workflow name so independent suites cannot cancel one another. Running main workflows are not cancelled by newer commits. The native release workflow retains its existing tag/manual publication triggers.
+New commits cancel superseded matrix-validation runs of the same workflow/PR. Concurrency includes the workflow name so independent suites cannot cancel one another. Running main workflows are not cancelled by newer commits. Native release builds are grouped by triggering commit and publication is serialized per pinned tag, so queued builds of different versions cannot displace one another.
 
 Native CI artifacts now come from `test-native.yml`. A documentation-only PR creates no new native artifacts; use a successful native run matching the explicit source SHA for `setup_native.py install --from-ci`.
 
@@ -43,3 +44,17 @@ Validate changes with `npm ci`, `npm test` and the workflow's pinned actionlint 
 References: [GitHub path filters and diff behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore), [YAML anchors](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations#yaml-anchors-and-aliases).
 
 The plugin workflow runs [actual-builder regression tests](../tests/test-plugin-builder.ps1) before packaging. Run them locally with `pwsh -NoProfile -File tests/test-plugin-builder.ps1`: valid skills/references must appear in the ZIP, while a missing entrypoint must fail clearly and leave no ZIP, both with and without other valid skills. Tests use isolated temporary source/output folders.
+
+## Automatic native releases
+
+Every main push checks the release tag in `skills/legacy-codebase-workflows/tool-distribution.json`, including pushes that only change documentation. If its release is absent, the same workflow builds, tests and verifies Linux x86-64, Windows x86-64 and macOS ARM64 packages, then creates an immutable tag and release. It uses the default `GITHUB_TOKEN` without depending on a second workflow being triggered by the new tag. The source is the triggering main commit, or an existing ancestor tag with identical release inputs. An existing published release with all required assets is a successful no-op; a draft, prerelease or incomplete publication is reported for human recovery. Existing tags and release assets are never moved or overwritten. Only the publishing job has `contents: write`.
+
+Every PR runs a fast version/contract check; existing native artifact CI remains responsible for PR builds and never publishes. Changes to native source, lockfiles, embedded queries/notices, Python map reference and its shared helpers/dependencies, distribution policy, or packaging helpers require an increased matching Cargo package/lock version and policy version/tag. The policy contract must agree with the Rust baseline and Python reference version. Consumer setup and workflow orchestration are outside the released payload and do not require a binary version bump. Documentation pins must agree with the policy. Future fixes therefore publish automatically after the versioned source is merged.
+
+Recovery uses `workflow_dispatch` on `main`: an empty `release_tag` selects the current policy, an explicit tag must match it, and `publish_release: false` builds reviewable artifacts without creating a tag or release. `publish_release: true` follows the same immutable publication path as a main push. Dispatches from other branches or tags cannot publish. Publication verifies that the selected source is an ancestor of main and that its release inputs match the checked-out policy before creating anything.
+
+### Corrections Log
+
+| Date | ID | Change | Before | Why |
+| --- | --- | --- | --- | --- |
+| 2026-10-26 | legacy-auto-release | Publish missing pinned native releases after main merges; enforce consistent version bumps and explicit fallback acknowledgment. | Publication required a separately pushed tag or manual action; download failure could lead agents to Python without user acknowledgment. | The skill pinned v0.3.0 while only v0.2.0 was published. |
