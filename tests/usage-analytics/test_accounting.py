@@ -160,6 +160,11 @@ class Aggregation(unittest.TestCase):
         self.assertEqual(ctx["window_tokens"], 200000)
         self.assertEqual(ctx["computed_percent"], 20)
         self.assertEqual(merge(late, early)["contexts"][0]["window_tokens"], 200000, "a poorer later copy keeps the measurement")
+        richer = dataset()
+        richer["contexts"] = [context_observation("codex", "s1", "2026-10-01T12:00:00.000Z", {"user": 4000}, 40000, 200000, model="gpt-5.5")]
+        refreshed = merge(late, richer)["contexts"][0]
+        self.assertEqual([c["name"] for c in refreshed["categories"]], ["user"], "an equally measured later copy refreshes categories")
+        self.assertEqual(refreshed["unattributed_tokens"], 40000 - refreshed["visible_estimated_tokens"])
 
     def test_half_open_calendar_filter_and_undated_coverage(self):
         d = dataset()

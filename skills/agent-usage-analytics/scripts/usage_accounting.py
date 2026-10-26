@@ -73,9 +73,10 @@ def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
                     records[key] = deepcopy(record)
                     continue
                 old = records[key]
-                if kind == "contexts" and _measured(record) > _measured(old):
-                    # A later snapshot of the same context can add the capacity or occupancy; take its
-                    # measurements and derived values together, keeping a stronger earlier route.
+                if kind == "contexts" and _measured(record) >= _measured(old):
+                    # A later snapshot of the same context can add the capacity, occupancy or categories; take
+                    # its measurements and derived values together (the later one wins a tie), keeping a stronger
+                    # earlier route. A later copy with fewer measured fields never replaces a better one.
                     refreshed = deepcopy(record)
                     if attribution_rank(old) > attribution_rank(record):
                         refreshed.update({f: old[f] for f in ATTRIBUTION_FIELDS if f in old})
