@@ -109,7 +109,7 @@ class Aggregation(unittest.TestCase):
         self.assertEqual(report["summary"]["count_quality"], "known lower bound")
 
     def test_skipped_json_source_or_missing_export_marks_totals_as_lower_bounds(self):
-        for code in ("malformed_json", "explicit_export_required"):
+        for code in ("malformed_json", "explicit_export_required", "checkpoint_exceeds_requests"):
             d = dataset()
             d["usage"] = [request()]
             d["warnings"] = [{"id": "w", "code": code, "source_id": "s"}]

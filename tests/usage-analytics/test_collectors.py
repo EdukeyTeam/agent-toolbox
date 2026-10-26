@@ -337,6 +337,12 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(data["usage"][0]["input_tokens"], 100)
         self.assertEqual(data["usage"][0]["cache_read_tokens"], 30)
         self.assertIn("checkpoint_crosscheck_only", self.codes(data))
+        self.assertIn("checkpoint_exceeds_requests", self.codes(data), "99999 checkpoint vs 100 collected")
+
+    def test_copilot_matching_checkpoint_is_not_a_gap(self):
+        path = self.write("events.jsonl", copilot_event() + [{"type": "session.usage_checkpoint",
+            "data": {"prompt_tokens": 100, "completion_tokens": 20}}])
+        self.assertNotIn("checkpoint_exceeds_requests", self.codes(collect("copilot", path)))
 
     def test_copilot_sql_jsonl_no_double_count_and_orphan_coverage(self):
         self.write("session-state/p1/events.jsonl", copilot_event())

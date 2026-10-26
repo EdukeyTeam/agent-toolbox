@@ -413,7 +413,7 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
     # A selected source that could not be read is a gap; an empty one (no_eligible_sources) is not.
     gap_codes = {"fork_baseline_unknown", "native_legacy_overlap_unresolved", "source_unreadable",
                  "malformed_or_partial_line", "malformed_json", "explicit_export_required",
-                 "missing_request_identity", "unsupported_usage_schema",
+                 "missing_request_identity", "unsupported_usage_schema", "checkpoint_exceeds_requests",
                  "unsupported_sql_schema", "grok_turn_usage_unavailable", "counter_reset_unknown_baseline",
                  "sql_jsonl_discrepancy", "sql_snapshot_unreadable", "missing_request_id_message_fallback",
                  "grok_aggregate_unavailable_without_turns", "agy_aggregate_time_unavailable"}

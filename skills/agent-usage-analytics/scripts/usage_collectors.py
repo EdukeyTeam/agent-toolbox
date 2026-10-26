@@ -605,6 +605,7 @@ def _copilot_events(path: Path, data: JSON, source: JSON, device: str,
     sid = path.parent.name if path.name == "events.jsonl" else path.stem
     sessions: set[str] = set()
     checkpoint: JSON | None = None
+    collected = {"input_tokens": 0, "output_tokens": 0}
     for line, row in jsonl(path, data, source):
         kind = row.get("type")
         p = obj(row.get("data"))
@@ -663,12 +664,21 @@ def _copilot_events(path: Path, data: JSON, source: JSON, device: str,
         record = usage_row("copilot", sid, request, counts, source, device, account, at,
                            model, "copilot_jsonl_request")
         data["usage"].append(record)
+        for k in ("input_tokens", "output_tokens"):
+            collected[k] += counts[k] or 0
         if counts["input_tokens"] is not None or counts["output_tokens"] is not None:
             sessions.add(sid)
         obs.anchor(at, counts["input_tokens"], pick(p, "model_context_window", "contextWindow"), record["model"])
     if checkpoint:
         # Checkpoints have no request identity and are never additive.
         warn(data, "checkpoint_crosscheck_only", source["id"])
+        # The cumulative checkpoint exceeding the collected requests means the file lost requests
+        # (truncated or rotated): the detailed total is a lower bound.
+        raw = obj(checkpoint.get("usage")) or checkpoint
+        reported = {"input_tokens": count(raw, "prompt_tokens", "input_tokens"),
+                    "output_tokens": count(raw, "completion_tokens", "output_tokens")}
+        if any(v is not None and v > collected[k] for k, v in reported.items()):
+            warn(data, "checkpoint_exceeds_requests", source["id"])
     if obs:
         obs.finish()
     return sessions
