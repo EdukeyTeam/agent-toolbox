@@ -137,6 +137,9 @@ test('runner launches Linux Chrome itself on WSL, never the Windows build', asyn
   assert.equal(findLinuxChrome({ PATH: '/mnt/c/Program Files/Google/Chrome/Application:/usr/bin' }, exists), '/usr/bin/google-chrome');
   assert.equal(findLinuxChrome({ PATH: '/usr/bin', CHROME_PATH: '/opt/chrome' }, exists), '/opt/chrome');
   assert.equal(findLinuxChrome({ PATH: '/mnt/c/Program Files/Google/Chrome/Application' }, exists), null);
+  const winChrome = '/mnt/c/Program Files/Google/Chrome/Application/chrome.exe';
+  files.add(winChrome);
+  assert.equal(findLinuxChrome({ PATH: '/usr/bin', CHROME_PATH: winChrome }, exists), '/usr/bin/google-chrome', 'a Windows CHROME_PATH falls back to Linux Chrome');
 });
 
 test('renderer produces a self-contained report with every section of the example', async () => {

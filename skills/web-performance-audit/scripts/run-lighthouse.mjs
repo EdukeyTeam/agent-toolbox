@@ -78,9 +78,11 @@ export function isWsl(release = os.release(), inDocker = fs.existsSync('/.docker
   return /microsoft/i.test(release) && !inDocker;
 }
 
-// Windows Chrome under /mnt is skipped on purpose: it cannot use a Linux profile path.
+// Windows Chrome under /mnt is skipped on purpose, also when CHROME_PATH (often inherited from Windows) names it:
+// it cannot use a Linux profile path or POSIX process-group cleanup.
+const isWindowsBuild = (p) => p.startsWith('/mnt/') || /\.exe$/i.test(p);
 export function findLinuxChrome(env = process.env, exists = fs.existsSync) {
-  if (env.CHROME_PATH && exists(env.CHROME_PATH)) return env.CHROME_PATH;
+  if (env.CHROME_PATH && !isWindowsBuild(env.CHROME_PATH) && exists(env.CHROME_PATH)) return env.CHROME_PATH;
   const dirs = (env.PATH ?? '').split(':').filter((d) => d && !d.startsWith('/mnt/'));
   for (const name of ['google-chrome-stable', 'google-chrome', 'chromium', 'chromium-browser']) {
     const hit = dirs.map((d) => path.join(d, name)).find((p) => exists(p));
