@@ -40,7 +40,7 @@
   "lcp": {
     "note": "LCP element: hero `<img>` in the first section. Ideal: TTFB ~40%, load delay <10%, load duration ~40%, render delay <10%.",
     "rows": [
-      { "label": "Field, phone (CrUX p75)", "ttfb": 480, "loadDelay": 150, "loadDuration": 300, "renderDelay": 970 },
+      { "label": "Field, phone (CrUX p75)", "lcp": 1900, "ttfb": 480, "loadDelay": 150, "loadDuration": 300, "renderDelay": 1100 },
       { "label": "Lab: mobile 4x, consented", "ttfb": 120, "loadDelay": 400, "loadDuration": 900, "renderDelay": 3300 }
     ],
     "findings": [

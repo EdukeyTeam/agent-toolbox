@@ -67,14 +67,16 @@
     });
   };
 
-  // Stacked horizontal bars (subparts)
+  // Stacked horizontal bars (subparts). A row's optional `total` is the measured whole, shown instead of the
+  // sum: CrUX p75 subparts are independent percentiles and do not add up to the p75 LCP.
   const stacked = (box, rows, keys, { pct = false, unit = 'ms', labelW = 230, refs = [] } = {}) => {
     if (!box) return; box.innerHTML = '';
     const W = 880, R = 74, rowH = 40, top = refs.length ? 22 : 6, H = top + rows.length * rowH + 22;
     const totals = rows.map((r) => r.v.reduce((a, b) => a + b, 0));
+    const shown = rows.map((r, i) => r.total ?? totals[i]);
     const max = pct ? 100 : Math.max(...totals, ...refs.map((r) => r.v), 1) * 1.05;
     const x = (v) => labelW + (v / max) * (W - labelW - R);
-    const described = rows.map((r, i) => `${r.label}: ${r.v.map((v, j) => `${keys[j]} ${fmt(v)} ${unit}`).join(', ')} (total ${fmt(totals[i])} ${unit})`);
+    const described = rows.map((r, i) => `${r.label}: ${r.v.map((v, j) => `${keys[j]} ${fmt(v)} ${unit}`).join(', ')} (${r.total == null ? 'total' : 'measured'} ${fmt(shown[i])} ${unit})`);
     const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': described.join('; ') }, box);
     (pct ? [0, 25, 50, 75, 100] : niceTicks(max)).forEach((t) => {
       svgEl('line', { x1: x(t), x2: x(t), y1: top - 2, y2: H - 20, class: 'grid' }, svg);
@@ -96,7 +98,7 @@
         }
         acc += val;
       });
-      text(svg, { x: W - R + 8, y: y + 17, class: 'val' }, pct ? fmt((r.v[r.v.length - 1] / tot) * 100) + '%' : `${fmt(tot)} ${unit}`);
+      text(svg, { x: W - R + 8, y: y + 17, class: 'val' }, pct ? fmt((r.v[r.v.length - 1] / tot) * 100) + '%' : `${fmt(shown[i])} ${unit}`);
     });
   };
 
@@ -137,11 +139,12 @@
   // LCP subparts
   if (D.lcp && $('lcp-chart')) {
     const keys = ['TTFB', 'Load delay', 'Load duration', 'Render delay'];
-    const rows = D.lcp.rows.map((r) => ({ label: r.label, v: [r.ttfb, r.loadDelay, r.loadDuration, r.renderDelay] }));
+    // Field rows carry the measured p75 LCP in `lcp`; a lab row's subparts come from one trace and do add up.
+    const rows = D.lcp.rows.map((r) => ({ label: r.label, v: [r.ttfb, r.loadDelay, r.loadDuration, r.renderDelay], total: r.lcp }));
     legend('lcp-legend', keys);
     const draw = (mode) => stacked($('lcp-chart'), rows, keys, { pct: mode === 'pct', labelW: 250 });
     toggleGroup('data-lcpscale', draw); draw('pct');
-    table('lcp-table', ['Context', 'LCP ms', ...keys, 'Render delay %'], rows.map((r) => { const t = r.v.reduce((a, b) => a + b, 0); return [r.label, fmt(t), ...r.v.map((v) => fmt(v)), fmt((r.v[3] / t) * 100) + '%']; }));
+    table('lcp-table', ['Context', 'LCP ms', ...keys, 'Render delay % of subparts'], rows.map((r) => { const t = r.v.reduce((a, b) => a + b, 0); return [r.label, fmt(r.total ?? t), ...r.v.map((v) => fmt(v)), fmt((r.v[3] / t) * 100) + '%']; }));
   }
 
   if (D.mainThread) bars($('mt-chart'), D.mainThread, { labelW: 180, W: 600 });
