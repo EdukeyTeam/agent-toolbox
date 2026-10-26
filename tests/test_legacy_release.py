@@ -1,5 +1,6 @@
 """Offline release tests. Git mutations use disposable fixture repositories."""
 
+import ast
 import importlib.util
 import io
 import json
@@ -64,14 +65,18 @@ class ReleaseTests(unittest.TestCase):
     def test_current_repository_pins_agree(self):
         check.validate()
 
-    def test_consumer_and_workflow_changes_need_no_bump(self):
-        for path in (check.SKILL + "scripts/setup_native.py", ".github/workflows/release-legacy-tools.yml"):
+    def test_docs_tests_and_workflow_changes_need_no_bump(self):
+        for path in (check.SKILL + "references/new.md", "tests/test_fixture.py", ".github/workflows/release-legacy-tools.yml"):
             self.write(path, "# orchestration or consumer\n")
             self.git("add", path)
         self.assertEqual(check.check(self.root, base=self.base)["changed_inputs"], [])
 
     def test_each_release_input_change_requires_bump(self):
         paths = [check.CRATE + "src/new.rs", check.CRATE + "licenses/new.txt", check.SKILL + "vendor/queries/new.scm",
+                 check.SKILL + "scripts/repo_map.py", check.SKILL + "scripts/repo_files.py",
+                 check.SKILL + "scripts/repo_render.py", check.SKILL + "scripts/legacy_common.py",
+                 check.SKILL + "scripts/setup_native.py", check.SKILL + "scripts/new_helper.py",
+                 check.SKILL + "scripts/requirements-retrieval.txt", check.SKILL + "scripts/retrieval/embed.mjs",
                  check.SKILL + "vendor/queries/README.md", *sorted(check.INPUT_FILES)]
         for path in paths:
             with self.subTest(path=path):
@@ -88,6 +93,40 @@ class ReleaseTests(unittest.TestCase):
                     self.write(path, original)
                     self.git("add", path)
 
+    def test_repo_render_alone_requires_a_version_bump(self):
+        path = check.SKILL + "scripts/repo_render.py"
+        self.write(path, "# changed rendering behavior\n")
+        self.git("add", path)
+        with self.assertRaisesRegex(ValueError, "without a version bump.*repo_render.py"):
+            check.check(self.root, base=self.base)
+
+    def test_mapper_transitive_local_imports_are_release_inputs(self):
+        # Parse without importing optional parser dependencies. Follow imports
+        # recursively so a future unlisted helper outside scripts/ fails here.
+        roots = [check.ROOT / "scripts", check.ROOT / (check.SKILL + "scripts"), check.ROOT / (check.SKILL + "vendor")]
+        modules = {path.stem: path for root in roots for path in root.rglob("*.py") if "__pycache__" not in path.parts}
+        pending = [modules["repo_map"], modules["build-legacy-tools"], modules["create-legacy-release-manifest"]]
+        visited = set()
+        while pending:
+            path = pending.pop()
+            if path in visited:
+                continue
+            visited.add(path)
+            self.assertTrue(check.covered(path.relative_to(check.ROOT).as_posix()), f"unlisted local import: {path}")
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                names = [alias.name for alias in node.names] if isinstance(node, ast.Import) else [node.module] if isinstance(node, ast.ImportFrom) else []
+                pending.extend(modules[name.split(".")[0]] for name in names if name and name.split(".")[0] in modules)
+        self.assertTrue({"repo_render", "repo_files", "aider_rank", "setup_native"} <= {path.stem for path in visited})
+
+    def test_all_builder_staged_resources_are_release_inputs(self):
+        skill = check.ROOT / check.SKILL
+        paths = [*skill.joinpath("scripts").glob("*.py"),
+                 *(path for path in skill.joinpath("scripts/retrieval").iterdir() if path.is_file()),
+                 *(path for path in skill.joinpath("vendor").rglob("*") if path.is_file() and "__pycache__" not in path.parts),
+                 *(skill / name for name in ("LICENSE.txt", "NOTICE.txt", "THIRD_PARTY.md", "requirements-map.txt", "scripts/requirements-retrieval.txt"))]
+        for path in paths:
+            self.assertTrue(check.covered(path.relative_to(check.ROOT).as_posix()), f"unlisted staged resource: {path}")
+
     def test_coordinated_bump_allows_fix_but_rejects_downgrade(self):
         self.write(check.CRATE + "src/fix.rs", "// fix\n")
         self.git("add", check.CRATE + "src/fix.rs")
@@ -96,6 +135,21 @@ class ReleaseTests(unittest.TestCase):
         self.write_pins("0.2.9")
         with self.assertRaisesRegex(ValueError, "without a version bump"):
             check.check(self.root, base=self.base)
+
+    def test_sequential_same_version_merges_fail_against_previous_main(self):
+        heads = []
+        for branch in ("first", "second"):
+            self.git("switch", "-c", branch, self.base)
+            self.write_pins("0.3.1")
+            self.write(check.CRATE + f"src/{branch}.rs", f"// {branch} fix\n")
+            self.commit()
+            heads.append(self.git("rev-parse", "HEAD"))
+            self.assertEqual(check.check(self.root, base=self.base, head=heads[-1])["release_tag"], "legacy-tools-v0.3.1")
+        self.git("switch", "main")
+        self.git("merge", "--ff-only", heads[0])
+        self.git("merge", "--no-ff", heads[1], "-m", "Second same-version merge")
+        with self.assertRaisesRegex(ValueError, "without a version bump"):
+            check.check(self.root, base=heads[0], head="HEAD")
 
     def test_renamed_deleted_and_control_named_release_inputs_need_bump(self):
         self.git("mv", check.CRATE + "src/main.rs", check.CRATE + "src/renamed.rs")
@@ -138,13 +192,53 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(result["build"], "true")
         self.assertTrue(all(not call.kwargs.get("data") for call in api.call_args_list))
 
-    def test_published_release_is_successful_noop_on_rerun(self):
+    def published_release(self):
         names = [self.policy["release_manifest"], "SHA256SUMS", *(item["archive"] for item in self.policy["platforms"].values())]
-        published = {"draft": False, "prerelease": False, "assets": [{"name": name, "state": "uploaded"} for name in names]}
-        with patch.object(release, "api", return_value=published), patch.object(release.subprocess, "run", wraps=subprocess.run) as run:
+        return {"draft": False, "prerelease": False, "assets": [{"name": name, "state": "uploaded"} for name in names]}
+
+    def test_published_release_is_successful_noop_on_rerun(self):
+        self.git("tag", "-a", self.policy["release_tag"], "-m", "Published fixture")
+        remote = {"object": {"sha": self.git("rev-parse", self.policy["release_tag"])}}
+        with patch.object(release, "api", side_effect=[self.published_release(), remote]), patch.object(release.subprocess, "run", wraps=subprocess.run) as run:
             result = release.publish(self.root, self.root / "nonexistent-assets", self.base)
         self.assertEqual(result["build"], "false")
+        self.assertEqual(result["source_commit"], self.base)
         self.assertFalse(any(call.args[0][0] == "gh" for call in run.call_args_list))
+
+    def test_published_release_rejects_changed_inputs_in_plan_and_publisher(self):
+        # Both builds can plan before either release exists. The serialized
+        # publisher must check again after the other run publishes its tag.
+        with patch.object(release, "api", return_value=None):
+            self.assertEqual(release.plan(self.root)["build"], "true")
+        self.git("tag", self.policy["release_tag"])
+        self.write(check.CRATE + "src/late.rs", "// second merge under the same version\n")
+        self.commit()
+        head = self.git("rev-parse", "HEAD")
+        self.git("update-ref", "refs/remotes/origin/main", head)
+        for publish in (False, True):
+            with self.subTest(publish=publish), patch.object(release, "api", side_effect=[self.published_release(), {"object": {"sha": self.base}}]), patch.object(release.subprocess, "run", wraps=subprocess.run) as run:
+                with self.assertRaisesRegex(ValueError, "release inputs changed after this version was published; bump the pinned version"):
+                    if publish:
+                        release.publish(self.root, self.root / "nonexistent-assets", head)
+                    else:
+                        release.plan(self.root)
+                self.assertFalse(any(call.args[0][0] == "gh" for call in run.call_args_list))
+
+    def test_published_release_allows_documentation_only_head(self):
+        self.git("tag", self.policy["release_tag"])
+        self.write("README.md", "Documentation after publication\n")
+        self.commit()
+        self.git("update-ref", "refs/remotes/origin/main", self.git("rev-parse", "HEAD"))
+        with patch.object(release, "api", side_effect=[self.published_release(), {"object": {"sha": self.base}}]):
+            result = release.plan(self.root)
+        self.assertEqual(result["build"], "false")
+        self.assertEqual(result["source_commit"], self.base)
+
+    def test_published_release_rejects_changed_remote_tag_identity(self):
+        self.git("tag", self.policy["release_tag"])
+        with patch.object(release, "api", side_effect=[self.published_release(), {"object": {"sha": "f" * 40}}]):
+            with self.assertRaisesRegex(ValueError, "remote tag changed"):
+                release.plan(self.root)
 
     def test_partial_published_release_is_reported_without_overwriting(self):
         with patch.object(release, "api", return_value={"draft": False, "assets": []}), self.assertRaisesRegex(ValueError, "lacks required assets"):

@@ -68,6 +68,11 @@ def plan(root=ROOT, requested=""):
         available = {asset["name"] for asset in release.get("assets", []) if asset.get("state") == "uploaded"}
         if not required <= available:
             raise ValueError("existing published release lacks required assets; never overwrite it, inspect recovery or bump the version")
+        existing = api(repository, f"git/ref/tags/{tag}")
+        source = tag_source(root, tag, existing)
+        contract.validate(root, source)
+        if contract.changed_inputs(root, source, "HEAD"):
+            raise ValueError("release inputs changed after this version was published; bump the pinned version")
         return {"release_tag": tag, "source_commit": source, "build": "false", "reason": "release already published; unchanged"}
     existing = api(repository, f"git/ref/tags/{tag}", missing=True)
     if existing is not None:

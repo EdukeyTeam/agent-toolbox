@@ -40,6 +40,7 @@ jobs:
       - name: Check version pins and require bumps for changed release inputs
         env:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
         shell: python
         run: |
           import os, subprocess, sys
@@ -47,6 +48,13 @@ jobs:
           if os.environ['PR_BASE']:
               base = subprocess.check_output(['git', 'merge-base', os.environ['PR_BASE'], 'HEAD'], text=True).strip()
               command.extend(['--base', base])
+          elif os.environ['PUSH_BEFORE'] and set(os.environ['PUSH_BEFORE']) != {'0'}:
+              base = os.environ['PUSH_BEFORE']
+              # A force push can remove the previous main commit from fetched history.
+              if subprocess.run(['git', 'cat-file', '-e', f'{base}^{{commit}}'], capture_output=True).returncode:
+                  subprocess.run(['git', 'fetch', '--no-tags', 'origin', base], check=True)
+              command.extend(['--base', base])
+          # An all-zero before SHA is branch creation, with no previous tree to compare.
           subprocess.run(command, check=True)
       - name: Test release planning, idempotency and version gate offline
         run: python -m unittest discover -s tests -p test_legacy_release.py -v

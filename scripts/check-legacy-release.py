@@ -14,18 +14,20 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILL = "skills/legacy-codebase-workflows/"
 CRATE = "src/legacy-repo-map/"
 POLICY = SKILL + "tool-distribution.json"
-# Native release payload, reference behavior and packaging. Consumer setup,
-# optional retrieval code, tests and orchestration do not change this payload.
+# Native payload, Python reference, staged bundle resources and packaging.
+# Cover directories rather than only today's helpers: the shared builder stages
+# every top-level Python script and retrieval resource, and the index helper
+# imports setup_native. Tests and workflow orchestration are outside this set.
 INPUT_FILES = {
     POLICY, "LICENSE", ".gitattributes", "scripts/build-legacy-tools.py",
     "scripts/create-legacy-release-manifest.py", SKILL + "requirements-map.txt",
-    SKILL + "THIRD_PARTY.md", *(SKILL + "scripts/" + name for name in (
-        "repo_map.py", "repo_files.py", "legacy_common.py")),
+    SKILL + "THIRD_PARTY.md", SKILL + "LICENSE.txt", SKILL + "NOTICE.txt",
 }
 
 
 def covered(path):
     return (path in INPUT_FILES or path.startswith(SKILL + "vendor/")
+            or path.startswith(SKILL + "scripts/")
             or (path.startswith(CRATE) and path != CRATE + "README.md"))
 
 
@@ -94,7 +96,7 @@ def check(root=ROOT, *, base=None, head=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base", help="PR merge-base (full history must be fetched)")
+    parser.add_argument("--base", help="PR merge-base or previous main SHA (full history must be fetched)")
     parser.add_argument("--head", help="optional committed revision instead of working tree")
     args = parser.parse_args()
     try:
