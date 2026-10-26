@@ -249,7 +249,9 @@ def main(argv: list[str] | None = None) -> int:
                     ledger.add({"schema_version": 1, "usage": data["usage"], "contexts": data["contexts"]})
                 finally:
                     ledger.close()
-        if args.session_id and not any(s.get("session_id") == args.session_id for s in data["sessions"]) and not any(r.get("session_id") == args.session_id for r in data["usage"]):
+        # A context observation alone is enough for the session-context report.
+        if args.session_id and not any(r.get("session_id") == args.session_id
+                                       for r in (*data["sessions"], *data["usage"], *data.get("contexts", []))):
             raise ValueError("Requested session was not found in the selected sources/history")
         task_map = json.loads(guarded_path(str(args.task_map)).read_text(encoding="utf-8-sig")) if args.task_map else None
         if task_map is not None and (not isinstance(task_map, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in task_map.items())):

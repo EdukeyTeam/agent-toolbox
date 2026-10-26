@@ -75,6 +75,19 @@ class CLIAndArtifacts(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("requires --session", result.stderr)
 
+    def test_context_only_session_is_inspectable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data = demo_data()
+            data.update(usage=[], sessions=[], tools=[])
+            snapshot = root / "context-only.json"
+            snapshot.write_text(json.dumps(data))
+            result = self.run_cli("session", "--input", snapshot, "--session", "sample-codex-3", "--out", root / "ctx")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            result = self.run_cli("session", "--input", snapshot, "--session", "missing", "--out", root / "none")
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("not found", result.stderr)
+
     def test_empty_inputs_and_credential_filename_are_explicit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
