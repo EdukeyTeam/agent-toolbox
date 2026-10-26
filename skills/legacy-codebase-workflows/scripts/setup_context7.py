@@ -76,7 +76,7 @@ def engine_options(args, root: Path, runtime: Path) -> dict:
             raise ValueError("openai-compatible requires --embed-base-url")
         _url_parts(args.embed_base_url)
         if not is_loopback_url(args.embed_base_url) and not args.allow_remote_embeddings:
-            raise ValueError("Ask the user first; non-loopback endpoint requires --allow-remote-embeddings (code and queries leave this machine)")
+            raise ValueError("Ask the user first; non-loopback endpoint requires --allow-remote-embeddings (indexed code leaves this machine)")
         options.update(embed_base_url=args.embed_base_url, embed_api_key_env=args.embed_api_key_env or "", model_revision=args.model_revision or "", allow_remote_embeddings=args.allow_remote_embeddings)
     return options
 

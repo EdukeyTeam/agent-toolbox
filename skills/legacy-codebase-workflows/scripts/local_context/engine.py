@@ -47,6 +47,10 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
             lib = store.library(con,library_id)
             embedded = json.loads(lib["embedding_json"])
             config = embedded.get("config",{})
+            if mode != "lexical" and config.get("provider") == "openai-compatible":
+                from .embed import is_loopback_url
+                if not is_loopback_url(config.get("base_url", "")):
+                    raise RetrievalError("Remote embeddings are permitted only for explicit indexing; use lexical mode or configure a verified local embedder.", "remote_query_forbidden", 403)
             identity = lib["id"] + "/" + canonical({"config":config, "identity":embedded.get("identity")})
             existing_provider = provider_cache.get(identity) if provider_cache is not None else None
             coverage_key = (store.metadata(con)["database_uuid"], lib["id"], lib["generation"], kind, language)

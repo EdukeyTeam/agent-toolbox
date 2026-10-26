@@ -20,7 +20,7 @@ After enabling embeddings, recommend hybrid queries and keep a warm server with 
 
 ## Consent procedure (mandatory)
 
-Follow the model/endpoint questions in [local Context7 setup](local-context7-setup.md#1-inspect-and-ask-first) before enabling either permission. These rules also apply when invoking the advanced backend directly: only an explicit `index --download-model` may download a model, and non-loopback indexing needs `--allow-remote-embeddings` after consent naming that endpoint. Query and refresh never download; a consented remote provider may embed both documents and queries at its recorded endpoint. Store API key environment variable names, never key values. Ambient environment settings grant no permission; a provider identity change requires re-embedding.
+Follow the model/endpoint questions in [local Context7 setup](local-context7-setup.md#1-inspect-and-ask-first) before enabling either permission. These rules also apply when invoking the advanced backend directly: only an explicit `index --download-model` may download a model, and non-loopback indexing needs `--allow-remote-embeddings` after consent naming that endpoint. Query and refresh never download. Remote-built libraries support lexical queries; semantic/hybrid queries reject non-loopback providers with `remote_query_forbidden`. Store API key environment variable names, never key values. Ambient environment settings grant no permission; a provider identity change requires re-embedding.
 
 ## Existing Ollama, llama.cpp, vLLM or LM Studio endpoint
 
