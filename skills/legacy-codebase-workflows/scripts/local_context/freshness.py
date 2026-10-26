@@ -223,7 +223,9 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
         for row in con.execute("SELECT root_id,path,hash,status FROM files WHERE library_id=? ORDER BY root_id,path",(library_id,)):
             corpus.update(canonical(tuple(row)).encode())
         corpus_id = corpus.hexdigest()
-        modified = old is None or old["corpus_hash"] != corpus_id or canonical(scope) != old["scope_json"] or canonical(parser_config) != old["parser_json"] or embedding_changed
+        # Replacing pending units/vectors changes warm snapshots even when
+        # the source corpus and provider configuration are identical.
+        modified = old is None or old["corpus_hash"] != corpus_id or canonical(scope) != old["scope_json"] or canonical(parser_config) != old["parser_json"] or embedding_changed or bool(changed or added or deleted)
         if old and modified:
             generation += 1
         indexed = con.execute("SELECT count(*) FROM files WHERE library_id=? AND status IN ('indexed','redacted')",(library_id,)).fetchone()[0]
