@@ -476,7 +476,7 @@ def _codex(path: Path, data: JSON, source: JSON, device: str, account: str,
             last_total = total
             legacy.append(usage_row("codex", sid, ("legacy", total, at), delta, source,
                 device, account, at, preceding_model, "codex_legacy_snapshot_delta",
-                legacy_total_input_tokens=total["input_tokens"], legacy_total_output_tokens=total["output_tokens"],
+                **{"legacy_total_" + k: total[k] for k in TOKEN_FIELDS},
                 quality="reconstructed", model_inferred=True, parent_session_id=obs.parent))
     if legacy and first_native:
         p = first_native[1]

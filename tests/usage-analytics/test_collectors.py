@@ -195,6 +195,20 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(data["contexts"][0]["used_tokens"], 170)
         self.assertEqual(data["contexts"][0]["provider_percent"], None)
 
+    def test_codex_legacy_rotated_sources_do_not_double_count(self):
+        from usage_accounting import merge
+        first = self.write("a/run1.jsonl", [meta(), turn(), snapshot(cx_counts(100, 10, 20), at=T1)])
+        rotated = self.write("b/run2.jsonl", [meta(), turn(), snapshot(cx_counts(100, 10, 20), at=T2),
+            snapshot(cx_counts(150, 15, 30), cx_counts(50, 5, 10), at=T3)])
+        later_only = self.write("c/run3.jsonl", [meta(), turn(), snapshot(cx_counts(150, 15, 30), at=T3)])
+        for other in (rotated, later_only):
+            rows = merge(collect("codex", first), collect("codex", other))["usage"]
+            self.assertEqual(sum(r["input_tokens"] for r in rows), 150, other.name)
+            self.assertEqual(sum(r["cache_read_tokens"] for r in rows), 30, other.name)
+            self.assertEqual(sum(r["output_tokens"] for r in rows), 15, other.name)
+        merged = merge(collect("codex", first), collect("codex", rotated))
+        self.assertIn("legacy_cross_source_reconciled", self.codes(merged))
+
     def test_codex_mixed_reconciled_transition(self):
         path = self.write("mixed.jsonl", [meta(), turn(), snapshot(cx_counts(100, 10)),
             native(usage=cx_counts(200, 20), at=T2, thread_total=cx_counts(300, 30)),

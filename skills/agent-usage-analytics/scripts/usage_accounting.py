@@ -23,6 +23,44 @@ def _measured(context: dict[str, Any]) -> int:
     return sum(context.get(f) is not None for f in ("used_tokens", "window_tokens", "provider_percent"))
 
 
+def _reconcile_legacy_endpoints(rows: list[dict[str, Any]], warnings: list[dict[str, Any]], sid: object) -> list[dict[str, Any]]:
+    """Legacy Codex rows are deltas between cumulative snapshots, each computed within one file.
+
+    A rotated or re-collected file restarts from its own first snapshot, so the same cumulative state
+    (identical timestamps are not required) would be counted again. Across all sources and ledger runs,
+    keep one row per cumulative endpoint and re-derive each delta from the preceding endpoint. A row whose
+    totals decrease is a reset and keeps its own recorded delta, as do counters without a stored total.
+    """
+    legacy = [r for r in rows if r.get("accounting_mode") == "codex_legacy_snapshot_delta"]
+    if len(legacy) < 2:
+        return rows
+    def endpoint(r):
+        return r.get("legacy_total_input_tokens"), r.get("legacy_total_output_tokens")
+    ordered = sorted(legacy, key=lambda r: (r.get("timestamp") or "", endpoint(r)[0] or 0, endpoint(r)[1] or 0))
+    kept: list[dict[str, Any]] = []
+    seen: set[tuple] = set()
+    changed = False
+    for row in ordered:
+        if None not in endpoint(row) and endpoint(row) in seen:
+            changed = True
+            continue
+        seen.add(endpoint(row))
+        prev = kept[-1] if kept else None
+        if prev is not None and None not in endpoint(row) and None not in endpoint(prev) and all(
+                a >= b for a, b in zip(endpoint(row), endpoint(prev))):
+            for k in COUNTS:
+                now, before = row.get("legacy_total_" + k), prev.get("legacy_total_" + k)
+                if now is not None and before is not None and row.get(k) != now - before:
+                    row[k] = now - before
+                    changed = True
+        kept.append(row)
+    if changed:
+        warnings.append({"id": digest("legacy_cross_source_reconciled", sid), "code": "legacy_cross_source_reconciled",
+                         "session_id": sid, "source_id": legacy[0].get("source_id")})
+    ids = {r["id"] for r in kept}
+    return [r for r in rows if r.get("accounting_mode") != "codex_legacy_snapshot_delta" or r["id"] in ids]
+
+
 def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
     """Stable identities reconcile duplicate files; counts are never additive."""
     result = dataset()
@@ -77,6 +115,7 @@ def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
     reconciled = []
     for (agent, sid), rows in groups.items():
         if agent == "codex":
+            rows = _reconcile_legacy_endpoints(rows, result["warnings"], sid)
             native = [r for r in rows if r.get("accounting_mode") == "codex_native_per_response"]
             legacy = [r for r in rows if r.get("accounting_mode") == "codex_legacy_snapshot_delta"]
             if native and legacy:
