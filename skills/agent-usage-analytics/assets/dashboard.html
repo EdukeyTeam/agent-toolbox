@@ -448,8 +448,12 @@ footer { color: var(--faint); font-size: .8rem; padding: 0 20px 32px; text-align
     });
     var summary = newMetrics('All');
     list.forEach(function (x) { addTo(summary, x.r); });
+    summary = finish(summary);
+    // Skipped or unreadable activity cannot be proven outside the filter, so a report-level gap still applies.
+    var gaps = obj(report.summary).accounting_gap_observations;
+    if (isNum(gaps) && gaps > 0) { summary.accounting_gap_observations = gaps; summary.count_quality = 'known lower bound'; }
     return {
-      filtered: true, matched: list.length, summary: finish(summary),
+      filtered: true, matched: list.length, summary: summary,
       daily: groupBy(list, function (x) { return x.day || 'Unknown date'; }).sort(byLabel),
       monthly: groupBy(list, function (x) { return x.day ? x.day.slice(0, 7) : 'Unknown month'; }).sort(byLabel),
       models: groupBy(list, function (x) { return x.model; }).sort(byTotal),
