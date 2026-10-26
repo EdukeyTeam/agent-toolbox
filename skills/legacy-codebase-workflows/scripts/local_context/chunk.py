@@ -527,8 +527,30 @@ def docs_units(text: str, path: str, fmt: str, target=1500):
     headings = []
     fence = None
     literal_indent = literal_pending = None
+    asciidoc_block = None
+    markdown_code = markdown_paragraph = False
     for i, line in enumerate(lines):
         stripped = line.strip()
+        if fmt == "asciidoc":
+            if asciidoc_block is not None:
+                if line == asciidoc_block:
+                    asciidoc_block = None
+                continue
+            if re.fullmatch(r"(-{4,}|\.{4,}|\+{4,})", line):
+                asciidoc_block = line
+                continue
+        if fmt == "markdown":
+            indent = len(line.expandtabs(4)) - len(line.expandtabs(4).lstrip())
+            if not stripped:
+                markdown_paragraph = False
+                continue  # Blank lines continue an existing indented block.
+            if markdown_code:
+                if indent >= 4:
+                    continue
+                markdown_code = False
+            if not fence and indent >= 4 and not markdown_paragraph:
+                markdown_code = True
+                continue
         if fmt == "rst":
             indent = len(line.expandtabs(8)) - len(line.expandtabs(8).lstrip())
             if not stripped:
@@ -544,22 +566,27 @@ def docs_units(text: str, path: str, fmt: str, target=1500):
             if stripped.endswith("::") or re.match(r"^\.\.\s+[\w-]+::", stripped):
                 literal_pending = indent
                 continue
-        match = re.match(r"^(`{3,}|~{3,})", stripped)
+        match = re.match(r"^(`{3,}|~{3,})", stripped) if fmt != "markdown" or indent < 4 else None
         if match:
             if fence is None:
                 fence = (match[1][0], len(match[1]))
             elif match[1][0] == fence[0] and len(match[1]) >= fence[1] and not stripped[match.end():].strip():
                 fence = None
+            markdown_paragraph = False
             continue
         if fence:
             continue
         heading = re.match(r"^(#{1,6}|={1,6})\s+(.+?)\s*#*\s*$", line)
         if heading:
             headings.append((i + 1, len(heading[1]), heading[2]))
-        elif i + 1 < len(lines) and stripped and re.fullmatch(r"([=\-])\1{2,}" if fmt == "markdown" else r"([=~^`:#*+\-])\1{2,}", lines[i + 1].strip()) and not re.match(r"^(`{3,}|~{3,})", lines[i + 1].strip()):
+            markdown_paragraph = False
+        elif i + 1 < len(lines) and stripped and (fmt != "asciidoc" or not re.fullmatch(r"(-{4,}|\.{4,}|\+{4,})", lines[i + 1])) and (fmt != "markdown" or len(lines[i + 1].expandtabs(4)) - len(lines[i + 1].expandtabs(4).lstrip()) < 4) and re.fullmatch(r"([=\-])\1{2,}" if fmt == "markdown" else r"([=~^`:#*+\-])\1{2,}", lines[i + 1].strip()) and not re.match(r"^(`{3,}|~{3,})", lines[i + 1].strip()):
             chars = "=~-^\"`:+*#"
             level = (1 if lines[i + 1].strip()[0] == "=" else 2) if fmt == "markdown" else chars.find(lines[i + 1].strip()[0]) + 1
             headings.append((i + 1, max(1, level), stripped))
+            markdown_paragraph = False
+        elif fmt == "markdown":
+            markdown_paragraph = not bool(re.fullmatch(r" {0,3}(?:[-*_]\s*){3,}", line))
     boundaries = sorted({1, *(h[0] for h in headings), len(lines) + 1})
     stack = []
     result = []
