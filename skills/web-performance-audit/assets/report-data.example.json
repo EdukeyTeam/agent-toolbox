@@ -1,0 +1,114 @@
+{
+  "meta": {
+    "title": "example.com Performance Audit",
+    "eyebrow": "Web performance audit / homepage",
+    "headline": "example.com: users are fine today, slow phones are not",
+    "lede": "Synthetic example data. Field Core Web Vitals pass; on a mid-range phone in the lab the page scores 52/100 and the hero image waits behind main-thread work.",
+    "url": "https://example.com/",
+    "date": "2026-01-15",
+    "tools": ["Chrome 150", "Lighthouse 13.x", "DevTools MCP 1.x", "CrUX p75, 28 days"]
+  },
+  "field": {
+    "note": "URL scope, rolling 28 days. All three Core Web Vitals are good on both form factors.",
+    "rows": [
+      { "metric": "LCP", "phone": 1900, "desktop": 1300, "unit": "ms", "good": 2500, "poor": 4000 },
+      { "metric": "INP", "phone": 150, "desktop": 60, "unit": "ms", "good": 200, "poor": 500 },
+      { "metric": "CLS", "phone": 0.02, "desktop": 0.01, "unit": "", "good": 0.1, "poor": 0.25 },
+      { "metric": "TTFB", "phone": 480, "desktop": 350, "unit": "ms", "good": 800, "poor": 1800 }
+    ]
+  },
+  "labNote": "Clean headless Chrome, cold cache, anonymous visitor. Mobile = Lighthouse default (4x CPU, 150 ms RTT, ~1.6 Mbps).",
+  "lab": {
+    "mobile": {
+      "scores": { "performance": [52, 48, 55], "accessibility": [96, 96, 96], "best practices": [92, 92, 92], "seo": [100, 100, 100] },
+      "metrics": { "FCP": [2900, 3050, 2980], "LCP": [4200, 4650, 4300], "TBT": [1200, 1350, 1100], "CLS": [0.01, 0.01, 0.01], "Speed Index": [3900, 4100, 3800], "TTFB": [300, 280, 310] }
+    },
+    "desktop": {
+      "scores": { "performance": [91, 90, 92], "accessibility": [95, 95, 95], "best practices": [92, 92, 92], "seo": [100, 100, 100] },
+      "metrics": { "FCP": [700, 760, 720], "LCP": [1600, 1750, 1650], "TBT": [60, 90, 70], "CLS": [0.02, 0.02, 0.02], "Speed Index": [1200, 1300, 1250], "TTFB": [180, 200, 190] }
+    }
+  },
+  "thresholds": { "FCP": [1800, 3000], "LCP": [2500, 4000], "TBT": [200, 600], "CLS": [0.1, 0.25], "Speed Index": [3400, 5800], "TTFB": [800, 1800] },
+  "verdict": {
+    "items": [
+      "**No emergency.** Field p75 passes all Core Web Vitals.",
+      "**The bottleneck is the main thread.** About 70% of mobile LCP is render delay.",
+      "**Tags after consent** add about 600 KB and 5 s of CPU at 4x slowdown."
+    ],
+    "callout": "Start with **P0-1** (critical CSS) and **P0-2** (delay marketing tags)."
+  },
+  "lcp": {
+    "note": "LCP element: hero `<img>` in the first section. Ideal: TTFB ~40%, load delay <10%, load duration ~40%, render delay <10%.",
+    "rows": [
+      { "label": "Field, phone (CrUX p75)", "lcp": 1900, "ttfb": 480, "loadDelay": 150, "loadDuration": 300, "renderDelay": 1100 },
+      { "label": "Lab: mobile 4x, consented", "ttfb": 120, "loadDelay": 400, "loadDuration": 900, "renderDelay": 3300 }
+    ],
+    "findings": [
+      { "title": "Verified: main-thread contention", "body": "The hero image is in cache at 1.2 s but painted at 3.1 s; the carousel initializes later, at 4.0 s." }
+    ]
+  },
+  "mainThreadNote": "Lighthouse mobile, 4x CPU: 4.1 s in total.",
+  "mainThread": [["Script evaluation", 1800], ["Style & layout", 1200], ["Other", 500], ["Script parse & compile", 350], ["Parse HTML & CSS", 200]],
+  "scripts": [["(document)", 900], ["tag-manager.js", 700], ["app.bundle.js", 450], ["vendor.bundle.js", 300]],
+  "thirdPartyStates": ["Anonymous", "Consented"],
+  "thirdParties": [
+    { "vendor": "Tag manager", "stateA_KB": 300, "stateB_KB": 520, "mainMs": 3100 },
+    { "vendor": "Ad pixel A", "stateA_KB": 0, "stateB_KB": 60, "mainMs": 1200 },
+    { "vendor": "Session recording", "stateA_KB": 0, "stateB_KB": 25, "mainMs": 600 }
+  ],
+  "thirdPartyNote": "Main thread is measured in the consented state at 4x CPU.",
+  "budget": [
+    { "resource": "Total page weight", "budgetKiB": 1500, "actualKiB": 1900 },
+    { "resource": "JavaScript", "budgetKiB": 300, "actualKiB": 720 },
+    { "resource": "CSS", "budgetKiB": 100, "actualKiB": 140 },
+    { "resource": "Fonts", "budgetKiB": 100, "actualKiB": 80 }
+  ],
+  "waste": [
+    { "item": "`main.css`", "evidence": "140 KiB, 85% unused on this page, render-blocking", "saving": "~120 KiB, FCP -0.8 s" }
+  ],
+  "inp": {
+    "note": "Event Timing API, mobile viewport, 4x CPU.",
+    "rows": [
+      { "label": "Open menu", "inputDelay": 5, "processing": 40, "presentation": 380 },
+      { "label": "Carousel next", "inputDelay": 20, "processing": 15, "presentation": 240 }
+    ],
+    "diagnosis": ["Presentation delay dominates: style and layout over 2,800 elements.", "Forced reflow in `carousel.js:88`."]
+  },
+  "memory": {
+    "title": "Memory: no leak",
+    "note": "Snapshots after load and after 10x menu + carousel cycles.",
+    "tiles": [
+      { "label": "JS heap used", "value": "22.1 MB", "sub": "+0.1 MB after 40 interactions" },
+      { "label": "Detached DOM", "value": "1.2 kB", "sub": "negligible" }
+    ],
+    "retained": [["Compiled JS code", 8.2], ["StyleRule objects", 3.1]],
+    "footnote": "Object ownership guesses are hypotheses until confirmed with retainers."
+  },
+  "todos": [
+    {
+      "id": "P0-1", "priority": "P0", "title": "Inline critical CSS and defer the rest",
+      "impact": "FCP, LCP: FCP -0.8 s (estimate)", "effort": "M", "owner": "Front end",
+      "evidence": ["`main.css` 140 KiB, 85% unused, render-blocking."],
+      "how": ["Extract above-the-fold CSS (at most 14 KiB) into an inline `<style>`.", "Load the rest with `media=\"print\" onload`."],
+      "code": [{ "code": "<link rel=\"stylesheet\" href=\"/main.css\" media=\"print\" onload=\"this.media='all'\">" }],
+      "verify": "Lighthouse mobile x3: render-blocking insight under 300 ms."
+    },
+    {
+      "id": "P0-2", "priority": "P0", "title": "Delay non-essential marketing tags until idle",
+      "impact": "TBT, INP", "effort": "S", "owner": "Marketing + dev",
+      "evidence": ["Ad pixel A: 1.2 s main thread at 4x CPU."],
+      "how": ["Fire non-essential tags on a `page_idle` event."],
+      "verify": "Consented trace: third-party main thread under 2 s at 4x CPU."
+    },
+    { "id": "P3-1", "priority": "P3", "title": "Add RUM with the web-vitals attribution build", "impact": "Observability", "effort": "S", "owner": "Dev" }
+  ],
+  "targets": { "head": ["Metric", "Today", "After P0", "After P1"], "rows": [["LCP (mobile lab)", "4.3 s", "3.0 s", "2.5 s"], ["TBT", "1.2 s", "600 ms", "300 ms"]] },
+  "method": {
+    "intro": "Field data first, lab data for diagnosis. Medians of 3 runs.",
+    "rows": [
+      ["A", "Lighthouse CLI x3, clean headless", "Mobile default", "Cold", "Anonymous", "Baseline"],
+      ["E", "DevTools trace, isolated context", "Mobile, Slow 4G, 4x CPU", "Cold", "Consented", "Tag cost without extensions"]
+    ],
+    "notes": [{ "title": "Caveats", "body": "CrUX is a 28-day aggregate; lab traces are single sessions." }]
+  }
+}
