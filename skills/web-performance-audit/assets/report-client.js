@@ -76,7 +76,7 @@
     const shown = rows.map((r, i) => r.total ?? totals[i]);
     const max = pct ? 100 : Math.max(...totals, ...refs.map((r) => r.v), 1) * 1.05;
     const x = (v) => labelW + (v / max) * (W - labelW - R);
-    const described = rows.map((r, i) => `${r.label}: ${r.v.map((v, j) => `${keys[j]} ${fmt(v)} ${unit}`).join(', ')} (${r.total == null ? 'total' : 'measured'} ${fmt(shown[i])} ${unit})`);
+    const described = rows.map((r, i) => `${r.label}: ${r.v.map((v, j) => `${keys[j]} ${fmt(v)} ${unit}`).join(', ')} (${r.total == null ? 'observed total' : 'measured'} ${fmt(shown[i])} ${unit})`);
     const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': described.join('; ') }, box);
     (pct ? [0, 25, 50, 75, 100] : niceTicks(max)).forEach((t) => {
       svgEl('line', { x1: x(t), x2: x(t), y1: top - 2, y2: H - 20, class: 'grid' }, svg);
@@ -150,7 +150,8 @@
     legend('lcp-legend', keys);
     const draw = (mode) => stacked($('lcp-chart'), rows, keys, { pct: mode === 'pct', labelW: 250 });
     toggleGroup('data-lcpscale', draw); draw('pct');
-    table('lcp-table', ['Context', 'LCP ms', ...keys, 'Render delay % (lab)'], rows.map((r) => { const t = r.v.reduce((a, b) => a + b, 0); return [r.label, fmt(r.total ?? t), ...r.v.map((v) => fmt(v)), r.total == null ? fmt((r.v[3] / t) * 100) + '%' : '-']; }));
+    // Lab subparts come from the observed trace, while the scorecard's Lighthouse LCP is simulated; say which.
+    table('lcp-table', ['Context', 'LCP ms (field p75 / lab observed)', ...keys, 'Render delay % (lab)'], rows.map((r) => { const t = r.v.reduce((a, b) => a + b, 0); return [r.label, fmt(r.total ?? t), ...r.v.map((v) => fmt(v)), r.total == null ? fmt((r.v[3] / t) * 100) + '%' : '-']; }));
   }
 
   if (D.mainThread) bars($('mt-chart'), D.mainThread, { labelW: 180, W: 600 });
