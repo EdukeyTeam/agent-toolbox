@@ -22,7 +22,7 @@ class RemoteQueryTests(unittest.TestCase):
             config = {"provider": "openai-compatible", "base_url": "https://remote.example/v1", "allow_remote": True}
             provider = FakeProvider()
             with mock.patch.object(freshness, "provider_for", return_value=provider) as factory:
-                freshness.index(root, db, "/local/remote", parser="0", _saved=config)
+                freshness.index(root, db, "/local/remote", parser="0", _saved=config, allow_remote_embeddings=True)
                 self.assertTrue(factory.called, "Explicit indexing must still support its authorized provider")
             key = "/local/remote/" + canonical({"config": config, "identity": provider.identity})
             for mode in ("semantic", "hybrid"):

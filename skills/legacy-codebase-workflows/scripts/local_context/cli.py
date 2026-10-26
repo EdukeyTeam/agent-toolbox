@@ -77,6 +77,7 @@ def main(argv=None):
         else:
             cmd.add_argument("--verify-all",action="store_true")
             if name=="refresh":
+                cmd.add_argument("--allow-remote-embeddings",action="store_true",help="Re-authorize sending indexed code to the saved remote endpoint for this explicit refresh; required again on every remote refresh")
                 cmd.add_argument("--all",action="store_true")
                 cmd.add_argument("--jobs",type=int,default=1)
     args = parser.parse_args(argv)
@@ -96,9 +97,9 @@ def main(argv=None):
                     raise RetrievalError("--all and --library-id are mutually exclusive")
                 with store.connect(args.database) as con:
                     ids = [r[0] for r in con.execute("SELECT id FROM libraries ORDER BY id")]
-                result = {"libraries":[freshness.refresh(args.database,i,verify_all=args.verify_all) for i in ids]}
+                result = {"libraries":[freshness.refresh(args.database,i,verify_all=args.verify_all,allow_remote_embeddings=args.allow_remote_embeddings) for i in ids]}
             else:
-                result = freshness.refresh(args.database,args.library_id,verify_all=args.verify_all)
+                result = freshness.refresh(args.database,args.library_id,verify_all=args.verify_all,allow_remote_embeddings=args.allow_remote_embeddings)
         elif args.command=="serve":
             from .http_api import serve
             serve(args.database,args.host,args.port,args.default_mode,args.default_rerank,args.default_vector_engine,default_library=args.library_id,tokens=args.tokens,refresh_policy=args.refresh)

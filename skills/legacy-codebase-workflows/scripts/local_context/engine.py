@@ -102,6 +102,10 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
             response["coverage"]["embeddingCoverage"] = coverage
             if mode == "hybrid" and coverage < 1:
                 response["warnings"].append("Embeddings are incomplete; rebuild into a new database to restore full hybrid coverage.")
+            if config.get("provider") == "openai-compatible" and coverage < 1:
+                from .embed import is_loopback_url
+                if not is_loopback_url(config.get("base_url")):
+                    response["warnings"].append("Remote vectors pending; approve the endpoint and run an explicit refresh with --allow-remote-embeddings")
             if revision_changed or trigger_changed:
                 response["warnings"].append("Repository change trigger fired; run refresh to update inventory and recorded revisions.")
                 response["freshness"]["state"] = "stale"

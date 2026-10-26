@@ -12,7 +12,7 @@ Optional runtime installation and offline delivery for the local retrieval engin
 
 - `local-python` (recommended): install `scripts/requirements-embed.txt` (Model2Vec 0.10.0 runtime, about 94 MB of packages) and download the default model `minishlab/potion-code-16M-v2`, pinned revision `e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b` (about 34 MB), once; it runs on CPU and stays warm in-process.
 - `openai-compatible`: an endpoint you already run (Ollama, llama.cpp server, vLLM, LM Studio) or a company gateway; see the endpoint section below.
-- `transformers-js`: the locked Node helper; copy `scripts/retrieval/package.json`, `pnpm-workspace.yaml` and `pnpm-lock.yaml` into an empty directory, run `pnpm install --dir /path/to/inference-runtime --frozen-lockfile` with Node.js 24, and pass the directory as `--embedding-runtime`.
+- `transformers-js`: the locked Node helper; copy `scripts/retrieval/package.json`, `scripts/retrieval/pnpm-workspace.yaml` and `scripts/retrieval/pnpm-lock.yaml` into an empty directory, run `pnpm install --dir /path/to/inference-runtime --frozen-lockfile` with Node.js 24, and pass the directory as `--embedding-runtime`.
 
 Optional vector acceleration: NumPy or the pinned `sqlite-vec` 0.1.9 (in `scripts/requirements-retrieval.txt`, tool environment only), selected with `--vector-engine numpy|sqlite-vec|auto`; the default `stdlib` engine needs nothing. In source-repository measurements NumPy was the fastest exact scanner; if both are installed, select `numpy` explicitly for large libraries.
 
@@ -20,7 +20,15 @@ After enabling embeddings, recommend hybrid queries and keep a warm server with 
 
 ## Consent procedure (mandatory)
 
-Follow the model/endpoint questions in [local Context7 setup](local-context7-setup.md#1-inspect-and-ask-first) before enabling either permission. These rules also apply when invoking the advanced backend directly: only an explicit `index --download-model` may download a model, and non-loopback indexing needs `--allow-remote-embeddings` after consent naming that endpoint. Query and refresh never download. Remote-built libraries support lexical queries; semantic/hybrid queries reject non-loopback providers with `remote_query_forbidden`. Store API key environment variable names, never key values. Ambient environment settings grant no permission; a provider identity change requires re-embedding.
+Follow the model/endpoint questions in [local Context7 setup](local-context7-setup.md#1-inspect-and-ask-first) before enabling either permission. These rules also apply when invoking the advanced backend directly: only an explicit `index --download-model` may download a model, and each manual non-loopback index or refresh needs `--allow-remote-embeddings` again after consent naming that endpoint and explaining that indexed code leaves the machine. Persisted `allow_remote` is an audit record and grants no new upload permission; omitting the flag returns `consent_required` before any provider call. Hooks and automatic/candidate-only refresh update lexical data, leave remote vectors pending and report that explicit consent is needed. Loopback endpoints and local models keep their existing refresh behavior. Query and refresh never download. Remote-built libraries support lexical queries; semantic/hybrid queries reject non-loopback providers with `remote_query_forbidden`. Store API key environment variable names, never key values. Ambient environment settings grant no permission; a provider identity change requires re-embedding.
+
+After endpoint approval, refresh a saved remote library with:
+
+```bash
+python /path/to/skill/scripts/context7_backend.py refresh --database /path/to/indexes/repo.sqlite --library-id /local/repo --allow-remote-embeddings
+```
+
+For generated projects, use `python tools/local_context7.py refresh --allow-remote-embeddings` from the project root (or the absolute command in AGENTS.md). Repeat the flag for every manual remote refresh.
 
 ## Existing Ollama, llama.cpp, vLLM or LM Studio endpoint
 
@@ -44,7 +52,7 @@ python3.12 -m pip download --only-binary=:all: --dest wheels -r /path/to/skill/s
 Download the pinned model revision's files (`config.json`, `model.safetensors`, `tokenizer.json`, plus the model card for its license) into a model directory, record their SHA-256 hashes, and copy the skill scripts, the wheels directory and the model directory to the target machine through the approved medium. A Python 3.12+ runtime must already exist there. Install offline and index without any download:
 
 ```bash
-python3.12 -m pip install --no-index --find-links wheels -r requirements-embed.txt
+python3.12 -m pip install --no-index --find-links wheels -r /path/to/skill/scripts/requirements-embed.txt
 python /path/to/skill/scripts/context7_backend.py index /path/to/repo --database /path/to/indexes/repo.sqlite --library-id /local/repo --embed-provider local-python --embed-model minishlab/potion-code-16M-v2 --model-revision e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b --model-dir /path/to/models/potion-code-16M-v2
 ```
 

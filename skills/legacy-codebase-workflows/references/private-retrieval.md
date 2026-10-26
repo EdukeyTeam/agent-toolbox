@@ -36,6 +36,14 @@ python /path/to/skill/scripts/context7_backend.py refresh --database /path/to/in
 
 `query` accepts `--mode lexical|semantic|hybrid` (default lexical), `--rerank lexical-symbol|cross-encoder` (`lexical-symbol` is a compatibility alias of the lexical pipeline; `cross-encoder` returns a clear not-supported error in v1), `--vector-engine`, `--limit` (default 5, range 1..50), `--tokens`, `--refresh auto|off|strict`, `--format json|text|context7-json` (default native JSON), `--kind code|docs`, `--language`, `--explain` and `--ablate`. Query text is 1..8,000 characters; only the first 32 terms are analyzed.
 
+For a saved non-loopback endpoint, ask for approval naming the endpoint and stating that indexed code leaves the machine, then repeat the flag on each manual refresh:
+
+```bash
+python /path/to/skill/scripts/context7_backend.py refresh --database /path/to/indexes/repo.sqlite --library-id /local/repo --allow-remote-embeddings
+```
+
+Without that flag a manual remote refresh fails with `consent_required`, before creating a provider. Hooks and automatic/candidate-only refresh update lexical data only, leave remote vectors pending and report the command needed for explicit consent. Local providers keep their existing behavior.
+
 `index` accepts `--library-id` (required), `--docs-root`, `--title`, `--description`, `--chunk-chars` (default 1,500 non-whitespace characters, range 128..12,000), repeatable `--exclude` and `--include` exact relative paths, `--encodings`, `--parser auto|0|1`, `--no-secret-scan`, soft `--max-files`/`--max-units` (default unbounded), `--max-file-bytes` (default 2,000,000), `--discovery-limit` (default 2,000,000), `--jobs`, the embedding flags described in [retrieval setup](retrieval-setup.md) and `--vector-engine`. Omitting every `--exclude` on a new index invocation intentionally resets the exclusion list; `refresh` always reuses the saved scope. Re-running `index` for an existing library is incremental and atomic: a failed run leaves the previous index in place.
 
 `refresh` accepts `--library-id` (optional only for a single-library database), `--all`, `--verify-all` (full hash audit) and `--jobs`. It prints a per-file added/changed/removed report; a commit that changes no file contents updates only revision metadata. `expand` takes `--unit-id`, or `--path` with `--root-id`, `--start-line` and `--end-line` (at most 2,000 lines, always the live verified source). `status` reports per-library counts, roots, revisions, parser tier, embedding coverage and scan policy. `resolve` ranks local libraries by exact ID, then casefolded title/ID token and description matches.

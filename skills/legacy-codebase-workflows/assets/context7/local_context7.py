@@ -144,7 +144,7 @@ def local_server(backend, database: Path, port: int = 0):
         backend.ThreadingHTTPServer = original
 
 
-def index(backend, runtime: Path, *, download_model=False) -> dict:
+def index(backend, runtime: Path, *, download_model=False, allow_remote_embeddings=False, automatic=False) -> dict:
     if download_model and not PROJECT.get("consent", {}).get("modelDownload"):
         raise ValueError("Model download was not approved in project setup; record consent first")
     # Project policy, never ambient LEGACY_EMBED_* settings, owns this index.
@@ -159,7 +159,8 @@ def index(backend, runtime: Path, *, download_model=False) -> dict:
     return backend.index(ROOT, runtime / "index.sqlite", LIBRARY_ID, DOCS_ROOT,
                          excludes=EXCLUDES, parser=ENGINE.get("parser", "auto"),
                          model_cache=ENGINE.get("model_cache"), model_dir=ENGINE.get("model_dir"),
-                         _saved=provider, download_model=download_model)
+                         _saved=provider, download_model=download_model,
+                         allow_remote_embeddings=allow_remote_embeddings, _automatic=automatic)
 
 
 def policy_matches(con) -> bool:
@@ -173,9 +174,14 @@ def policy_matches(con) -> bool:
             and all((embeddings.get(k) or None) == (ENGINE.get(v) or None) for k, v in mapping.items()))
 
 
-def refresh(backend, runtime: Path) -> dict:
+def refresh(backend, runtime: Path, *, allow_remote_embeddings=False, automatic=False) -> dict:
     """Check freshness first; write incremental updates only when necessary."""
     database = runtime / "index.sqlite"
+    from local_context.embed import is_loopback_url
+    remote = ENGINE.get("embed_provider") == "openai-compatible" and not is_loopback_url(ENGINE.get("embed_base_url"))
+    if remote and not automatic and not allow_remote_embeddings:
+        raise backend.RetrievalError("Remote embedding consent required: indexed code leaves this machine; after endpoint approval, run python tools/local_context7.py refresh --allow-remote-embeddings", "consent_required", 403)
+    refresh_options = {"allow_remote_embeddings": allow_remote_embeddings, "automatic": automatic}
     if database.is_file():
         with backend.connect(database) as con:
             metadata = backend.indexed_metadata(con)
@@ -189,12 +195,12 @@ def refresh(backend, runtime: Path) -> dict:
                     # settings; repeating the old lexical index call would reset them.
                     native_refresh = getattr(backend, "refresh", None)
                     if callable(native_refresh):
-                        return {**native_refresh(database, LIBRARY_ID), "refreshed": True}
+                        return {**native_refresh(database, LIBRARY_ID, **refresh_options), "refreshed": True}
                 else:
                     if con.execute("SELECT 1 FROM files WHERE library_id=? AND embedding_status='pending' LIMIT 1", (LIBRARY_ID,)).fetchone():
-                        return {**backend.refresh(database, LIBRARY_ID), "refreshed": True}
+                        return {**backend.refresh(database, LIBRARY_ID, **refresh_options), "refreshed": True}
                     return {"libraryId": LIBRARY_ID, "refreshed": False, "changed": 0, "deleted": 0, "revision": metadata["revision"]}
-    return {**index(backend, runtime), "refreshed": True}
+    return {**index(backend, runtime, **refresh_options), "refreshed": True}
 
 
 def main(argv=None) -> int:
@@ -205,7 +211,9 @@ def main(argv=None) -> int:
     install.add_argument("--skill-root", type=Path, default=Path.home() / ".agents" / "skills" / "legacy-codebase-workflows")
     indexing = commands.add_parser("index", help="Explicitly refresh original code and docs")
     indexing.add_argument("--download-model", action="store_true", help="Use previously recorded download consent for this explicit index run only")
-    commands.add_parser("refresh", help="Check freshness and incrementally update only if stale")
+    indexing.add_argument("--allow-remote-embeddings", action="store_true", help="Authorize uploading indexed code to the approved remote endpoint for this index run only")
+    refreshing = commands.add_parser("refresh", help="Check freshness and incrementally update only if stale; remote embeddings need renewed consent")
+    refreshing.add_argument("--allow-remote-embeddings", action="store_true", help="Re-authorize uploading indexed code to the saved remote endpoint for this refresh run only")
     commands.add_parser("status", help="Verify source freshness and print index metadata")
     serve = commands.add_parser("serve", help="Serve Context7 HTTP compatibility routes until Ctrl+C")
     serve.add_argument("--port", type=int, default=8765)
@@ -234,9 +242,9 @@ def main(argv=None) -> int:
                 if not policy_matches(con):
                     raise ValueError("Project engine policy changed; run local_context7.py refresh before querying")
         if args.command == "index":
-            print(json.dumps(index(backend, runtime, download_model=args.download_model), indent=2))
+            print(json.dumps(index(backend, runtime, download_model=args.download_model, allow_remote_embeddings=args.allow_remote_embeddings), indent=2))
         elif args.command == "refresh":
-            print(json.dumps(refresh(backend, runtime), indent=2))
+            print(json.dumps(refresh(backend, runtime, allow_remote_embeddings=args.allow_remote_embeddings), indent=2))
         elif args.command in ("status", "query", "expand"):
             with backend.connect(database) as con:
                 if args.command == "status":
@@ -261,6 +269,9 @@ def main(argv=None) -> int:
     except KeyboardInterrupt:
         return 130
     except Exception as exc:
+        if getattr(exc, "code", None) == "consent_required":
+            print(json.dumps({"error": str(exc), "code": exc.code}), file=sys.stderr)
+            return 5
         print(f"Local Context7: {exc}", file=sys.stderr)
         return 1
 

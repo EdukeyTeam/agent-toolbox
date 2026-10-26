@@ -47,7 +47,7 @@ def embedding_config(embed_model=None, model_revision=None, model_cache=None, em
         raise RetrievalError("Embedding configuration unavailable", "provider_unavailable", 503) from exc
 
 
-def index(root, database, library_id, docs_root=None, embed_model=None, model_cache=None, embedding_runtime=None, *, model_revision=None, vector_engine="stdlib", reranker_model=None, reranker_revision=None, chunk_chars=DEFAULT_CHUNK_CHARS, excludes=(), docs_roots=(), includes=(), encodings=(), no_secret_scan=False, parser="auto", max_files=0, max_units=0, max_file_bytes=2_000_000, discovery_limit=2_000_000, title=None, description=None, jobs=1, verify_all=False, _timeout=5.0, _candidate_paths=None, _saved=None, **kwargs):
+def index(root, database, library_id, docs_root=None, embed_model=None, model_cache=None, embedding_runtime=None, *, model_revision=None, vector_engine="stdlib", reranker_model=None, reranker_revision=None, chunk_chars=DEFAULT_CHUNK_CHARS, excludes=(), docs_roots=(), includes=(), encodings=(), no_secret_scan=False, parser="auto", max_files=0, max_units=0, max_file_bytes=2_000_000, discovery_limit=2_000_000, title=None, description=None, jobs=1, verify_all=False, _timeout=5.0, _candidate_paths=None, _saved=None, _automatic=False, **kwargs):
     started = time.monotonic()
     if _candidate_paths is not None:
         _candidate_paths = set(_candidate_paths)
@@ -106,7 +106,13 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
                 config = json.loads(old["embedding_json"]).get("config", {"provider":"none"})
         embedding_changed = old is None or json.loads(old["embedding_json"]).get("config", {"provider":"none"}) != config
         embedding_enabled = config.get("provider", "none") != "none"
-        defer_embeddings = embedding_enabled and _candidate_paths is not None
+        from .embed import is_loopback_url
+        remote_embeddings = config.get("provider") == "openai-compatible" and not is_loopback_url(config.get("base_url"))
+        defer_embeddings = embedding_enabled and (_candidate_paths is not None or _automatic and remote_embeddings)
+        # Saved consent is an audit record, never permission for a new upload.
+        # Check before even constructing a provider, including on unchanged runs.
+        if remote_embeddings and not defer_embeddings and not kwargs.get("allow_remote_embeddings"):
+            raise RetrievalError("Remote embedding consent required: indexed code leaves this machine; after endpoint approval, repeat this index/refresh with --allow-remote-embeddings", "consent_required", 403)
         if embedding_enabled and embedding_changed and not defer_embeddings:
             provider = provider_for(config, download=kwargs.get("download_model", False))
         stamp = store.now()
@@ -237,6 +243,10 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
         report = {"libraryId":library_id,"indexVersion":8,"generation":generation,"revision":roots[0].revision,"revisions":{r.id:r.revision for r in roots},"corpusId":corpus_id,"files":indexed,"indexed":indexed,"discovered":counters.get("discovered",total),"eligible":total,"chunks":chunks,"changed":changed+added,"added":added,"deleted":deleted,"metadataOnly":metadata_only,"refreshed":bool(modified),"skippedCount":total-indexed,"skipped":skipped,"redactedCount":con.execute("SELECT count(*) FROM files WHERE library_id=? AND status='redacted'",(library_id,)).fetchone()[0],"chunkChars":chunk_chars,"oversizedChunks":con.execute("SELECT count(*) FROM units WHERE library_id=? AND oversized=1",(library_id,)).fetchone()[0],"excludes":list(excludes),"byFormat":counts("format"),"byEncoding":counts("encoding"),"byTier":counts("parser_tier"),"discovery":counters,"discoveryLimit":discovery_limit,"actions":actions,"elapsedSeconds":time.monotonic()-started,"warnings":[],"embeddingModel":config.get("model"),"vectorEngine":vector_engine}
         report["splitFiles"] = [dict(r) for r in con.execute("SELECT root_id AS rootId,path FROM files WHERE library_id=? AND status_reason LIKE 'large-file-window-split%' ORDER BY root_id,path", (library_id,))]
         report["assumedEncodingFiles"] = [dict(r) for r in con.execute("SELECT root_id AS rootId,path,encoding FROM files WHERE library_id=? AND status_reason LIKE '%assumed-encoding:%' ORDER BY root_id,path", (library_id,))]
+        report["pendingEmbeddings"] = con.execute("SELECT count(*) FROM files WHERE library_id=? AND embedding_status='pending'", (library_id,)).fetchone()[0]
+        report["remoteEmbeddingsDeferred"] = bool(remote_embeddings and defer_embeddings and report["pendingEmbeddings"])
+        if report["remoteEmbeddingsDeferred"]:
+            report["warnings"].append("Remote vectors pending; approve the endpoint and run an explicit refresh with --allow-remote-embeddings")
         if max_files and total > max_files or max_units and chunks > max_units:
             report["warnings"].append("Soft resource threshold exceeded; all eligible files were accounted for")
         con.execute("UPDATE libraries SET generation=?,roots_json=?,corpus_hash=?,refreshed_at=?,last_report_json=? WHERE id=?",(generation,canonical([asdict(r) for r in roots]),corpus_id,stamp,old["last_report_json"] if old and _candidate_paths is not None else canonical(report),library_id))
@@ -258,7 +268,7 @@ def index(root, database, library_id, docs_root=None, embed_model=None, model_ca
         con.close()
 
 
-def refresh(database, library_id=None, *, verify_all=False, candidate_paths=None, timeout=5.0):
+def refresh(database, library_id=None, *, verify_all=False, candidate_paths=None, timeout=5.0, allow_remote_embeddings=False, automatic=False):
     with store.connect(database) as con:
         lib = store.library(con,library_id)
         roots = json.loads(lib["roots_json"])
@@ -267,7 +277,7 @@ def refresh(database, library_id=None, *, verify_all=False, candidate_paths=None
         library_id = lib["id"]
     code = next((r["path"] for r in roots if r["role"]=="code"),None)
     docs = [r["path"] for r in roots if r["role"]=="docs"]
-    return index(code,database,library_id,docs_roots=docs,_saved=config,_candidate_paths=candidate_paths,verify_all=verify_all,_timeout=timeout,**scope)
+    return index(code,database,library_id,docs_roots=docs,_saved=config,_candidate_paths=candidate_paths,verify_all=verify_all,_timeout=timeout,allow_remote_embeddings=allow_remote_embeddings,_automatic=automatic,**scope)
 
 
 def assert_fresh(con, meta):

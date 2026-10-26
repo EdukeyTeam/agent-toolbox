@@ -22,12 +22,16 @@ def handle(event: dict) -> dict | None:
     if not isinstance(working, str) or not Path(working).resolve().is_relative_to(local.ROOT):
         return None
     runtime = local.runtime_path()
-    result = local.refresh(local.load_backend(runtime), runtime)
+    result = local.refresh(local.load_backend(runtime), runtime, automatic=True)
     if not result["refreshed"]:
         return None
     message = f'Local Context7 refreshed: {result["changed"]} changed, {result["deleted"]} deleted; library {local.LIBRARY_ID}.'
+    if result.get("remoteEmbeddingsDeferred"):
+        message += " Remote vectors pending; after endpoint approval, run python tools/local_context7.py refresh --allow-remote-embeddings."
     if name in {"afterFileEdit", "afterShellExecution", "stop"}:
         # Cursor expects event-specific output; no followup_message/loop request.
+        if result.get("remoteEmbeddingsDeferred"):
+            print(message, file=sys.stderr)
         return None
     if name in {"PostToolUse", "AfterTool"}:
         return {"hookSpecificOutput": {"hookEventName": name, "additionalContext": message}}

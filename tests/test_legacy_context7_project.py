@@ -308,7 +308,61 @@ class ProjectTests(unittest.TestCase):
         with mock.patch.object(setup.backend, "refresh", return_value={"changed": 0, "deleted": 0}) as native:
             result = launcher.refresh(setup.backend, Path(report["runtime"]))
         self.assertTrue(result["refreshed"])
-        native.assert_called_once_with(Path(report["database"]), "/local/demo")
+        native.assert_called_once_with(Path(report["database"]), "/local/demo", allow_remote_embeddings=False, automatic=False)
+
+    def test_generated_remote_refresh_requires_new_consent_and_hooks_defer_vectors(self):
+        from local_context import freshness
+        from test_legacy_local_context_review import FakeProvider
+        report = self.prepare("--embed-provider", "openai-compatible", "--embed-base-url", "https://remote.example/v1", "--embed-model", "review-fixture", "--allow-remote-embeddings", "--agent", "claude", "--with-hooks", "--consent-hooks", "--with-agents-md", "--consent-agents-md")
+        runtime = Path(report["runtime"])
+        spec = importlib.util.spec_from_file_location("remote_launcher", self.root / "tools/local_context7.py")
+        launcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        provider = FakeProvider()
+        with mock.patch.object(freshness, "provider_for", return_value=provider) as factory:
+            # The generated index path must also require invocation-scoped consent.
+            with self.assertRaises(setup.backend.RetrievalError):
+                launcher.index(setup.backend, runtime)
+            factory.assert_not_called()
+            launcher.index(setup.backend, runtime, allow_remote_embeddings=True)
+        self.java.write_text("public class Demo { public void remoteHookTransfer() {} }\n")
+        with mock.patch.object(freshness, "provider_for") as factory:
+            with self.assertRaises(setup.backend.RetrievalError) as caught:
+                launcher.refresh(setup.backend, runtime)
+            self.assertEqual(caught.exception.code, "consent_required")
+            factory.assert_not_called()
+        # Run the actual generated hook in a child process: the invalid remote
+        # test domain would fail if the provider were constructed or contacted.
+        handler = json.loads((self.root / ".claude/settings.json").read_text())["hooks"]["PostToolUse"][0]["hooks"][0]
+        event = {"hook_event_name": "PostToolUse", "cwd": str(self.root)}
+        hook = subprocess.run([handler["command"], *handler["args"]], input=json.dumps(event), cwd=self.root, capture_output=True, text=True, timeout=20)
+        self.assertEqual(hook.returncode, 0, hook.stderr)
+        self.assertIn("refresh --allow-remote-embeddings", hook.stdout)
+        with setup.backend.connect(Path(report["database"])) as con:
+            self.assertEqual(con.execute("SELECT embedding_status FROM files WHERE path='src/Demo.java'").fetchone()[0], "pending")
+        with mock.patch.object(freshness, "provider_for", return_value=provider) as factory:
+            result = launcher.refresh(setup.backend, runtime, allow_remote_embeddings=True)
+            self.assertTrue(factory.called)
+            self.assertEqual(result["pendingEmbeddings"], 0)
+        # Unchanged corpora cannot silently accept persisted consent either.
+        error = self.cli("refresh", expected=5)
+        self.assertEqual(json.loads(error.stderr)["code"], "consent_required")
+        self.assertIn("refresh --allow-remote-embeddings", (self.root / "AGENTS.md").read_text())
+
+    def test_remote_hook_policy_change_and_first_index_never_embed(self):
+        from local_context import freshness
+        report = self.prepare("--embed-provider", "openai-compatible", "--embed-base-url", "https://remote.example/v1", "--embed-model", "review-fixture", "--allow-remote-embeddings")
+        spec = importlib.util.spec_from_file_location("remote_initial_launcher", self.root / "tools/local_context7.py")
+        launcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        with mock.patch.object(freshness, "provider_for") as factory:
+            initial = launcher.refresh(setup.backend, Path(report["runtime"]), automatic=True)
+            self.assertTrue(initial["remoteEmbeddingsDeferred"])
+            # Exercise the policy-mismatch reindex path, not just native refresh.
+            launcher.ENGINE["parser"] = "0"
+            changed = launcher.refresh(setup.backend, Path(report["runtime"]), automatic=True)
+            self.assertTrue(changed["remoteEmbeddingsDeferred"])
+            factory.assert_not_called()
 
     def test_each_hook_payload_refreshes_and_ignores_other_checkouts(self):
         flags = tuple(x for a in ("codex", "gemini", "copilot", "cursor") for x in ("--agent", a))
