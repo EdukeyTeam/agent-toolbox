@@ -65,7 +65,7 @@ class TransformedUnitsTests(unittest.TestCase):
                 marker_line = next(i for i, line in enumerate(raw.splitlines(), 1) if query in line)
                 self.assertLessEqual(source['startLine'], marker_line)
                 self.assertGreaterEqual(source['endLine'], marker_line)
-                self.assertEqual(source['fileSha256'], hashlib.sha256(raw.encode()).hexdigest())
+                self.assertEqual(source['fileSha256'], hashlib.sha256((folder / path).read_bytes()).hexdigest())
                 self.assertEqual(source['fileSha256'], source['liveFileSha256'])
                 self.assertEqual(source['freshness'], 'fresh')
                 self.assertEqual(source['lineMapping'], 'approximate')
@@ -101,6 +101,19 @@ class TransformedUnitsTests(unittest.TestCase):
             self.assertEqual(result['reason'], 'budget_omitted')
             self.assertLessEqual(math.ceil(len(assemble.serialize(result)) / 4), 256)
 
+    def test_transformed_hashes_use_physical_crlf_bytes(self):
+        for query, folder, path in (('html_deep_marker', self.docs, 'manual.html'),
+                                    ('notebook_deep_marker', self.root, 'large.ipynb')):
+            with self.subTest(path=path):
+                file = folder / path
+                raw = file.read_text(encoding='utf-8').replace('\n', '\r\n').encode('utf-8')
+                file.write_bytes(raw)
+                freshness.refresh(self.db)
+                source = self.query(query, tokens=4000)['results'][0]['source']
+                self.assertEqual(source['fileSha256'], hashlib.sha256(raw).hexdigest())
+                self.assertEqual(source['liveFileSha256'], source['fileSha256'])
+                self.assertNotEqual(source['fileSha256'], hashlib.sha256(raw.replace(b'\r\n', b'\n')).hexdigest())
+
     def test_html_structure_entities_hidden_headings_and_original_ranges(self):
         text = '<h1>Guide &amp; setup</h1>\n<script>hidden <h2>False</h2></script>\n'
         text += '<style>hidden style</style>\n<h2>Usage <em>notes</em></h2>\n<p>zażółć &#10; marker</p>\n'
@@ -135,7 +148,7 @@ class TransformedUnitsTests(unittest.TestCase):
         for query, folder, path in (('html_deep_marker', self.docs, 'manual.html'),
                                     ('notebook_deep_marker', self.root, 'large.ipynb')):
             file = folder / path
-            file.write_text(file.read_text().replace(query, 'removed_marker'), encoding='utf-8')
+            file.write_text(file.read_text(encoding='utf-8').replace(query, 'removed_marker'), encoding='utf-8')
             with self.assertRaises(RetrievalError) as caught:
                 self.query(query, tokens=4000, refresh_policy='strict')
             self.assertEqual(caught.exception.code, 'source_changed')

@@ -91,7 +91,7 @@ class SerializationBudgetTests(unittest.TestCase):
         self.assert_receipt(raw, 'json')
         for item in result['results']:
             s = item['source']
-            lines = (self.root / s['path']).read_text().splitlines()
+            lines = (self.root / s['path']).read_text(encoding='utf-8').splitlines()
             self.assertEqual(item['text'], '\n'.join(lines[s['startLine'] - 1:s['endLine']]))
 
     def test_empty_envelope_too_large_reports_budget_error(self):
