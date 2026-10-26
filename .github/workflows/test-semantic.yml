@@ -61,12 +61,14 @@ jobs:
           printf '{"private":true,"dependencies":{"ctx7":"0.5.13"}}\n' > "$legacy_temp/ctx7-cli/package.json"
           pnpm install --dir "$legacy_temp/ctx7-cli" --ignore-scripts
       - name: Test actual local embeddings and hybrid retrieval
+        shell: bash
         env:
           LEGACY_REQUIRE_SQLITE_VEC: '1'
           LEGACY_RETRIEVAL_TEST_RUNTIME: ${{ runner.temp }}/legacy-inference
           LEGACY_RETRIEVAL_TEST_CACHE: ${{ runner.temp }}/legacy-model-cache
           LEGACY_CTX7_CLI: ${{ runner.temp }}/ctx7-cli/node_modules/ctx7/dist/index.js
         run: |
+          set -e
           python -m unittest discover -s tests -p test_legacy_retrieval.py -v
           python -m unittest discover -s tests -p "test_legacy_local_context_*.py" -v
           python -m unittest discover -s tests -p test_legacy_embed.py -v
