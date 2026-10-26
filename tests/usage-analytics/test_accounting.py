@@ -136,6 +136,21 @@ class Aggregation(unittest.TestCase):
         routed["usage"] = [request(model="glm-5.3", provider="zai", model_attribution="user_override")]
         self.assertEqual(merge(routed, late)["usage"][0]["model"], "glm-5.3", "a user route is never replaced")
 
+    def test_unreported_counters_stay_unknown_and_cache_hit_needs_coverage(self):
+        d = dataset()
+        d["usage"] = [request(id="a", cache_read_tokens=None, cache_write_tokens=None, cache_write_5m_tokens=None,
+                              cache_write_1h_tokens=None, reasoning_tokens=None)]
+        summary = build_report(d, load_rates())["summary"]
+        self.assertIsNone(summary["cache_read_tokens"])
+        self.assertIsNone(summary["reasoning_tokens"])
+        self.assertIsNone(summary["cache_hit_percent"], "no cache counter is not a 0% hit rate")
+        self.assertEqual(summary["total_tokens"], 25500)
+        d["usage"].append(request(id="b", input_tokens=10000, cache_read_tokens=5000))
+        summary = build_report(d, load_rates())["summary"]
+        self.assertEqual(summary["cache_read_tokens"], 5000)
+        self.assertEqual(summary["missing_fields"]["cache_read_tokens"], 1)
+        self.assertEqual(summary["cache_hit_percent"], 50, "only the record reporting both counters")
+
     def test_later_context_snapshot_adds_capacity(self):
         early, late = dataset(), dataset()
         early["contexts"] = [context_observation("codex", "s1", "2026-10-01T12:00:00.000Z", {}, 40000, None, model="gpt-5.5")]

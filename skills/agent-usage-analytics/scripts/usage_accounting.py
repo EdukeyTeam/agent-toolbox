@@ -285,17 +285,23 @@ def stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
     def calls(row):
         value = number(row.get("request_count"))
         return value if value is not None else 1
-    result: dict[str, Any] = {key: sum(row.get(key) or 0 for row in rows) for key in COUNTS}
+    # A counter no record reports stays unknown instead of 0; a partial sum is a lower bound (see missing_fields).
+    result: dict[str, Any] = {key: None if rows and all(row.get(key) is None for row in rows)
+                              else sum(row.get(key) or 0 for row in rows) for key in COUNTS}
     result.update(requests=sum(calls(row) for row in rows),
                   sessions=len({(r.get("agent"), r.get("session_id")) for r in rows}),
-                  total_tokens=result["input_tokens"] + result["output_tokens"],
+                  total_tokens=None if result["input_tokens"] is None and result["output_tokens"] is None
+                  else (result["input_tokens"] or 0) + (result["output_tokens"] or 0),
                   cost_lower_usd=sum(r.get("cost_lower_usd") or 0 for r in rows),
                   cost_upper_usd=sum(r.get("cost_upper_usd") or 0 for r in rows),
                   priced_requests=sum(calls(r) for r in rows if r.get("price_status") != "unpriced"),
                   unpriced_requests=sum(calls(r) for r in rows if r.get("price_status") == "unpriced"),
                   missing_usage_requests=sum(calls(r) for r in rows
                                             if r.get("input_tokens") is None or r.get("output_tokens") is None))
-    result["cache_hit_percent"] = 100 * result["cache_read_tokens"] / result["input_tokens"] if result["input_tokens"] else None
+    # Only records that report both counters say anything about the cache-hit rate.
+    covered = [r for r in rows if r.get("input_tokens") is not None and r.get("cache_read_tokens") is not None]
+    covered_input = sum(r["input_tokens"] for r in covered)
+    result["cache_hit_percent"] = 100 * sum(r["cache_read_tokens"] for r in covered) / covered_input if covered_input else None
     result["unknown_request_count_observations"] = sum(r.get("request_count") is None for r in rows)
     result["count_quality"] = "known lower bound" if result["missing_usage_requests"] or result["unknown_request_count_observations"] else "reported/reconstructed"
     result["missing_fields"] = {key: sum(row.get(key) is None for row in rows) for key in COUNTS}
@@ -449,7 +455,7 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
                           and (not b or r["timestamp"] < b) and session_scope(r)])
         comparison = {"previous": previous, "since": a, "until": b,
                       "token_delta_percent": (100 * (summary["total_tokens"] / previous["total_tokens"] - 1)
-                                              if previous["total_tokens"] else None),
+                                              if previous["total_tokens"] and summary["total_tokens"] is not None else None),
                       "cost_delta_percent": (100 * (summary["cost_lower_usd"] / previous["cost_lower_usd"] - 1)
                                              if previous["cost_lower_usd"] else None)}
     insights = []
