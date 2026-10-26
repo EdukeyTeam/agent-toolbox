@@ -108,6 +108,17 @@ class Aggregation(unittest.TestCase):
         self.assertEqual(report["summary"]["accounting_gap_observations"], 1)
         self.assertEqual(report["summary"]["count_quality"], "known lower bound")
 
+    def test_skipped_json_source_or_missing_export_marks_totals_as_lower_bounds(self):
+        for code in ("malformed_json", "explicit_export_required"):
+            d = dataset()
+            d["usage"] = [request()]
+            d["warnings"] = [{"id": "w", "code": code, "source_id": "s"}]
+            self.assertEqual(build_report(d, load_rates())["summary"]["count_quality"], "known lower bound", code)
+        d = dataset()
+        d["usage"] = [request()]
+        d["warnings"] = [{"id": "w", "code": "no_eligible_sources", "source_id": "s"}]
+        self.assertEqual(build_report(d, load_rates())["summary"]["accounting_gap_observations"], 0)
+
     def test_repeated_snapshots_do_not_sum_and_partial_usage_can_improve(self):
         one, two = dataset(), dataset()
         one["usage"] = [request(output_tokens=100)]

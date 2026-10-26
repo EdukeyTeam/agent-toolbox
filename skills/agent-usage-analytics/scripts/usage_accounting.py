@@ -407,8 +407,10 @@ def build_report(data: dict[str, Any], card: dict[str, Any], *, since: str | Non
     summary = stats(rows)
     summary["unverified_model_requests"] = sum(r.get("request_count") if r.get("request_count") is not None else 1
                                                for r in rows if attribution_rank(r) == 0)
+    # A selected source that could not be read is a gap; an empty one (no_eligible_sources) is not.
     gap_codes = {"fork_baseline_unknown", "native_legacy_overlap_unresolved", "source_unreadable",
-                 "malformed_or_partial_line", "missing_request_identity", "unsupported_usage_schema",
+                 "malformed_or_partial_line", "malformed_json", "explicit_export_required",
+                 "missing_request_identity", "unsupported_usage_schema",
                  "unsupported_sql_schema", "grok_turn_usage_unavailable", "counter_reset_unknown_baseline",
                  "sql_jsonl_discrepancy", "sql_snapshot_unreadable", "missing_request_id_message_fallback",
                  "grok_aggregate_unavailable_without_turns", "agy_aggregate_time_unavailable"}
