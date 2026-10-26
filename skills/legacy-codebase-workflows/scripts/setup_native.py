@@ -78,7 +78,7 @@ def detect_platform():
 def _target(policy):
     tag = detect_platform()
     if tag not in policy["platforms"]:
-        raise SetupError(f"unsupported execution platform {tag}; supported: {', '.join(sorted(policy['platforms']))}. Use the Python source workflow.")
+        raise SetupError(f"unsupported execution platform {tag}; supported: {', '.join(sorted(policy['platforms']))}. Report native unavailability to the user; Python requires explicit user acknowledgment.")
     return tag, policy["platforms"][tag]
 
 
@@ -347,10 +347,12 @@ def _download(url, destination, *, limit=MAX_DOWNLOAD_BYTES):
     except urllib.error.HTTPError as exc:
         exc.close()
         if exc.code == 404:
-            raise SetupError("pinned release is not published or this asset is missing; no Rust build or latest-release fallback was attempted") from exc
-        raise SetupError(f"GitHub release download failed with HTTP {exc.code}") from exc
+            raise SetupError(f"GET {url}: HTTP 404 ({exc.reason}); pinned release is not published or this asset is missing. Report this error; no Python, Rust build or latest-release fallback was attempted") from exc
+        raise SetupError(f"GET {url}: HTTP {exc.code} ({exc.reason}); report native unavailability and resolve the download error before retrying") from exc
     except urllib.error.URLError as exc:
-        raise SetupError("GitHub release download failed; verify network access and use an explicitly verified local package") from exc
+        raise SetupError(f"GET {url}: {exc.reason}; report native unavailability, verify network access and retry explicitly or use a verified local package") from exc
+    except (OSError, ValueError) as exc:
+        raise SetupError(f"GET {url}: {exc}; report native unavailability and resolve the download error before retrying") from exc
 
 
 def _gh_json(arguments):
@@ -528,7 +530,8 @@ def main(argv=None):
     try:
         result = status(**args) if command == "status" else install(**args)
     except (SetupError, OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:
-        print(json.dumps({"state": "error", "reason": str(exc)}, sort_keys=True))
+        print(json.dumps({"state": "error", "reason": str(exc), "native_available": False,
+                          "next_action": "report-native-error", "python_fallback_requires_user_acknowledgment": True}, sort_keys=True))
         return 2
     print(json.dumps(result, sort_keys=True))
     return 0 if result["state"] == "ready" else 1

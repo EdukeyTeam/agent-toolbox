@@ -24,7 +24,7 @@ python /path/to/skill/scripts/setup_native.py status
 python /path/to/skill/scripts/setup_native.py install
 ```
 
-This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release cannot be fetched, installation reports the network or publication error without compiling Rust or silently selecting an old build. If status finds an invalid package already at this version/platform, inspect its reason and rerun installation with explicit `--replace` after resolving the cause.
+This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release cannot be fetched, installation exits 2 with the exact requested URL and HTTP status/network reason, `next_action: report-native-error` and `python_fallback_requires_user_acknowledgment: true`. Tell the user that the native binary is unavailable and include that error. Resolve a transient cause before an explicit retry, or use a reviewed matching CI/local package. Never silently switch to Python, build Rust or select an old release. If status finds an invalid package already at this version/platform, inspect its reason and rerun installation with explicit `--replace` after resolving the cause.
 
 An authenticated `gh` installation can instead fetch a successful matching CI artifact whose index was produced by the test workflow:
 
@@ -42,7 +42,7 @@ python /path/to/skill/scripts/setup_native.py install --local-package /path/to/a
 
 Use `--manifest /path/to/legacy-tools-release.json` only with `--local-package` when the local index is separate. CI and release installs reject that override before fetching or touching the cache, so the authenticated index remains their provenance source. Local dirty-source packages are allowed only as explicit local development evidence; receipts expose `source_dirty`, and those packages cannot be promoted through CI/release aggregation. `--replace` explicitly replaces this version/platform after successful verification; failed verification preserves the prior installation.
 
-`legacy-repo-map` maps locally without Python or a resource download once installed. It remains experimental because parser builds and captured tag sets can differ from the Python reference. If OS policy blocks execution or the platform is unsupported, use isolated Python source. Setup never changes PATH, security policy, quarantine metadata or installed instructions.
+`legacy-repo-map` maps locally without Python or a resource download once installed. It remains experimental because parser builds and captured tag sets can differ from the Python reference. If OS policy blocks execution or the platform is unsupported, report the exact reason and obtain explicit user acknowledgment before using isolated Python source. Setup never changes PATH, security policy, quarantine metadata or installed instructions.
 
 ```bash
 /path/returned/as/program /path/to/repository --output-dir /path/to/artifacts --budget 16384
@@ -50,7 +50,7 @@ Use `--manifest /path/to/legacy-tools-release.json` only with `--local-package` 
 
 ## Python fallback
 
-Use this route when the executing OS/CPU is unsupported, approved native delivery is unavailable, host policy blocks execution, native setup/mapping fails, or an exact Python reference comparison is required. Report the native failure and the selected fallback; do not silently claim native output. If comparing behavior, preserve separate staging/report names and the same source revision, scope and budget.
+Use this route only after the user explicitly acknowledges the native unavailability and agrees to Python, including when the executing OS/CPU has no native asset, host policy blocks execution, or native setup/mapping fails. Report the exact native failure and identify the Python reference implementation before asking. A user request for an exact Python reference comparison already supplies acknowledgment. A failed download alone never authorizes a fallback. If comparing behavior, preserve separate staging/report names and the same source revision, scope and budget.
 
 Install the pinned packages into an environment of their own. Do not install them into the legacy application's environment and do not create the environment inside the source repository.
 

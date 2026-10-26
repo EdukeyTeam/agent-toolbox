@@ -10,6 +10,8 @@ on:
       - '!skills/legacy-codebase-workflows/templates/**'
       - 'scripts/build-legacy-tools.py'
       - 'scripts/create-legacy-release-manifest.py'
+      - 'scripts/check-legacy-release.py'
+      - 'scripts/legacy-release.py'
       - 'tests/test_legacy_*.py'
       - '.github/workflows/test-python.yml'
       # Vendor/license provenance checks depend on checkout bytes.

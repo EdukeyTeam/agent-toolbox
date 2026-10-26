@@ -4,26 +4,91 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Pinned tag declared by the skill distribution policy
-        default: legacy-tools-v0.3.0
-        required: true
+        description: Pinned tag (empty selects the checked-in distribution policy)
+        default: ''
+        required: false
         type: string
       publish_release:
-        description: Publish assets to an existing reviewed tag (false only prepares artifacts)
+        description: Publish the missing pinned release from main (false only prepares artifacts)
         default: false
         type: boolean
   push:
-    tags: ['legacy-tools-v*']
+    branches: [main]
+  pull_request:
 
 permissions:
   contents: read
 
 concurrency:
-  group: legacy-tools-release-${{ github.ref }}
+  # Do not let a queued newer main version displace an older version's build.
+  group: legacy-tools-release-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: false
 
 jobs:
+  contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Check version pins and require bumps for changed release inputs
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        shell: python
+        run: |
+          import os, subprocess, sys
+          command = [sys.executable, 'scripts/check-legacy-release.py']
+          if os.environ['PR_BASE']:
+              base = subprocess.check_output(['git', 'merge-base', os.environ['PR_BASE'], 'HEAD'], text=True).strip()
+              command.extend(['--base', base])
+          elif os.environ['PUSH_BEFORE'] and set(os.environ['PUSH_BEFORE']) != {'0'}:
+              base = os.environ['PUSH_BEFORE']
+              # A force push can remove the previous main commit from fetched history.
+              if subprocess.run(['git', 'cat-file', '-e', f'{base}^{{commit}}'], capture_output=True).returncode:
+                  subprocess.run(['git', 'fetch', '--no-tags', 'origin', base], check=True)
+              command.extend(['--base', base])
+          # An all-zero before SHA is branch creation, with no previous tree to compare.
+          subprocess.run(command, check=True)
+      - name: Test release planning, idempotency and version gate offline
+        run: python -m unittest discover -s tests -p test_legacy_release.py -v
+
+  plan:
+    needs: contract
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      source_commit: ${{ steps.plan.outputs.source_commit }}
+      release_tag: ${{ steps.plan.outputs.release_tag }}
+      build: ${{ steps.plan.outputs.build }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Select missing pinned release without mutating tags or releases
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: python scripts/legacy-release.py plan --requested-tag "$REQUESTED_TAG"
+
   build:
+    needs: plan
+    if: needs.plan.outputs.build == 'true' || (github.event_name == 'workflow_dispatch' && !inputs.publish_release)
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -40,7 +105,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.ref || (github.event_name == 'workflow_dispatch' && inputs.publish_release && inputs.release_tag || github.sha) }}
+          ref: ${{ needs.plan.outputs.source_commit }}
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -53,7 +119,7 @@ jobs:
         id: identity
         shell: python
         env:
-          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          REQUESTED_TAG: ${{ needs.plan.outputs.release_tag }}
           EXPECTED_PLATFORM: ${{ matrix.platform }}
         run: |
           import json, os, subprocess, sys, tomllib
@@ -109,15 +175,19 @@ jobs:
           retention-days: 90
 
   publish:
-    needs: build
-    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+    needs: [plan, build]
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.build == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release))
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    concurrency:
+      group: legacy-tools-publish-${{ needs.plan.outputs.release_tag }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.ref || inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
@@ -136,20 +206,8 @@ jobs:
           for directory in sorted((root / 'legacy-indexes').iterdir()):
               command.extend(['--index-dir', str(directory)])
           subprocess.run(command, check=True)
-      - name: Publish immutable assets to the deliberately requested existing tag
-        shell: python
+      - name: Create the missing tag and release after all platform checks pass
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          import json, os, subprocess
-          from pathlib import Path
-          root = Path(os.environ['RUNNER_TEMP']) / 'legacy-release-assets'
-          manifest = json.loads((root / 'legacy-tools-release.json').read_text())
-          tag = manifest['release_tag']
-          existing = subprocess.run(['gh', 'release', 'view', tag], capture_output=True)
-          if existing.returncode == 0:
-              raise SystemExit('Release already exists; refusing to replace assets. Create a new pinned version.')
-          notes = root / 'release-notes.md'
-          notes.write_text(f"Native repository mapper {manifest['native_version']} for the legacy-codebase-workflows skill.\n\nSource: {manifest['source_commit']}\n\nPackages retain all licenses; checksums and source/platform manifests accompany them. No code-signing or platform-policy bypass is included.\n", encoding='utf-8')
-          assets = [str(path) for path in sorted(root.iterdir()) if path != notes]
-          subprocess.run(['gh', 'release', 'create', tag, '--verify-tag', '--target', manifest['source_commit'], '--title', tag, '--notes-file', str(notes), *assets], check=True)
+          SOURCE_COMMIT: ${{ needs.plan.outputs.source_commit }}
+        run: python scripts/legacy-release.py publish --assets "${{ runner.temp }}/legacy-release-assets" --source "$SOURCE_COMMIT"
