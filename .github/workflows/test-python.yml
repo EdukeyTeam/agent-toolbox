@@ -13,6 +13,8 @@ on:
       - 'scripts/check-legacy-release.py'
       - 'scripts/legacy-release.py'
       - 'tests/test_legacy_*.py'
+      - 'evals/retrieval/**/*.py'
+      - 'evals/retrieval/**/*.md'
       - '.github/workflows/test-python.yml'
       # Vendor/license provenance checks depend on checkout bytes.
       - '.gitattributes'

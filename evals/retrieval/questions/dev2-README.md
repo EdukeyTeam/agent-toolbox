@@ -2,7 +2,7 @@
 
 Second development question set for the local retrieval engine. It is independent of `*.dev.jsonl` and exists so tuning is not fit to a single dev set. Each line is one JSON object. `path` is relative to the corpus root. `start` and `end` are inclusive 1-based line numbers in the current checkout. Up to three ranges are listed when the answer really lives in more than one place, and any one of them counts as a hit. Absent questions use `expected: []` and an `absentIdentifier` field. The identifier also appears in backticks in the question.
 
-Corpora are the read-only checkouts under `/home/lucas/DEV/Projects/agent-toolbox-eval/corpora/`. jftp questions use `src/` and `README.md` only. The jftp `docs/` tree was written by agents and is not cited.
+Corpora are read-only checkouts at a caller-selected corpus directory (pass it to the evaluator with `--corpus-root`). jftp questions use `src/` and `README.md` only. The jftp `docs/` tree was written by agents and is not cited.
 
 ## Counts
 

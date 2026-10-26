@@ -9,7 +9,7 @@ import statistics
 import sys
 import time
 
-root=Path('/home/lucas/DEV/Projects/agent-toolbox')
+root=Path(__file__).resolve().parents[4]
 spec=importlib.util.spec_from_file_location('scan_vectors',root/'skills/legacy-codebase-workflows/scripts/local_context/vectors.py')
 vectors=importlib.util.module_from_spec(spec);spec.loader.exec_module(vectors)
 rng=random.Random(166)

@@ -16,9 +16,10 @@ import time
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent
-REPO = Path('/home/lucas/DEV/Projects/agent-toolbox')
+REPO = Path(__file__).resolve().parents[4]
 OUTPUT = REPO / 'evals/retrieval/results/embeddings'
-CORPORA = ROOT.parent / 'corpora'
+# Set LEGACY_EVAL_CORPORA for checkouts stored outside this repository.
+CORPORA = Path(os.environ.get('LEGACY_EVAL_CORPORA', REPO / 'evals/retrieval/corpora')).resolve()
 spec = importlib.util.spec_from_file_location('embedding_bench_provider', REPO / 'skills/legacy-codebase-workflows/scripts/local_context/embed.py')
 embed = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = embed

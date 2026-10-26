@@ -1,6 +1,6 @@
 # Context7 reverse engineering and lessons for offline code retrieval
 
-Research date: 2026-10-17 UTC. Scope: public source inspection, first-party documentation and announcements, and anonymous HTTP observations. No Context7 account, API key, saved login, or cloud credentials were used. No private code was submitted. The research checkouts are under `/home/lucas/DEV/Projects/agent-toolbox-eval/research-src/`.
+Research date: 2026-10-17 UTC. Scope: public source inspection, first-party documentation and announcements, and anonymous HTTP observations. No Context7 account, API key, saved login, or cloud credentials were used. No private code was submitted. The research checkouts are under `<external-workspace>/research-src/`.
 
 Evidence convention: **Observed** means directly visible in inspected source, an anonymous response, or an identified first-party statement. A vendor statement is evidence of what the vendor reports, not independent verification of its implementation or performance. **Inferred** marks interpretation, recommendations, and hypotheses. Source references resolve to immutable commits where possible. Negative findings mean "not established by this investigation", not "does not exist".
 
@@ -358,7 +358,7 @@ interface ContextResponse {
 
 **Observed:** The inspected local backend has SHA-256 `f6fff9f6ca7ec067e129c0d606953924ee42cd7b241ddccd145bf3eb1635d97b`. Its source link is a local path because the report assesses the working source as observed, independently of later changes.
 
-**Observed:** Probe artifacts are saved in `/home/lucas/DEV/Projects/agent-toolbox-eval/research-src/context7-probes/`. Each records URL, status, selected non-sensitive headers, and raw response body. They establish shapes on this date, not correctness or stability of every returned snippet. Research did not execute login, submission, refresh, policy mutation, or account creation.
+**Observed:** Probe artifacts are saved in `<external-workspace>/research-src/context7-probes/`. Each records URL, status, selected non-sensitive headers, and raw response body. They establish shapes on this date, not correctness or stability of every returned snippet. Research did not execute login, submission, refresh, policy mutation, or account creation.
 
 ### First-party Context7 publications
 
@@ -460,10 +460,10 @@ interface ContextResponse {
 [S-questions]: https://github.com/MaTriXy/c7score/blob/efe4bad8f9e3c6b7aa2476333e33299dfc8fe75f/src/services/questionEval.ts
 [S-prompts]: https://github.com/MaTriXy/c7score/blob/efe4bad8f9e3c6b7aa2476333e33299dfc8fe75f/src/services/prompts/templates.ts
 [S-llm]: https://github.com/MaTriXy/c7score/blob/efe4bad8f9e3c6b7aa2476333e33299dfc8fe75f/src/services/llmUtils.ts
-[L-backend]: /home/lucas/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py
-[P-search]: /home/lucas/DEV/Projects/agent-toolbox-eval/research-src/context7-probes/search.json
-[P-v2]: /home/lucas/DEV/Projects/agent-toolbox-eval/research-src/context7-probes/resolved-json.json
-[P-text]: /home/lucas/DEV/Projects/agent-toolbox-eval/research-src/context7-probes/resolved-txt.json
-[P-v3]: /home/lucas/DEV/Projects/agent-toolbox-eval/research-src/context7-probes/v3.json
-[P-redirect]: /home/lucas/DEV/Projects/agent-toolbox-eval/research-src/context7-probes/context-json.json
-[P-invalid]: /home/lucas/DEV/Projects/agent-toolbox-eval/research-src/context7-probes/invalid.json
+[L-backend]: ../../skills/legacy-codebase-workflows/scripts/context7_backend.py
+[P-search]: <external-workspace>/research-src/context7-probes/search.json
+[P-v2]: <external-workspace>/research-src/context7-probes/resolved-json.json
+[P-text]: <external-workspace>/research-src/context7-probes/resolved-txt.json
+[P-v3]: <external-workspace>/research-src/context7-probes/v3.json
+[P-redirect]: <external-workspace>/research-src/context7-probes/context-json.json
+[P-invalid]: <external-workspace>/research-src/context7-probes/invalid.json

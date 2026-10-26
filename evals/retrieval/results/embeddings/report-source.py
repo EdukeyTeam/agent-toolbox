@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import statistics
 
-REPO=Path('/home/lucas/DEV/Projects/agent-toolbox')
+REPO=Path(__file__).resolve().parents[4]
 RAW=REPO/'evals/retrieval/results/embeddings'
 models={key:json.loads((RAW/f'{key}.json').read_text()) for key in ['potion','bge','jina'] if (RAW/f'{key}.json').exists()}
 potion=models['potion']
@@ -97,7 +97,7 @@ lines+=['## Air-gapped installation', '',
 'The focused unittest suite covers consent before DNS, HTTP batching/reordering, redirects/proxies, malformed vectors, body size limits, secret-safe errors, dimension changes, Nomic task prefixes, cache/download guards, pinned manifests, telemetry suppression, real offline local models, persistent Node protocol, blocked stdin writes, timeouts/reaping, float32 bytes and deterministic exact engines against a brute-force float64 oracle across multiple scan batches. Real model tests are skipped unless their explicit test model directory variables are set; optional NumPy/sqlite-vec tests skip when those packages are absent.', '',
 '```bash', 'python3 -m unittest discover -s tests -p test_legacy_embed.py -v', '```', '',
 'The stdlib environment runs 31 tests with four optional skips. Each isolated candidate environment runs NumPy/sqlite-vec oracle checks plus its own real offline model check, with only the other model runtime skipped. No changes were made outside the delegate\'s owned implementation/tests/report/results and evaluation scratch directory. No commits, pushes, Beads writes, package marker or installed skill edits were made. Integration, PR review and commits belong to the orchestrator.', '',
-'Durable scratch: `/home/lucas/DEV/Projects/agent-toolbox-eval/embed-bench/`. It holds the two isolated runtimes, model files, benchmark/download scripts and streamed logs. The raw results include copied source scripts and file hashes for reproduction; paths in those scripts describe this run, not required engine paths. Workspace lifecycle and evidence paths are in `session.json`. The interrupted seven-thread trial is preserved as `bge-interrupted.log` and excluded from final performance tables.', '']
+'Durable scratch: `<external-workspace>/embed-bench/`. It holds the two isolated runtimes, model files, benchmark/download scripts and streamed logs. The raw results include copied source scripts and file hashes for reproduction; paths in those scripts describe this run, not required engine paths. Workspace lifecycle and evidence paths are in `session.json`. The interrupted seven-thread trial is preserved as `bge-interrupted.log` and excluded from final performance tables.', '']
 if partial:
     lines.insert(2,'**Final handoff with explicitly partial Jina measurements, as directed by the orchestrator.**\n')
 elif len(models)!=3 or any(len(m['corpora'])!=3 for m in models.values()):
