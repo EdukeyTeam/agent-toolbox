@@ -156,7 +156,7 @@ As any developer, when I decline a consent prompt, I want the tool to continue i
 
 AC-OFF-1: After installation completes, indexing and querying a repository succeeds with the machine's network interface disabled, and a network monitor observes zero outbound connection attempts during those operations.
 AC-OFF-2: An offline bundle transferred via removable media installs the engine (and, when supplied, model files) on a network-isolated machine, with every installation and smoke-check step completing without network access.
-AC-OFF-3: The engine performs no telemetry, has no cloud fallback path and makes no remote calls at query time unless the user explicitly consented to one named non-loopback embedding endpoint for that library; in that case only query embeddings go to that endpoint. The setup guide states this.
+AC-OFF-3: The engine performs no telemetry, has no cloud fallback path and makes no remote calls at query time. Approved non-loopback embedding endpoints are usable only for explicit index/manual refresh invocations; their projects default to lexical query, including HTTP/MCP. Semantic/hybrid queries require a local provider. The setup report and guide state this.
 
 ### Core retrieval without optional components (CORE)
 
@@ -188,7 +188,7 @@ AC-RFR-2: A query issued while a refresh is running returns either results from 
 
 ### Token budget and context (BUD)
 
-AC-BUD-1: A query with an explicit token budget returns snippets whose combined estimated size does not exceed the budget, and the response reports the budget used.
+AC-BUD-1: A query with an explicit token budget returns a complete serialized response whose estimated size, ceil(Unicode characters/4), does not exceed the budget. Charge the requested format, including metadata, escaping, whitespace, warnings and any emitted trailing newline; report that exact usage. Exact expansion is all-or-error.
 AC-BUD-2: Each code snippet includes the enclosing signature or class name when present in the source, and each documentation snippet includes its heading breadcrumb, without requiring the agent to open the file.
 AC-BUD-3: One follow-up operation returns a caller-specified contiguous expansion of the file around a given snippet, honoring a caller-specified line range.
 
@@ -384,3 +384,6 @@ Single user per machine; repositories are text-dominant with binaries ignored; G
 | 2026-10-17 | C1 | AC-OFF-3 allows query embeddings to one explicitly consented, named non-loopback endpoint. | No remote calls at query time in any mode. | A consented remote embedder is useless for semantic queries if queries cannot embed; ADR 002 delegate dissent 2, orchestrator ruling A9. |
 | 2026-10-17 | C2 | AC-CORE-3 uses per-corpus floors against the pinned baseline. | Lexical hit@5 at least 2x the baseline everywhere. | Baseline hit@5 is already 54-69% on three corpora, so 2x is impossible there (GLM review); ADR 002 amendment A14. |
 | 2026-10-17 | C3 | Open questions 1 (encodings), 2 (stale flags), 3 (baseline), 4 (offline bundle assumes an existing Python 3.12+), 6 (explicit refresh plus candidate-level auto refresh, no watcher) and 8 (pinned ctx7 0.5.13 and MCP 4.0.3) are resolved in ADR 002 section 9. | Open. | Orchestrator decisions after three independent reviews. |
+
+| 2026-10-26 | C4 | AC-BUD-1 charges the complete requested serialization, including metadata and newline, per PR #26 round-3 finding 4 and ADR 002 TAC-002-04. | A8 implementation charged evidence only, excluding the envelope. | Explicitly authorized review correction restores the full-output contract across CLI/HTTP and exact expansion. |
+| 2026-10-26 | C5 | AC-OFF-3 retains the remote-query ban and remote setup defaults to lexical, per PR #26 round-3 finding 1. | C1/A9 allowed consented remote query embeddings and setup defaulted to hybrid. | Preserve the implemented boundary while making normal generated CLI/HTTP/MCP query paths usable. |

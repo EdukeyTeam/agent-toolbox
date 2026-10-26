@@ -62,7 +62,7 @@ The additional synthetic run indexed 1000 files in 2.183 s, refreshed exactly 10
 
 ## Evidence budgets
 
-A8 is implemented literally: `ceil((header + description + source body + compact citation characters)/4)`. JSON keys/envelope are outside this budget. CLI queries are unbudgeted unless `--tokens` is supplied; HTTP defaults to 4,000. Over-budget query units become contiguous whole-line excerpts with corrected citations, or are omitted explicitly. Exact expansion is all-or-error.
+PR #26 round-3 correction: budgets now charge the complete requested serialization as `ceil(Unicode characters/4)`, including JSON metadata/envelope, escaping, whitespace, warnings, receipt fields and an emitted trailing newline. Accounting and emission share one serializer; receipt fields reach a fixed point. CLI queries are unbudgeted unless `--tokens` is supplied; HTTP defaults to 4,000. Over-budget query units become contiguous whole-line excerpts with corrected citations, or are omitted explicitly. Exact expansion is all-or-error; an envelope that cannot fit returns `budget_too_small`. This restores ADR 002 section 8 AC-BUD-1 and TAC-002-04, superseding A8. The historical evidence-only measurements below have not been rerun and do not certify the new policy.
 
 | Measurement | 2k hit | 2k source-character precision |
 | --- | ---: | ---: |

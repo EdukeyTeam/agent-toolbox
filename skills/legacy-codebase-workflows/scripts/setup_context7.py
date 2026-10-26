@@ -147,7 +147,9 @@ def prepare(args) -> dict:
             raise ValueError("Docs root must be an existing nonsymlink directory")
         docs = relative.as_posix()
     engine = engine_options(args, root, runtime)
-    project = {"libraryId": args.library_id, "docsRoot": docs, "excludes": list(backend.normalize_excludes([*DEFAULT_EXCLUDES, ".cursor", ".gemini", "opencode.json", "opencode.jsonc", *args.exclude])), "engine": engine, "defaultMode": "lexical" if args.embed_provider == "none" else "hybrid", "consent": {"modelDownload": args.download_model, "remoteEndpoint": args.embed_base_url if args.allow_remote_embeddings else None}}
+    from local_context.embed import is_loopback_url
+    remote = args.embed_provider == "openai-compatible" and not is_loopback_url(args.embed_base_url)
+    project = {"libraryId": args.library_id, "docsRoot": docs, "excludes": list(backend.normalize_excludes([*DEFAULT_EXCLUDES, ".cursor", ".gemini", "opencode.json", "opencode.jsonc", *args.exclude])), "engine": engine, "defaultMode": "lexical" if args.embed_provider == "none" or remote else "hybrid", "consent": {"modelDownload": args.download_model, "remoteEndpoint": args.embed_base_url if args.allow_remote_embeddings else None}}
     manifest = {"origin": "EdukeyTeam/agent-toolbox: legacy-codebase-workflows", "files": {name: hashlib.sha256((SKILL / name).read_bytes()).hexdigest() for name in BACKEND_FILES}}
     planned: dict[Path, str] = {}
 
@@ -284,6 +286,8 @@ def prepare(args) -> dict:
               "nativeHooksVerified": False, "dryRun": args.dry_run}
     report["engine"] = engine
     report["defaultMode"] = project["defaultMode"]
+    if remote:
+        report["defaultModeReason"] = "Remote embeddings are for explicit indexing/refresh only; query uses lexical mode because remote query embeddings are forbidden. Configure a verified local provider for semantic/hybrid queries."
     # Show generated additions only, never existing config (which may contain
     # unrelated provider credentials). This makes consent previews reviewable.
     report["proposedMcpCommand"] = [server["command"], *server["args"]]

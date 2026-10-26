@@ -18,8 +18,8 @@ def citation(item):
 
 
 def evidence(item):
-    # A8 charges emitted source evidence only, once. JSON metadata keys and the
-    # envelope are deliberately outside this budget.
+    # Compact source representation used to choose a whole-line excerpt.
+    # The budget itself is charged against the final serialization below.
     return "\n".join((item["header"].get("text", ""),item["description"],item["text"],citation(item)))
 
 
@@ -133,32 +133,92 @@ def candidate_window(ranked, maximum):
 def pack(items, library, mode, rerank, vector_engine, limit, tokens, question, changed=(), unavailable=0):
     if tokens is not None and not 256 <= tokens <= 32000:
         raise RetrievalError("Token budget must be 256..32000")
-    selected, per_file, omitted, used = [], {}, 0, 0
-    for item in items:
-        key = (item["source"]["rootId"],item["source"]["path"])
-        if per_file.get(key,0) >= 3:
-            continue
-        if any(key==(r["source"]["rootId"],r["source"]["path"]) and item["source"]["cellIndex"] == r["source"]["cellIndex"] and max(0,min(item["source"]["endLine"],r["source"]["endLine"])-max(item["source"]["startLine"],r["source"]["startLine"])+1) >= .8*min(item["source"]["endLine"]-item["source"]["startLine"]+1,r["source"]["endLine"]-r["source"]["startLine"]+1) for r in selected):
-            continue
-        cost = len(evidence(item))
-        if tokens is not None and math.ceil((used+cost)/4)>tokens:
-            item = excerpt(item,tokens*4-used,question)
-            if item is None or math.ceil((used+len(evidence(item)))/4)>tokens:
-                omitted += 1
-                continue
-            cost = len(evidence(item))
-        selected.append(item)
-        used += cost
-        per_file[key] = per_file.get(key,0)+1
-        if len(selected)>=limit:
-            break
+    # Defer selection until the caller has added coverage, warnings and explain
+    # metadata. All of those fields consume the same serialization budget.
     stale = bool(changed)
     warnings = (["Source changed; stale evidence is marked. Run refresh."] if stale else [])
-    if omitted:
-        warnings.append(f"{omitted} evidence units omitted for budget; use expand or raise tokens.")
     if unavailable:
         warnings.append("Missing, unreadable or unsafe candidate bodies withheld; run refresh.")
-    return {"indexVersion":8,"libraryId":library["id"],"mode":mode,"reranker":rerank,"vectorEngine":vector_engine,"corpusId":library["corpus_hash"],"generation":library["generation"],"revisions":{r["id"]:r["revision"] for r in json.loads(library["roots_json"])},"freshness":{"state":"stale" if stale else "fresh","changedFiles":len(changed)},"budget":{"requestedTokens":tokens,"usedEstimatedTokens":math.ceil(used/4),"characters":used,"estimator":"ceil(evidence characters/4)"},"coverage":{"returned":len(selected),"omittedForBudget":omitted,"unavailable":unavailable},"warnings":warnings,"results":selected,"message":None if selected else EMPTY,"reason":None if selected else "stale_omitted" if unavailable else "budget_omitted" if omitted else "no_match"}
+    return {"indexVersion":8,"libraryId":library["id"],"mode":mode,"reranker":rerank,"vectorEngine":vector_engine,"corpusId":library["corpus_hash"],"generation":library["generation"],"revisions":{r["id"]:r["revision"] for r in json.loads(library["roots_json"])},"freshness":{"state":"stale" if stale else "fresh","changedFiles":len(changed)},"budget":{"requestedTokens":tokens,"usedEstimatedTokens":0,"characters":0,"estimator":"ceil(chars/4)"},"coverage":{"returned":0,"omittedForBudget":0,"unavailable":unavailable},"warnings":warnings,"results":items,"message":None,"reason":None}
+
+
+def serialize(result, output_format="json", *, pretty=True, newline=True):
+    """The shared wire serializer for accounting and CLI/HTTP emission."""
+    if output_format == "text":
+        raw = text_payload(result)
+    elif output_format in {"json", "context7-json"}:
+        value = context_payload(result) if output_format == "context7-json" else result
+        options = {"indent": 2} if pretty else {"separators": (",", ":")}
+        raw = json.dumps(value, ensure_ascii=False, **options)
+    else:
+        raise RetrievalError("Unknown output format")
+    return raw + ("\n" if newline else "")
+
+
+def measure(result, output_format="json", *, pretty=True, newline=True):
+    # The receipt counts its own digits. Starting from zero, serialized size
+    # increases monotonically to a fixed point (including JSON whitespace).
+    budget = result["budget"]
+    budget.update(characters=0, usedEstimatedTokens=0)
+    while True:
+        characters = len(serialize(result, output_format, pretty=pretty, newline=newline))
+        used = math.ceil(characters / 4)
+        if (characters, used) == (budget["characters"], budget["usedEstimatedTokens"]):
+            return used
+        budget.update(characters=characters, usedEstimatedTokens=used)
+
+
+def fit(result, tokens, question, limit, output_format="json", *, pretty=True, newline=True, exact=False):
+    """Greedily select verified units against the complete requested wire body."""
+    candidates, selected, omitted = result["results"], [], 0
+    warnings = list(result["warnings"])
+    reserve = len(candidates) if tokens is not None and not exact and len(candidates) > 1 and limit > 1 else 0
+
+    def charge(proposed, skipped):
+        result["results"] = proposed
+        result["coverage"].update(returned=len(proposed), omittedForBudget=skipped)
+        result["warnings"] = warnings + ([f"{skipped} evidence units omitted for budget; use expand or raise tokens."] if skipped else [])
+        result["message"] = None if proposed else EMPTY
+        result["reason"] = None if proposed else "stale_omitted" if result["coverage"]["unavailable"] else "budget_omitted" if skipped else "no_match"
+        return measure(result, output_format, pretty=pretty, newline=newline)
+
+    for item in candidates:
+        key = (item["source"]["rootId"], item["source"]["path"])
+        siblings = [r for r in selected if key == (r["source"]["rootId"], r["source"]["path"])]
+        if len(siblings) >= 3 or any(item["source"]["cellIndex"] == r["source"]["cellIndex"] and max(0, min(item["source"]["endLine"], r["source"]["endLine"]) - max(item["source"]["startLine"], r["source"]["startLine"]) + 1) >= .8 * min(item["source"]["endLine"] - item["source"]["startLine"] + 1, r["source"]["endLine"] - r["source"]["startLine"] + 1) for r in siblings):
+            continue
+        cost = charge([*selected, item], max(omitted, reserve))
+        if tokens is not None and cost > tokens:
+            if exact:
+                raise RetrievalError("Exact range exceeds token budget; request fewer lines", "range_too_large", 413)
+            # Search a bounded character allowance, but always charge actual
+            # serialization, including escaping, corrected ranges and markers.
+            low, high, best = 0, tokens * 4, None
+            while low <= high:
+                middle = (low + high) // 2
+                part = excerpt(item, middle, question)
+                if part is None:
+                    low = middle + 1
+                elif charge([*selected, part], max(omitted, reserve)) <= tokens:
+                    best, low = part, middle + 1
+                else:
+                    high = middle - 1
+            if best is None:
+                omitted += 1
+                continue
+            item = best
+        selected.append(item)
+        if len(selected) >= limit:
+            break
+    # Adding an omission warning can consume space reserved by an earlier hit.
+    # Drop whole last units until the final envelope fits; never clip metadata.
+    while tokens is not None and charge(selected, omitted) > tokens:
+        if not selected:
+            raise RetrievalError("Response metadata exceeds token budget; raise tokens", "budget_too_small", 400)
+        selected.pop()
+        omitted += 1
+    charge(selected, omitted)
+    return result
 
 
 def context_payload(result):

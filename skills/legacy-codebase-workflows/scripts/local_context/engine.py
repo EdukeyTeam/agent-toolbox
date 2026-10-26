@@ -29,7 +29,7 @@ def embedding_coverage(con, library, kind=None, language=None):
     return present / total if total else 1.0
 
 
-def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=None, *, library_id=None, kind=None, language=None, tokens=None, refresh_policy="auto", provider_cache=None, ablations=(), explain=False, _restart=False):
+def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=None, *, library_id=None, kind=None, language=None, tokens=None, refresh_policy="auto", provider_cache=None, ablations=(), explain=False, output_format="json", pretty=True, newline=True, _restart=False):
     if not isinstance(question,str) or not question.strip() or len(question)>8000:
         raise RetrievalError("Query must contain 1-8000 characters")
     if mode not in {"lexical","semantic","hybrid"} or rerank not in {None,"lexical-symbol"}:
@@ -117,8 +117,8 @@ def query(con, question, mode="lexical", rerank=None, limit=5, vector_engine=Non
             except (RetrievalError,RuntimeError,sqlite3.Error):
                 response["warnings"].append("Automatic candidate refresh unavailable; run refresh explicitly.")
             else:
-                return query(con,question,mode,rerank,limit,vector_engine,library_id=lib["id"],kind=kind,language=language,tokens=tokens,refresh_policy=refresh_policy,provider_cache=provider_cache,ablations=ablations,explain=explain,_restart=True)
-        return response
+                return query(con,question,mode,rerank,limit,vector_engine,library_id=lib["id"],kind=kind,language=language,tokens=tokens,refresh_policy=refresh_policy,provider_cache=provider_cache,ablations=ablations,explain=explain,output_format=output_format,pretty=pretty,newline=newline,_restart=True)
+        return assemble.fit(response,tokens,question,limit,output_format,pretty=pretty,newline=newline)
     finally:
         if provider and owned_provider:
             provider.close()
@@ -162,7 +162,7 @@ def status(con, library_id=None, verify_all=False):
     return {"indexVersion":8,"databaseId":meta["database_uuid"],"libraries":result}
 
 
-def expand(con, *, library_id=None, unit_id=None, path=None, root_id=None, start_line=None, end_line=None, tokens=4000):
+def expand(con, *, library_id=None, unit_id=None, path=None, root_id=None, start_line=None, end_line=None, tokens=4000, output_format="json", pretty=True, newline=True):
     with store.snapshot(con):
         lib = store.library(con,library_id)
         if unit_id and any(v is not None for v in (path,root_id,start_line,end_line)) or not unit_id and any(v is None for v in (path,root_id,start_line,end_line)):
@@ -199,8 +199,6 @@ def expand(con, *, library_id=None, unit_id=None, path=None, root_id=None, start
         if row.get("redacted"):
             raise RetrievalError("Secret-bearing source range withheld", "secret_range",403)
         item = assemble.native_item(row,lib,roots,live,"fresh")
-        if tokens is not None and estimate(assemble.evidence(item))>tokens:
-            raise RetrievalError("Exact range exceeds token budget; request fewer lines", "range_too_large",413)
         response = assemble.pack([item],lib,"lexical",None,None,1,tokens,"",(),0)
         response["expanded"] = True
-        return response
+        return assemble.fit(response,tokens,"",1,output_format,pretty=pretty,newline=newline,exact=True)

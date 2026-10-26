@@ -107,18 +107,15 @@ def main(argv=None):
         else:
             with store.connect(args.database) as con:
                 if args.command=="query":
-                    result = engine.query(con,args.query,args.mode,args.rerank,args.limit,args.vector_engine,library_id=args.library_id,kind=args.kind,language=args.language,tokens=args.tokens,refresh_policy=args.refresh,ablations=args.ablate,explain=args.explain)
+                    result = engine.query(con,args.query,args.mode,args.rerank,args.limit,args.vector_engine,library_id=args.library_id,kind=args.kind,language=args.language,tokens=args.tokens,refresh_policy=args.refresh,ablations=args.ablate,explain=args.explain,output_format=args.format)
                 elif args.command=="expand":
-                    result = engine.expand(con,library_id=args.library_id,unit_id=args.unit_id,path=args.path,root_id=args.root_id,start_line=args.start_line,end_line=args.end_line,tokens=args.tokens)
+                    result = engine.expand(con,library_id=args.library_id,unit_id=args.unit_id,path=args.path,root_id=args.root_id,start_line=args.start_line,end_line=args.end_line,tokens=args.tokens,output_format=args.format)
                 elif args.command=="resolve":
                     result = {"results":engine.resolve(con,args.library_name,args.query,args.limit)}
                 else:
                     result = engine.status(con,args.library_id,args.verify_all)
         fmt = getattr(args,"format","json")
-        if fmt=="text":
-            print(assemble.text_payload(result))
-        else:
-            print(json.dumps(assemble.context_payload(result) if fmt=="context7-json" else result,ensure_ascii=False,indent=2))
+        sys.stdout.write(assemble.serialize(result,fmt))
         return 0
     except MemoryError:
         print(json.dumps({"error":"Memory resource limit exceeded; scope the corpus or reduce limits","code":"resource_limit"}),file=sys.stderr)

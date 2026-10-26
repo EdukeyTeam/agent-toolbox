@@ -84,7 +84,7 @@ def serve(database, host="127.0.0.1", port=8765, default_mode="lexical", default
                             raise RetrievalError("type must be json or txt")
                         mode = p.get("mode",default_mode)
                         def run():
-                            return engine.query(con,p.get("query",""),mode,p.get("rerank",default_rerank),integer("limit",5),p.get("vectorEngine",default_vector_engine),library_id=lib,kind=p.get("kind"),language=p.get("language"),tokens=integer("tokens",tokens),refresh_policy=p.get("refresh",refresh_policy),provider_cache=provider_cache)
+                            return engine.query(con,p.get("query",""),mode,p.get("rerank",default_rerank),integer("limit",5),p.get("vectorEngine",default_vector_engine),library_id=lib,kind=p.get("kind"),language=p.get("language"),tokens=integer("tokens",tokens),refresh_policy=p.get("refresh",refresh_policy),provider_cache=provider_cache,output_format="text" if output=="txt" else "context7-json",pretty=False,newline=False)
                         if mode!="lexical":
                             if not provider_slots.acquire(blocking=False):
                                 raise RetrievalError("Embedding request queue full; retry explicitly", "provider_unavailable",503)
@@ -95,11 +95,11 @@ def serve(database, host="127.0.0.1", port=8765, default_mode="lexical", default
                                 provider_slots.release()
                         else:
                             result = run()
-                        self.send(200,assemble.text_payload(result) if output=="txt" else assemble.context_payload(result),"text/plain" if output=="txt" else "application/json")
+                        self.send(200,assemble.serialize(result,"text" if output=="txt" else "context7-json",pretty=False,newline=False),"text/plain" if output=="txt" else "application/json")
                     elif parsed.path=="/api/v2/local/status":
                         self.send(200,engine.status(con,lib,p.get("verifyAll")=="1"))
                     elif parsed.path=="/api/v2/local/expand":
-                        self.send(200,engine.expand(con,library_id=lib,unit_id=p.get("unitId"),path=p.get("path"),root_id=p.get("rootId"),start_line=integer("startLine",None),end_line=integer("endLine",None),tokens=integer("tokens",tokens)))
+                        self.send(200,engine.expand(con,library_id=lib,unit_id=p.get("unitId"),path=p.get("path"),root_id=p.get("rootId"),start_line=integer("startLine",None),end_line=integer("endLine",None),tokens=integer("tokens",tokens),pretty=False,newline=False))
                     else:
                         raise RetrievalError("Unknown local route", "route_not_found",404)
             except MemoryError:

@@ -224,12 +224,34 @@ class ProjectTests(unittest.TestCase):
         self.assertFalse((self.root / "tools").exists())
         self.assertIn("environment variable", self.prepare(*flags, "--allow-remote-embeddings", "--embed-api-key-env", "invalid=value", expected=1))
         report = self.prepare(*flags, "--allow-remote-embeddings", "--embed-api-key-env", "FIXTURE_API_KEY")
+        self.assertEqual(report["defaultMode"], "lexical")
+        self.assertIn("query", report["defaultModeReason"])
+        self.assertIn("remote", report["defaultModeReason"].lower())
+        self.assertEqual(json.loads((self.root / "tools/context7/project.json").read_text())["defaultMode"], "lexical")
         self.assertTrue(report["engine"]["allow_remote_embeddings"])
         self.assertEqual(report["engine"]["embed_api_key_env"], "FIXTURE_API_KEY")
+
+    def test_generated_remote_project_default_query_works_without_remote_calls(self):
+        from local_context import freshness
+        from test_legacy_local_context_review import FakeProvider
+        flags = ("--parser", "0", "--embed-provider", "openai-compatible", "--embed-base-url", "https://gateway.example.invalid/v1", "--embed-model", "fixture", "--allow-remote-embeddings")
+        report = self.prepare(*flags)
+        spec = importlib.util.spec_from_file_location("generated_remote_launcher", self.root / "tools/local_context7.py")
+        launcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        with mock.patch.object(freshness, "provider_for", return_value=FakeProvider()):
+            launcher.index(setup.backend, Path(report["runtime"]), allow_remote_embeddings=True)
+        result = json.loads(self.cli("query", "retryTransfer").stdout)
+        self.assertEqual(result["mode"], "lexical")
+        self.assertTrue(result["results"])
+        # Explicit semantic mode continues to fail before connecting to the endpoint.
+        forbidden = self.cli("query", "retryTransfer", "--mode", "semantic", expected=1)
+        self.assertIn("Remote embeddings", forbidden.stderr)
 
     def test_loopback_needs_no_remote_grant_and_no_provider_rejects_options(self):
         self.assertIn("Embedding options require", self.prepare("--download-model", expected=1))
         report = self.prepare("--embed-provider", "openai-compatible", "--embed-base-url", "http://127.0.0.1:11434/v1", "--embed-model", "fixture")
+        self.assertEqual(report["defaultMode"], "hybrid")
         self.assertFalse(report["engine"]["allow_remote_embeddings"])
 
     def test_download_permission_is_recorded_without_network_during_setup(self):

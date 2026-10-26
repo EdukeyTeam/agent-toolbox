@@ -248,7 +248,7 @@ class EngineTests(unittest.TestCase):
         self.index()
         for budget in (256,500,2000):
             result=self.query("bounded_invoice",tokens=budget)
-            characters=sum(len(assemble.evidence(r)) for r in result["results"])
+            characters=len(assemble.serialize(result))
             self.assertEqual(result["budget"]["usedEstimatedTokens"],math.ceil(characters/4))
             self.assertLessEqual(math.ceil(characters/4),budget)
             for item in result["results"]:
@@ -479,7 +479,7 @@ class EngineTests(unittest.TestCase):
 
     def test_clean_stdlib_subprocess_cli(self):
         self.index()
-        proc=subprocess.run([sys.executable,"-S",str(SCRIPTS/"context7_backend.py"),"query","--database",str(self.db),"--query=InvoiceMaker","--tokens","500"],capture_output=True,text=True)
+        proc=subprocess.run([sys.executable,"-S",str(SCRIPTS/"context7_backend.py"),"query","--database",str(self.db),"--query=InvoiceMaker","--tokens","1000"],capture_output=True,text=True)
         self.assertEqual(proc.returncode,0,proc.stderr)
         self.assertTrue(json.loads(proc.stdout)["results"])
 

@@ -104,9 +104,10 @@ class RankStabilityTests(unittest.TestCase):
                 named_before, _ = search.candidates(con, lib, 'imports.py', ablations=('preambles', 'diversity'))
                 named_after, _ = search.candidates(con, lib, 'imports.py')
                 self.assertEqual(named_before[0]['score'], named_after[0]['score'])
-                answer = engine.query(con, question, tokens=256)
+                # Native JSON now charges its complete provenance envelope.
+                answer = engine.query(con, question, tokens=1000)
                 self.assertEqual(answer['results'][0]['source']['path'], 'worker.py')
-                self.assertLessEqual(answer['budget']['usedEstimatedTokens'], 256)
+                self.assertLessEqual(answer['budget']['usedEstimatedTokens'], 1000)
                 explicit = engine.query(con, 'imports.py')
                 self.assertEqual(explicit['results'][0]['source']['path'], 'imports.py')
                 self.assertIn('from worker import', explicit['results'][0]['text'])
