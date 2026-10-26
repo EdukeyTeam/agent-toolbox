@@ -506,13 +506,13 @@ class ArgonTests(unittest.TestCase):
         with store.connect(self.db) as con:
             from local_context.units import canonical, digest
             previous = json.loads(store.library(con)["parser_json"])
-            previous.pop("chunker_revision")
+            previous['chunker_revision'] = 7
             con.execute("UPDATE files SET parser_fingerprint=?", (digest(canonical(previous).encode()),))
             con.execute("UPDATE libraries SET parser_json=?", (canonical(previous),))
         result = freshness.refresh(self.db)
         self.assertEqual(result["changed"], 1)
         with store.connect(self.db) as con:
-            self.assertEqual(json.loads(store.library(con)["parser_json"])["chunker_revision"], 7)
+            self.assertEqual(json.loads(store.library(con)["parser_json"])["chunker_revision"], 8)
 
 
 if __name__ == "__main__":

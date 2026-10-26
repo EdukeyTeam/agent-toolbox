@@ -4,6 +4,7 @@ import ast
 from bisect import bisect_left, bisect_right
 from dataclasses import replace
 import heapq
+from html import unescape
 from html.parser import HTMLParser
 import importlib.util
 import json
@@ -494,35 +495,142 @@ def code_units(text: str, path: str, language: str, target=1500, tier="0", kind=
     return merged, fallback
 
 
+def transformed_spans(text, target=1500):
+    """Bound escaped JSON body size, preferring paragraphs, lines, then words.
+
+    Whitespace counts too. Even an indivisible physical line can be split:
+    transformed units cite enclosing raw lines rather than exact body lines.
+    """
+    target = max(1, min(target, 1500))
+    start = 0
+    while start < len(text):
+        end, size = start, 0
+        while end < len(text):
+            char = text[end]
+            weight = 2 if char in '\\"\b\f\n\r\t' else 6 if ord(char) < 32 else 1
+            if size + weight > target and end > start:
+                break
+            size += weight
+            end += 1
+        if end < len(text):
+            for boundary in ('\n\n', '\n'):
+                cut = text.rfind(boundary, start, end)
+                if cut >= start:
+                    end = cut + len(boundary)
+                    break
+            else:
+                cut = next((i for i in range(end - 1, start, -1) if text[i].isspace()), None)
+                if cut is not None:
+                    end = cut + 1
+        yield start, end
+        start = end
+
+
 class SafeHTML(HTMLParser):
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
+    def __init__(self, source):
+        # Separate entity callbacks preserve their raw source line even when
+        # an entity decodes to a newline (&#10; is still one source line).
+        super().__init__(convert_charrefs=False)
+        self.source_lines = source.split('\n')
         self.parts = []
+        self.mapping = []
+        self.length = 0
+        self.headings = []
+        self.heading = None
         self.skip = 0
+
+    def append(self, value):
+        line = self.getpos()[0]
+        for piece in value.splitlines(keepends=True):
+            self.parts.append(piece)
+            self.mapping.append((self.length, self.length + len(piece), line))
+            self.length += len(piece)
+            line += piece.count('\n')
+
+    def finish_heading(self):
+        if self.heading is not None:
+            offset, level, first = self.heading
+            title = ' '.join(''.join(self.parts[first:]).split())[:MAX_HEADER]
+            self.headings.append((offset, level, title))
+            self.heading = None
+
     def handle_starttag(self, tag, attrs):
         if tag in {"script", "style"}:
             self.skip += 1
-        elif tag in {"p", "div", "br", "pre", "h1", "h2", "h3", "h4", "li"}:
-            self.parts.append("\n")
+        elif not self.skip:
+            if re.fullmatch(r'h[1-6]', tag):
+                self.finish_heading()
+                self.heading = (self.length, int(tag[1]), len(self.parts))
+            if tag in {"p", "div", "br", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "li"}:
+                self.append("\n")
+
     def handle_endtag(self, tag):
         if tag in {"script", "style"}:
             self.skip = max(0, self.skip - 1)
-        else:
-            self.parts.append("\n")
+        elif not self.skip:
+            if re.fullmatch(r'h[1-6]', tag):
+                self.finish_heading()
+            self.append("\n")
+
     def handle_data(self, data):
         if not self.skip:
-            self.parts.append(data)
+            self.append(data)
+
+    def handle_entityref(self, name):
+        if not self.skip:
+            line, column = self.getpos()
+            raw = '&' + name
+            if self.source_lines[line - 1].startswith(raw + ';', column):
+                raw += ';'
+            value = unescape(raw)
+            self.parts.append(value)
+            self.mapping.append((self.length, self.length + len(value), line))
+            self.length += len(value)
+
+    def handle_charref(self, name):
+        self.handle_entityref('#' + name)
+
+
+def html_units(text, path, target):
+    parser = SafeHTML(text)
+    parser.feed(text)
+    parser.close()
+    parser.finish_heading()
+    body = ''.join(parser.parts)
+    headings = {offset: (level, title) for offset, level, title in parser.headings}
+    boundaries = sorted({0, *headings, len(body)})
+    starts = [first for first, _, _ in parser.mapping]
+    stack, result = [], []
+    for start, after in zip(boundaries, boundaries[1:]):
+        if start in headings:
+            level, title = headings[start]
+            while stack and stack[-1][0] >= level:
+                stack.pop()
+            stack.append((level, title))
+        breadcrumb = tuple(title for _, title in stack) or (PurePosixPath(path).stem,)
+        title = ' > '.join(breadcrumb)[:MAX_HEADER]
+        section = body[start:after]
+        spans = [(a, b) for a, b in transformed_spans(section, target) if section[a:b].strip()]
+        for part, (first, last) in enumerate(spans, 1):
+            # Strip synthetic boundaries before finding the contributing raw
+            # lines; never count decoded lines as original HTML lines.
+            value = section[first:last]
+            first += len(value) - len(value.lstrip())
+            last -= len(value) - len(value.rstrip())
+            a, b = start + first, start + last
+            left = max(0, bisect_right(starts, a) - 1)
+            right = bisect_left(starts, b)
+            source = parser.mapping[left:right]
+            result.append(UnitDraft(min(p[2] for p in source), max(p[2] for p in source),
+                                    body[a:b], 'doc-section', title, (path + '\n' + title)[:MAX_HEADER],
+                                    language='html', breadcrumb=breadcrumb, transformed=True,
+                                    part=part, parts=len(spans)))
+    return result
 
 
 def docs_units(text: str, path: str, fmt: str, target=1500):
     if fmt == "html":
-        parser = SafeHTML()
-        parser.feed(text)
-        body = "".join(parser.parts).strip()
-        # Raw HTML source mapping is deliberately a file envelope, never a
-        # claim that entity-decoded text matches raw source lines.
-        count = max(1, len(split_source_lines(text)))
-        return [UnitDraft(1, count, body, "doc-section", path, path, language="html", transformed=True)] if body else []
+        return html_units(text, path, target)
     lines = split_source_lines(text)
     headings = []
     fence = None
@@ -612,6 +720,24 @@ def docs_units(text: str, path: str, fmt: str, target=1500):
     return result
 
 
+def json_member_span(text, start, name):
+    """Locate a direct object's value without matching nested keys/strings."""
+    decoder = json.JSONDecoder()
+    position, found = start + 1, None
+    while True:
+        while text[position].isspace() or text[position] == ',':
+            position += 1
+        if text[position] == '}':
+            return found
+        key, position = decoder.raw_decode(text, position)
+        while text[position].isspace() or text[position] == ':':
+            position += 1
+        first = position
+        _, position = decoder.raw_decode(text, position)
+        if key == name:
+            found = (first, position)  # Match json.loads' last-key-wins rule.
+
+
 def notebook_units(text, path, target, tier):
     try:
         notebook = json.loads(text)
@@ -619,16 +745,27 @@ def notebook_units(text, path, target, tier):
         if not isinstance(cells, list):
             raise ValueError()
         language = notebook.get("metadata", {}).get("language_info", {}).get("name", "python")
+        cell_position = json_member_span(text, len(text) - len(text.lstrip()), 'cells')[0] + 1
+        decoder = json.JSONDecoder()
+        newlines = [i for i, char in enumerate(text) if char == '\n']
         result = []
         for index, cell in enumerate(cells):
+            while text[cell_position].isspace() or text[cell_position] == ',':
+                cell_position += 1
+            cell_start = cell_position
+            _, cell_position = decoder.raw_decode(text, cell_position)
             source = cell.get("source", "")
             source = "".join(source) if isinstance(source, list) else source
             if not isinstance(source, str):
                 raise ValueError()
             if source.strip():
-                # Cell strings may span one JSON physical line. Use raw-file
-                # envelope and label transformed, preserving cell-local text.
-                result.append(UnitDraft(1, max(1, len(split_source_lines(text))), source, "notebook-cell", f"{path} cell {index}", f"{path}\ncell {index}", language=language if cell.get("cell_type") == "code" else "markdown", cell_index=index, transformed=True, oversized=nonwhite(source) > target))
+                raw_start, raw_end = json_member_span(text, cell_start, 'source')
+                first, last = bisect_left(newlines, raw_start) + 1, bisect_left(newlines, raw_end - 1) + 1
+                spans = [(a, b) for a, b in transformed_spans(source, target) if source[a:b].strip()]
+                for part, (a, b) in enumerate(spans, 1):
+                    # Escaped cell text does not share the JSON file's lines.
+                    # Every part cites the enclosing source value, not outputs.
+                    result.append(UnitDraft(first, last, source[a:b], "notebook-cell", f"{path} cell {index}", f"{path}\ncell {index}", language=language if cell.get("cell_type") == "code" else "markdown", breadcrumb=(f"cell {index}",), cell_index=index, transformed=True, part=part, parts=len(spans)))
         return result, None
     except (ValueError, KeyError, TypeError, AttributeError):
         units, _ = code_units(text, path, "json", target, "0", "fallback")

@@ -70,13 +70,17 @@ def verify(rows, library, refresh_policy):
 
 
 def excerpt(item, chars, question):
-    if item["source"]["lineMapping"] != "exact":
-        return None
+    approximate = item["source"]["lineMapping"] != "exact"
+    separator = '\n'
     lines = split_source_lines(item["text"])
     overhead = len(evidence({**item,"text":""})) + 80
     room = chars-overhead
     if room < 1:
         return None
+    if approximate and any(len(line) > room for line in lines):
+        from .chunk import transformed_spans
+        lines = [item['text'][a:b] for a, b in transformed_spans(item['text'], room)]
+        separator = ''
     from .symbols import analyze, words, stem
     terms,_ = analyze(question)
     weights = []
@@ -102,8 +106,11 @@ def excerpt(item, chars, question):
         else:
             last = p[0]
         size += p[1]
-    source = {**item["source"],"startLine":item["source"]["startLine"]+first,"endLine":item["source"]["startLine"]+last}
-    return {**item,"text":"\n".join(lines[first:last+1]),"source":source,"excerpt":True,"description":item["description"]+" [Whole-line excerpt; use expand for more.]"}
+    source = dict(item['source']) if approximate else {**item["source"],"startLine":item["source"]["startLine"]+first,"endLine":item["source"]["startLine"]+last}
+    marker = ' [Transformed excerpt; cited range encloses this part.]' if approximate else ' [Whole-line excerpt; use expand for more.]'
+    # A transformed excerpt retains the conservative raw-file range and its
+    # live hash. Decoded offsets must never become invented source lines.
+    return {**item,"text":separator.join(lines[first:last+1]),"source":source,"excerpt":True,"description":item["description"]+marker}
 
 
 def candidate_window(ranked, maximum):
@@ -118,7 +125,7 @@ def candidate_window(ranked, maximum):
         siblings = per_file.setdefault(key, [])
         if len(siblings) >= 3:
             continue
-        if any(row["cell_index"] == old["cell_index"] and
+        if any(not row.get('transformed', False) and not old.get('transformed', False) and row["cell_index"] == old["cell_index"] and
                max(0, min(row["end_line"], old["end_line"]) - max(row["start_line"], old["start_line"]) + 1) >=
                .8 * min(row["end_line"] - row["start_line"] + 1, old["end_line"] - old["start_line"] + 1)
                for old in siblings):
@@ -185,7 +192,7 @@ def fit(result, tokens, question, limit, output_format="json", *, pretty=True, n
     for item in candidates:
         key = (item["source"]["rootId"], item["source"]["path"])
         siblings = [r for r in selected if key == (r["source"]["rootId"], r["source"]["path"])]
-        if len(siblings) >= 3 or any(item["source"]["cellIndex"] == r["source"]["cellIndex"] and max(0, min(item["source"]["endLine"], r["source"]["endLine"]) - max(item["source"]["startLine"], r["source"]["startLine"]) + 1) >= .8 * min(item["source"]["endLine"] - item["source"]["startLine"] + 1, r["source"]["endLine"] - r["source"]["startLine"] + 1) for r in siblings):
+        if len(siblings) >= 3 or any(item['source']['lineMapping'] == r['source']['lineMapping'] == 'exact' and item["source"]["cellIndex"] == r["source"]["cellIndex"] and max(0, min(item["source"]["endLine"], r["source"]["endLine"]) - max(item["source"]["startLine"], r["source"]["startLine"]) + 1) >= .8 * min(item["source"]["endLine"] - item["source"]["startLine"] + 1, r["source"]["endLine"] - r["source"]["startLine"] + 1) for r in siblings):
             continue
         cost = charge([*selected, item], max(omitted, reserve))
         if tokens is not None and cost > tokens:

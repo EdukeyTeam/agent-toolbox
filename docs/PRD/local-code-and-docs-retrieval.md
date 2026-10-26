@@ -174,6 +174,7 @@ AC-LIB-3: Two differently named libraries coexist on one machine and can be quer
 
 AC-DOC-1: Indexing a documentation set containing Markdown, MDX, reStructuredText, AsciiDoc, HTML and plain text indexes all six formats and reports per-format counts.
 AC-DOC-2: A code block inside an indexed document is retrievable as its own snippet that includes the surrounding explanatory text or a reference to it, so code and explanation arrive together.
+AC-DOC-3: HTML uses h1-h6 section breadcrumbs and source-mapped, bounded paragraph/line parts; oversized notebook cells use bounded parts with their cell index. Each part fits the default 4,000-token serialized response for ordinary metadata. Smaller budgets return a cited excerpt or explicit budget omission; transformed text retains a conservative original-source range and live-file hash verification.
 
 ### Snippet metadata and freshness (META)
 
@@ -387,3 +388,4 @@ Single user per machine; repositories are text-dominant with binaries ignored; G
 
 | 2026-10-26 | C4 | AC-BUD-1 charges the complete requested serialization, including metadata and newline, per PR #26 round-3 finding 4 and ADR 002 TAC-002-04. | A8 implementation charged evidence only, excluding the envelope. | Explicitly authorized review correction restores the full-output contract across CLI/HTTP and exact expansion. |
 | 2026-10-26 | C5 | AC-OFF-3 retains the remote-query ban and remote setup defaults to lexical, per PR #26 round-3 finding 1. | C1/A9 allowed consented remote query embeddings and setup defaulted to hybrid. | Preserve the implemented boundary while making normal generated CLI/HTTP/MCP query paths usable. |
+| 2026-10-26 | C6 | AC-DOC-3 requires bounded HTML sections and notebook cell parts, per the authorized PR #26 round-4 brief. | HTML files and notebook cells were single transformed units that could not fit a budget or be excerpted. | Downloaded documentation and large cells must return useful, source-cited evidence under full-output budgets. |
