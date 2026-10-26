@@ -16,6 +16,13 @@ from usage_common import COUNTS, LISTS, copilot_preference, dataset, digest, num
 from usage_attribution import attribution_rank
 
 
+ATTRIBUTION_FIELDS = ("model", "reported_model", "provider", "model_attribution", "speed", "inference_geo", "service_tier")
+
+
+def _measured(context: dict[str, Any]) -> int:
+    return sum(context.get(f) is not None for f in ("used_tokens", "window_tokens", "provider_percent"))
+
+
 def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
     """Stable identities reconcile duplicate files; counts are never additive."""
     result = dataset()
@@ -28,10 +35,21 @@ def merge(*datasets: dict[str, Any]) -> dict[str, Any]:
                     records[key] = deepcopy(record)
                     continue
                 old = records[key]
+                if kind == "contexts" and _measured(record) > _measured(old):
+                    # A later snapshot of the same context can add the capacity or occupancy; take its
+                    # measurements and derived values together, keeping a stronger earlier route.
+                    refreshed = deepcopy(record)
+                    if attribution_rank(old) > attribution_rank(record):
+                        refreshed.update({f: old[f] for f in ATTRIBUTION_FIELDS if f in old})
+                    records[key] = refreshed
+                    continue
                 if kind in ("usage", "contexts"):
-                    if attribution_rank(record) > attribution_rank(old) or (
+                    # An unknown model collected before its turn context arrived must not block the resolved one.
+                    resolves_unknown = (old.get("model") == "unknown" and record.get("model") not in (None, "unknown")
+                                        and attribution_rank(record) >= attribution_rank(old))
+                    if attribution_rank(record) > attribution_rank(old) or resolves_unknown or (
                             attribution_rank(record) == 2 and attribution_rank(old) == 2):
-                        for field in ("model", "reported_model", "provider", "model_attribution", "speed", "inference_geo", "service_tier"):
+                        for field in ATTRIBUTION_FIELDS:
                             if field in record:
                                 old[field] = record[field]
                 if kind == "usage":

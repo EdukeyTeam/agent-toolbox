@@ -127,6 +127,25 @@ class Aggregation(unittest.TestCase):
         self.assertEqual(len(result["usage"]), 1)
         self.assertEqual(result["usage"][0]["output_tokens"], 500)
 
+    def test_later_collection_resolves_unknown_model_but_not_a_user_route(self):
+        early, late = dataset(), dataset()
+        early["usage"] = [request(model="unknown", reported_model="unknown", model_attribution="reported")]
+        late["usage"] = [request(model="gpt-5.5", reported_model="gpt-5.5", model_attribution="reported")]
+        self.assertEqual(merge(early, late)["usage"][0]["model"], "gpt-5.5")
+        routed = dataset()
+        routed["usage"] = [request(model="glm-5.3", provider="zai", model_attribution="user_override")]
+        self.assertEqual(merge(routed, late)["usage"][0]["model"], "glm-5.3", "a user route is never replaced")
+
+    def test_later_context_snapshot_adds_capacity(self):
+        early, late = dataset(), dataset()
+        early["contexts"] = [context_observation("codex", "s1", "2026-10-01T12:00:00.000Z", {}, 40000, None, model="gpt-5.5")]
+        late["contexts"] = [context_observation("codex", "s1", "2026-10-01T12:00:00.000Z", {}, 40000, 200000, model="gpt-5.5")]
+        self.assertEqual(early["contexts"][0]["id"], late["contexts"][0]["id"])
+        ctx = merge(early, late)["contexts"][0]
+        self.assertEqual(ctx["window_tokens"], 200000)
+        self.assertEqual(ctx["computed_percent"], 20)
+        self.assertEqual(merge(late, early)["contexts"][0]["window_tokens"], 200000, "a poorer later copy keeps the measurement")
+
     def test_half_open_calendar_filter_and_undated_coverage(self):
         d = dataset()
         d["usage"] = [request(id="a", timestamp="2026-09-30T23:59:59.999Z"), request(id="b"),
