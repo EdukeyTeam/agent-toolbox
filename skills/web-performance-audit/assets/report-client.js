@@ -88,13 +88,19 @@
     });
     rows.forEach((r, i) => {
       const y = top + i * rowH + 6; const tot = totals[i] || 1; let acc = 0;
+      // Shares of a sum of independent percentiles are meaningless, so a row with a measured total has none.
+      const additive = r.total == null;
       text(svg, { x: 0, y: y + 18, class: 'lbl' }, r.label);
+      if (pct && !additive) {
+        text(svg, { x: labelW, y: y + 17, class: 'val' }, 'Percentiles do not add up: see Milliseconds');
+        return;
+      }
       r.v.forEach((v, j) => {
         const val = pct ? (v / tot) * 100 : v;
         if (val > 0) {
           const x0 = x(acc); const w = Math.max(x(acc + val) - x0 - 2, 1);
           svgEl('rect', { x: x0, y, width: w, height: 24, rx: 3, fill: SER[j] }, svg);
-          bindTip(svgEl('rect', { x: x0, y: y - 4, width: Math.max(w, 6), height: 32, class: 'hit' }, svg), `<b>${esc(r.label)}</b><br>${esc(keys[j])}: <span class="mono">${fmt(v)} ${esc(unit)}</span> (${fmt((v / tot) * 100)}%)`);
+          bindTip(svgEl('rect', { x: x0, y: y - 4, width: Math.max(w, 6), height: 32, class: 'hit' }, svg), `<b>${esc(r.label)}</b><br>${esc(keys[j])}: <span class="mono">${fmt(v)} ${esc(unit)}</span>${additive ? ` (${fmt((v / tot) * 100)}%)` : ' (p75)'}`);
         }
         acc += val;
       });
@@ -144,7 +150,7 @@
     legend('lcp-legend', keys);
     const draw = (mode) => stacked($('lcp-chart'), rows, keys, { pct: mode === 'pct', labelW: 250 });
     toggleGroup('data-lcpscale', draw); draw('pct');
-    table('lcp-table', ['Context', 'LCP ms', ...keys, 'Render delay % of subparts'], rows.map((r) => { const t = r.v.reduce((a, b) => a + b, 0); return [r.label, fmt(r.total ?? t), ...r.v.map((v) => fmt(v)), fmt((r.v[3] / t) * 100) + '%']; }));
+    table('lcp-table', ['Context', 'LCP ms', ...keys, 'Render delay % (lab)'], rows.map((r) => { const t = r.v.reduce((a, b) => a + b, 0); return [r.label, fmt(r.total ?? t), ...r.v.map((v) => fmt(v)), r.total == null ? fmt((r.v[3] / t) * 100) + '%' : '-']; }));
   }
 
   if (D.mainThread) bars($('mt-chart'), D.mainThread, { labelW: 180, W: 600 });

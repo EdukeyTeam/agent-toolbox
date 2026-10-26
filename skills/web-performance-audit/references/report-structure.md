@@ -34,7 +34,7 @@ Give the run matrix (see [methodology](methodology.md)) and the visitor states. 
 
 ## 4. LCP deep dive
 
-Name the LCP element (selector and resource), then give a subparts table for every context (field phone, field desktop, each lab run), with the share of render delay. CrUX p75 subparts are independent percentiles and do not add up to the p75 LCP, so give each field row its measured p75 LCP (`lcp` in `report-data.json`) and never present the subpart sum as field LCP; lab subparts come from one trace and do add up. Write the root cause as **verified** or as a **hypothesis**, and include the experiment that decided it.
+Name the LCP element (selector and resource), then give a subparts table for every context (field phone, field desktop, each lab run). CrUX p75 subparts are independent percentiles and do not add up to the p75 LCP, so give each field row its measured p75 LCP (`lcp` in `report-data.json`), and never present the subpart sum as field LCP or a subpart's share of it. Compare field subparts in milliseconds only. Lab subparts come from one trace and do add up, so give the share of render delay for lab runs. Write the root cause as **verified** or as a **hypothesis**, and include the experiment that decided it.
 
 ## 5. JavaScript, main thread, third parties
 
