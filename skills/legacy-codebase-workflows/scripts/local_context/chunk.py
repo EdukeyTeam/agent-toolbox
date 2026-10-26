@@ -684,7 +684,8 @@ def docs_units(text: str, path: str, fmt: str, target=1500):
             continue
         if fence:
             continue
-        heading = re.match(r"^(#{1,6}|={1,6})\s+(.+?)\s*#*\s*$", line)
+        heading = (re.match(r"^(#{1,6})\s+(.+?)\s*#*\s*$", line) if fmt == "markdown" else
+                   re.match(r"^(={1,6})\s+(.+?)\s*#*\s*$", line) if fmt == "asciidoc" else None)
         if heading:
             headings.append((i + 1, len(heading[1]), heading[2]))
             markdown_paragraph = False
