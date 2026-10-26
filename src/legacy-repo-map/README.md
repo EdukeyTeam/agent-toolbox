@@ -6,7 +6,7 @@ The Python tool `skills/legacy-codebase-workflows/scripts/repo_map.py` is the re
 
 ## Use
 
-First run `python /path/to/skill/scripts/setup_native.py status`. If setup is needed, run its explicit `install` command; use the verified `program` path returned by status. The policy pins native 0.3.1; if its first release is unavailable, use the reviewed CI/local artifact route in [native setup](../../skills/legacy-codebase-workflows/references/setup.md#native-binary), or the stated fallback. Setup does not silently compile Rust.
+First run `python /path/to/skill/scripts/setup_native.py status`. If setup is needed, run its explicit `install` command; use the verified `program` path returned by status. The policy pins native 0.3.2; if its first release is unavailable, use the reviewed CI/local artifact route in [native setup](../../skills/legacy-codebase-workflows/references/setup.md#native-binary), or the stated fallback. Setup does not silently compile Rust.
 
 ```bash
 /path/returned/as/program /path/to/repository --output-dir /path/to/artifacts --budget 16384 --subtree src --focus-symbol ExampleService

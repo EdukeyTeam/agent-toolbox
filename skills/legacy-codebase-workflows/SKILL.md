@@ -15,7 +15,7 @@ Start with direct search for a known path or symbol; no setup or saved map is ne
 
 **Use the native Rust mapper `legacy-repo-map` for repository maps by default.** A normal skill installation includes its setup script, pinned policy, source, queries and notices, **not executables**. Verify local readiness first; downloading a prebuilt program needs no Rust compiler or Python parser packages. Read [binary delivery](references/distribution.md) only for platform limits or publishing details.
 
-**Native setup contract:** `tool-distribution.json` pins `legacy-tools-v0.3.1` from `EdukeyTeam/agent-toolbox` and names the Windows x86-64, Linux x86-64 and macOS ARM64 archives. WSL uses the Linux archive. First run:
+**Native setup contract:** `tool-distribution.json` pins `legacy-tools-v0.3.2` from `EdukeyTeam/agent-toolbox` and names the Windows x86-64, Linux x86-64 and macOS ARM64 archives. WSL uses the Linux archive. First run:
 
 ```bash
 python /path/to/skill/scripts/setup_native.py status
