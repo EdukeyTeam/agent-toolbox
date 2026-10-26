@@ -56,15 +56,18 @@ def native_snapshot(raw: dict, agent: str, account: str = "local", observed_at: 
                 "account": safe_name(account), "bucket": safe_name(bucket), "window_minutes": duration,
                 "resets_at": reset, "used_percent": used, "observed_at": when, "source_id": source_id,
                 "origin": "native_export", "device": "owning-agent"})
+    # A syntactically valid export can still hold a non-object quota container; ignore it rather than crash.
+    def mapping(value):
+        return value if isinstance(value, dict) else {}
     if agent == "codex":
-        limits = raw.get("rateLimitsByLimitId") or {"codex": raw.get("rateLimits", raw)}
+        limits = mapping(raw.get("rateLimitsByLimitId")) or {"codex": raw.get("rateLimits", raw)}
         for label, bucket in limits.items():
             if isinstance(bucket, dict):
                 for key in ("primary", "secondary"):
                     if isinstance(bucket.get(key), dict):
                         quota(str(label) + ":" + key, bucket[key])
     else:
-        for key, value in (raw.get("rate_limits") or raw.get("quota") or {}).items():
+        for key, value in (mapping(raw.get("rate_limits")) or mapping(raw.get("quota"))).items():
             if isinstance(value, dict):
                 quota(key, value, {"five_hour": 300, "seven_day": 10080}.get(key))
     cw = raw.get("context_window")

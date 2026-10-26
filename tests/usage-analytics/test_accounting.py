@@ -277,6 +277,11 @@ class ImportsAndHistory(unittest.TestCase):
         codex = native_snapshot({"rateLimitsByLimitId": {"codex": {"primary": {"usedPercent": 4, "windowDurationMins": 10080, "resetsAt": 1792300000}}}}, "codex")
         self.assertEqual(codex["quotas"][0]["window_minutes"], 10080)
 
+    def test_native_snapshot_ignores_non_object_quota_containers(self):
+        for agent, raw in (("claude", {"rate_limits": [25]}), ("claude", {"quota": "full"}),
+                           ("codex", {"rateLimitsByLimitId": [{"primary": {"usedPercent": 4}}]}), ("codex", {"rateLimits": 7})):
+            self.assertEqual(native_snapshot(raw, agent)["quotas"], [], raw)
+
 
 class QuotaCalibration(unittest.TestCase):
     def test_requires_coverage_and_rejects_reset_and_mixed_models(self):
