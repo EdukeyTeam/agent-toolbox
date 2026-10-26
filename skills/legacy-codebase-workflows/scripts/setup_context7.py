@@ -308,7 +308,7 @@ def prepare(args) -> dict:
     if args.clients:
         subprocess.run([sys.executable, str(root / "tools/local_context7.py"), "setup", "--skill-root", str(SKILL)], check=True)
         report["clientsInstalled"] = True
-    report["nextCommand"] = shell_command([python_command, str(root / "tools/local_context7.py"), "index"])
+    report["nextCommand"] = shell_command([python_command, str(root / "tools/local_context7.py"), "index", *(["--download-model"] if args.download_model else [])])
     report["hookActivation"] = "Review generated definitions and client workspace trust; restart/reload each configured client. Native dispatch is not verified by setup."
     return report
 
