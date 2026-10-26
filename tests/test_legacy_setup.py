@@ -360,6 +360,41 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(before, (SCRIPTS.parent / "tool-distribution.json").read_bytes())
         self.mock_probe.assert_not_called()
 
+    def test_download_failure_reports_url_status_and_requires_acknowledgment(self):
+        url = f"https://github.com/{self.policy['repository']}/releases/download/{self.policy['release_tag']}/{self.policy['release_manifest']}"
+        error = urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+        output = io.StringIO()
+        with patch.object(setup.urllib.request, "build_opener") as opener, contextlib.redirect_stdout(output):
+            opener.return_value.open.side_effect = error
+            result = setup.main(["install", "--cache-dir", str(self.cache)])
+        self.assertEqual(result, 2)
+        response = json.loads(output.getvalue())
+        self.assertIn(url, response["reason"])
+        self.assertIn("HTTP 404 (Not Found)", response["reason"])
+        self.assertEqual(response["next_action"], "report-native-error")
+        self.assertFalse(response["native_available"])
+        self.assertTrue(response["python_fallback_requires_user_acknowledgment"])
+        self.assertEqual(opener.return_value.open.call_count, 1)
+        self.mock_probe.assert_not_called()
+
+    def test_network_reason_and_other_http_status_are_preserved(self):
+        url = "https://github.com/example/release"
+        for error, expected in ((TimeoutError("fixture timed out"), "fixture timed out"),
+                                (urllib.error.URLError("fixture DNS failure"), "fixture DNS failure"),
+                                (urllib.error.HTTPError(url, 503, "Service Unavailable", {}, None), "HTTP 503 (Service Unavailable)")):
+            with patch.object(setup.urllib.request, "build_opener") as opener:
+                opener.return_value.open.side_effect = error
+                with self.assertRaises(setup.SetupError) as caught:
+                    setup._download(url, self.base / "not-downloaded")
+            self.assertIn(url, str(caught.exception))
+            self.assertIn(expected, str(caught.exception))
+
+    def test_unsupported_platform_requires_user_acknowledgment(self):
+        with patch.object(setup, "detect_platform", return_value="linux-arm64"):
+            with self.assertRaisesRegex(setup.SetupError, "explicit user acknowledgment"):
+                setup.install(cache_dir=self.cache)
+        self.mock_probe.assert_not_called()
+
     def test_ci_requires_successful_run_and_exact_expected_source(self):
         with self.assertRaisesRegex(setup.SetupError, "expected-source"):
             setup.install(cache_dir=self.cache, from_ci="37633697013")
