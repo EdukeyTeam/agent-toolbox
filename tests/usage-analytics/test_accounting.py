@@ -255,6 +255,20 @@ class QuotaCalibration(unittest.TestCase):
         rows[-1]["model"] = "different"
         self.assertEqual(quota_analysis(q, rows, True)[0]["status"], "unavailable")
 
+    def test_provider_tagged_quota_needs_confirmed_routes(self):
+        q = [{"agent": "claude", "account": "local", "bucket": "weekly", "window_minutes": 10080, "provider": "anthropic",
+              "resets_at": "2026-10-08T00:00:00.000Z", "used_percent": 2 * i,
+              "observed_at": f"2026-10-01T12:0{i}:00.000Z"} for i in range(5)]
+        rows = [{**request(id=str(i), timestamp=f"2026-10-01T12:0{i}:00.000Z"), **price(request(), load_rates())} for i in range(1, 5)]
+        unmapped = quota_analysis(q, rows, True)[0]
+        self.assertEqual(unmapped["status"], "unavailable", "unmapped routes may have been served by a proxy")
+        self.assertIn("serving route", unmapped["reason"])
+        for r in rows:
+            r["provider"] = "anthropic"
+        self.assertEqual(quota_analysis(q, rows, True)[0]["status"], "experimental")
+        rows[0]["provider"] = None
+        self.assertEqual(quota_analysis(q, rows, True)[0]["status"], "unavailable")
+
 
 if __name__ == "__main__":
     unittest.main()

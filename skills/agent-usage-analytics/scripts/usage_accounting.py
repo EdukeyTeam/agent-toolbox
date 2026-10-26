@@ -329,7 +329,10 @@ def quota_analysis(quotas: list[dict[str, Any]], requests: list[dict[str, Any]],
                                     timestamp(start.isoformat()) < r["timestamp"] <= timestamp(end.isoformat()) for r in requests)
                     else:
                         aging = True
-                    if routes and routes != {provider}:
+                    # A provider-tagged quota needs every request confirmed on that route: an unmapped request
+                    # may have gone through a proxy such as Z.ai and says nothing about this provider's quota.
+                    unconfirmed = provider is not None and any(r.get("provider") != provider for r in relevant)
+                    if (routes and routes != {provider}) or unconfirmed:
                         reason = "Quota provider is unknown or differs from the confirmed serving route."
                     elif len(mix) != 1 or not relevant or aging or any(r.get("input_tokens") is None or r.get("output_tokens") is None for r in relevant):
                         reason = "Mixed models/speeds, aging usage or incomplete measurements prevent calibration."
