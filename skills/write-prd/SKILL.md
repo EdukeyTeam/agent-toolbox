@@ -26,6 +26,8 @@ Decide which case this is, read its reference, and explore what it says to explo
 
 The rest of the process and the template are the same in every case. Verify the user's assumptions against what you find; do not skip exploration when there is something to explore.
 
+In the as-is and black-box cases the document describes behavior that exists, so read the process and template that way: ask the Step 3 questions about how the application behaves today instead of what should be built, state in the Executive Summary that the document describes an existing application, use Out of Scope for the parts of the application the document does not cover, and describe the screens in the UI section as they are. Proposed changes go to Further Notes.
+
 ### Step 3 — Ask clarifying questions (REQUIRED — minimum 5)
 Ask the user at least five focused clarifying questions before writing the PRD. Do not start writing until you have answers. If the brief already covers a listed topic, ask a deeper question about another decision instead of repeating it.
 
@@ -44,7 +46,7 @@ Resolve decisions that affect the main flows before writing. Record any remainin
 If the product involves external APIs, file format constraints, legal requirements, or third-party service limits, research them before writing. Do not put unverified numbers or constraints into the PRD.
 
 ### Step 5 — Write the PRD
-Use the template below. Save the result as `docs/PRD.md` (or the path the user specifies).
+Use the template below. Save the result as `docs/PRD.md`, unless the user specifies another path or the chosen workflow names one (a distinct feature in an existing application gets its own document).
 
 ### Step 6 — Stop, then ask about the ADR
 Stop once the PRD is saved. Do not begin implementation, and do not write the ADR in the same run.
