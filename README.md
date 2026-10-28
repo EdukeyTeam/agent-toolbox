@@ -115,3 +115,7 @@ The skills CLI remains an option for Codex and other supported agents when you w
 Skills live in `skills/<name>/`. Open a pull request for a new skill or a change to an existing one. Include tests for executable behavior and describe a realistic manual trial for instruction-only skills. The [validation workflows](docs/ci.md) use built-in path filters to run only for their inputs; [AGENTS.md](AGENTS.md) has the contribution rules.
 
 Brand assets extracted from other sites may be licensed. Check usage rights before reusing or redistributing them.
+
+## License
+
+[MIT](LICENSE) © 2026 Łukasz Matuszewski and Edukey Sp. z o.o.
