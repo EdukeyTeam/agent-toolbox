@@ -19,6 +19,35 @@ from usage_render import write_reports
 
 
 class ReportDelivery(unittest.TestCase):
+    def test_ledger_queries_create_default_reports_but_ingestion_stays_ledger_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "numeric-export.json"
+            source.write_text(json.dumps(demo_data()), encoding="utf-8")
+            ledger = root / "history.sqlite"
+            documents = root / "Documents"
+            for command in ("import", "collect"):
+                with self.subTest(ingestion=command), patch(
+                    "usage_output.documents_directory", side_effect=AssertionError("ingestion must stay ledger-only")
+                ):
+                    stdout = io.StringIO()
+                    with contextlib.redirect_stdout(stdout):
+                        self.assertEqual(main([command, "--input", str(source), "--store", str(ledger)]), 0)
+                    self.assertEqual(json.loads(stdout.getvalue())["artifacts"], {})
+                    self.assertTrue(ledger.is_file())
+            for arguments, requests in ((["usage"], 42), (["session", "--session", "sample-codex-3"], 2)):
+                with self.subTest(query=arguments[0]), patch("usage_output.documents_directory", return_value=documents):
+                    stdout = io.StringIO()
+                    with contextlib.redirect_stdout(stdout):
+                        self.assertEqual(main([*arguments, "--store", str(ledger)]), 0)
+                    result = json.loads(stdout.getvalue())
+                    self.assertEqual(result["summary"]["requests"], requests)
+                    self.assertEqual(set(result["artifacts"]), {"docx", "json", "markdown", "html"})
+                    for value in result["artifacts"].values():
+                        path = Path(value)
+                        self.assertEqual(path.parent.parent, documents.resolve() / "Agent Analysis")
+                        self.assertTrue(path.is_file(), value)
+
     def test_default_reports_land_in_documents_without_overwriting_prior_runs(self):
         with tempfile.TemporaryDirectory() as temp:
             documents = Path(temp) / "redirected Documents"

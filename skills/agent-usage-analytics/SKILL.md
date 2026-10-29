@@ -17,7 +17,9 @@ If the user gives a destination, pass that directory as `--out` and honor any re
 
 Resolve Documents on the machine producing the report. The script uses the Windows Documents known folder (including OneDrive or other redirection), Linux's configured XDG Documents folder, or `~/Documents` on macOS/fallback systems. `--home` selects input data, not the output user. When working through WSL for a requested Windows destination, resolve that Windows user's Documents and pass its mounted path with `--out`.
 
-The working directory, analyzed project, installed skill and a template's folder do not set the report destination. Use a template only for formatting; never inherit its output path or another machine's user profile. For a user-selected DOCX filename, generate in its parent directory and rename `report.docx` to that name. A ledger-only `--store` invocation still writes no report unless `--out` is supplied.
+The working directory, analyzed project, installed skill and a template's folder do not set the report destination. Use a template only for formatting; never inherit its output path or another machine's user profile. For a user-selected DOCX filename, generate in its parent directory and rename `report.docx` to that name.
+
+`usage --store` and `session --store` query the ledger and still create reports in Documents when `--out` is omitted. Ingestion commands (`collect`, `import`, `snapshot`, `capture-codex`) with `--store` stay ledger-only unless `--out` is supplied.
 
 If the user requests another document format, convert the generated DOCX with an available local document tool and deliver that format; changing a filename extension is not conversion.
 

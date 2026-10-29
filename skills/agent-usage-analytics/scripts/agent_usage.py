@@ -275,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
                               session_id=args.session_id, compare_since=args.compare_since, compare_until=args.compare_until,
                               share=args.share, complete_coverage=args.complete_coverage, task_map=task_map)
         paths = {}
-        if args.out or not args.store:
+        if args.out or not args.store or args.command in ("usage", "session"):
             from usage_render import write_reports
             from usage_output import new_report_directory
             paths = write_reports(report, args.out.expanduser() if args.out else new_report_directory())
