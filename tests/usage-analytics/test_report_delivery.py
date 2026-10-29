@@ -3,6 +3,7 @@ import io
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -30,7 +31,7 @@ class ReportDelivery(unittest.TestCase):
                     results.append(json.loads(stdout.getvalue())["artifacts"])
             first = Path(results[0]["docx"])
             second = Path(results[1]["docx"])
-            self.assertEqual(first.parent.parent, documents / "Agent Analysis")
+            self.assertEqual(first.parent.parent, documents.resolve() / "Agent Analysis")
             self.assertNotEqual(first, second)
             self.assertTrue(first.is_file())
             self.assertTrue(second.is_file())
@@ -42,7 +43,22 @@ class ReportDelivery(unittest.TestCase):
                 stdout = io.StringIO()
                 with contextlib.redirect_stdout(stdout):
                     self.assertEqual(main(["demo", "--out", str(requested)]), 0)
-            self.assertEqual(Path(json.loads(stdout.getvalue())["artifacts"]["docx"]), requested / "report.docx")
+            self.assertEqual(Path(json.loads(stdout.getvalue())["artifacts"]["docx"]), requested.resolve() / "report.docx")
+
+    def test_relative_destination_returns_absolute_existing_artifact_paths(self):
+        with tempfile.TemporaryDirectory() as temp:
+            result = subprocess.run(
+                [sys.executable, str(SCRIPTS / "agent_usage.py"), "demo", "--out", "reports with spaces"],
+                cwd=temp, capture_output=True, encoding="utf-8", timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            artifacts = json.loads(result.stdout)["artifacts"]
+            self.assertEqual(set(artifacts), {"docx", "json", "markdown", "html"})
+            for value in artifacts.values():
+                path = Path(value)
+                self.assertTrue(path.is_absolute(), value)
+                self.assertEqual(path.parent, Path(temp).resolve() / "reports with spaces")
+                self.assertTrue(path.is_file(), value)
 
     def test_docx_contains_report_metrics_unicode_and_inert_labels(self):
         report = build_report(demo_data(), load_rates())

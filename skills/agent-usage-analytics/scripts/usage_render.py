@@ -41,12 +41,12 @@ WARNING_DETAIL_LIMIT = 50
 
 
 def write_reports(report: dict, outdir: Path, prefix: str = "report") -> dict[str, str]:
-    """Write <prefix>.docx/.json/.md/.html into outdir and return their paths."""
+    """Write <prefix>.docx/.json/.md/.html and return absolute file paths."""
     if not isinstance(report, dict):
         raise TypeError("report must be a dict")
     if not isinstance(prefix, str) or not _PREFIX.fullmatch(prefix):
         raise ValueError("prefix must be a plain file name stem")
-    outdir = Path(outdir)
+    outdir = Path(outdir).expanduser().resolve()
     # Render everything before writing so a failure never leaves mixed artifacts.
     texts = {"json": render_json(report), "markdown": render_markdown(report),
              "html": render_html(report)}

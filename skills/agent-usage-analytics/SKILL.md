@@ -82,6 +82,18 @@ Read [schema-and-pricing.md](references/schema-and-pricing.md) for normalized im
 
 Deliver `report.docx` by default, with `report.json`, `report.md` and `report.html` beside it, unless the user requested a different format. The script builds DOCX locally without Word, templates or extra packages. Check the DOCX layout with an available document renderer and open/check the HTML when a browser is available; it must work offline. Give a brief chat answer with scope, measured total or lower bound, quota/context status where supported, one or two findings and the primary DOCX link plus companion links. Add three to five recommendations only when supported by observations; fewer useful findings are better than fabricated advice.
 
+### Clickable report links
+
+Every file offered to the user must be a **clickable Markdown link**, with a descriptive label such as `Word`, `Detailed Markdown report`, `HTML` or `JSON`. Use the verified absolute file paths returned in `artifacts`; resolve older relative paths against the directory where the command ran. If a file was renamed or converted, link to its final existing path.
+
+Use the current client's supported local-file link syntax. In Codex, use an absolute filesystem path as the Markdown target, wrapping paths containing spaces in angle brackets, for example:
+
+```markdown
+[Word](</home/example/Documents/Agent Analysis/run/report.docx>) · [Detailed Markdown report](</home/example/Documents/Agent Analysis/run/report.md>) · [HTML](</home/example/Documents/Agent Analysis/run/report.html>) · [JSON](</home/example/Documents/Agent Analysis/run/report.json>)
+```
+
+For a client that requires `file:///` URLs, build the URI from the absolute path with `Path(path).resolve().as_uri()` on the file's native OS so drive letters, spaces and Unicode are encoded correctly, then use it as the Markdown target. A plain path in parentheses or backticks, or a relative `docs/...` target, does not satisfy this delivery contract.
+
 Keep real outputs outside the public source tree and installed skill. Raw prompts, responses, arguments/results, reasoning and credentials are excluded from the report contract. Reports still contain local identifiers by default; add `--share` for pseudonymized course demonstrations. Do not modify configurations, delete histories, install hooks or schedule collection unless requested.
 
 To preview without real data:
