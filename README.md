@@ -118,4 +118,4 @@ Brand assets extracted from other sites may be licensed. Check usage rights befo
 
 ## License
 
-[MIT](LICENSE) © 2026 Łukasz Matuszewski and Edukey Sp. z o.o.
+[MIT](LICENSE) © 2026 Łukasz Matuszewski and Edukey Sp. z o.o. A skill that ships its own license file keeps that license: [legacy-codebase-workflows](skills/legacy-codebase-workflows/LICENSE.txt) is under Apache 2.0, with notices in its `NOTICE.txt` and `THIRD_PARTY.md`.
