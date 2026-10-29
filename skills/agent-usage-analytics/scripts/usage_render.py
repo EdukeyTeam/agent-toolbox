@@ -1,4 +1,4 @@
-"""Render one report object as JSON, Markdown and an offline HTML dashboard.
+"""Render one report object as DOCX, JSON, Markdown and an offline HTML dashboard.
 
 Rendering consumes only the report object. It never reads source files, runs
 logged commands or fetches network resources.
@@ -41,7 +41,7 @@ WARNING_DETAIL_LIMIT = 50
 
 
 def write_reports(report: dict, outdir: Path, prefix: str = "report") -> dict[str, str]:
-    """Write <prefix>.json/.md/.html into outdir and return their paths."""
+    """Write <prefix>.docx/.json/.md/.html into outdir and return their paths."""
     if not isinstance(report, dict):
         raise TypeError("report must be a dict")
     if not isinstance(prefix, str) or not _PREFIX.fullmatch(prefix):
@@ -50,12 +50,16 @@ def write_reports(report: dict, outdir: Path, prefix: str = "report") -> dict[st
     # Render everything before writing so a failure never leaves mixed artifacts.
     texts = {"json": render_json(report), "markdown": render_markdown(report),
              "html": render_html(report)}
+    from usage_docx import render_docx
+    document = render_docx(texts["markdown"])
     outdir.mkdir(parents=True, exist_ok=True)
     paths = {"json": outdir / f"{prefix}.json", "markdown": outdir / f"{prefix}.md",
              "html": outdir / f"{prefix}.html"}
     for key, path in paths.items():
         with path.open("w", encoding="utf-8", newline="\n") as stream:
             stream.write(texts[key])
+    paths["docx"] = outdir / f"{prefix}.docx"
+    paths["docx"].write_bytes(document)
     return {key: str(path) for key, path in paths.items()}
 
 
