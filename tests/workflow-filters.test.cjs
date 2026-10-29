@@ -55,6 +55,8 @@ const cases = [
   ['retrieval tests', ['tests/test_legacy_retrieval.py'], ['python', 'semantic']],
   ['Node regression', ['tests/cloudflare-safe.test.cjs'], ['node']],
   ['Node package lock', ['package-lock.json'], ['node']],
+  ['root license', ['LICENSE'], ['native', 'node', 'package']],
+  ['skill license copy', ['skills/write-adr/LICENSE.txt'], ['node', 'package']],
   ['plugin metadata', ['plugin.json', '.claude-plugin/plugin.json'], ['node', 'package']],
   ['Codex marketplace', ['.agents/plugins/marketplace.json'], ['node']],
   ['plugin builder', ['scripts/build-claude-plugin.ps1'], ['package']],
