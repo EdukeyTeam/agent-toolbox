@@ -1,12 +1,12 @@
 # The lexical/index/server core uses only Python 3.12+ stdlib with SQLite FTS5.
-# Optional semantic runtime: copy scripts/retrieval/package.json,
-# pnpm-workspace.yaml, and pnpm-lock.yaml into an isolated directory.
-# Run pnpm install --dir THAT_DIRECTORY --frozen-lockfile, then pass that
-# directory with --embedding-runtime. Tested with Transformers.js 3.8.1.
-# Default model: Xenova/all-MiniLM-L6-v2 at immutable revision
-# 751bff37182d3f1213fa05d7196b954e230abad9 (Apache-2.0).
-# Custom models require --model-revision with an immutable commit SHA.
-# Model files are downloaded only by the explicit index --embed-model command.
+# Recommended optional CPU embeddings: install requirements-embed.txt for
+# Model2Vec 0.10.0 and use --embed-provider local-python with model
+# minishlab/potion-code-16M-v2, immutable revision
+# e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b (MIT).
+# Model downloads require explicit index --download-model after user consent.
+# An existing local openai-compatible endpoint is an alternative.
+# Transformers.js/MiniLM remains an optional compatibility route; see
+# references/retrieval-setup.md for its isolated Node helper runtime.
 # Optional native vector engine: install this file only in an isolated Python environment.
 sqlite-vec==0.1.9
 # Use --vector-engine sqlite-vec at index time; queries load the same pinned

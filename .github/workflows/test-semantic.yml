@@ -11,6 +11,9 @@ on:
       - '!skills/legacy-codebase-workflows/scripts/check_citations.py'
       - '!skills/legacy-codebase-workflows/scripts/legacy_tools.py'
       - 'tests/test_legacy_retrieval.py'
+      - 'tests/test_legacy_local_context_*.py'
+      - 'tests/test_legacy_embed.py'
+      - 'tests/test_legacy_eval_retrieval.py'
       - '.github/workflows/test-semantic.yml'
   push:
     branches: [main]
@@ -58,9 +61,15 @@ jobs:
           printf '{"private":true,"dependencies":{"ctx7":"0.5.13"}}\n' > "$legacy_temp/ctx7-cli/package.json"
           pnpm install --dir "$legacy_temp/ctx7-cli" --ignore-scripts
       - name: Test actual local embeddings and hybrid retrieval
+        shell: bash
         env:
           LEGACY_REQUIRE_SQLITE_VEC: '1'
           LEGACY_RETRIEVAL_TEST_RUNTIME: ${{ runner.temp }}/legacy-inference
           LEGACY_RETRIEVAL_TEST_CACHE: ${{ runner.temp }}/legacy-model-cache
           LEGACY_CTX7_CLI: ${{ runner.temp }}/ctx7-cli/node_modules/ctx7/dist/index.js
-        run: python -m unittest discover -s tests -p test_legacy_retrieval.py -v
+        run: |
+          set -e
+          python -m unittest discover -s tests -p test_legacy_retrieval.py -v
+          python -m unittest discover -s tests -p "test_legacy_local_context_*.py" -v
+          python -m unittest discover -s tests -p test_legacy_embed.py -v
+          python -m unittest discover -s tests -p test_legacy_eval_retrieval.py -v

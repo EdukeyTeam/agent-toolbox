@@ -1,0 +1,11 @@
+{
+  "httpx": {
+    "non_utf8_eligible_files": []
+  },
+  "vite": {
+    "non_utf8_eligible_files": []
+  },
+  "jftp": {
+    "non_utf8_eligible_files": []
+  }
+}

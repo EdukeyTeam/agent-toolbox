@@ -1,0 +1,40 @@
+INDEX bge httpx 532
+PROGRESS bge httpx 128 83.41
+Traceback (most recent call last):
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/benchmark.py", line 168, in <module>
+    if __name__=='__main__': main()
+                             ^^^^^^
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/benchmark.py", line 134, in main
+    pieces.extend(provider.embed_documents([w['text'] for w in wins[start:start+128]]))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/local_context/embed.py", line 349, in embed_documents
+    try:
+       ^^
+  File "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/local_context/embed.py", line 341, in _run
+    "task_settings": "symmetric static mean" if runtime == "model2vec" else "fastembed passage_embed/query_embed",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/local_context/embed.py", line 130, in _finish
+    def _prepare(self, texts: list[str]) -> list[str]:
+               ^^^^^^^^^^
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/fastembed-env/lib/python3.12/site-packages/fastembed/text/text_embedding.py", line 208, in passage_embed
+    yield from self.model.passage_embed(texts, **kwargs)
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/fastembed-env/lib/python3.12/site-packages/fastembed/text/text_embedding_base.py", line 44, in passage_embed
+    yield from self.embed(texts, **kwargs)
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/fastembed-env/lib/python3.12/site-packages/fastembed/text/onnx_embedding.py", line 342, in embed
+    yield from self._embed_documents(
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/fastembed-env/lib/python3.12/site-packages/fastembed/text/onnx_text_model.py", line 154, in _embed_documents
+    self.onnx_embed(batch, **kwargs), **kwargs
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/fastembed-env/lib/python3.12/site-packages/fastembed/text/onnx_text_model.py", line 109, in onnx_embed
+    model_output = self._run_model(
+                   ^^^^^^^^^^^^^^^^
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/fastembed-env/lib/python3.12/site-packages/fastembed/text/onnx_text_model.py", line 122, in _run_model
+    return self.model.run(onnx_output_names, onnx_input)[0]  # type: ignore[union-attr]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>/DEV/Projects/agent-toolbox-eval/embed-bench/fastembed-env/lib/python3.12/site-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 395, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+BENCHMARK-EXIT bge 130
+LOG-EXIT 0

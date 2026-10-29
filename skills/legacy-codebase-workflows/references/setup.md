@@ -112,7 +112,7 @@ Keep the adjacent license and notice files with the program when copying or redi
 
 Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. The [native test workflow](https://github.com/EdukeyTeam/agent-toolbox/actions/workflows/test-native.yml) retains build artifacts, which are not automatically installed with this skill. Choose a successful run matching the skill source and follow [binary delivery](distribution.md); do not treat a historical benchmark run as the current installation version. Verify the archive against its accompanying `SHA256SUMS`. CI setup requires an explicit matching source SHA. See [binary delivery](distribution.md) for the exact contract.
 
-The bundle covers lexical retrieval completely. Semantic retrieval is not included: it needs Node.js, the pinned inference package and a downloaded model, set up as described under optional retrieval below, and the optional `sqlite-vec` vector engine is not bundled either.
+The bundle covers lexical retrieval completely. Semantic retrieval is not included: it needs an optional embedding runtime (the local Python packages, an existing endpoint, or the Node helper) and a downloaded model, set up as described in [retrieval setup](retrieval-setup.md); the optional `sqlite-vec` vector engine is not bundled either.
 
 ## Build the standalone programs
 
@@ -132,15 +132,11 @@ The build fails if PyInstaller picks up a Python package that is not on the help
 
 ## Optional retrieval
 
-Lexical indexing, querying and serving are separate Python auxiliary tools, available through source or the frozen reference bundle; they use only the standard library with SQLite FTS5. The native mapper does not provide retrieval. For semantic retrieval, create an isolated inference runtime outside the source repository:
+The local retrieval engine (`scripts/context7_backend.py`) indexes and queries private source and documentation; it is available through source or the frozen reference bundle. Lexical indexing, querying, refreshing and serving need only Python 3.12+ with SQLite FTS5: no model, account or network. The native mapper does not provide retrieval.
 
-1. Copy `scripts/retrieval/package.json`, `pnpm-workspace.yaml` and `pnpm-lock.yaml` into an empty directory.
-2. Run `pnpm install --dir /path/to/inference-runtime --frozen-lockfile` with Node.js 24.
-3. Pass that directory as `--embedding-runtime` and a model cache directory as `--model-cache`.
+Optional capabilities, in install order: the pinned tree-sitter parser tier from `requirements-map.txt`; an embedding runtime for semantic and hybrid search (`scripts/requirements-embed.txt` for the local Python provider, an existing OpenAI-compatible endpoint, or the locked Transformers.js Node helper under `scripts/retrieval/`); and vector scan acceleration (pinned `sqlite-vec` 0.1.9 in `scripts/requirements-retrieval.txt`, installed into the tool environment, never globally). Install steps, model and endpoint consent gates, air-gapped installation and Windows/WSL notes are in [retrieval setup](retrieval-setup.md); commands, concepts, evaluation and measured limits are in [private retrieval](private-retrieval.md).
 
-Only the explicit `index --embed-model` command downloads model files; querying and serving use local files. The optional `sqlite-vec` vector engine is a pinned Python package in `scripts/requirements-retrieval.txt`; install it into the tool environment, never globally. See [private retrieval](private-retrieval.md) for commands, models and limits.
-
-The optional vector extension needs both its package and an extension-enabled Python `sqlite3` runtime. If the runtime cannot load extensions, use `--vector-engine stdlib` or explicit `auto` fallback, or a compatible Python build such as Homebrew Python 3.12 on macOS. See [runtime capability notes](private-retrieval.md#evaluate-semantic-retrieval-for-prose-paraphrases).
+The optional vector extension needs both its package and an extension-enabled Python `sqlite3` runtime. If the runtime cannot load extensions, use `--vector-engine stdlib` or `--vector-engine numpy`, or a compatible Python build such as Homebrew Python 3.12 on macOS.
 
 ## Check a Python fallback installation
 

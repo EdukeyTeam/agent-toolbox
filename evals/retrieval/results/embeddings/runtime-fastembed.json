@@ -1,0 +1,151 @@
+{
+  "total_bytes": 179690791,
+  "packages": [
+    {
+      "name": "anyio",
+      "version": "4.15.1",
+      "installed_bytes": 539391
+    },
+    {
+      "name": "certifi",
+      "version": "2026.7.22",
+      "installed_bytes": 249105
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.5.2",
+      "installed_bytes": 761501
+    },
+    {
+      "name": "click",
+      "version": "8.5.0",
+      "installed_bytes": 447891
+    },
+    {
+      "name": "fastembed",
+      "version": "0.9.0",
+      "installed_bytes": 459753
+    },
+    {
+      "name": "filelock",
+      "version": "4.2.1",
+      "installed_bytes": 578705
+    },
+    {
+      "name": "flatbuffers",
+      "version": "25.12.19",
+      "installed_bytes": 88178
+    },
+    {
+      "name": "fsspec",
+      "version": "2026.9.0",
+      "installed_bytes": 810762
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0",
+      "installed_bytes": 104105
+    },
+    {
+      "name": "hf-xet",
+      "version": "1.7.0",
+      "installed_bytes": 11573723
+    },
+    {
+      "name": "httpcore",
+      "version": "1.0.9",
+      "installed_bytes": 288194
+    },
+    {
+      "name": "httpx",
+      "version": "0.28.1",
+      "installed_bytes": 295902
+    },
+    {
+      "name": "huggingface_hub",
+      "version": "1.33.0",
+      "installed_bytes": 3292668
+    },
+    {
+      "name": "idna",
+      "version": "3.20",
+      "installed_bytes": 342670
+    },
+    {
+      "name": "loguru",
+      "version": "0.7.3",
+      "installed_bytes": 225888
+    },
+    {
+      "name": "mmh3",
+      "version": "5.3.1",
+      "installed_bytes": 429630
+    },
+    {
+      "name": "numpy",
+      "version": "2.5.4",
+      "installed_bytes": 56387898
+    },
+    {
+      "name": "onnxruntime",
+      "version": "1.31.0",
+      "installed_bytes": 64529737
+    },
+    {
+      "name": "packaging",
+      "version": "26.3",
+      "installed_bytes": 499357
+    },
+    {
+      "name": "pillow",
+      "version": "12.3.0",
+      "installed_bytes": 19667544
+    },
+    {
+      "name": "protobuf",
+      "version": "7.36.2",
+      "installed_bytes": 1388418
+    },
+    {
+      "name": "py_rust_stemmers",
+      "version": "0.1.8",
+      "installed_bytes": 861463
+    },
+    {
+      "name": "PyYAML",
+      "version": "6.0.3",
+      "installed_bytes": 2903798
+    },
+    {
+      "name": "requests",
+      "version": "2.34.2",
+      "installed_bytes": 234577
+    },
+    {
+      "name": "sqlite-vec",
+      "version": "0.1.9",
+      "installed_bytes": 162732
+    },
+    {
+      "name": "tokenizers",
+      "version": "0.23.3",
+      "installed_bytes": 11699521
+    },
+    {
+      "name": "tqdm",
+      "version": "4.70.1",
+      "installed_bytes": 234078
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "installed_bytes": 182965
+    },
+    {
+      "name": "urllib3",
+      "version": "2.8.0",
+      "installed_bytes": 450637
+    }
+  ],
+  "runtime": "fastembed==0.9.0"
+}

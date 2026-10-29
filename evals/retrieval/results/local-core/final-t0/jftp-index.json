@@ -1,0 +1,5875 @@
+{
+  "libraryId": "/local/jftp",
+  "indexVersion": 8,
+  "generation": 1,
+  "revision": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+  "revisions": {
+    "r0": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+    "r1": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86"
+  },
+  "corpusId": "2a22f059ca6e272cb7537b8b00ae1bef93a63d1830452d6212e270030a0419b0",
+  "files": 830,
+  "eligible": 950,
+  "chunks": 13697,
+  "changed": 950,
+  "added": 950,
+  "deleted": 0,
+  "metadataOnly": 0,
+  "refreshed": true,
+  "skippedCount": 120,
+  "skipped": [
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/favicon.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/dashicons/dashicons.ttf",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/eicons/eicons.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/font-awesome-5-brands/fa-brands-400.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/font-awesome-5-free/fa-regular-400.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/font-awesome-5-free/fa-solid-900.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/fontawesome/fontawesome-webfont.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/generatepress/generatepress.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/glyphicons-halflings/glyphicons-halflings-regular.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/fonts/lg/lg.woff2",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/homepage.png",
+      "reason": "File exceeds max_file_bytes"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "assets/logo-white.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/windows-startup-evidence/about.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/windows-startup-evidence/preferences-save.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/windows-startup-evidence/preferences.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/windows-startup-evidence/restart.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/windows-startup-evidence/two-sessions.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "src/main/help/helpset/content/images/abort16.gif",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "src/main/help/helpset/content/images/certificate16.gif",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "src/main/help/helpset/content/images/changeLocalDirectory16.gif",
+      "reason": "Binary file"
+    }
+  ],
+  "redactedCount": 0,
+  "chunkChars": 1500,
+  "oversizedChunks": 9,
+  "excludes": [],
+  "byFormat": {
+    "code": 490,
+    "config": 298,
+    "markdown": 155,
+    "rst": 7
+  },
+  "byEncoding": {
+    "unknown": 120,
+    "UTF-8": 5,
+    "iso-8859-1": 41,
+    "utf-8": 784
+  },
+  "byTier": {
+    "0": 950
+  },
+  "discovery": {
+    "visited": 1157,
+    "excluded": 0,
+    "excludedExamples": []
+  },
+  "discoveryLimit": 2000000,
+  "actions": [
+    {
+      "rootId": "r0",
+      "path": ".agent-briefs/application-workflows.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agent-briefs/build-resources.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agent-briefs/modernization-synthesis.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agent-briefs/support-security.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agent-briefs/ui-details.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/references/auth-methods.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/references/change-file.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/references/setup.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/references/verified-bots.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/scripts/cf-apply.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/scripts/cf-read.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/scripts/lib.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/cloudflare-safe/scripts/setup-tokens.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/create-design-system/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/create-design-system/references/setup.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/create-design-system/scripts/decode-binary-assets.cjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/create-design-system/scripts/fetch-binary-assets.browser.js",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/java-junit/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/respond-to-code-review/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/respond-to-code-review/references/bitbucket.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/respond-to-code-review/references/github-setup.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/respond-to-code-review/references/github.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/respond-to-code-review/references/gitlab.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/respond-to-code-review/references/review-bots.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/write-adr/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".agents/skills/write-prd/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".classpath",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/settings.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/references/auth-methods.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/references/change-file.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/references/setup.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/references/verified-bots.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/scripts/cf-apply.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/scripts/cf-read.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/scripts/lib.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/cloudflare-safe/scripts/setup-tokens.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/create-design-system/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/create-design-system/references/setup.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/create-design-system/scripts/decode-binary-assets.cjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/create-design-system/scripts/fetch-binary-assets.browser.js",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/java-junit/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/respond-to-code-review/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/respond-to-code-review/references/bitbucket.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/respond-to-code-review/references/github-setup.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/respond-to-code-review/references/github.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/respond-to-code-review/references/gitlab.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/respond-to-code-review/references/review-bots.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/write-adr/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".claude/skills/write-prd/SKILL.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".codex/config.toml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".codex/hooks.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".gitattributes",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".gitignore",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".mcp.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".mvn/wrapper/maven-wrapper.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".project",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".settings/org.eclipse.core.resources.prefs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".settings/org.eclipse.jdt.core.prefs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".settings/org.eclipse.jdt.ui.prefs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".settings/org.eclipse.ltk.core.refactoring.prefs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".settings/org.eclipse.m2e.core.prefs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".settings/org.eclipse.wst.sse.core.prefs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "LICENSE.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "NOTICE.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/design-observations.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/design-tokens.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/favicon.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/dashicons/dashicons.ttf",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/eicons/eicons.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/font-awesome-5-brands/fa-brands-400.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/font-awesome-5-free/fa-regular-400.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/font-awesome-5-free/fa-solid-900.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/fontawesome/fontawesome-webfont.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/generatepress/generatepress.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/glyphicons-halflings/glyphicons-halflings-regular.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/fonts/lg/lg.woff2",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/homepage.png",
+      "action": "added",
+      "status": "skipped"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/logo-white.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "assets/logo.svg",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/.gitattributes",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/.gitignore",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/analyze-comments.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/builtin-no-comments-compressed.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/builtin-no-comments-full.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/comment-audit.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/comment-inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/comment-rules.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/compressed.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/full.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/generate.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/hybrid.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/java-comments.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/java-comments.test.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/jftp-source.compressed.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/jftp-source.hybrid.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/jftp-source.selective-compressed.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/layout-verification.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/license-notices.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/manifest.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/optimization-citations.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/optimization-manifest.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/optimization-verification.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/optimize.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/repomix-implementation.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/repomix.builtin-no-comments-compressed.config.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/repomix.builtin-no-comments-full.config.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/repomix.config.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/repomix.hybrid.config.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/repomix.selective-compressed.config.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/repomix.selective-full.config.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/selective-compressed.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/selective-full.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/artifacts/validate-optimization.mjs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/jftp-source.full.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/RepoMix/jftp-source.selective-full.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/analysis/repository-baseline.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/.gitattributes",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/benchmark-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/flask-python.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/flask-python.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/flask-python.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/flask-python.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/jftp-java.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/jftp-java.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/jftp-java.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/jftp-java.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/python-tag-differences.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/toolbox-rust.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/toolbox-rust.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/toolbox-rust.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-07/toolbox-rust.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/artifact-ignore-manual-trial.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/artifact-ignore-review-trial.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/benchmark-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/compact-format-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/compact-stress-final.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/compact-stress-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/compact-windows-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/context7/four-file-snapshot-comparison.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/context7/trial-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/final-ci.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/native-release-before.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/native-release-linux-consumer.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/native-release-publication.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/native-release-windows-consumer.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/native-windows-pre-review/consumer-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/renderer-review-legacy-name.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/renderer-review-python.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/renderer-review-rust.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/repomix/jftp-scope.compressed.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/repomix/jftp-scope.full.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/repomix/results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.full.python/flask-python.full.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.full.python/flask-python.full.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.full.rust/flask-python.full.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.full.rust/flask-python.full.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.python/flask-python.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.python/flask-python.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.rust/flask-python.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/flask-python.rust/flask-python.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.python/jftp-java.full.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.python/jftp-java.full.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.rust/jftp-java.full.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.rust/jftp-java.full.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.wsl-benchmark.rust/jftp-java.full.wsl-benchmark.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.wsl-benchmark.rust/jftp-java.full.wsl-benchmark.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.python/jftp-java.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.python/jftp-java.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.rust/jftp-java.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.rust/jftp-java.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.wsl-benchmark.rust/jftp-java.wsl-benchmark.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/jftp-java.wsl-benchmark.rust/jftp-java.wsl-benchmark.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.full.python/toolbox-rust.full.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.full.python/toolbox-rust.full.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.full.rust/toolbox-rust.full.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.full.rust/toolbox-rust.full.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.python/toolbox-rust.python.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.python/toolbox-rust.python.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.rust/toolbox-rust.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.rust/toolbox-rust.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/windows-final-archive-provenance.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/windows-final/final-results.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/windows-final/full/jftp-java.full.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/windows-final/full/jftp-java.full.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/windows-final/overview/jftp-java.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/windows-final/overview/jftp-java.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/workflow-validation/release-legacy-tools.55de782.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/2026-10-08/workflow-validation/validation.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.compact.rust/jftp.compact.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.compact.rust/jftp.compact.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.full.compact.rust/jftp.full.compact.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.full.compact.rust/jftp.full.compact.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.full.rust/jftp.full.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.full.rust/jftp.full.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.rust/jftp.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.rust/jftp.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.structure/files.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.structure/generation.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.structure/verification.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.windows-bootstrap.rust/jftp.windows-bootstrap.rust.inventory.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/repo-maps/artifacts/jftp.windows-bootstrap.rust/jftp.windows-bootstrap.rust.meta.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/about.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/baseline.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/clean-wrapper-build.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/compiler.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/desktop.stderr.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/desktop.stdout.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/final-wrapper-build.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/https.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/preferences-save.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/preferences.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/restart-app.stderr.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/restart.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/runner-canary.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/startup-green.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/startup-state-tests.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/two-sessions.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/verification.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/windows-startup-evidence/windows-tests.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "mcp.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "mvnw",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "mvnw.cmd",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "pom.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "skills-lock.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/assembly/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/assembly/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/assembly/binary.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/LICENSE.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/connect/connectionDialog.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/connect/disconnect.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/connect/favorite.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/connect/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/connect/reconnect.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/credits.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/default.css",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/faq.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/favorites/add.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/favorites/connect.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/favorites/delete.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/favorites/edit.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/favorites/favoriteManager.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/favorites/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/feedback.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/abort16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/certificate16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/changeLocalDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/changeRemoteDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/closedBook16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/connect16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/deleteLocalFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/deleteRemoteFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/directory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/directory32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/disconnect16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/downArrow16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/download16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/favorites16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/file16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/file32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/hardDrive16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/help16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/host16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/indexIcon.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/jftp16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/jftp32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/newLocalDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/newLocalFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/newRemoteDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/newRemoteFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/newSession16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/nextIcon.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/note32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/openBook16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/previousIcon.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/reconnect16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/renameLocalFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/renameRemoteFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/searchIcon.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/server16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/splash.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/tip32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/tocIcon.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/topic16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/upArrow16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/upDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/images/upload16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/introduction/features.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/introduction/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/introduction/uninstall.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/introduction/whatIsJFTP.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/keyboardShortcuts/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/browse.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/changeDirectory.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/clearFilter.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/delete.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/edit.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/email.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/filter.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/newDirectory.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/newFile.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/open.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/print.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/properties.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/refresh.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/rename.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/local/sort.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/connectionSettings.advanced.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/connectionSettings.general.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/connectionSettings.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/connectionSettings.proxy.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/connectionSettings.security.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/regionalSettings.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/softwareUpdates.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/transferModes.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/preferences/userInterface.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/browse.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/changeDirectory.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/clearFilter.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/delete.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/edit.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/email.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/executeCommands.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/filter.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/newDirectory.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/newFile.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/open.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/print.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/properties.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/refresh.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/rename.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/remote/sort.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/screenshots/mainWindowExplanation.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/screenshots/mainWindowExplanation.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/certificatesManager.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/deleteCertificates.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/importCertificates.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/installCertificate.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/introduction.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/sslConnection.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/security/viewCertificate.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/sessions/activate.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/sessions/close.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/sessions/images/cascade.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/sessions/images/tileHorizontal.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/sessions/images/tileVertical.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/sessions/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/sessions/open.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/support.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/tips.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/abort.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/download.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/downloadAndUnzip.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/downloadAs.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/transferModes.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/upload.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/uploadAs.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/transfer/zipAndUpload.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/index.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/localPane.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/logPane.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/mainWindow.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/menuBar.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/remotePane.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/sessionTabs.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/statusBar.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/content/userInterface/toolBar.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/favorites_2_0.dtd",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/glossary.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/helpSet.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/helpset_2_0.dtd",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/index.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/index_2_0.dtd",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/map.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/map_2_0.dtd",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/toc.xml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/help/helpset/toc_2_0.dtd",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/abort16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/certificate16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/changeLocalDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/changeRemoteDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/changeRemoteDirectory16.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/connect16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/deleteLocalFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/deleteRemoteFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/deleteRemoteFile16.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/directory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/directory32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/disconnect16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/downArrow16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/download16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/favorites16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/file16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/file32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/hardDrive16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/help16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/host16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp.icns",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp128.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp128.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp16.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp32.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp32.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp48.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp48.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/jftp60.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/key16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/launch.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/lock16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/newLocalDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/newLocalFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/newRemoteDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/newRemoteDirectory16.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/newRemoteFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/newRemoteFile16.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/newSession16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/reconnect16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/renameLocalFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/renameRemoteFile16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/renameRemoteFile16.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/server16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/splash.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/splash.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/upArrow16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/upDirectory16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/images/com/myjavaworld/jftp/upload16.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/DateCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/DefaultLargeTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/DefaultTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/EditPopupMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/GUIUtil.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/GreenMetalLargeTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/GreenMetalTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/HighContrastLargeTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/HighContrastTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/IDTreeNode.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/ImageCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/IndentIcon.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/IntegerField.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/LicenseAgreementDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MButton.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MCheckBox.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MComboBox.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MDefaultRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MDesktopPane.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MDialog.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MFrame.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MGlassPane.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MInternalFrame.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MLabel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MLabelTextField.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MList.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MMenuItem.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MOptionPane.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MPasswordField.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MPlainDocument.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MPopupMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MRadioButton.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MRadioButtonMenuItem.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MScrollPane.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MTable.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MTableCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MTableHeaderRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MTextArea.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MTextComponent.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MTextField.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/MTree.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/NumericCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/ProgressDialog.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/SandstoneLargeTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/SandstoneTheme.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/SingleLineDocument.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/SplashWindow.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/SwingWorker.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/gui/package-info.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/AboutDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/AutoUpdater.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/CertificatePrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ChangeLocalDirectoryDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ConnectionDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/DnDTransferHandler.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/DownloadAndUnzipDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/DownloadAsDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/DriveCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ExecuteCommandDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/FTPMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/FTPSession.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/Favorite.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/FavoritePropertiesDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/FavoritesDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/FavoritesManager.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/GeneralConnectionPrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/HelpMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTP.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTPApplet.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTPApplication.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTPConstants.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTPHelp2.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTPPreferences.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTPToolBar.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/JFTPUtil.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalFile.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalFileCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalFileComparator.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalFileFilter.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalFileFilterDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalFilePropertiesDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalFileTableModel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalPane.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalSystemMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalSystemPopupMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocaleCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/LocalePrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/NewLocalDirectoryDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/NewLocalFileDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/NewRemoteDirectoryDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/NewRemoteFileDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/OSXAdapter.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/OSXAdapterOld.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/PreferencesDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ProxyPrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteFileCellRenderer.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteFileComparator.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteFileFilterDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteFilePropertiesDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteFileTableModel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteHost.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemotePane.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteSystemMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RemoteSystemPopupMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RenameLocalFileDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/RenameRemoteFileDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/SecurityPrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/SessionPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/StatusBar.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/StatusWindow.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ToolsMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/TransferModeMenu.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/TransferModesPrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/TransferObject.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/UIPrefsPanel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/UploadAsDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ZipAndUploadDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/AbortAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/ChangeLocalDirectoryAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/ChangeRemoteDirectoryAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/ConnectAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/DeleteLocalFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/DeleteRemoteFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/DisconnectAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/DownloadAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/DownloadAndUnzipAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/DownloadAsAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/EditLocalFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/EditRemoteFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/EmailLocalFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/EmailRemoteFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/ManageCertificatesAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/ManageFavoritesAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/NewLocalDirectoryAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/NewLocalFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/NewRemoteDirectoryAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/NewRemoteFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/NewSessionAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/OpenLocalFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/OpenRemoteFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/PrintLocalFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/PrintRemoteFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/ReconnectAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/RenameLocalFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/RenameRemoteFileAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/UploadAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/UploadAsAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/actions/ZipAndUploadAction.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/package-info.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/CertificateDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/CertificateManagerDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/CertificatePane.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/CertificateTableModel.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/DNParser.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/JFTPKeyManager.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/JFTPSSLContext.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/JFTPTrustManager.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/KeyStoreManager.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/jftp/ssl/SecurityWarningDlg.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/CommonResources.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/Encoder.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/FileChangeEvent.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/FileChangeListener.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/FileChangeMonitor.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/FileUtilities.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/ProgressEvent.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/ProgressListener.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/RandomKeyGenerator.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/ResourceLoader.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/StatusEvent.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/StatusListener.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/StringUtilities.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/SystemUtil.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/util/package-info.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/zip/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/zip/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/zip/Unzip.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/zip/Zip.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/zip/ZipEvent.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/java/com/myjavaworld/zip/ZipListener.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/gui/EditPopupMenu.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/gui/LicenseAgreementDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/gui/ProgressDialog.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/AboutDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/AutoUpdater.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/CertificatePrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ChangeLocalDirectoryDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ConnectionDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/DownloadAndUnzipDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/DownloadAsDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ExecuteCommandDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/FTPMenu.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/FTPSession.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/FavoritePropertiesDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/FavoritesDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/GeneralConnectionPrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/HelpMenu.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/JFTP.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/JFTPApplet.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/JFTPToolBar.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/LocalFileFilterDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/LocalFilePropertiesDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/LocalFileTableModel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/LocalPane.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/LocalSystemMenu.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/LocalePrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/NewLocalDirectoryDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/NewLocalFileDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/NewRemoteDirectoryDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/NewRemoteFileDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/PreferencesDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ProxyPrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/RemoteFileFilterDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/RemoteFilePropertiesDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/RemoteFileTableModel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/RemotePane.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/RemoteSystemMenu.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/RenameLocalFileDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/RenameRemoteFileDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/SecurityPrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/StatusBar.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/StatusWindow.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ToolsMenu.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/TransferModeMenu.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/TransferModesPrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/UIPrefsPanel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/UploadAsDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ZipAndUploadDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ssl/CertificateDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ssl/CertificateManagerDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ssl/CertificatePane.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ssl/CertificateTableModel.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/jftp/ssl/SecurityWarningDlg.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources/com/myjavaworld/util/CommonResources.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/gui/EditPopupMenu_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/gui/LicenseAgreementDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/gui/ProgressDialog_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/AboutDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/AutoUpdater_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/CertificatePrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeLocalDirectoryDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ConnectionDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/DownloadAndUnzipDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/DownloadAsDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ExecuteCommandDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/FTPMenu_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/FTPSession_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritePropertiesDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritesDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/GeneralConnectionPrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/HelpMenu_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/JFTPApplet_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/JFTPToolBar_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/JFTP_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileFilterDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFilePropertiesDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileTableModel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/LocalPane_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/LocalSystemMenu_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/LocalePrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/NewLocalDirectoryDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/NewLocalFileDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/NewRemoteDirectoryDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/NewRemoteFileDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/PreferencesDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ProxyPrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileFilterDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFilePropertiesDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileTableModel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/RemotePane_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteSystemMenu_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/RenameLocalFileDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/RenameRemoteFileDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/SecurityPrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/StatusBar_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/StatusWindow_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ToolsMenu_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModeMenu_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModesPrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/UIPrefsPanel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/UploadAsDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ZipAndUploadDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateManagerDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificatePane_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateTableModel_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/SecurityWarningDlg_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_de/com/myjavaworld/util/CommonResources_de.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/gui/EditPopupMenu_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/gui/LicenseAgreementDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/gui/ProgressDialog_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/AboutDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/AutoUpdater_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/CertificatePrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ChangeLocalDirectoryDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ConnectionDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/DownloadAndUnzipDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/DownloadAsDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ExecuteCommandDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/FTPMenu_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/FTPSession_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/FavoritePropertiesDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/FavoritesDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/GeneralConnectionPrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/HelpMenu_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/InstallLicenseDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/JFTPApplet_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/JFTPToolBar_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/JFTP_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/LocalFileFilterDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/LocalFilePropertiesDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/LocalFileTableModel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/LocalPane_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/LocalSystemMenu_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/LocalePrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/NewLocalDirectoryDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/NewLocalFileDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/NewRemoteDirectoryDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/NewRemoteFileDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/PreferencesDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ProxyPrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/RemoteFileFilterDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/RemoteFilePropertiesDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/RemoteFileTableModel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/RemotePane_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/RemoteSystemMenu_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/RenameLocalFileDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/RenameRemoteFileDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/SecurityPrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/StatusBar_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/StatusWindow_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ToolsMenu_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/TransferModeMenu_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/TransferModesPrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/UIPrefsPanel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/UploadAsDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ZipAndUploadDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ssl/CertificateDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ssl/CertificateManagerDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ssl/CertificatePane_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ssl/CertificateTableModel_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/jftp/ssl/SecurityWarningDlg_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/resources_zh_TW/com/myjavaworld/util/CommonResources_zh_TW.properties",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/scripts/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/scripts/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/scripts/jftp.bat",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/main/scripts/jftp.sh",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/test/AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/test/CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/test/java/.gitkeep",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/test/java/com/myjavaworld/jftp/StartupStateProbe.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/test/java/com/myjavaworld/jftp/StartupStateTest.java",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "src/test/resources/.gitkeep",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/.gitignore",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/analyze_codex_context.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/context7/backend-manifest.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/context7/package.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/context7/pnpm-lock.yaml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/context7_refresh_hook.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/local_context7.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/tests/test_analyze_codex_context.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tools/tests/test_local_context7.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "AGENTS.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "CLAUDE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/.gitattributes",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/.gitignore",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/baseline-report.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/builtin-no-comments-compressed.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/builtin-no-comments-full.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/compressed.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/customization.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/full.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/hybrid.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/selective-compressed.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "RepoMix/artifacts/selective-full.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "analysis-method.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "analysis/application-workflows-coverage.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "analysis/build-resources-coverage.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "analysis/support-security-coverage.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "analysis/ui-details-coverage.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "analysis/verification.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "application-workflows.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "architecture.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "build-and-dependencies.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "codex-context.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "design-guidelines.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "git-workflow.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "legacy-codebase-workflows-first-run-review.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "local-context7.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "modernization-plan.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "regression-test-design.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/.gitattributes",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/flask-python.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/flask-python.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/flask-python.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/flask-python.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/jftp-java.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/jftp-java.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/jftp-java.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/jftp-java.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/toolbox-rust.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/toolbox-rust.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/toolbox-rust.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-07/toolbox-rust.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/compact-format-comparison.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/compact-review.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/context7/four-file-snapshot-comparison.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/context7/trial-report.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/flask-python.full.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/flask-python.full.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/flask-python.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/flask-python.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/jftp-java.full.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/jftp-java.full.wsl-benchmark.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/jftp-java.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/jftp-java.wsl-benchmark.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/native-windows-pre-review/consumer-report.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/readable/README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/readable/jftp-java.full.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/readable/jftp-java.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/readable/jftp.full.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/readable/jftp.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/repomix/review.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/review.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/flask-python.full.python/flask-python.full.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/flask-python.full.rust/flask-python.full.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/flask-python.python/flask-python.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/flask-python.rust/flask-python.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.python/jftp-java.full.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.rust/jftp-java.full.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/jftp-java.full.wsl-benchmark.rust/jftp-java.full.wsl-benchmark.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/jftp-java.python/jftp-java.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/jftp-java.rust/jftp-java.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/jftp-java.wsl-benchmark.rust/jftp-java.wsl-benchmark.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.full.python/toolbox-rust.full.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.full.rust/toolbox-rust.full.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.python/toolbox-rust.python.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/sidecars/toolbox-rust.rust/toolbox-rust.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/toolbox-rust.full.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/toolbox-rust.full.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/toolbox-rust.python.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/toolbox-rust.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/windows-final/final-report.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/windows-final/full/jftp-java.full.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/windows-final/overview/jftp-java.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/2026-10-08/workflow-validation/release-legacy-tools.55de782.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/jftp.compact.rust/jftp.compact.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/jftp.full.compact.rust/jftp.full.compact.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/jftp.full.rust/jftp.full.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/jftp.rust/jftp.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/artifacts/jftp.windows-bootstrap.rust/jftp.windows-bootstrap.rust.raw.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/jftp.compact.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/jftp.full.compact.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/jftp.structure.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "repo-maps/jftp.windows-bootstrap.rust.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "resources-and-distribution.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "security-modernization-options.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "support-libraries.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "tls-and-persistence.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "ui-and-browser-details.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/about.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/baseline.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/clean-wrapper-build.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/compiler.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/desktop.stderr.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/desktop.stdout.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/final-wrapper-build.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/https.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/preferences-save.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/preferences.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/restart-app.stderr.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/restart.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/runner-canary.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/startup-green.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/two-sessions.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup-evidence/windows-tests.log",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "windows-startup.md",
+      "action": "added",
+      "status": "indexed"
+    }
+  ],
+  "elapsedSeconds": 23.715001183998538,
+  "warnings": [],
+  "embeddingModel": null,
+  "vectorEngine": "stdlib",
+  "wallSeconds": 26.684709766006563,
+  "databaseBytes": 95002624
+}

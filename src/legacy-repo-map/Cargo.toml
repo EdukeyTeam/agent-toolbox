@@ -1,6 +1,6 @@
 [package]
 name = "legacy-repo-map"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 rust-version = "1.82"
 description = "Experimental native repository map for the legacy-codebase-workflows skill"

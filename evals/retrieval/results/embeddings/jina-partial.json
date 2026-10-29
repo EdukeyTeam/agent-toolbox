@@ -1,0 +1,19 @@
+{
+  "status": "orchestrator_stopped",
+  "stop_utc": "2026-10-17T22:47:00Z",
+  "exit_code": 143,
+  "operator_note": "ORCHESTRATOR NOTE 22:47 UTC: Jina full-corpus run stopped by the orchestrator for time and CPU contention; report Jina as partial (httpx complete) and finalize with the potion recommendation.",
+  "reason": "time and CPU contention",
+  "completed_corpora": [
+    "httpx"
+  ],
+  "partial_corpus": "vite",
+  "completed_windows_logged": 2400,
+  "expected_windows": 4499,
+  "elapsed_seconds_logged": 3110.28,
+  "not_started_corpora": [
+    "jftp"
+  ],
+  "quality_for_partial_corpus": null,
+  "resume_attempted": false
+}

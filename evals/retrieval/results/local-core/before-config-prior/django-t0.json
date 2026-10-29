@@ -1,0 +1,1342 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-17T21:39:52.805654+00:00",
+  "budget_policy": "ranked character prefix; ceil(chars/4); text only; no deduplication",
+  "overall": {
+    "questions": 10,
+    "positive_questions": 8,
+    "absent_questions": 2,
+    "errors": 0,
+    "hit@1": 0.75,
+    "hit@3": 0.875,
+    "hit@5": 0.875,
+    "hit@10": 0.875,
+    "MRR@10": 0.8125,
+    "recall@10": 0.8125,
+    "micro_range_recall@10": 0.7777777777777778,
+    "absent_success": 1.0,
+    "budgets": {
+      "2000": {
+        "hit": 0.875,
+        "range_recall": 0.8125,
+        "character_precision": 0.06315901139801952
+      },
+      "5000": {
+        "hit": 0.875,
+        "range_recall": 0.8125,
+        "character_precision": 0.04697155611172165
+      }
+    },
+    "latency_seconds": {
+      "p50": 0.9073692969977856,
+      "p95": 1.601696304991492
+    }
+  },
+  "by_kind": {
+    "absent": {
+      "questions": 2,
+      "positive_questions": 0,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": null,
+      "hit@3": null,
+      "hit@5": null,
+      "hit@10": null,
+      "MRR@10": null,
+      "recall@10": null,
+      "micro_range_recall@10": null,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": null,
+          "range_recall": null,
+          "character_precision": null
+        },
+        "5000": {
+          "hit": null,
+          "range_recall": null,
+          "character_precision": null
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.9073692969977856,
+        "p95": 1.0684300959983375
+      }
+    },
+    "concept": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 1.0,
+      "recall@10": 1.0,
+      "micro_range_recall@10": 1.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.0475
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.03668307751713486
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.6455291019956348,
+        "p95": 0.6455291019956348
+      }
+    },
+    "config": {
+      "questions": 2,
+      "positive_questions": 2,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 1.0,
+      "recall@10": 1.0,
+      "micro_range_recall@10": 1.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.07618749999999999
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.04578398400939131
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.9478912969934754,
+        "p95": 1.601696304991492
+      }
+    },
+    "cross-file": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 1.0,
+      "recall@10": 0.5,
+      "micro_range_recall@10": 0.5,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 0.5,
+          "character_precision": 0.03325
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 0.5,
+          "character_precision": 0.024437299035369776
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.9523379029997159,
+        "p95": 0.9523379029997159
+      }
+    },
+    "docs-howto": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 1.0,
+      "recall@10": 1.0,
+      "micro_range_recall@10": 1.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.09375
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.04763719512195122
+        }
+      },
+      "latency_seconds": {
+        "p50": 1.0634804029978113,
+        "p95": 1.0634804029978113
+      }
+    },
+    "exact-symbol": {
+      "questions": 2,
+      "positive_questions": 2,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 0.5,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "hit@10": 1.0,
+      "MRR@10": 0.75,
+      "recall@10": 1.0,
+      "micro_range_recall@10": 1.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.08919854559207811
+        },
+        "5000": {
+          "hit": 1.0,
+          "range_recall": 1.0,
+          "character_precision": 0.08772345460026737
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.8301449020073051,
+        "p95": 0.8439056030038046
+      }
+    },
+    "paraphrase": {
+      "questions": 1,
+      "positive_questions": 1,
+      "absent_questions": 0,
+      "errors": 0,
+      "hit@1": 0.0,
+      "hit@3": 0.0,
+      "hit@5": 0.0,
+      "hit@10": 0.0,
+      "MRR@10": 0.0,
+      "recall@10": 0.0,
+      "micro_range_recall@10": 0.0,
+      "absent_success": null,
+      "budgets": {
+        "2000": {
+          "hit": 0.0,
+          "range_recall": 0.0,
+          "character_precision": 0.0
+        },
+        "5000": {
+          "hit": 0.0,
+          "range_recall": 0.0,
+          "character_precision": 0.0
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.7998735029977979,
+        "p95": 0.7998735029977979
+      }
+    }
+  },
+  "by_corpus": {
+    "django": {
+      "questions": 10,
+      "positive_questions": 8,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": 0.75,
+      "hit@3": 0.875,
+      "hit@5": 0.875,
+      "hit@10": 0.875,
+      "MRR@10": 0.8125,
+      "recall@10": 0.8125,
+      "micro_range_recall@10": 0.7777777777777778,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": 0.875,
+          "range_recall": 0.8125,
+          "character_precision": 0.06315901139801952
+        },
+        "5000": {
+          "hit": 0.875,
+          "range_recall": 0.8125,
+          "character_precision": 0.04697155611172165
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.9073692969977856,
+        "p95": 1.601696304991492
+      }
+    }
+  },
+  "questions": [
+    {
+      "question": {
+        "id": "django-001",
+        "corpus": "django",
+        "kind": "exact-symbol",
+        "question": "Where is transaction.on_commit defined and how does it forward the callback?",
+        "expected": [
+          {
+            "path": "django/db/transaction.py",
+            "start": 143,
+            "end": 148
+          }
+        ],
+        "notes": "Delegates callback registration to the selected connection."
+      },
+      "results": [
+        {
+          "path": "django/db/backends/base/base.py",
+          "startLine": 727,
+          "endLine": 747,
+          "text": "    def on_commit(self, func, robust=False):\n        if not callable(func):\n            raise TypeError(\"on_commit()'s callback must be a callable.\")\n        if self.in_atomic_block:\n            # Transaction in progress; save for execution on commit.\n            self.run_on_commit.append((set(self.savepoint_ids), func, robust))\n        elif not self.get_autocommit():\n            raise TransactionManagementError(\n                \"on_commit() cannot be used in manual transaction management\"\n            )\n        else:\n            # No transaction in progress and in autocommit mode; execute\n            # immediately.\n            if robust:\n                try:\n                    func()\n                except Exception as e:\n                    name = getattr(func, \"__qualname__\", func)\n                    logger.exception(\"Error calling %s in on_commit() (%s).\", name, e)\n            else:\n                func()"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 143,
+          "endLine": 148,
+          "text": "def on_commit(func, using=None, robust=False):\n    \"\"\"\n    Register `func` to be called when the current transaction is committed.\n    If the current transaction is rolled back, `func` will not be called.\n    \"\"\"\n    get_connection(using).on_commit(func, robust)"
+        },
+        {
+          "path": "tests/transaction_hooks/tests.py",
+          "startLine": 294,
+          "endLine": 297,
+          "text": "        def on_commit():\n            with transaction.atomic():\n                t = Thing.objects.create(num=1)\n                self.notify(t.num)"
+        },
+        {
+          "path": "tests/transaction_hooks/tests.py",
+          "startLine": 305,
+          "endLine": 310,
+          "text": "        def on_commit(i, add_hook):\n            with transaction.atomic():\n                if add_hook:\n                    transaction.on_commit(lambda: on_commit(i + 10, False))\n                t = Thing.objects.create(num=i)\n                self.notify(t.num)"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 297,
+          "endLine": 342,
+          "text": "Performing actions after commit\n===============================\n\nSometimes you need to perform an action related to the current database\ntransaction, but only if the transaction successfully commits. Examples might\ninclude a background task, an email notification, or a cache invalidation.\n\n:func:`on_commit` allows you to register callbacks that will be executed after\nthe open transaction is successfully committed:\n\n.. function:: on_commit(func, using=None, robust=False)\n\nPass a function, or any callable, to :func:`on_commit`::\n\n    from django.db import transaction\n\n\n    def send_welcome_email(): ...\n\n\n    transaction.on_commit(send_welcome_email)\n\nCallbacks will not be passed any arguments, but you can bind them with\n:func:`functools.partial`::\n\n    from functools import partial\n\n    for user in users:\n        transaction.on_commit(partial(send_invite_email, user=user))\n\nCallbacks are called after the open transaction is successfully committed. If\nthe transaction is instead rolled back (typically when an unhandled exception\nis raised in an :func:`atomic` block), the callback will be discarded, and\nnever called.\n\nIf you call ``on_commit()`` while there isn't an open transaction,\nthe callback will be executed immediately.\n\nIt's sometimes useful to register callbacks that can fail. Passing\n``robust=True`` allows the next callbacks to be executed even if the current\none throws an exception. All errors derived from Python's ``Exception`` class\nare caught and logged to the ``django.db.backends.base`` logger.\n\nYou can use :meth:`.TestCase.captureOnCommitCallbacks` to test callbacks\nregistered with :func:`on_commit`.\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 389,
+          "endLine": 418,
+          "text": "Timing of execution\n-------------------\n\nYour callbacks are executed *after* a successful commit, so a failure in a\ncallback will not cause the transaction to roll back. They are executed\nconditionally upon the success of the transaction, but they are not *part* of\nthe transaction. For the intended use cases (mail notifications, background\ntasks, etc.), this should be fine. If it's not (if your follow-up action is so\ncritical that its failure should mean the failure of the transaction itself),\nthen you don't want to use the :func:`on_commit` hook. Instead, you may want\n`two-phase commit`_ such as the :ref:`psycopg Two-Phase Commit protocol support\n<psycopg:two-phase-commit>` and the :pep:`optional Two-Phase Commit Extensions\nin the Python DB-API specification <249#optional-two-phase-commit-extensions>`.\n\nCallbacks are not run until autocommit is restored on the connection following\nthe commit (because otherwise any queries done in a callback would open an\nimplicit transaction, preventing the connection from going back into autocommit\nmode).\n\nWhen in autocommit mode and outside of an :func:`atomic` block, the function\nwill run immediately, not on commit.\n\nOn-commit functions only work with :ref:`autocommit mode <managing-autocommit>`\nand the :func:`atomic` (or :setting:`ATOMIC_REQUESTS\n<DATABASE-ATOMIC_REQUESTS>`) transaction API. Calling :func:`on_commit` when\nautocommit is disabled and you are not within an atomic block will result in an\nerror.\n\n.. _two-phase commit: https://en.wikipedia.org/wiki/Two-phase_commit_protocol\n"
+        },
+        {
+          "path": "docs/topics/testing/tools.txt",
+          "startLine": 985,
+          "endLine": 1018,
+          "text": "    Returns a context manager that captures :func:`transaction.on_commit()\n    <django.db.transaction.on_commit>` callbacks for the given database\n    connection. It returns a list that contains, on exit of the context, the\n    captured callback functions. From this list you can make assertions on the\n    callbacks or call them to invoke their side effects, emulating a commit.\n\n    ``using`` is the alias of the database connection to capture callbacks for.\n\n    If ``execute`` is ``True``, all the callbacks will be called as the context\n    manager exits, if no exception occurred. This emulates a commit after the\n    wrapped block of code.\n\n    For example::\n\n        from django.core import mail\n        from django.test import TestCase\n\n\n        class ContactTests(TestCase):\n            def test_post(self):\n                with self.captureOnCommitCallbacks(execute=True) as callbacks:\n                    response = self.client.post(\n                        \"/contact/\",\n                        {\"message\": \"I like your site\"},\n                    )\n\n                self.assertEqual(response.status_code, 200)\n                self.assertEqual(len(callbacks), 1)\n                self.assertEqual(len(mail.outbox), 1)\n                self.assertEqual(mail.outbox[0].subject, \"Contact Form\")\n                self.assertEqual(mail.outbox[0].body, \"I like your site\")\n\n.. _live-test-server:\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 419,
+          "endLine": 438,
+          "text": "Use in tests\n------------\n\nDjango's :class:`~django.test.TestCase` class wraps each test in a transaction\nand rolls back that transaction after each test, in order to provide test\nisolation. This means that no transaction is ever actually committed, thus your\n:func:`on_commit` callbacks will never be run.\n\nYou can overcome this limitation by using\n:meth:`.TestCase.captureOnCommitCallbacks`. This captures your\n:func:`on_commit` callbacks in a list, allowing you to make assertions on them,\nor emulate the transaction committing by calling them.\n\nAnother way to overcome the limitation is to use\n:class:`~django.test.TransactionTestCase` instead of\n:class:`~django.test.TestCase`. This will mean your transactions are committed,\nand the callbacks will run. However\n:class:`~django.test.TransactionTestCase` flushes the database between tests,\nwhich is significantly slower than :class:`~django.test.TestCase`\\'s isolation.\n"
+        },
+        {
+          "path": "django/test/testcases.py",
+          "startLine": 1509,
+          "endLine": 1540,
+          "text": "    @classmethod\n    @contextmanager\n    def captureOnCommitCallbacks(cls, *, using=DEFAULT_DB_ALIAS, execute=False):\n        \"\"\"Context manager to capture transaction.on_commit() callbacks.\"\"\"\n        callbacks = []\n        start_count = len(connections[using].run_on_commit)\n        try:\n            yield callbacks\n        finally:\n            while True:\n                callback_count = len(connections[using].run_on_commit)\n                for _, callback, robust in connections[using].run_on_commit[\n                    start_count:\n                ]:\n                    callbacks.append(callback)\n                    if execute:\n                        if robust:\n                            try:\n                                callback()\n                            except Exception as e:\n                                name = getattr(callback, \"__qualname__\", callback)\n                                logger.exception(\n                                    \"Error calling %s in on_commit() (%s).\",\n                                    name,\n                                    e,\n                                )\n                        else:\n                            callback()\n\n                if callback_count == len(connections[using].run_on_commit):\n                    break\n                start_count = callback_count"
+        },
+        {
+          "path": "tests/transaction_hooks/tests.py",
+          "startLine": 13,
+          "endLine": 23,
+          "text": "@skipUnlessDBFeature(\"supports_transactions\")\nclass TestConnectionOnCommit(TransactionTestCase):\n    \"\"\"\n    Tests for transaction.on_commit().\n\n    Creation/checking of database objects in parallel with callback tracking is\n    to verify that the behavior of the two match in all tested cases.\n    \"\"\"\n\n    available_apps = [\"transaction_hooks\"]\n"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 0.8439056030038046,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 0.5,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.03275,
+            "returned_chars": 8000,
+            "relevant_chars": 262,
+            "estimated_tokens": 2000,
+            "results_used": 9
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.029799818016378526,
+            "returned_chars": 8792,
+            "relevant_chars": 262,
+            "estimated_tokens": 2198,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-002",
+        "corpus": "django",
+        "kind": "exact-symbol",
+        "question": "Where is QuerySet.get_or_create implemented?",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 1089,
+            "end": 1112
+          }
+        ],
+        "notes": "Tries get, creates within an atomic transaction and handles an IntegrityError race."
+      },
+      "results": [
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1089,
+          "endLine": 1112,
+          "text": "    def get_or_create(self, defaults=None, **kwargs):\n        \"\"\"\n        Look up an object with the given kwargs, creating one if necessary.\n        Return a tuple of (object, created), where created is a boolean\n        specifying whether an object was created.\n        \"\"\"\n        # The get() needs to be targeted at the write database in order\n        # to avoid potential transaction consistency problems.\n        self._for_write = True\n        try:\n            return self.get(**kwargs), False\n        except self.model.DoesNotExist:\n            params = self._extract_model_params(defaults, **kwargs)\n            # Try to create an object using passed params.\n            try:\n                with transaction.atomic(using=self.db):\n                    params = dict(resolve_callables(params))\n                    return self.create(**params), True\n            except IntegrityError:\n                try:\n                    return self.get(**kwargs), False\n                except self.model.DoesNotExist:\n                    pass\n                raise"
+        },
+        {
+          "path": "django/contrib/contenttypes/fields.py",
+          "startLine": 845,
+          "endLine": 849,
+          "text": "        def get_or_create(self, **kwargs):\n            kwargs[self.content_type_field_name] = self.content_type\n            kwargs[self.object_id_field_name] = self.pk_val\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super().using(db).get_or_create(**kwargs)"
+        },
+        {
+          "path": "django/db/models/fields/related_descriptors.py",
+          "startLine": 911,
+          "endLine": 915,
+          "text": "        def get_or_create(self, **kwargs):\n            self._check_fk_val()\n            kwargs[self.field.name] = self.instance\n            db = router.db_for_write(self.model, instance=self.instance)\n            return super(RelatedManager, self.db_manager(db)).get_or_create(**kwargs)"
+        },
+        {
+          "path": "django/db/models/fields/related_descriptors.py",
+          "startLine": 1467,
+          "endLine": 1476,
+          "text": "        def get_or_create(self, *, through_defaults=None, **kwargs):\n            db = router.db_for_write(self.instance.__class__, instance=self.instance)\n            obj, created = super(ManyRelatedManager, self.db_manager(db)).get_or_create(\n                **kwargs\n            )\n            # We only need to add() if created because if we got an object back\n            # from get() then the relationship already exists.\n            if created:\n                self.add(obj, through_defaults=through_defaults)\n            return obj, created"
+        },
+        {
+          "path": "tests/multiple_database/models.py",
+          "startLine": 45,
+          "endLine": 46,
+          "text": "    def get_or_create(self, *args, extra_arg=None, **kwargs):\n        return super().get_or_create(*args, **kwargs)"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 2405,
+          "endLine": 2434,
+          "text": "        for key, value in defaults.items():\n            setattr(obj, key, value)\n        obj.save()\n    except Person.DoesNotExist:\n        new_values = {\"first_name\": \"John\", \"last_name\": \"Lennon\"}\n        new_values.update(create_defaults)\n        obj = Person(**new_values)\n        obj.save()\n\nThis pattern gets quite unwieldy as the number of fields in a model goes up.\nThe above example can be rewritten using ``update_or_create()`` like so::\n\n    obj, created = Person.objects.update_or_create(\n        first_name=\"John\",\n        last_name=\"Lennon\",\n        defaults={\"first_name\": \"Bob\"},\n        create_defaults={\"first_name\": \"Bob\", \"birthday\": date(1940, 10, 9)},\n    )\n\nFor a detailed description of how names passed in ``kwargs`` are resolved, see\n:meth:`get_or_create`.\n\nAs described above in :meth:`get_or_create`, this method is prone to a\nrace-condition which can result in multiple rows being inserted simultaneously\nif uniqueness is not enforced at the database level.\n\nLike :meth:`get_or_create` and :meth:`create`, if you're using manually\nspecified primary keys and an object needs to be created but the key already\nexists in the database, an :exc:`~django.db.IntegrityError` is raised.\n"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 2321,
+          "endLine": 2364,
+          "text": "If you have a field named ``defaults`` and want to use it as an exact lookup in\n``get_or_create()``, use ``'defaults__exact'``, like so::\n\n    Foo.objects.get_or_create(defaults__exact=\"bar\", defaults={\"defaults\": \"baz\"})\n\nThe ``get_or_create()`` method has similar error behavior to :meth:`create`\nwhen you're using manually specified primary keys. If an object needs to be\ncreated and the key already exists in the database, an\n:exc:`~django.db.IntegrityError` will be raised.\n\nFinally, a word on using ``get_or_create()`` in Django views. Please make sure\nto use it only in ``POST`` requests unless you have a good reason not to.\n``GET`` requests shouldn't have any effect on data. Instead, use ``POST``\nwhenever a request to a page has a side effect on your data. For more, see\n:rfc:`Safe methods <9110#section-9.2.1>` in the HTTP spec.\n\n.. warning::\n\n  You can use ``get_or_create()`` through\n  :class:`~django.db.models.ManyToManyField` attributes and reverse relations.\n  In that case you will restrict the queries inside the context of that\n  relation. That could lead you to some integrity problems if you don't use it\n  consistently.\n\n  Being the following models::\n\n      class Chapter(models.Model):\n          title = models.CharField(max_length=255, unique=True)\n\n\n      class Book(models.Model):\n          title = models.CharField(max_length=256)\n          chapters = models.ManyToManyField(Chapter)\n\n  You can use ``get_or_create()`` through Book's chapters field, but it only\n  fetches inside the context of that book:\n\n  .. code-block:: pycon\n\n      >>> book = Book.objects.create(title=\"Ulysses\")\n      >>> book.chapters.get_or_create(title=\"Telemachus\")\n      (<Chapter: Telemachus>, True)\n      >>> book.chapters.get_or_create(title=\"Telemachus\")\n      (<Chapter: Telemachus>, False)"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1116,
+          "endLine": 1120,
+          "text": "    async def aget_or_create(self, defaults=None, **kwargs):\n        return await sync_to_async(self.get_or_create)(\n            defaults=defaults,\n            **kwargs,\n        )"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 2243,
+          "endLine": 2285,
+          "text": "``get_or_create()``\n~~~~~~~~~~~~~~~~~~~\n\n.. method:: get_or_create(defaults=None, **kwargs)\n.. method:: aget_or_create(defaults=None, **kwargs)\n\n*Asynchronous version*: ``aget_or_create()``\n\nA convenience method for looking up an object with the given ``kwargs`` (may be\nempty if your model has defaults for all fields), creating one if necessary.\n\nReturns a tuple of ``(object, created)``, where ``object`` is the retrieved or\ncreated object and ``created`` is a boolean specifying whether a new object was\ncreated.\n\nThis is meant to prevent duplicate objects from being created when requests are\nmade in parallel, and as a shortcut to boilerplatish code. For example::\n\n    try:\n        obj = Person.objects.get(first_name=\"John\", last_name=\"Lennon\")\n    except Person.DoesNotExist:\n        obj = Person(first_name=\"John\", last_name=\"Lennon\", birthday=date(1940, 10, 9))\n        obj.save()\n\nHere, with concurrent requests, multiple attempts to save a ``Person`` with\nthe same parameters may be made. To avoid this race condition, the above\nexample can be rewritten using ``get_or_create()`` like so::\n\n    obj, created = Person.objects.get_or_create(\n        first_name=\"John\",\n        last_name=\"Lennon\",\n        defaults={\"birthday\": date(1940, 10, 9)},\n    )\n\nAny keyword arguments passed to ``get_or_create()`` — *except* an optional one\ncalled ``defaults`` — will be used in a :meth:`get` call. If an object is\nfound, ``get_or_create()`` returns a tuple of that object and ``False``.\n\n.. warning::\n\n    This method is atomic assuming that the database enforces uniqueness of the\n    keyword arguments (see :attr:`~django.db.models.Field.unique` or\n    :attr:`~django.db.models.Options.unique_together`). If the fields used in"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1113,
+          "endLine": 1115,
+          "text": "\n    get_or_create.alters_data = True\n"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 0.8301449020073051,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.14564709118415622,
+            "returned_chars": 7271,
+            "relevant_chars": 1059,
+            "estimated_tokens": 1818,
+            "results_used": 10
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.14564709118415622,
+            "returned_chars": 7271,
+            "relevant_chars": 1059,
+            "estimated_tokens": 1818,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-003",
+        "corpus": "django",
+        "kind": "concept",
+        "question": "What prevents a durable atomic transaction block from being nested in another atomic block?",
+        "expected": [
+          {
+            "path": "django/db/transaction.py",
+            "start": 196,
+            "end": 207
+          }
+        ],
+        "notes": "Atomic.__enter__ raises RuntimeError unless the enclosing block is a test case."
+      },
+      "results": [
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 196,
+          "endLine": 236,
+          "text": "    def __enter__(self):\n        connection = get_connection(self.using)\n\n        if (\n            self.durable\n            and connection.atomic_blocks\n            and not connection.atomic_blocks[-1]._from_testcase\n        ):\n            raise RuntimeError(\n                \"A durable atomic block cannot be nested within another \"\n                \"atomic block.\"\n            )\n        if not connection.in_atomic_block:\n            # Reset state when entering an outermost atomic block.\n            connection.commit_on_exit = True\n            connection.needs_rollback = False\n            if not connection.get_autocommit():\n                # Pretend we're already in an atomic block to bypass the code\n                # that disables autocommit to enter a transaction, and make a\n                # note to deal with this case in __exit__.\n                connection.in_atomic_block = True\n                connection.commit_on_exit = False\n\n        if connection.in_atomic_block:\n            # We're already in a transaction; create a savepoint, unless we\n            # were told not to or we're already waiting for a rollback. The\n            # second condition avoids creating useless savepoints and prevents\n            # overwriting needs_rollback until the rollback is performed.\n            if self.savepoint and not connection.needs_rollback:\n                sid = connection.savepoint()\n                connection.savepoint_ids.append(sid)\n            else:\n                connection.savepoint_ids.append(None)\n        else:\n            connection.set_autocommit(\n                False, force_begin_transaction_with_broken_autocommit=True\n            )\n            connection.in_atomic_block = True\n\n        if connection.in_atomic_block:\n            connection.atomic_blocks.append(self)"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 93,
+          "endLine": 151,
+          "text": "Controlling transactions explicitly\n-----------------------------------\n\nDjango provides a single API to control database transactions.\n\n.. function:: atomic(using=None, savepoint=True, durable=False)\n\n    Atomicity is the defining property of database transactions. ``atomic``\n    allows us to create a block of code within which the atomicity on the\n    database is guaranteed. If the block of code is successfully completed, the\n    changes are committed to the database. If there is an exception, the\n    changes are rolled back.\n\n    ``atomic`` blocks can be nested. In this case, when an inner block\n    completes successfully, its effects can still be rolled back if an\n    exception is raised in the outer block at a later point.\n\n    It is sometimes useful to ensure an ``atomic`` block is always the\n    outermost ``atomic`` block, ensuring that any database changes are\n    committed when the block is exited without errors. This is known as\n    durability and can be achieved by setting ``durable=True``. If the\n    ``atomic`` block is nested within another it raises a ``RuntimeError``.\n\n    ``atomic`` is usable both as a :term:`decorator`::\n\n        from django.db import transaction\n\n\n        @transaction.atomic\n        def viewfunc(request):\n            # This code executes inside a transaction.\n            do_stuff()\n\n    and as a :term:`context manager`::\n\n        from django.db import transaction\n\n\n        def viewfunc(request):\n            # This code executes in autocommit mode (Django's default).\n            do_stuff()\n\n            with transaction.atomic():\n                # This code executes inside a transaction.\n                do_more_stuff()\n\n    Wrapping ``atomic`` in a try/except block allows for natural handling of\n    integrity errors::\n\n        from django.db import IntegrityError, transaction\n\n\n        @transaction.atomic\n        def viewfunc(request):\n            create_parent()\n\n            try:\n                with transaction.atomic():\n                    generate_relationships()"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 156,
+          "endLine": 189,
+          "text": "class Atomic(ContextDecorator):\n    \"\"\"\n    Guarantee the atomic execution of a given block.\n\n    An instance can be used either as a decorator or as a context manager.\n\n    When it's used as a decorator, __call__ wraps the execution of the\n    decorated function in the instance itself, used as a context manager.\n\n    When it's used as a context manager, __enter__ creates a transaction or a\n    savepoint, depending on whether a transaction is already in progress, and\n    __exit__ commits the transaction or releases the savepoint on normal exit,\n    and rolls back the transaction or to the savepoint on exceptions.\n\n    It's possible to disable the creation of savepoints if the goal is to\n    ensure that some code runs within a transaction without creating overhead.\n\n    A stack of savepoint identifiers is maintained as an attribute of the\n    connection. None denotes the absence of a savepoint.\n\n    This allows reentrancy even if the same AtomicWrapper is reused. For\n    example, it's possible to define `oa = atomic('other')` and use `@oa` or\n    `with oa:` multiple times.\n\n    Since database connections are thread-local, this is thread-safe.\n\n    An atomic block can be tagged as durable. In this case, a RuntimeError is\n    raised if it's nested within another atomic block. This guarantees\n    that database changes in a durable block are committed to the database when\n    the block exits without error.\n\n    This is a private API.\n    \"\"\"\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 343,
+          "endLine": 374,
+          "text": "Savepoints\n----------\n\nSavepoints (i.e. nested :func:`atomic` blocks) are handled correctly. That is,\nan :func:`on_commit` callable registered after a savepoint (in a nested\n:func:`atomic` block) will be called after the outer transaction is committed,\nbut not if a rollback to that savepoint or any previous savepoint occurred\nduring the transaction::\n\n    with transaction.atomic():  # Outer atomic, start a new transaction\n        transaction.on_commit(foo)\n\n        with transaction.atomic():  # Inner atomic block, create a savepoint\n            transaction.on_commit(bar)\n\n    # foo() and then bar() will be called when leaving the outermost block\n\nOn the other hand, when a savepoint is rolled back (due to an exception being\nraised), the inner callable will not be called::\n\n    with transaction.atomic():  # Outer atomic, start a new transaction\n        transaction.on_commit(foo)\n\n        try:\n            with transaction.atomic():  # Inner atomic block, create a savepoint\n                transaction.on_commit(bar)\n                raise SomeError()  # Raising an exception - abort the savepoint\n        except SomeError:\n            pass\n\n    # foo() will be called, but not bar()\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 619,
+          "endLine": 623,
+          "text": "Setting it to ``False`` prevents such a rollback. Before doing that, make sure\nyou've rolled back the transaction to a known-good savepoint within the current\natomic block! Otherwise you're breaking atomicity and data corruption may\noccur.\n"
+        },
+        {
+          "path": "tests/transactions/tests.py",
+          "startLine": 572,
+          "endLine": 577,
+          "text": "    def test_nested_inner_durable(self):\n        msg = \"A durable atomic block cannot be nested within another atomic block.\"\n        with transaction.atomic():\n            with self.assertRaisesMessage(RuntimeError, msg):\n                with transaction.atomic(durable=True):\n                    pass"
+        },
+        {
+          "path": "tests/transactions/tests.py",
+          "startLine": 565,
+          "endLine": 570,
+          "text": "    def test_nested_both_durable(self):\n        msg = \"A durable atomic block cannot be nested within another atomic block.\"\n        with transaction.atomic(durable=True):\n            with self.assertRaisesMessage(RuntimeError, msg):\n                with transaction.atomic(durable=True):\n                    pass"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 330,
+          "endLine": 337,
+          "text": "def atomic(using=None, savepoint=True, durable=False):\n    # Bare decorator: @atomic -- although the first argument is called\n    # `using`, it's actually the function being decorated.\n    if callable(using):\n        return Atomic(DEFAULT_DB_ALIAS, savepoint, durable)(using)\n    # Decorator: @atomic(...) or context manager: with atomic(...): ...\n    else:\n        return Atomic(using, savepoint, durable)"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 1922,
+          "endLine": 1971,
+          "text": "``using()``\n~~~~~~~~~~~\n\n.. method:: using(alias)\n\nThis method is for controlling which database the ``QuerySet`` will be\nevaluated against if you are using more than one database. The only argument\nthis method takes is the alias of a database, as defined in\n:setting:`DATABASES`.\n\nFor example:\n\n.. code-block:: pycon\n\n    # queries the database with the 'default' alias.\n    >>> Entry.objects.all()\n\n    # queries the database with the 'backup' alias\n    >>> Entry.objects.using(\"backup\")\n\n``select_for_update()``\n~~~~~~~~~~~~~~~~~~~~~~~\n\n.. method:: select_for_update(nowait=False, skip_locked=False, of=(), no_key=False)\n\nReturns a queryset that will lock rows until the end of the transaction,\ngenerating a ``SELECT ... FOR UPDATE`` SQL statement on supported databases.\n\nFor example::\n\n    from django.db import transaction\n\n    entries = Entry.objects.select_for_update().filter(author=request.user)\n    with transaction.atomic():\n        for entry in entries:\n            ...\n\nWhen the queryset is evaluated (``for entry in entries`` in this case), all\nmatched entries will be locked until the end of the transaction block, meaning\nthat other transactions will be prevented from changing or acquiring locks on\nthem.\n\nUsually, if another transaction has already acquired a lock on one of the\nselected rows, the query will block until the lock is released. If this is\nnot the behavior you want, call ``select_for_update(nowait=True)``. This will\nmake the call non-blocking. If a conflicting lock is already acquired by\nanother transaction, :exc:`~django.db.DatabaseError` will be raised when the\nqueryset is evaluated. You can also ignore locked rows by using\n``select_for_update(skip_locked=True)`` instead. The ``nowait`` and\n``skip_locked`` are mutually exclusive and attempts to call"
+        },
+        {
+          "path": "docs/ref/contrib/postgres/functions.txt",
+          "startLine": 29,
+          "endLine": 51,
+          "text": "``TransactionNow``\n==================\n\n.. class:: TransactionNow()\n\nReturns the date and time on the database server that the current transaction\nstarted. If you are not in a transaction it will return the date and time of\nthe current statement. This is a complement to\n:class:`django.db.models.functions.Now`, which returns the date and time of the\ncurrent statement.\n\nNote that only the outermost call to :func:`~django.db.transaction.atomic`\nsets up a transaction and thus sets the time that ``TransactionNow()`` will\nreturn; nested calls create savepoints which do not affect the transaction\ntime.\n\nUsage example:\n\n.. code-block:: pycon\n\n    >>> from django.contrib.postgres.functions import TransactionNow\n    >>> Article.objects.filter(published__lte=TransactionNow())\n    <QuerySet [<Article: How to Django>]>"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 0.6455291019956348,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.0475,
+            "returned_chars": 8000,
+            "relevant_chars": 380,
+            "estimated_tokens": 2000,
+            "results_used": 9
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.03668307751713486,
+            "returned_chars": 10359,
+            "relevant_chars": 380,
+            "estimated_tokens": 2590,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-004",
+        "corpus": "django",
+        "kind": "paraphrase",
+        "question": "Why must I provide a batch size when streaming rows after requesting related objects in advance?",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 609,
+            "end": 626
+          }
+        ],
+        "notes": "iterator rejects missing chunk_size with prefetch_related and rejects nonpositive sizes."
+      },
+      "results": [
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 2472,
+          "endLine": 2514,
+          "text": "  technique as long as the objects don't have any manually set primary keys::\n\n    from itertools import islice\n\n    batch_size = 100\n    objs = (Entry(headline=\"Test %s\" % i) for i in range(1000))\n    while True:\n        batch = list(islice(objs, batch_size))\n        if not batch:\n            break\n        Entry.objects.bulk_create(batch, batch_size)\n\nThe ``batch_size`` parameter controls how many objects are created in a single\nquery. The default is to create as many objects in one batch as the database\nwill allow. (SQLite and Oracle limit the number of parameters in a query.)\n\nOn databases that support it (all but Oracle), setting the ``ignore_conflicts``\nparameter to ``True`` tells the database to ignore failure to insert any rows\nthat fail constraints such as duplicate unique values.\n\nOn databases that support it (all except Oracle), setting the\n``update_conflicts`` parameter to ``True``, tells the database to update\n``update_fields`` when a row insertion fails on conflicts. On PostgreSQL and\nSQLite, in addition to ``update_fields``, a list of ``unique_fields`` that may\nbe in conflict must be provided.\n\nEnabling the ``ignore_conflicts`` parameter disables setting the primary key on\neach model instance (if the database normally supports it).\n\n.. warning::\n\n    On MySQL and MariaDB, setting the ``ignore_conflicts`` parameter to\n    ``True`` turns certain types of errors, other than duplicate key, into\n    warnings. Even with Strict Mode. For example: invalid values or\n    non-nullable violations. See the `MySQL documentation`_ and\n    `MariaDB documentation`_ for more details.\n\n.. _MySQL documentation: https://dev.mysql.com/doc/refman/en/sql-mode.html#ignore-strict-comparison\n.. _MariaDB documentation: https://mariadb.com/kb/en/ignore/\n\n``bulk_update()``\n~~~~~~~~~~~~~~~~~\n"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 1020,
+          "endLine": 1063,
+          "text": "    def bulk_update(self, objs, fields, batch_size=None):\n        \"\"\"\n        Update the given fields in each of the given objects in the database.\n        \"\"\"\n        if batch_size is not None and batch_size <= 0:\n            raise ValueError(\"Batch size must be a positive integer.\")\n        if not fields:\n            raise ValueError(\"Field names must be given to bulk_update().\")\n        objs = tuple(objs)\n        if not all(obj._is_pk_set() for obj in objs):\n            raise ValueError(\"All bulk_update() objects must have a primary key set.\")\n        opts = self.model._meta\n        fields = [opts.get_field(name) for name in fields]\n        if any(not f.concrete for f in fields):\n            raise ValueError(\"bulk_update() can only be used with concrete fields.\")\n        all_pk_fields = set(opts.pk_fields)\n        for parent in opts.all_parents:\n            all_pk_fields.update(parent._meta.pk_fields)\n        if any(f in all_pk_fields for f in fields):\n            raise ValueError(\"bulk_update() cannot be used with primary key fields.\")\n        if not objs:\n            return 0\n        for obj in objs:\n            obj._prepare_related_fields_for_save(\n                operation_name=\"bulk_update\", fields=fields\n            )\n        # PK is used twice in the resulting update query, once in the filter\n        # and once in the WHEN. Each field will also have one CAST.\n        self._for_write = True\n        connection = connections[self.db]\n        max_batch_size = connection.ops.bulk_batch_size(\n            [opts.pk, opts.pk, *fields], objs\n        )\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        requires_casting = connection.features.requires_casted_case_in_updates\n        batches = (objs[i : i + batch_size] for i in range(0, len(objs), batch_size))\n        updates = []\n        for batch_objs in batches:\n            update_kwargs = {}\n            for field in fields:\n                when_statements = []\n                for obj in batch_objs:\n                    attr = getattr(obj, field.attname)\n                    if not hasattr(attr, \"resolve_expression\"):"
+        },
+        {
+          "path": "docs/howto/outputting-csv.txt",
+          "startLine": 60,
+          "endLine": 108,
+          "text": "Streaming large CSV files\n-------------------------\n\nWhen dealing with views that generate very large responses, you might want to\nconsider using Django's :class:`~django.http.StreamingHttpResponse` instead.\nFor example, by streaming a file that takes a long time to generate you can\navoid a load balancer dropping a connection that might have otherwise timed out\nwhile the server was generating the response.\n\nIn this example, we make full use of Python generators to efficiently handle\nthe assembly and transmission of a large CSV file. Rows are batched together\nto reduce HTTP overhead and improve compression efficiency when used with\n:class:`~django.middleware.gzip.GZipMiddleware`::\n\n    import csv\n    from itertools import batched\n\n    from django.http import StreamingHttpResponse\n\n\n    class Echo:\n        \"\"\"An object that implements just the write method of the file-like\n        interface.\n        \"\"\"\n\n        def write(self, value):\n            \"\"\"Write the value by returning it, instead of storing in a buffer.\"\"\"\n            return value\n\n\n    def some_streaming_csv_view(request):\n        \"\"\"A view that streams a large CSV file.\"\"\"\n        # Generate a sequence of rows. The range is based on the maximum number of\n        # rows that can be handled by a single sheet in most spreadsheet\n        # applications.\n        rows = ([\"Row {}\".format(idx), str(idx)] for idx in range(65536))\n        pseudo_buffer = Echo()\n        writer = csv.writer(pseudo_buffer)\n\n        def stream_batched_rows():\n            for batch in batched(rows, 100):\n                yield \"\".join(writer.writerow(row) for row in batch)\n\n        return StreamingHttpResponse(\n            stream_batched_rows(),\n            content_type=\"text/csv\",\n            headers={\"Content-Disposition\": 'attachment; filename=\"somefilename.csv\"'},\n        )\n"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 2515,
+          "endLine": 2559,
+          "text": ".. method:: bulk_update(objs, fields, batch_size=None)\n.. method:: abulk_update(objs, fields, batch_size=None)\n\n*Asynchronous version*: ``abulk_update()``\n\nThis method efficiently updates the given fields on the provided model\ninstances, generally with one query, and returns the number of objects\nupdated:\n\n.. code-block:: pycon\n\n    >>> objs = [\n    ...     Entry.objects.create(headline=\"Entry 1\"),\n    ...     Entry.objects.create(headline=\"Entry 2\"),\n    ... ]\n    >>> objs[0].headline = \"This is entry 1\"\n    >>> objs[1].headline = \"This is entry 2\"\n    >>> Entry.objects.bulk_update(objs, [\"headline\"])\n    2\n\n:meth:`.QuerySet.update` is used to save the changes, so this is more efficient\nthan iterating through the list of models and calling ``save()`` on each of\nthem, but it has a few caveats:\n\n* You cannot update the model's primary key.\n* Each model's ``save()`` method :ref:`isn't called\n  <methods-not-called-on-bulk-operations>`, and the\n  :attr:`~django.db.models.signals.pre_save` and\n  :attr:`~django.db.models.signals.post_save` signals aren't sent.\n* If updating a large number of columns in a large number of rows, the SQL\n  generated can be very large. Avoid this by specifying a suitable\n  ``batch_size``.\n* When updating a large number of objects, be aware that ``bulk_update()``\n  prepares all of the ``WHEN`` clauses for every object across all batches\n  before executing any queries. This can require more memory than expected. To\n  reduce memory usage, you can use an approach like this::\n\n    from itertools import islice\n\n    batch_size = 100\n    ids_iter = iter(range(1000))\n    while ids := list(islice(ids_iter, batch_size)):\n        batch = Entry.objects.filter(id__in=ids)\n        for entry in batch:\n            entry.headline = f\"Updated headline {entry.pk}\""
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 862,
+          "endLine": 903,
+          "text": "    def bulk_create(\n        self,\n        objs,\n        batch_size=None,\n        ignore_conflicts=False,\n        update_conflicts=False,\n        update_fields=None,\n        unique_fields=None,\n    ):\n        \"\"\"\n        Insert each of the instances into the database. Do *not* call\n        save() on each of the instances, do not send any pre/post_save\n        signals, and do not set the primary key attribute if it is an\n        autoincrement field (except if\n        features.can_return_rows_from_bulk_insert=True).\n        Multi-table models are not supported.\n        \"\"\"\n        # When you bulk insert you don't get the primary keys back (if it's an\n        # autoincrement, except if can_return_rows_from_bulk_insert=True), so\n        # you can't insert into the child tables which references this. There\n        # are two workarounds:\n        # 1) This could be implemented if you didn't have an autoincrement pk\n        # 2) You could do it by doing O(n) normal inserts into the parent\n        #    tables to get the primary keys back and then doing a single bulk\n        #    insert into the childmost table.\n        # We currently set the primary keys on the objects when using\n        # PostgreSQL via the RETURNING ID clause. It should be possible for\n        # Oracle as well, but the semantics for extracting the primary keys is\n        # trickier so it's not done yet.\n        if batch_size is not None and batch_size <= 0:\n            raise ValueError(\"Batch size must be a positive integer.\")\n        # Check that the parents share the same concrete model with the our\n        # model to detect the inheritance pattern ConcreteGrandParent ->\n        # MultiTableParent -> ProxyChild. Simply checking\n        # self.model._meta.proxy would not identify that case as involving\n        # multiple tables.\n        for parent in self.model._meta.all_parents:\n            if parent._meta.concrete_model is not self.model._meta.concrete_model:\n                raise ValueError(\"Can't bulk create a multi-table inherited model\")\n        if not objs:\n            return objs\n        opts = self.model._meta"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2213,
+          "endLine": 2256,
+          "text": "    def _batched_insert(\n        self,\n        objs,\n        fields,\n        batch_size,\n        on_conflict=None,\n        update_fields=None,\n        unique_fields=None,\n    ):\n        \"\"\"\n        Helper method for bulk_create() to insert objs one batch at a time.\n        \"\"\"\n        connection = connections[self.db]\n        ops = connection.ops\n        max_batch_size = max(ops.bulk_batch_size(fields, objs), 1)\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        inserted_rows = []\n        returning_fields = (\n            self.model._meta.db_returning_fields\n            if (\n                connection.features.can_return_rows_from_bulk_insert\n                and (on_conflict is None or on_conflict == OnConflict.UPDATE)\n            )\n            else None\n        )\n        batches = [objs[i : i + batch_size] for i in range(0, len(objs), batch_size)]\n        if len(batches) > 1:\n            context = transaction.atomic(using=self.db, savepoint=False)\n        else:\n            context = nullcontext()\n        with context:\n            for item in batches:\n                inserted_rows.extend(\n                    self._insert(\n                        item,\n                        fields=fields,\n                        using=self.db,\n                        on_conflict=on_conflict,\n                        update_fields=update_fields,\n                        unique_fields=unique_fields,\n                        returning_fields=returning_fields,\n                    )\n                )\n        return inserted_rows"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 2686,
+          "endLine": 2723,
+          "text": "Depending on the database backend, query results will either be loaded all at\nonce or streamed from the database using server-side cursors.\n\nWith server-side cursors\n^^^^^^^^^^^^^^^^^^^^^^^^\n\nOracle and :ref:`PostgreSQL <postgresql-server-side-cursors>` use server-side\ncursors to stream results from the database without loading the entire result\nset into memory.\n\nThe Oracle database driver always uses server-side cursors.\n\nWith server-side cursors, the ``chunk_size`` parameter specifies the number of\nresults to cache at the database driver level. Fetching bigger chunks\ndiminishes the number of round trips between the database driver and the\ndatabase, at the expense of memory.\n\nOn PostgreSQL, server-side cursors will only be used when the\n:setting:`DISABLE_SERVER_SIDE_CURSORS <DATABASE-DISABLE_SERVER_SIDE_CURSORS>`\nsetting is ``False``. Read :ref:`transaction-pooling-server-side-cursors` if\nyou're using a connection pooler configured in transaction pooling mode. When\nserver-side cursors are disabled, the behavior is the same as databases that\ndon't support server-side cursors.\n\nWithout server-side cursors\n^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nMySQL doesn't support streaming results, hence the Python database driver loads\nthe entire result set into memory. The result set is then transformed into\nPython row objects by the database adapter using the ``fetchmany()`` method\ndefined in :pep:`249`.\n\nSQLite can fetch results in batches using ``fetchmany()``, but since SQLite\ndoesn't provide isolation between queries within a connection, be careful when\nwriting to the table being iterated over. See :ref:`sqlite-isolation` for\nmore information.\n\nThe ``chunk_size`` parameter controls the size of batches Django retrieves from"
+        },
+        {
+          "path": "django/db/backends/base/operations.py",
+          "startLine": 80,
+          "endLine": 96,
+          "text": "    def bulk_batch_size(self, fields, objs):\n        \"\"\"\n        Return the maximum allowed batch size for the backend. The fields\n        are the fields going to be inserted in the batch, the objs contains\n        all the objects to be inserted.\n        \"\"\"\n        if self.connection.features.max_query_params is None or not fields:\n            return len(objs)\n\n        return self.connection.features.max_query_params // len(\n            list(\n                chain.from_iterable(\n                    field.fields if isinstance(field, CompositePrimaryKey) else [field]\n                    for field in fields\n                )\n            )\n        )"
+        },
+        {
+          "path": "django/db/models/deletion.py",
+          "startLine": 377,
+          "endLine": 418,
+          "text": "                    sub_objs = sub_objs.only(*tuple(referenced_fields))\n                if getattr(on_delete, \"lazy_sub_objs\", False) or sub_objs:\n                    try:\n                        on_delete(self, field, sub_objs, self.using)\n                    except ProtectedError as error:\n                        key = \"'%s.%s'\" % (field.model.__name__, field.name)\n                        protected_objects[key] += error.protected_objects\n        if protected_objects:\n            raise ProtectedError(\n                \"Cannot delete some instances of model %r because they are \"\n                \"referenced through protected foreign keys: %s.\"\n                % (\n                    model.__name__,\n                    \", \".join(protected_objects),\n                ),\n                set(chain.from_iterable(protected_objects.values())),\n            )\n        for related_model, related_fields in model_fast_deletes.items():\n            batches = self.get_del_batches(new_objs, related_fields)\n            for batch in batches:\n                sub_objs = self.related_objects(related_model, related_fields, batch)\n                self.fast_deletes.append(sub_objs)\n        for field in model._meta.private_fields:\n            if hasattr(field, \"bulk_related_objects\"):\n                # It's something like generic foreign key.\n                sub_objs = field.bulk_related_objects(new_objs, self.using)\n                self.collect(\n                    sub_objs, source=model, nullable=True, fail_on_restricted=False\n                )\n\n        if fail_on_restricted:\n            # Raise an error if collected restricted objects (RESTRICT) aren't\n            # candidates for deletion also collected via CASCADE.\n            for related_model, instances in self.data.items():\n                self.clear_restricted_objects_from_set(related_model, instances)\n            for qs in self.fast_deletes:\n                self.clear_restricted_objects_from_queryset(qs.model, qs)\n            if self.restricted_objects.values():\n                restricted_objects = defaultdict(list)\n                for related_model, fields in self.restricted_objects.items():\n                    for field, objs in fields.items():\n                        if objs:"
+        },
+        {
+          "path": "django/db/models/deletion.py",
+          "startLine": 323,
+          "endLine": 376,
+          "text": "                    self.collect(\n                        parent_objs,\n                        source=model,\n                        source_attr=ptr.remote_field.related_name,\n                        collect_related=False,\n                        reverse_dependency=True,\n                        fail_on_restricted=False,\n                    )\n        if not collect_related:\n            return\n\n        model_fast_deletes = defaultdict(list)\n        protected_objects = defaultdict(list)\n        for related in get_candidate_relations_to_delete(model._meta):\n            # Preserve parent reverse relationships if keep_parents=True.\n            if (\n                keep_parents\n                and related.model._meta.concrete_model in model._meta.all_parents\n            ):\n                continue\n            field = related.field\n            on_delete = field.remote_field.on_delete\n            if on_delete in SKIP_COLLECTION:\n                if self.force_collection and (\n                    forced_on_delete := getattr(on_delete, \"forced_collector\", None)\n                ):\n                    on_delete = forced_on_delete\n                else:\n                    continue\n            related_model = related.related_model\n            if self.can_fast_delete(related_model, from_field=field):\n                model_fast_deletes[related_model].append(field)\n                continue\n            batches = self.get_del_batches(new_objs, [field])\n            for batch in batches:\n                sub_objs = self.related_objects(related_model, [field], batch)\n                # Non-referenced fields can be deferred if no signal receivers\n                # are connected for the related model as they'll never be\n                # exposed to the user. Skip field deferring when some\n                # relationships are select_related as interactions between both\n                # features are hard to get right. This should only happen in\n                # the rare cases where .related_objects is overridden anyway.\n                if not (\n                    sub_objs.query.select_related\n                    or self._has_signal_listeners(related_model)\n                ):\n                    referenced_fields = set(\n                        chain.from_iterable(\n                            (rf.attname for rf in rel.field.foreign_related_fields)\n                            for rel in get_candidate_relations_to_delete(\n                                related_model._meta\n                            )\n                        )\n                    )"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 0.7998735029977979,
+      "metrics": {
+        "hit@1": false,
+        "hit@3": false,
+        "hit@5": false,
+        "hit@10": false,
+        "MRR@10": 0.0,
+        "recall@10": 0.0,
+        "matched_ranges@10": 0,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": false,
+            "range_recall": 0.0,
+            "character_precision": 0.0,
+            "returned_chars": 8000,
+            "relevant_chars": 0,
+            "estimated_tokens": 2000,
+            "results_used": 5
+          },
+          "5000": {
+            "hit": false,
+            "range_recall": 0.0,
+            "character_precision": 0.0,
+            "returned_chars": 18473,
+            "relevant_chars": 0,
+            "estimated_tokens": 4619,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-005",
+        "corpus": "django",
+        "kind": "config",
+        "question": "Where are default database settings such as CONN_MAX_AGE and AUTOCOMMIT filled in?",
+        "expected": [
+          {
+            "path": "django/db/utils.py",
+            "start": 150,
+            "end": 170
+          }
+        ],
+        "notes": "ConnectionHandler.configure_settings supplies backend and connection defaults."
+      },
+      "results": [
+        {
+          "path": "django/db/utils.py",
+          "startLine": 150,
+          "endLine": 185,
+          "text": "    def configure_settings(self, databases):\n        databases = super().configure_settings(databases)\n        if databases == {}:\n            databases[DEFAULT_DB_ALIAS] = {\"ENGINE\": \"django.db.backends.dummy\"}\n        elif DEFAULT_DB_ALIAS not in databases:\n            raise ImproperlyConfigured(\n                f\"You must define a '{DEFAULT_DB_ALIAS}' database.\"\n            )\n        elif databases[DEFAULT_DB_ALIAS] == {}:\n            databases[DEFAULT_DB_ALIAS][\"ENGINE\"] = \"django.db.backends.dummy\"\n\n        # Configure default settings.\n        for conn in databases.values():\n            conn.setdefault(\"ATOMIC_REQUESTS\", False)\n            conn.setdefault(\"AUTOCOMMIT\", True)\n            conn.setdefault(\"ENGINE\", \"django.db.backends.dummy\")\n            if conn[\"ENGINE\"] == \"django.db.backends.\" or not conn[\"ENGINE\"]:\n                conn[\"ENGINE\"] = \"django.db.backends.dummy\"\n            conn.setdefault(\"CONN_MAX_AGE\", 0)\n            conn.setdefault(\"CONN_HEALTH_CHECKS\", False)\n            conn.setdefault(\"OPTIONS\", {})\n            conn.setdefault(\"TIME_ZONE\", None)\n            for setting in [\"NAME\", \"USER\", \"PASSWORD\", \"HOST\", \"PORT\"]:\n                conn.setdefault(setting, \"\")\n\n            test_settings = conn.setdefault(\"TEST\", {})\n            default_test_settings = [\n                (\"CHARSET\", None),\n                (\"COLLATION\", None),\n                (\"MIGRATE\", True),\n                (\"MIRROR\", None),\n                (\"NAME\", None),\n            ]\n            for key, value in default_test_settings:\n                test_settings.setdefault(key, value)\n        return databases"
+        },
+        {
+          "path": "django/db/backends/postgresql/base.py",
+          "startLine": 193,
+          "endLine": 236,
+          "text": "    @property\n    def pool(self):\n        pool_options = self.settings_dict[\"OPTIONS\"].get(\"pool\")\n        if self.alias == NO_DB_ALIAS or not pool_options:\n            return None\n\n        if self.alias not in self._connection_pools:\n            if self.settings_dict.get(\"CONN_MAX_AGE\", 0) != 0:\n                raise ImproperlyConfigured(\n                    \"Pooling doesn't support persistent connections.\"\n                )\n            # Set the default options.\n            if pool_options is True:\n                pool_options = {}\n\n            try:\n                from psycopg_pool import ConnectionPool\n            except ImportError as err:\n                raise ImproperlyConfigured(\n                    \"Error loading psycopg_pool module.\\nDid you install psycopg[pool]?\"\n                ) from err\n\n            connect_kwargs = self.get_connection_params()\n            # Ensure we run in autocommit, Django properly sets it later on.\n            connect_kwargs[\"autocommit\"] = True\n            enable_checks = self.settings_dict[\"CONN_HEALTH_CHECKS\"]\n            # Copy to avoid mutating the user's settings dict.\n            pool_options = {**pool_options}\n            pool_options.setdefault(\n                \"check\", ConnectionPool.check_connection if enable_checks else None\n            )\n            pool = ConnectionPool(\n                kwargs=connect_kwargs,\n                open=False,  # Do not open the pool during startup.\n                configure=self._configure_connection,\n                **pool_options,\n            )\n            # setdefault() ensures that multiple threads don't set this in\n            # parallel. Since we do not open the pool during its init above,\n            # this means that at worst during startup multiple threads generate\n            # pool objects and the first to set it wins.\n            self._connection_pools.setdefault(self.alias, pool)\n\n        return self._connection_pools[self.alias]"
+        },
+        {
+          "path": "django/db/backends/base/base.py",
+          "startLine": 236,
+          "endLine": 261,
+          "text": "    @async_unsafe\n    def connect(self):\n        \"\"\"Connect to the database. Assume that the connection is closed.\"\"\"\n        # Check for invalid configurations.\n        self.check_settings()\n        # In case the previous connection was closed while in an atomic block\n        self.in_atomic_block = False\n        self.savepoint_ids = []\n        self.atomic_blocks = []\n        self.needs_rollback = False\n        # Reset parameters defining when to close/health-check the connection.\n        self.health_check_enabled = self.settings_dict[\"CONN_HEALTH_CHECKS\"]\n        max_age = self.settings_dict[\"CONN_MAX_AGE\"]\n        self.close_at = None if max_age is None else time.monotonic() + max_age\n        self.closed_in_transaction = False\n        self.errors_occurred = False\n        # New connections are healthy.\n        self.health_check_done = True\n        # Establish the connection\n        conn_params = self.get_connection_params()\n        self.connection = self.get_new_connection(conn_params)\n        self.set_autocommit(self.settings_dict[\"AUTOCOMMIT\"])\n        self.init_connection_state()\n        connection_created.send(sender=self.__class__, connection=self)\n\n        self.run_on_commit = []"
+        },
+        {
+          "path": "docs/ref/settings.txt",
+          "startLine": 599,
+          "endLine": 625,
+          "text": "``CONN_MAX_AGE``\n~~~~~~~~~~~~~~~~\n\nDefault: ``0``\n\nThe lifetime of a database connection, as an integer of seconds. Use ``0`` to\nclose database connections at the end of each request — Django's historical\nbehavior — and ``None`` for unlimited :ref:`persistent database connections\n<persistent-database-connections>`.\n\n.. setting:: CONN_HEALTH_CHECKS\n\n``CONN_HEALTH_CHECKS``\n~~~~~~~~~~~~~~~~~~~~~~\n\nDefault: ``False``\n\nIf set to ``True``, existing :ref:`persistent database connections\n<persistent-database-connections>` will be health checked before they are\nreused in each request performing database access. If the health check fails,\nthe connection will be reestablished without failing the request when the\nconnection is no longer usable but the database server is ready to accept and\nserve new connections (e.g. after database server restart closing existing\nconnections).\n\n.. setting:: OPTIONS\n"
+        },
+        {
+          "path": "docs/ref/settings.txt",
+          "startLine": 504,
+          "endLine": 533,
+          "text": "PostgreSQL, additional connection parameters will be required. See\nthe :setting:`ENGINE <DATABASE-ENGINE>` setting below on how to specify\nother database types. This example is for PostgreSQL::\n\n    DATABASES = {\n        \"default\": {\n            \"ENGINE\": \"django.db.backends.postgresql\",\n            \"NAME\": \"mydatabase\",\n            \"USER\": \"mydatabaseuser\",\n            \"PASSWORD\": \"mypassword\",\n            \"HOST\": \"127.0.0.1\",\n            \"PORT\": \"5432\",\n        }\n    }\n\nThe following inner options that may be required for more complex\nconfigurations are available:\n\n.. setting:: DATABASE-ATOMIC_REQUESTS\n\n``ATOMIC_REQUESTS``\n~~~~~~~~~~~~~~~~~~~\n\nDefault: ``False``\n\nSet this to ``True`` to wrap each view in a transaction on this database. See\n:ref:`tying-transactions-to-http-requests`.\n\n.. setting:: DATABASE-AUTOCOMMIT\n"
+        },
+        {
+          "path": "docs/ref/settings.txt",
+          "startLine": 561,
+          "endLine": 598,
+          "text": "``HOST``\n~~~~~~~~\n\nDefault: ``''`` (Empty string)\n\nWhich host to use when connecting to the database. An empty string means\nlocalhost. Not used with SQLite.\n\nIf this value starts with a forward slash (``'/'``) and you're using MySQL,\nMySQL will connect via a Unix socket to the specified socket. For example::\n\n    \"HOST\": \"/var/run/mysql\"\n\nIf you're using MySQL and this value *doesn't* start with a forward slash, then\nthis value is assumed to be the host.\n\nIf you're using PostgreSQL, by default (empty :setting:`HOST`), the connection\nto the database is done through UNIX domain sockets ('local' lines in\n``pg_hba.conf``). If your UNIX domain socket is not in the standard location,\nuse the same value of ``unix_socket_directory`` from ``postgresql.conf``.\nIf you want to connect through TCP sockets, set :setting:`HOST` to 'localhost'\nor '127.0.0.1' ('host' lines in ``pg_hba.conf``).\nOn Windows, you should always define :setting:`HOST`, as UNIX domain sockets\nare not available.\n\n.. setting:: NAME\n\n``NAME``\n~~~~~~~~\n\nDefault: ``''`` (Empty string)\n\nThe name of the database to use. For SQLite, it's the full path to the database\nfile. When specifying the path, always use forward slashes, even on Windows\n(e.g. ``C:/homes/user/mysite/sqlite3.db``).\n\n.. setting:: CONN_MAX_AGE\n"
+        },
+        {
+          "path": "django/db/backends/base/base.py",
+          "startLine": 53,
+          "endLine": 98,
+          "text": "    def __init__(self, settings_dict, alias=DEFAULT_DB_ALIAS):\n        # Connection related attributes.\n        # The underlying database connection.\n        self.connection = None\n        # `settings_dict` should be a dictionary containing keys such as\n        # NAME, USER, etc. It's called `settings_dict` instead of `settings`\n        # to disambiguate it from Django settings modules.\n        self.settings_dict = settings_dict\n        self.alias = alias\n        # Query logging in debug mode or when explicitly enabled.\n        self.queries_log = deque(maxlen=self.queries_limit)\n        self.force_debug_cursor = False\n\n        # Transaction related attributes.\n        # Tracks if the connection is in autocommit mode. Per PEP 249, by\n        # default, it isn't.\n        self.autocommit = False\n        # Tracks if the connection is in a transaction managed by 'atomic'.\n        self.in_atomic_block = False\n        # Increment to generate unique savepoint ids.\n        self.savepoint_state = 0\n        # List of savepoints created by 'atomic'.\n        self.savepoint_ids = []\n        # Stack of active 'atomic' blocks.\n        self.atomic_blocks = []\n        # Tracks if the outermost 'atomic' block should commit on exit,\n        # ie. if autocommit was active on entry.\n        self.commit_on_exit = True\n        # Tracks if the transaction should be rolled back to the next\n        # available savepoint because of an exception in an inner block.\n        self.needs_rollback = False\n        self.rollback_exc = None\n\n        # Connection termination related attributes.\n        self.close_at = None\n        self.closed_in_transaction = False\n        self.errors_occurred = False\n        self.health_check_enabled = False\n        self.health_check_done = False\n\n        # Thread-safety related attributes.\n        self._thread_sharing_lock = threading.Lock()\n        self._thread_sharing_count = 0\n        self._thread_ident = _thread.get_ident()\n\n        # A list of no-argument functions to run when the transaction commits."
+        },
+        {
+          "path": "django/db/backends/postgresql/base.py",
+          "startLine": 317,
+          "endLine": 355,
+          "text": "    @async_unsafe\n    def get_new_connection(self, conn_params):\n        # self.isolation_level must be set:\n        # - after connecting to the database in order to obtain the database's\n        #   default when no value is explicitly specified in options.\n        # - before calling _set_autocommit() because if autocommit is on, that\n        #   will set connection.isolation_level to ISOLATION_LEVEL_AUTOCOMMIT.\n        options = self.settings_dict[\"OPTIONS\"]\n        set_isolation_level = False\n        try:\n            isolation_level_value = options[\"isolation_level\"]\n        except KeyError:\n            self.isolation_level = IsolationLevel.READ_COMMITTED\n        else:\n            # Set the isolation level to the value from OPTIONS.\n            try:\n                self.isolation_level = IsolationLevel(isolation_level_value)\n                set_isolation_level = True\n            except ValueError:\n                raise ImproperlyConfigured(\n                    f\"Invalid transaction isolation level {isolation_level_value} \"\n                    f\"specified. Use one of the psycopg.IsolationLevel values.\"\n                )\n        if self.pool:\n            # If nothing else has opened the pool, open it now.\n            self.pool.open()\n            connection = self.pool.getconn()\n        else:\n            connection = self.Database.connect(**conn_params)\n        if set_isolation_level:\n            connection.isolation_level = self.isolation_level\n        if not is_psycopg3:\n            # Register dummy loads() to avoid a round trip from psycopg2's\n            # decode to json.dumps() to json.loads(), when using a custom\n            # decoder in JSONField.\n            psycopg2.extras.register_default_jsonb(\n                conn_or_curs=connection, loads=lambda x: x\n            )\n        return connection"
+        },
+        {
+          "path": "docs/ref/databases.txt",
+          "startLine": 30,
+          "endLine": 46,
+          "text": "Persistent connections\n----------------------\n\nPersistent connections avoid the overhead of reestablishing a connection to\nthe database in each HTTP request. They're controlled by the\n:setting:`CONN_MAX_AGE` parameter which defines the maximum lifetime of a\nconnection. It can be set independently for each database.\n\nThe default value is ``0``, preserving the historical behavior of closing the\ndatabase connection at the end of each request. To enable persistent\nconnections, set :setting:`CONN_MAX_AGE` to a positive integer of seconds. For\nunlimited persistent connections, set it to ``None``.\n\nWhen using ASGI, persistent connections should be disabled. Instead, use your\ndatabase backend's built-in connection pooling if available, or investigate a\nthird-party connection pooling option if required.\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 258,
+          "endLine": 280,
+          "text": "Why Django uses autocommit\n--------------------------\n\nIn the SQL standards, each SQL query starts a transaction, unless one is\nalready active. Such transactions must then be explicitly committed or rolled\nback.\n\nThis isn't always convenient for application developers. To alleviate this\nproblem, most databases provide an autocommit mode. When autocommit is turned\non and no transaction is active, each SQL query gets wrapped in its own\ntransaction. In other words, not only does each such query start a\ntransaction, but the transaction also gets automatically committed or rolled\nback, depending on whether the query succeeded.\n\n:pep:`249`, the Python Database API Specification v2.0, requires autocommit to\nbe initially turned off. Django overrides this default and turns autocommit\non.\n\nTo avoid this, you can :ref:`deactivate the transaction management\n<deactivate-transaction-management>`, but it isn't recommended.\n\n.. _deactivate-transaction-management:\n"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 1.601696304991492,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.130125,
+            "returned_chars": 8000,
+            "relevant_chars": 1041,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.07752457551385165,
+            "returned_chars": 13428,
+            "relevant_chars": 1041,
+            "estimated_tokens": 3357,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-006",
+        "corpus": "django",
+        "kind": "docs-howto",
+        "question": "How do I make every HTTP request commit on success and roll back if the view raises an exception?",
+        "expected": [
+          {
+            "path": "docs/topics/db/transactions.txt",
+            "start": 29,
+            "end": 44
+          }
+        ],
+        "notes": "Set ATOMIC_REQUESTS=True per database. Ground truth deliberately remains reST, even though the baseline cannot index .txt docs."
+      },
+      "results": [
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 29,
+          "endLine": 67,
+          "text": "Tying transactions to HTTP requests\n-----------------------------------\n\nA common way to handle transactions on the web is to wrap each request in a\ntransaction. Set :setting:`ATOMIC_REQUESTS <DATABASE-ATOMIC_REQUESTS>` to\n``True`` in the configuration of each database for which you want to enable\nthis behavior.\n\nIt works like this. Before calling a view function, Django starts a\ntransaction. If the response is produced without problems, Django commits the\ntransaction. If the view produces an exception, Django rolls back the\ntransaction.\n\nYou may perform subtransactions using savepoints in your view code, typically\nwith the :func:`atomic` context manager. However, at the end of the view,\neither all or none of the changes will be committed.\n\n.. warning::\n\n    While the simplicity of this transaction model is appealing, it also makes\n    it inefficient when traffic increases. Opening a transaction for every view\n    has some overhead. The impact on performance depends on the query patterns\n    of your application and on how well your database handles locking.\n\n.. admonition:: Per-request transactions and streaming responses\n\n    When a view returns a :class:`~django.http.StreamingHttpResponse`, reading\n    the contents of the response will often execute code to generate the\n    content. Since the view has already returned, such code runs outside of\n    the transaction.\n\n    Generally speaking, it isn't advisable to write to the database while\n    generating a streaming response, since there's no sensible way to handle\n    errors after starting to send the response.\n\nIn practice, this feature wraps every view function in the :func:`atomic`\ndecorator described below.\n\nNote that only the execution of your view is enclosed in the transactions."
+        },
+        {
+          "path": "docs/topics/http/middleware.txt",
+          "startLine": 276,
+          "endLine": 299,
+          "text": "Exception handling\n==================\n\nDjango automatically converts exceptions raised by the view or by middleware\ninto an appropriate HTTP response with an error status code. :ref:`Certain\nexceptions <error-views>` are converted to 4xx status codes, while an unknown\nexception is converted to a 500 status code.\n\nThis conversion takes place before and after each middleware (you can think of\nit as the thin film in between each layer of the onion), so that every\nmiddleware can always rely on getting some kind of HTTP response back from\ncalling its ``get_response`` callable. Middleware don't need to worry about\nwrapping their call to ``get_response`` in a ``try/except`` and handling an\nexception that might have been raised by a later middleware or the view. Even\nif the very next middleware in the chain raises an\n:class:`~django.http.Http404` exception, for example, your middleware won't see\nthat exception; instead it will get an :class:`~django.http.HttpResponse`\nobject with a :attr:`~django.http.HttpResponse.status_code` of 404.\n\nYou can set :setting:`DEBUG_PROPAGATE_EXCEPTIONS` to ``True`` to skip this\nconversion and propagate exceptions upward.\n\n.. _async-middleware:\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 389,
+          "endLine": 418,
+          "text": "Timing of execution\n-------------------\n\nYour callbacks are executed *after* a successful commit, so a failure in a\ncallback will not cause the transaction to roll back. They are executed\nconditionally upon the success of the transaction, but they are not *part* of\nthe transaction. For the intended use cases (mail notifications, background\ntasks, etc.), this should be fine. If it's not (if your follow-up action is so\ncritical that its failure should mean the failure of the transaction itself),\nthen you don't want to use the :func:`on_commit` hook. Instead, you may want\n`two-phase commit`_ such as the :ref:`psycopg Two-Phase Commit protocol support\n<psycopg:two-phase-commit>` and the :pep:`optional Two-Phase Commit Extensions\nin the Python DB-API specification <249#optional-two-phase-commit-extensions>`.\n\nCallbacks are not run until autocommit is restored on the connection following\nthe commit (because otherwise any queries done in a callback would open an\nimplicit transaction, preventing the connection from going back into autocommit\nmode).\n\nWhen in autocommit mode and outside of an :func:`atomic` block, the function\nwill run immediately, not on commit.\n\nOn-commit functions only work with :ref:`autocommit mode <managing-autocommit>`\nand the :func:`atomic` (or :setting:`ATOMIC_REQUESTS\n<DATABASE-ATOMIC_REQUESTS>`) transaction API. Calling :func:`on_commit` when\nautocommit is disabled and you are not within an atomic block will result in an\nerror.\n\n.. _two-phase commit: https://en.wikipedia.org/wiki/Two-phase_commit_protocol\n"
+        },
+        {
+          "path": "docs/topics/http/middleware.txt",
+          "startLine": 432,
+          "endLine": 462,
+          "text": "    ``MiddlewareMixin.async_capable`` (``True``), making them subject to the\n    repetitive context switching described above.\n\nIn most cases, inheriting from this mixin will be sufficient to make an\nold-style middleware compatible with the new system with sufficient\nbackwards-compatibility. The new short-circuiting semantics will be harmless or\neven beneficial to the existing middleware. In a few cases, a middleware class\nmay need some changes to adjust to the new semantics.\n\nThese are the behavioral differences between using :setting:`MIDDLEWARE` and\n``MIDDLEWARE_CLASSES``:\n\n#. Under ``MIDDLEWARE_CLASSES``, every middleware will always have its\n   ``process_response`` method called, even if an earlier middleware\n   short-circuited by returning a response from its ``process_request``\n   method. Under :setting:`MIDDLEWARE`, middleware behaves more like an onion:\n   the layers that a response goes through on the way out are the same layers\n   that saw the request on the way in. If a middleware short-circuits, only\n   that middleware and the ones before it in :setting:`MIDDLEWARE` will see the\n   response.\n\n#. Under ``MIDDLEWARE_CLASSES``, ``process_exception`` is applied to\n   exceptions raised from a middleware ``process_request`` method. Under\n   :setting:`MIDDLEWARE`, ``process_exception`` applies only to exceptions\n   raised from the view (or from the ``render`` method of a\n   :class:`~django.template.response.TemplateResponse`). Exceptions raised from\n   a middleware are converted to the appropriate HTTP response and then passed\n   to the next middleware.\n\n#. Under ``MIDDLEWARE_CLASSES``, if a ``process_response`` method raises\n   an exception, the ``process_response`` methods of all earlier middleware are"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 679,
+          "endLine": 715,
+          "text": "Transaction rollback\n~~~~~~~~~~~~~~~~~~~~\n\nThe first option is to roll back the entire transaction. For example::\n\n    a.save()  # Succeeds, but may be undone by transaction rollback\n    try:\n        b.save()  # Could throw exception\n    except IntegrityError:\n        transaction.rollback()\n    c.save()  # Succeeds, but a.save() may have been undone\n\nCalling ``transaction.rollback()`` rolls back the entire transaction. Any\nuncommitted database operations will be lost. In this example, the changes\nmade by ``a.save()`` would be lost, even though that operation raised no error\nitself.\n\nSavepoint rollback\n~~~~~~~~~~~~~~~~~~\n\nYou can use :ref:`savepoints <topics-db-transactions-savepoints>` to control\nthe extent of a rollback. Before performing a database operation that could\nfail, you can set or update the savepoint; that way, if the operation fails,\nyou can roll back the single offending operation, rather than the entire\ntransaction. For example::\n\n    a.save()  # Succeeds, and never undone by savepoint rollback\n    sid = transaction.savepoint_create()\n    try:\n        b.save()  # Could throw exception\n        transaction.savepoint_commit(sid)\n    except IntegrityError:\n        transaction.savepoint_rollback(sid)\n    c.save()  # Succeeds, and a.save() is never undone\n\nIn this example, ``a.save()`` will not be undone in the case where\n``b.save()`` raises an exception."
+        },
+        {
+          "path": "docs/topics/testing/tools.txt",
+          "startLine": 127,
+          "endLine": 172,
+          "text": "Making requests\n---------------\n\nUse the ``django.test.Client`` class to make requests.\n\n.. class:: Client(enforce_csrf_checks=False, raise_request_exception=True, json_encoder=DjangoJSONEncoder, *, headers=None, query_params=None, **defaults)\n\n    A testing HTTP client. Takes several arguments that can customize behavior.\n\n    ``headers`` allows you to specify default headers that will be sent with\n    every request. For example, to set a ``User-Agent`` header::\n\n        client = Client(headers={\"user-agent\": \"curl/7.79.1\"})\n\n    ``query_params`` allows you to specify the default query string that will\n    be set on every request.\n\n    Arbitrary keyword arguments in ``**defaults`` set WSGI\n    :pep:`environ variables <3333#environ-variables>`. For example, to set the\n    script name::\n\n        client = Client(SCRIPT_NAME=\"/app/\")\n\n    .. note::\n\n        Keyword arguments starting with a ``HTTP_`` prefix are set as headers,\n        but the ``headers`` parameter should be preferred for readability.\n\n    The values from the ``headers``, ``query_params``, and ``extra`` keyword\n    arguments passed to :meth:`~django.test.Client.get`,\n    :meth:`~django.test.Client.post`, etc. have precedence over\n    the defaults passed to the class constructor.\n\n    The ``enforce_csrf_checks`` argument can be used to test CSRF\n    protection (see above).\n\n    The ``raise_request_exception`` argument allows controlling whether or not\n    exceptions raised during the request should also be raised in the test.\n    Defaults to ``True``.\n\n    The ``json_encoder`` argument allows setting a custom JSON encoder for\n    the JSON serialization that's described in :meth:`post`.\n\n    Once you have a ``Client`` instance, you can call any of the following\n    methods:\n"
+        },
+        {
+          "path": "docs/topics/http/views.txt",
+          "startLine": 175,
+          "endLine": 211,
+          "text": "Testing custom error views\n--------------------------\n\nTo test the response of a custom error handler, raise the appropriate exception\nin a test view. For example::\n\n    from django.core.exceptions import PermissionDenied\n    from django.http import HttpResponse\n    from django.test import SimpleTestCase, override_settings\n    from django.urls import path\n\n\n    def response_error_handler(request, exception=None):\n        return HttpResponse(\"Error handler content\", status=403)\n\n\n    def permission_denied_view(request):\n        raise PermissionDenied\n\n\n    urlpatterns = [\n        path(\"403/\", permission_denied_view),\n    ]\n\n    handler403 = response_error_handler\n\n\n    # ROOT_URLCONF must specify the module that contains handler403 = ...\n    @override_settings(ROOT_URLCONF=__name__)\n    class CustomErrorHandlerTests(SimpleTestCase):\n        def test_handler_renders_template_response(self):\n            response = self.client.get(\"/403/\")\n            # Make assertions on the response here. For example:\n            self.assertContains(response, \"Error handler content\", status_code=403)\n\n.. _async-views:\n"
+        },
+        {
+          "path": "docs/topics/http/middleware.txt",
+          "startLine": 199,
+          "endLine": 220,
+          "text": "``process_exception()``\n-----------------------\n\n.. method:: process_exception(request, exception)\n\n``request`` is an :class:`~django.http.HttpRequest` object. ``exception`` is an\n``Exception`` object raised by the view function.\n\nDjango calls ``process_exception()`` when a view raises an exception.\n``process_exception()`` should return either ``None`` or an\n:class:`~django.http.HttpResponse` object. If it returns an\n:class:`~django.http.HttpResponse` object, the template response and response\nmiddleware will be applied and the resulting response returned to the\nbrowser. Otherwise, :ref:`default exception handling <error-views>` kicks in.\n\nAgain, middleware are run in reverse order during the response phase, which\nincludes ``process_exception``. If an exception middleware returns a response,\nthe ``process_exception`` methods of the middleware classes above that\nmiddleware won't be called at all.\n\n.. _template-response-middleware:\n"
+        },
+        {
+          "path": "docs/ref/views.txt",
+          "startLine": 66,
+          "endLine": 96,
+          "text": "The 404 (page not found) view\n-----------------------------\n\n.. function:: defaults.page_not_found(request, exception, template_name='404.html')\n\nWhen you raise :exc:`~django.http.Http404` from within a view, Django loads a\nspecial view devoted to handling 404 errors. By default, it's the view\n:func:`django.views.defaults.page_not_found`, which either produces a \"Not\nFound\" message or loads and renders the template ``404.html`` if you created it\nin your root template directory.\n\nThe default 404 view will pass two variables to the template: ``request_path``,\nwhich is the URL that resulted in the error, and ``exception``, which is a\nuseful representation of the exception that triggered the view (e.g. containing\nany message passed to a specific ``Http404`` instance).\n\nThree things to note about 404 views:\n\n* The 404 view is also called if Django doesn't find a match after\n  checking every regular expression in the URLconf.\n\n* The 404 view is passed a :class:`~django.template.RequestContext` and\n  will have access to variables supplied by your template context\n  processors (e.g. ``MEDIA_URL``).\n\n* If :setting:`DEBUG` is set to ``True`` (in your settings module), then\n  your 404 view will never be used, and your URLconf will be displayed\n  instead, with some debug information.\n\n.. _http_internal_server_error_view:\n"
+        },
+        {
+          "path": "django/db/transaction.py",
+          "startLine": 238,
+          "endLine": 300,
+          "text": "    def __exit__(self, exc_type, exc_value, traceback):\n        connection = get_connection(self.using)\n\n        if connection.in_atomic_block:\n            connection.atomic_blocks.pop()\n\n        if connection.savepoint_ids:\n            sid = connection.savepoint_ids.pop()\n        else:\n            # Prematurely unset this flag to allow using commit or rollback.\n            connection.in_atomic_block = False\n\n        try:\n            if connection.closed_in_transaction:\n                # The database will perform a rollback by itself.\n                # Wait until we exit the outermost block.\n                pass\n\n            elif exc_type is None and not connection.needs_rollback:\n                if connection.in_atomic_block:\n                    # Release savepoint if there is one\n                    if sid is not None:\n                        try:\n                            connection.savepoint_commit(sid)\n                        except DatabaseError:\n                            try:\n                                connection.savepoint_rollback(sid)\n                                # The savepoint won't be reused. Release it to\n                                # minimize overhead for the database server.\n                                connection.savepoint_commit(sid)\n                            except Error:\n                                # If rolling back to a savepoint fails, mark\n                                # for rollback at a higher level and avoid\n                                # shadowing the original exception.\n                                connection.needs_rollback = True\n                            raise\n                else:\n                    # Commit transaction\n                    try:\n                        connection.commit()\n                    except DatabaseError:\n                        try:\n                            connection.rollback()\n                        except Error:\n                            # An error during rollback means that something\n                            # went wrong with the connection. Drop it.\n                            connection.close()\n                        raise\n            else:\n                # This flag will be set to True again if there isn't a\n                # savepoint allowing to perform the rollback at this level.\n                connection.needs_rollback = False\n                if connection.in_atomic_block:\n                    # Roll back to savepoint if there is one, mark for rollback\n                    # otherwise.\n                    if sid is None:\n                        connection.needs_rollback = True\n                    else:\n                        try:\n                            connection.savepoint_rollback(sid)\n                            # The savepoint won't be reused. Release it to\n                            # minimize overhead for the database server.\n                            connection.savepoint_commit(sid)"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 1.0634804029978113,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.09375,
+            "returned_chars": 8000,
+            "relevant_chars": 750,
+            "estimated_tokens": 2000,
+            "results_used": 6
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.04763719512195122,
+            "returned_chars": 15744,
+            "relevant_chars": 750,
+            "estimated_tokens": 3936,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-007",
+        "corpus": "django",
+        "kind": "cross-file",
+        "question": "Trace how a QuerySet without an explicit database chooses a read or write database through the routers.",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 2173,
+            "end": 2177
+          },
+          {
+            "path": "django/db/utils.py",
+            "start": 220,
+            "end": 242
+          }
+        ],
+        "notes": "QuerySet.db selects router action; routing tries configured routers, instance state and default alias."
+      },
+      "results": [
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2172,
+          "endLine": 2177,
+          "text": "    @property\n    def db(self):\n        \"\"\"Return the database used if this query is executed now.\"\"\"\n        if self._for_write:\n            return self._db or router.db_for_write(self.model, **self._hints)\n        return self._db or router.db_for_read(self.model, **self._hints)"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 374,
+          "endLine": 376,
+          "text": "class QuerySet(AltersData):\n    \"\"\"Represent a lazy database lookup for a set of objects.\"\"\"\n"
+        },
+        {
+          "path": "docs/topics/db/multi-db.txt",
+          "startLine": 316,
+          "endLine": 387,
+          "text": "Now we'll need to handle routing. First we want a router that knows to\nsend queries for the ``auth`` and ``contenttypes`` apps to ``auth_db``\n(``auth`` models are linked to ``ContentType``, so they must be stored in the\nsame database)::\n\n    class AuthRouter:\n        \"\"\"\n        A router to control all database operations on models in the\n        auth and contenttypes applications.\n        \"\"\"\n\n        route_app_labels = {\"auth\", \"contenttypes\"}\n\n        def db_for_read(self, model, **hints):\n            \"\"\"\n            Attempts to read auth and contenttypes models go to auth_db.\n            \"\"\"\n            if model._meta.app_label in self.route_app_labels:\n                return \"auth_db\"\n            return None\n\n        def db_for_write(self, model, **hints):\n            \"\"\"\n            Attempts to write auth and contenttypes models go to auth_db.\n            \"\"\"\n            if model._meta.app_label in self.route_app_labels:\n                return \"auth_db\"\n            return None\n\n        def allow_relation(self, obj1, obj2, **hints):\n            \"\"\"\n            Allow relations if a model in the auth or contenttypes apps is\n            involved.\n            \"\"\"\n            if (\n                obj1._meta.app_label in self.route_app_labels\n                or obj2._meta.app_label in self.route_app_labels\n            ):\n                return True\n            return None\n\n        def allow_migrate(self, db, app_label, model_name=None, **hints):\n            \"\"\"\n            Make sure the auth and contenttypes apps only appear in the\n            'auth_db' database.\n            \"\"\"\n            if app_label in self.route_app_labels:\n                return db == \"auth_db\"\n            return None\n\nAnd we also want a router that sends all other apps to the\nprimary/replica configuration, and randomly chooses a replica to read\nfrom::\n\n    import random\n\n\n    class PrimaryReplicaRouter:\n        def db_for_read(self, model, **hints):\n            \"\"\"\n            Reads go to a randomly-chosen replica.\n            \"\"\"\n            return random.choice([\"replica1\", \"replica2\"])\n\n        def db_for_write(self, model, **hints):\n            \"\"\"\n            Writes always go to primary.\n            \"\"\"\n            return \"primary\"\n\n        def allow_relation(self, obj1, obj2, **hints):\n            \"\"\""
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 765,
+          "endLine": 783,
+          "text": "    def create(self, **kwargs):\n        \"\"\"\n        Create a new object with the given kwargs, saving it to the database\n        and returning the created object.\n        \"\"\"\n        reverse_one_to_one_fields = frozenset(kwargs).intersection(\n            self.model._meta._reverse_one_to_one_field_names\n        )\n        if reverse_one_to_one_fields:\n            raise ValueError(\n                \"The following fields do not exist in this model: %s\"\n                % \", \".join(reverse_one_to_one_fields)\n            )\n\n        obj = self.model(**kwargs)\n        self._for_write = True\n        obj.save(force_insert=True, using=self.db)\n        obj._state.fetch_mode = self._fetch_mode\n        return obj"
+        },
+        {
+          "path": "docs/topics/db/multi-db.txt",
+          "startLine": 599,
+          "endLine": 644,
+          "text": "Using ``get_queryset()`` with multiple databases\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\nIf you're overriding ``get_queryset()`` on your manager, be sure to\neither call the method on the parent (using ``super()``) or do the\nappropriate handling of the ``_db`` attribute on the manager (a string\ncontaining the name of the database to use).\n\nFor example, if you want to return a custom ``QuerySet`` class from\nthe ``get_queryset`` method, you could do this::\n\n    class MyManager(models.Manager):\n        def get_queryset(self):\n            qs = CustomQuerySet(self.model)\n            if self._db is not None:\n                qs = qs.using(self._db)\n            return qs\n\nExposing multiple databases in Django's admin interface\n=======================================================\n\nDjango's admin doesn't have any explicit support for multiple\ndatabases. If you want to provide an admin interface for a model on a\ndatabase other than that specified by your router chain, you'll\nneed to write custom :class:`~django.contrib.admin.ModelAdmin` classes\nthat will direct the admin to use a specific database for content.\n\n``ModelAdmin`` objects have the following methods that require customization\nfor multiple-database support::\n\n    class MultiDBModelAdmin(admin.ModelAdmin):\n        # A handy constant for the name of the alternate database.\n        using = \"other\"\n\n        def save_model(self, request, obj, form, change):\n            # Tell Django to save objects to the 'other' database.\n            obj.save(using=self.using)\n\n        def delete_model(self, request, obj):\n            # Tell Django to delete objects from the 'other' database\n            obj.delete(using=self.using)\n\n        def get_queryset(self, request):\n            # Tell Django to look for objects on the 'other' database.\n            return super().get_queryset(request).using(self.using)\n"
+        },
+        {
+          "path": "docs/topics/db/multi-db.txt",
+          "startLine": 140,
+          "endLine": 188,
+          "text": "Database routers\n----------------\n\nA database Router is a class that provides up to four methods:\n\n.. method:: db_for_read(model, **hints)\n\n    Suggest the database that should be used for read operations for\n    objects of type ``model``.\n\n    If a database operation is able to provide any additional\n    information that might assist in selecting a database, it will be\n    provided in the ``hints`` dictionary. Details on valid hints are\n    provided :ref:`below <topics-db-multi-db-hints>`.\n\n    Returns ``None`` if there is no suggestion.\n\n.. method:: db_for_write(model, **hints)\n\n    Suggest the database that should be used for writes of objects of\n    type Model.\n\n    If a database operation is able to provide any additional\n    information that might assist in selecting a database, it will be\n    provided in the ``hints`` dictionary. Details on valid hints are\n    provided :ref:`below <topics-db-multi-db-hints>`.\n\n    Returns ``None`` if there is no suggestion.\n\n.. method:: allow_relation(obj1, obj2, **hints)\n\n    Return ``True`` if a relation between ``obj1`` and ``obj2`` should be\n    allowed, ``False`` if the relation should be prevented, or ``None`` if\n    the router has no opinion. This is purely a validation operation,\n    used by foreign key and many to many operations to determine if a\n    relation should be allowed between two objects.\n\n    If no router has an opinion (i.e. all routers return ``None``), only\n    relations within the same database are allowed.\n\n.. method:: allow_migrate(db, app_label, model_name=None, **hints)\n\n    Determine if the migration operation is allowed to run on the database with\n    alias ``db``. Return ``True`` if the operation should run, ``False`` if it\n    shouldn't run, or ``None`` if the router has no opinion.\n\n    The ``app_label`` positional argument is the label of the application\n    being migrated.\n"
+        },
+        {
+          "path": "django/contrib/admin/filters.py",
+          "startLine": 59,
+          "endLine": 65,
+          "text": "    def queryset(self, request, queryset):\n        \"\"\"\n        Return the filtered queryset.\n        \"\"\"\n        raise NotImplementedError(\n            \"subclasses of ListFilter must provide a queryset() method\"\n        )"
+        },
+        {
+          "path": "django/contrib/admin/filters.py",
+          "startLine": 191,
+          "endLine": 198,
+          "text": "    def queryset(self, request, queryset):\n        try:\n            q_object = build_q_object_from_lookup_parameters(self.used_parameters)\n            return queryset.filter(q_object)\n        except (ValueError, ValidationError) as e:\n            # Fields may raise a ValueError or ValidationError when converting\n            # the parameters to the correct type.\n            raise IncorrectLookupParameters(e)"
+        },
+        {
+          "path": "docs/topics/cache.txt",
+          "startLine": 272,
+          "endLine": 320,
+          "text": "Creating the cache table\n~~~~~~~~~~~~~~~~~~~~~~~~\n\nBefore using the database cache, you must create the cache table with this\ncommand:\n\n.. code-block:: shell\n\n    python manage.py createcachetable\n\nThis creates a table in your database that is in the proper format that\nDjango's database-cache system expects. The name of the table is taken from\n:setting:`LOCATION <CACHES-LOCATION>`.\n\nIf you are using multiple database caches, :djadmin:`createcachetable` creates\none table for each cache.\n\nIf you are using multiple databases, :djadmin:`createcachetable` observes the\n``allow_migrate()`` method of your database routers (see below).\n\nLike :djadmin:`migrate`, :djadmin:`createcachetable` won't touch an existing\ntable. It will only create missing tables.\n\nTo print the SQL that would be run, rather than run it, use the\n:option:`createcachetable --dry-run` option.\n\n.. _database-caching-multiple-databases:\n\nMultiple databases\n~~~~~~~~~~~~~~~~~~\n\nIf you use database caching with multiple databases, you'll also need\nto set up routing instructions for your database cache table. For the\npurposes of routing, the database cache table appears as a model named\n``CacheEntry``, in an application named ``django_cache``. This model\nwon't appear in the models cache, but the model details can be used\nfor routing purposes.\n\nFor example, the following router would direct all cache read\noperations to ``cache_replica``, and all write operations to\n``cache_primary``. The cache table will only be synchronized onto\n``cache_primary``::\n\n    class CacheRouter:\n        \"\"\"A router to control all database cache operations\"\"\"\n\n        def db_for_read(self, model, **hints):\n            \"All cache read operations go to the replica\"\n            if model._meta.app_label == \"django_cache\":"
+        },
+        {
+          "path": "tests/multiple_database/tests.py",
+          "startLine": 1425,
+          "endLine": 1456,
+          "text": "    def test_partial_router(self):\n        \"A router can choose to implement a subset of methods\"\n        dive = Book.objects.using(\"other\").create(\n            title=\"Dive into Python\", published=datetime.date(2009, 5, 4)\n        )\n\n        # First check the baseline behavior.\n\n        self.assertEqual(router.db_for_read(User), \"other\")\n        self.assertEqual(router.db_for_read(Book), \"other\")\n\n        self.assertEqual(router.db_for_write(User), \"default\")\n        self.assertEqual(router.db_for_write(Book), \"default\")\n\n        self.assertTrue(router.allow_relation(dive, dive))\n\n        self.assertTrue(router.allow_migrate_model(\"default\", User))\n        self.assertTrue(router.allow_migrate_model(\"default\", Book))\n\n        with override_settings(\n            DATABASE_ROUTERS=[WriteRouter(), AuthRouter(), TestRouter()]\n        ):\n            self.assertEqual(router.db_for_read(User), \"default\")\n            self.assertEqual(router.db_for_read(Book), \"other\")\n\n            self.assertEqual(router.db_for_write(User), \"writer\")\n            self.assertEqual(router.db_for_write(Book), \"writer\")\n\n            self.assertTrue(router.allow_relation(dive, dive))\n\n            self.assertFalse(router.allow_migrate_model(\"default\", User))\n            self.assertTrue(router.allow_migrate_model(\"default\", Book))"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 0.9523379029997159,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 0.5,
+        "matched_ranges@10": 1,
+        "expected_ranges": 2,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 0.5,
+            "character_precision": 0.03325,
+            "returned_chars": 8000,
+            "relevant_chars": 266,
+            "estimated_tokens": 2000,
+            "results_used": 9
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 0.5,
+            "character_precision": 0.024437299035369776,
+            "returned_chars": 10885,
+            "relevant_chars": 266,
+            "estimated_tokens": 2722,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-008",
+        "corpus": "django",
+        "kind": "config",
+        "question": "How does QuerySet.using select a database without mutating the original query?",
+        "expected": [
+          {
+            "path": "django/db/models/query.py",
+            "start": 2048,
+            "end": 2052
+          }
+        ],
+        "notes": "Clones the query and sets _db on the clone."
+      },
+      "results": [
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2048,
+          "endLine": 2052,
+          "text": "    def using(self, alias):\n        \"\"\"Select which database this QuerySet should execute against.\"\"\"\n        clone = self._chain()\n        clone._db = alias\n        return clone"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2569,
+          "endLine": 2579,
+          "text": "    def using(self, alias):\n        \"\"\"Select the database this RawQuerySet should execute against.\"\"\"\n        return RawQuerySet(\n            self.raw_query,\n            model=self.model,\n            query=self.query.chain(using=alias),\n            params=self.params,\n            translations=self.translations,\n            using=alias,\n            fetch_mode=self._fetch_mode,\n        )"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 1922,
+          "endLine": 1971,
+          "text": "``using()``\n~~~~~~~~~~~\n\n.. method:: using(alias)\n\nThis method is for controlling which database the ``QuerySet`` will be\nevaluated against if you are using more than one database. The only argument\nthis method takes is the alias of a database, as defined in\n:setting:`DATABASES`.\n\nFor example:\n\n.. code-block:: pycon\n\n    # queries the database with the 'default' alias.\n    >>> Entry.objects.all()\n\n    # queries the database with the 'backup' alias\n    >>> Entry.objects.using(\"backup\")\n\n``select_for_update()``\n~~~~~~~~~~~~~~~~~~~~~~~\n\n.. method:: select_for_update(nowait=False, skip_locked=False, of=(), no_key=False)\n\nReturns a queryset that will lock rows until the end of the transaction,\ngenerating a ``SELECT ... FOR UPDATE`` SQL statement on supported databases.\n\nFor example::\n\n    from django.db import transaction\n\n    entries = Entry.objects.select_for_update().filter(author=request.user)\n    with transaction.atomic():\n        for entry in entries:\n            ...\n\nWhen the queryset is evaluated (``for entry in entries`` in this case), all\nmatched entries will be locked until the end of the transaction block, meaning\nthat other transactions will be prevented from changing or acquiring locks on\nthem.\n\nUsually, if another transaction has already acquired a lock on one of the\nselected rows, the query will block until the lock is released. If this is\nnot the behavior you want, call ``select_for_update(nowait=True)``. This will\nmake the call non-blocking. If a conflicting lock is already acquired by\nanother transaction, :exc:`~django.db.DatabaseError` will be raised when the\nqueryset is evaluated. You can also ignore locked rows by using\n``select_for_update(skip_locked=True)`` instead. The ``nowait`` and\n``skip_locked`` are mutually exclusive and attempts to call"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 93,
+          "endLine": 136,
+          "text": "Pickling ``QuerySet``\\s\n-----------------------\n\nIf you :mod:`pickle` a ``QuerySet``, this will force all the results to be\nloaded into memory prior to pickling. Pickling is usually used as a precursor\nto caching and when the cached queryset is reloaded, you want the results to\nalready be present and ready for use (reading from the database can take some\ntime, defeating the purpose of caching). This means that when you unpickle a\n``QuerySet``, it contains the results at the moment it was pickled, rather than\nthe results that are currently in the database.\n\nIf you only want to pickle the necessary information to recreate the\n``QuerySet`` from the database at a later time, pickle the ``query`` attribute\nof the ``QuerySet``. You can then recreate the original ``QuerySet`` (without\nany results loaded) using some code like this:\n\n.. code-block:: pycon\n\n    >>> import pickle\n    >>> query = pickle.loads(s)  # Assuming 's' is the pickled string.\n    >>> qs = MyModel.objects.all()\n    >>> qs.query = query  # Restore the original 'query'.\n\nThe ``query`` attribute is an opaque object. It represents the internals of\nthe query construction and is not part of the public API. However, it is safe\n(and fully supported) to pickle and unpickle the attribute's contents as\ndescribed here.\n\n.. admonition:: Restrictions on ``QuerySet.values_list()``\n\n    If you recreate :meth:`QuerySet.values_list` using the pickled ``query``\n    attribute, it will be converted to :meth:`QuerySet.values`:\n\n    .. code-block:: pycon\n\n        >>> import pickle\n        >>> qs = Blog.objects.values_list(\"id\", \"name\")\n        >>> qs\n        <QuerySet [(1, 'Beatles Blog')]>\n        >>> reloaded_qs = Blog.objects.all()\n        >>> reloaded_qs.query = pickle.loads(pickle.dumps(qs.query))\n        >>> reloaded_qs\n        <QuerySet [{'id': 1, 'name': 'Beatles Blog'}]>\n"
+        },
+        {
+          "path": "docs/ref/models/querysets.txt",
+          "startLine": 1426,
+          "endLine": 1476,
+          "text": "    ...     Prefetch(\"pizzas\", queryset=vegetarian_pizzas, to_attr=\"vegetarian_menu\"),\n    ...     \"vegetarian_menu__toppings\",\n    ... )\n\nUsing ``to_attr`` is recommended when filtering down the prefetch result as it\nis less ambiguous than storing a filtered result in the related manager's\ncache:\n\n.. code-block:: pycon\n\n    >>> queryset = Pizza.objects.filter(vegetarian=True)\n    >>>\n    >>> # Recommended:\n    >>> restaurants = Restaurant.objects.prefetch_related(\n    ...     Prefetch(\"pizzas\", queryset=queryset, to_attr=\"vegetarian_pizzas\")\n    ... )\n    >>> vegetarian_pizzas = restaurants[0].vegetarian_pizzas\n    >>>\n    >>> # Not recommended:\n    >>> restaurants = Restaurant.objects.prefetch_related(\n    ...     Prefetch(\"pizzas\", queryset=queryset),\n    ... )\n    >>> vegetarian_pizzas = restaurants[0].pizzas.all()\n\nCustom prefetching also works with single related relations like\nforward ``ForeignKey`` or ``OneToOneField``. Generally you'll want to use\n:meth:`select_related` for these relations, but there are a number of cases\nwhere prefetching with a custom ``QuerySet`` is useful:\n\n* You want to use a ``QuerySet`` that performs further prefetching\n  on related models.\n\n* You want to prefetch only a subset of the related objects.\n\n* You want to use performance optimization techniques like deferring fields,\n  for example, via :meth:`defer` or :meth:`only`:\n\n  .. code-block:: pycon\n\n    >>> queryset = Pizza.objects.only(\"name\")\n    >>>\n    >>> restaurants = Restaurant.objects.prefetch_related(\n    ...     Prefetch(\"best_pizza\", queryset=queryset)\n    ... )\n\nWhen using multiple databases, ``Prefetch`` will respect your choice of\ndatabase. If the inner query does not specify a database, it will use the\ndatabase selected by the outer query. All of the following are valid:\n\n.. code-block:: pycon\n"
+        },
+        {
+          "path": "django/tasks/base.py",
+          "startLine": 79,
+          "endLine": 98,
+          "text": "    def using(\n        self,\n        *,\n        priority=None,\n        queue_name=None,\n        run_after=None,\n        backend=None,\n    ):\n        \"\"\"Create a new Task with modified defaults.\"\"\"\n\n        changes = {}\n        if priority is not None:\n            changes[\"priority\"] = priority\n        if queue_name is not None:\n            changes[\"queue_name\"] = queue_name\n        if run_after is not None:\n            changes[\"run_after\"] = run_after\n        if backend is not None:\n            changes[\"backend\"] = backend\n        return replace(self, **changes)"
+        },
+        {
+          "path": "docs/topics/db/multi-db.txt",
+          "startLine": 645,
+          "endLine": 689,
+          "text": "        def formfield_for_foreignkey(self, db_field, request, **kwargs):\n            # Tell Django to populate ForeignKey widgets using a query\n            # on the 'other' database.\n            return super().formfield_for_foreignkey(\n                db_field, request, using=self.using, **kwargs\n            )\n\n        def formfield_for_manytomany(self, db_field, request, **kwargs):\n            # Tell Django to populate ManyToMany widgets using a query\n            # on the 'other' database.\n            return super().formfield_for_manytomany(\n                db_field, request, using=self.using, **kwargs\n            )\n\nThe implementation provided here implements a multi-database strategy\nwhere all objects of a given type are stored on a specific database\n(e.g., all ``User`` objects are in the ``other`` database). If your\nusage of multiple databases is more complex, your ``ModelAdmin`` will\nneed to reflect that strategy.\n\n:class:`~django.contrib.admin.InlineModelAdmin` objects can be handled in a\nsimilar fashion. They require three customized methods::\n\n    class MultiDBTabularInline(admin.TabularInline):\n        using = \"other\"\n\n        def get_queryset(self, request):\n            # Tell Django to look for inline objects on the 'other' database.\n            return super().get_queryset(request).using(self.using)\n\n        def formfield_for_foreignkey(self, db_field, request, **kwargs):\n            # Tell Django to populate ForeignKey widgets using a query\n            # on the 'other' database.\n            return super().formfield_for_foreignkey(\n                db_field, request, using=self.using, **kwargs\n            )\n\n        def formfield_for_manytomany(self, db_field, request, **kwargs):\n            # Tell Django to populate ManyToMany widgets using a query\n            # on the 'other' database.\n            return super().formfield_for_manytomany(\n                db_field, request, using=self.using, **kwargs\n            )\n\nOnce you've written your model admin definitions, they can be"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 352,
+          "endLine": 363,
+          "text": "class PreventQuerySetCloning:\n    \"\"\"\n    Temporarily prevent the given QuerySet from creating new QuerySet instances\n    on each mutating operation (e.g: filter(), exclude() etc), instead\n    modifying the QuerySet in-place.\n\n    @contextlib.contextmanager is intentionally not used for performance\n    reasons.\n    \"\"\"\n\n    __slots__ = (\"queryset\",)\n"
+        },
+        {
+          "path": "docs/topics/db/multi-db.txt",
+          "startLine": 434,
+          "endLine": 479,
+          "text": "    >>> # A new object has no database allocation when created\n    >>> mh = Book(title=\"Mostly Harmless\")\n\n    >>> # This assignment will consult the router, and set mh onto\n    >>> # the same database as the author object\n    >>> mh.author = dna\n\n    >>> # This save will force the 'mh' instance onto the primary database...\n    >>> mh.save()\n\n    >>> # ... but if we re-retrieve the object, it will come back on a replica\n    >>> mh = Book.objects.get(title=\"Mostly Harmless\")\n\nThis example defined a router to handle interaction with models from the\n``auth`` app, and other routers to handle interaction with all other apps. If\nyou left your ``default`` database empty and don't want to define a catch-all\ndatabase router to handle all apps not otherwise specified, your routers must\nhandle the names of all apps in :setting:`INSTALLED_APPS` before you migrate.\nSee :ref:`contrib_app_multiple_databases` for information about contrib apps\nthat must be together in one database.\n\nManually selecting a database\n=============================\n\nDjango also provides an API that allows you to maintain complete control\nover database usage in your code. A manually specified database allocation\nwill take priority over a database allocated by a router.\n\nManually selecting a database for a ``QuerySet``\n------------------------------------------------\n\nYou can select the database for a ``QuerySet`` at any point in the\n``QuerySet`` \"chain.\" Call ``using()`` on the ``QuerySet`` to get another\n``QuerySet`` that uses the specified database.\n\n``using()`` takes a single argument: the alias of the database on\nwhich you want to run the query. For example:\n\n.. code-block:: pycon\n\n    >>> # This will run on the 'default' database.\n    >>> Author.objects.all()\n\n    >>> # So will this.\n    >>> Author.objects.using(\"default\")\n"
+        },
+        {
+          "path": "docs/topics/db/multi-db.txt",
+          "startLine": 599,
+          "endLine": 644,
+          "text": "Using ``get_queryset()`` with multiple databases\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\nIf you're overriding ``get_queryset()`` on your manager, be sure to\neither call the method on the parent (using ``super()``) or do the\nappropriate handling of the ``_db`` attribute on the manager (a string\ncontaining the name of the database to use).\n\nFor example, if you want to return a custom ``QuerySet`` class from\nthe ``get_queryset`` method, you could do this::\n\n    class MyManager(models.Manager):\n        def get_queryset(self):\n            qs = CustomQuerySet(self.model)\n            if self._db is not None:\n                qs = qs.using(self._db)\n            return qs\n\nExposing multiple databases in Django's admin interface\n=======================================================\n\nDjango's admin doesn't have any explicit support for multiple\ndatabases. If you want to provide an admin interface for a model on a\ndatabase other than that specified by your router chain, you'll\nneed to write custom :class:`~django.contrib.admin.ModelAdmin` classes\nthat will direct the admin to use a specific database for content.\n\n``ModelAdmin`` objects have the following methods that require customization\nfor multiple-database support::\n\n    class MultiDBModelAdmin(admin.ModelAdmin):\n        # A handy constant for the name of the alternate database.\n        using = \"other\"\n\n        def save_model(self, request, obj, form, change):\n            # Tell Django to save objects to the 'other' database.\n            obj.save(using=self.using)\n\n        def delete_model(self, request, obj):\n            # Tell Django to delete objects from the 'other' database\n            obj.delete(using=self.using)\n\n        def get_queryset(self, request):\n            # Tell Django to look for objects on the 'other' database.\n            return super().get_queryset(request).using(self.using)\n"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 0.9478912969934754,
+      "metrics": {
+        "hit@1": true,
+        "hit@3": true,
+        "hit@5": true,
+        "hit@10": true,
+        "MRR@10": 1.0,
+        "recall@10": 1.0,
+        "matched_ranges@10": 1,
+        "expected_ranges": 1,
+        "budgets": {
+          "2000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.02225,
+            "returned_chars": 8000,
+            "relevant_chars": 178,
+            "estimated_tokens": 2000,
+            "results_used": 7
+          },
+          "5000": {
+            "hit": true,
+            "range_recall": 1.0,
+            "character_precision": 0.014043392504930967,
+            "returned_chars": 12675,
+            "relevant_chars": 178,
+            "estimated_tokens": 3169,
+            "results_used": 10
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "django-009",
+        "corpus": "django",
+        "kind": "absent",
+        "question": "Where is QuerySet.quantum_prefetch defined?",
+        "expected": [],
+        "notes": "quantum_prefetch is an invented QuerySet method, absent from this snapshot.",
+        "absentIdentifier": "quantum_prefetch"
+      },
+      "results": [
+        {
+          "path": "django/forms/models.py",
+          "startLine": 1550,
+          "endLine": 1552,
+          "text": "    def _set_queryset(self, queryset):\n        self._queryset = None if queryset is None else queryset.all()\n        self.widget.choices = self.choices"
+        },
+        {
+          "path": "django/contrib/admin/filters.py",
+          "startLine": 59,
+          "endLine": 65,
+          "text": "    def queryset(self, request, queryset):\n        \"\"\"\n        Return the filtered queryset.\n        \"\"\"\n        raise NotImplementedError(\n            \"subclasses of ListFilter must provide a queryset() method\"\n        )"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2409,
+          "endLine": 2411,
+          "text": "    def _check_operator_queryset(self, other, operator_):\n        if self.query.combinator or other.query.combinator:\n            raise TypeError(f\"Cannot use {operator_} operator with combined queryset.\")"
+        },
+        {
+          "path": "django/contrib/admin/options.py",
+          "startLine": 1483,
+          "endLine": 1485,
+          "text": "    def delete_queryset(self, request, queryset):\n        \"\"\"Given a queryset, delete it from the database.\"\"\"\n        queryset.delete()"
+        },
+        {
+          "path": "django/db/models/manager.py",
+          "startLine": 82,
+          "endLine": 83,
+          "text": "    @classmethod\n    def _get_queryset_methods(cls, queryset_class):"
+        },
+        {
+          "path": "django/db/models/manager.py",
+          "startLine": 107,
+          "endLine": 118,
+          "text": "    @classmethod\n    def from_queryset(cls, queryset_class, class_name=None):\n        if class_name is None:\n            class_name = \"%sFrom%s\" % (cls.__name__, queryset_class.__name__)\n        return type(\n            class_name,\n            (cls,),\n            {\n                \"_queryset_class\": queryset_class,\n                **cls._get_queryset_methods(queryset_class),\n            },\n        )"
+        },
+        {
+          "path": "django/contrib/admin/options.py",
+          "startLine": 2887,
+          "endLine": 2891,
+          "text": "    def get_queryset(self, request):\n        queryset = super().get_queryset(request)\n        if not self.has_view_or_change_permission(request):\n            queryset = queryset.none()\n        return queryset"
+        },
+        {
+          "path": "django/db/models/fields/related_descriptors.py",
+          "startLine": 96,
+          "endLine": 117,
+          "text": "def _filter_prefetch_queryset(queryset, field_name, instances):\n    predicate = Q(**{f\"{field_name}__in\": instances})\n    db = queryset._db or DEFAULT_DB_ALIAS\n    if queryset.query.is_sliced:\n        if not connections[db].features.supports_over_clause:\n            raise NotSupportedError(\n                \"Prefetching from a limited queryset is only supported on backends \"\n                \"that support window functions.\"\n            )\n        low_mark, high_mark = queryset.query.low_mark, queryset.query.high_mark\n        order_by = [\n            expr for expr, _ in queryset.query.get_compiler(using=db).get_order_by()\n        ]\n        window = Window(RowNumber(), partition_by=field_name, order_by=order_by)\n        predicate &= GreaterThan(window, low_mark)\n        if high_mark is not None:\n            predicate &= LessThanOrEqual(window, high_mark)\n        queryset.query.clear_limits()\n    # All pre-existing JOINs must be re-used when applying the predicate to\n    # avoid unintended spanning of multi-valued relationships.\n    queryset.query.add_q(predicate, reuse_all=True)\n    return queryset"
+        },
+        {
+          "path": "django/forms/models.py",
+          "startLine": 1547,
+          "endLine": 1548,
+          "text": "    def _get_queryset(self):\n        return self._queryset"
+        },
+        {
+          "path": "django/db/models/query.py",
+          "startLine": 2636,
+          "endLine": 2644,
+          "text": "    def __getstate__(self):\n        obj_dict = self.__dict__.copy()\n        if self.queryset is not None:\n            queryset = self.queryset._chain()\n            # Prevent the QuerySet from being evaluated\n            queryset._result_cache = []\n            queryset._prefetch_done = True\n            obj_dict[\"queryset\"] = queryset\n        return obj_dict"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 0.9073692969977856,
+      "metrics": {
+        "absent_success": true,
+        "identifier_match_ranks": []
+      }
+    },
+    {
+      "question": {
+        "id": "django-010",
+        "corpus": "django",
+        "kind": "absent",
+        "question": "How can I use atomic_retry_forever to retry transactions?",
+        "expected": [],
+        "notes": "atomic_retry_forever is an invented transaction helper, absent from this snapshot.",
+        "absentIdentifier": "atomic_retry_forever"
+      },
+      "results": [
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 233,
+          "endLine": 252,
+          "text": "    - commits or rolls back the transaction when exiting the outermost block.\n\n    You can disable the creation of savepoints for inner blocks by setting the\n    ``savepoint`` argument to ``False``. If an exception occurs, Django will\n    perform the rollback when exiting the first parent block with a savepoint\n    if there is one, and the outermost block otherwise. Atomicity is still\n    guaranteed by the outer transaction. This option should only be used if\n    the overhead of savepoints is noticeable. It has the drawback of breaking\n    the error handling described above.\n\n    You may use ``atomic`` when autocommit is turned off. It will only use\n    savepoints, even for the outermost block.\n\n.. admonition:: Performance considerations\n\n    Open transactions have a performance cost for your database server. To\n    minimize this overhead, keep your transactions as short as possible. This\n    is especially important if you're using :func:`atomic` in long-running\n    processes, outside of Django's request / response cycle.\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 188,
+          "endLine": 232,
+          "text": "        is unspecified and database-dependent.\n\n    .. admonition:: You may need to manually revert app state when rolling back a transaction.\n\n        The values of a model's fields won't be reverted when a transaction\n        rollback happens. This could lead to an inconsistent model state unless\n        you manually restore the original field values.\n\n        For example, given ``MyModel`` with an ``active`` field, this snippet\n        ensures that the ``if obj.active`` check at the end uses the correct\n        value if updating ``active`` to ``True`` fails in the transaction::\n\n            from django.db import DatabaseError, transaction\n\n            obj = MyModel(active=False)\n            obj.active = True\n            try:\n                with transaction.atomic():\n                    obj.save()\n            except DatabaseError:\n                obj.active = False\n\n            if obj.active:\n                ...\n\n        This also applies to any other mechanism that may hold app state, such\n        as caching or global variables. For example, if the code proactively\n        updates data in the cache after saving an object, it's recommended to\n        use :ref:`transaction.on_commit() <performing-actions-after-commit>`\n        instead, to defer cache alterations until the transaction is actually\n        committed.\n\n    In order to guarantee atomicity, ``atomic`` disables some APIs. Attempting\n    to commit, roll back, or change the autocommit state of the database\n    connection within an ``atomic`` block will raise an exception.\n\n    ``atomic`` takes a ``using`` argument which should be the name of a\n    database. If this argument isn't provided, Django uses the ``\"default\"``\n    database.\n\n    Under the hood, Django's transaction management code:\n\n    - opens a transaction when entering the outermost ``atomic`` block;\n    - creates a savepoint when entering an inner ``atomic`` block;\n    - releases or rolls back to the savepoint when exiting an inner block;"
+        },
+        {
+          "path": "docs/topics/tasks.txt",
+          "startLine": 305,
+          "endLine": 338,
+          "text": "Transactions\n------------\n\nFor most backends, Tasks are run in a separate process, using a different\ndatabase connection. When using a transaction, without waiting for it to\ncommit, workers could start to process a Task which uses objects it can't\naccess yet.\n\nFor example, consider this simplified example::\n\n    @task\n    def my_task(thing_num):\n        Thing.objects.get(num=thing_num)\n\n\n    with transaction.atomic():\n        Thing.objects.create(num=1)\n        my_task.enqueue(thing_num=1)\n\nTo prevent the scenario where ``my_task`` runs before the ``Thing`` is\ncommitted to the database, use :func:`transaction.on_commit()\n<django.db.transaction.on_commit>`, binding all arguments to\n:meth:`~django.tasks.Task.enqueue` via :func:`functools.partial`::\n\n    from functools import partial\n\n    from django.db import transaction\n\n    with transaction.atomic():\n        Thing.objects.create(num=1)\n        transaction.on_commit(partial(my_task.enqueue, thing_num=1))\n\n.. _task-results:\n"
+        },
+        {
+          "path": "docs/ref/databases.txt",
+          "startLine": 1154,
+          "endLine": 1170,
+          "text": "INSERT ... RETURNING INTO\n-------------------------\n\nBy default, the Oracle backend uses a ``RETURNING INTO`` clause to efficiently\nretrieve the value of an ``AutoField`` when inserting new rows. This behavior\nmay result in a ``DatabaseError`` in certain unusual setups, such as when\ninserting into a remote table, or into a view with an ``INSTEAD OF`` trigger.\nThe ``RETURNING INTO`` clause can be disabled by setting the\n``use_returning_into`` option of the database configuration to ``False``::\n\n    \"OPTIONS\": {\n        \"use_returning_into\": False,\n    }\n\nIn this case, the Oracle backend will use a separate ``SELECT`` query to\nretrieve ``AutoField`` values.\n"
+        },
+        {
+          "path": "docs/topics/db/transactions.txt",
+          "startLine": 660,
+          "endLine": 678,
+          "text": "Handling exceptions within PostgreSQL transactions\n--------------------------------------------------\n\n.. note::\n\n    This section is relevant only if you're implementing your own transaction\n    management. This problem cannot occur in Django's default mode and\n    :func:`atomic` handles it automatically.\n\nInside a transaction, when a call to a PostgreSQL cursor raises an exception\n(typically ``IntegrityError``), all subsequent SQL in the same transaction\nwill fail with the error \"current transaction is aborted, queries ignored\nuntil end of transaction block\". While the basic use of ``save()`` is unlikely\nto raise an exception in PostgreSQL, there are more advanced usage patterns\nwhich might, such as saving objects with unique fields, saving using the\n``force_insert``/``force_update`` flag, or invoking custom SQL.\n\nThere are several ways to recover from this sort of error.\n"
+        },
+        {
+          "path": "docs/ref/databases.txt",
+          "startLine": 914,
+          "endLine": 963,
+          "text": "Transactions behavior\n~~~~~~~~~~~~~~~~~~~~~\n\nSQLite supports three transaction modes: ``DEFERRED``, ``IMMEDIATE``, and\n``EXCLUSIVE``.\n\nThe default is ``DEFERRED``. If you need to use a different mode, set it in the\n:setting:`OPTIONS` part of your database configuration in\n:setting:`DATABASES`, for example::\n\n    \"OPTIONS\": {\n        # ...\n        \"transaction_mode\": \"IMMEDIATE\",\n        # ...\n    }\n\nTo make sure your transactions wait until ``timeout`` before raising \"Database\nis Locked\", change the transaction mode to ``IMMEDIATE``.\n\nFor the best performance with ``IMMEDIATE`` and ``EXCLUSIVE``, transactions\nshould be as short as possible. This might be hard to guarantee for all of your\nviews so the usage of :setting:`ATOMIC_REQUESTS <DATABASE-ATOMIC_REQUESTS>` is\ndiscouraged  in this case.\n\nFor more information see `Transactions in SQLite`_.\n\n.. _`Transactions in SQLite`:  https://www.sqlite.org/lang_transaction.html#deferred_immediate_and_exclusive_transactions\n\n``QuerySet.select_for_update()`` not supported\n----------------------------------------------\n\nSQLite does not support the ``SELECT ... FOR UPDATE`` syntax. Calling it will\nhave no effect.\n\n.. _sqlite-isolation:\n\nIsolation when using ``QuerySet.iterator()``\n--------------------------------------------\n\nThere are special considerations described in `Isolation In SQLite`_ when\nmodifying a table while iterating over it using :meth:`.QuerySet.iterator`. If\na row is added, changed, or deleted within the loop, then that row may or may\nnot appear, or may appear twice, in subsequent results fetched from the\niterator. Your code must handle this.\n\n.. _`Isolation in SQLite`: https://www.sqlite.org/isolation.html\n\n.. _sqlite-json1:\n\nEnabling JSON1 extension on SQLite"
+        },
+        {
+          "path": "docs/ref/databases.txt",
+          "startLine": 1216,
+          "endLine": 1234,
+          "text": "``TextField`` limitations\n-------------------------\n\nThe Oracle backend stores each ``TextField`` as an ``NCLOB`` column. Oracle\nimposes some limitations on the usage of such LOB columns in general:\n\n* LOB columns may not be used as primary keys.\n\n* LOB columns may not be used in indexes.\n\n* LOB columns may not be used in a ``SELECT DISTINCT`` list. This means that\n  attempting to use the ``QuerySet.distinct`` method on a model that\n  includes ``TextField`` columns will result in an ``ORA-00932`` error when\n  run against Oracle. As a workaround, use the ``QuerySet.defer`` method in\n  conjunction with ``distinct()`` to prevent ``TextField`` columns from being\n  included in the ``SELECT DISTINCT`` list.\n\n.. _subclassing-database-backends:\n"
+        },
+        {
+          "path": "docs/howto/writing-migrations.txt",
+          "startLine": 185,
+          "endLine": 237,
+          "text": "Non-atomic migrations\n~~~~~~~~~~~~~~~~~~~~~\n\nOn databases that support DDL transactions (SQLite and PostgreSQL), migrations\nwill run inside a transaction by default. For use cases such as performing data\nmigrations on large tables, you may want to prevent a migration from running in\na transaction by setting the ``atomic`` attribute to ``False``::\n\n    from django.db import migrations\n\n\n    class Migration(migrations.Migration):\n        atomic = False\n\nWithin such a migration, all operations are run without a transaction. It's\npossible to execute parts of the migration inside a transaction using\n:func:`~django.db.transaction.atomic` or by passing ``atomic=True`` to\n``RunPython``.\n\nHere's an example of a non-atomic data migration that updates a large table in\nsmaller batches::\n\n    import uuid\n\n    from django.db import migrations, transaction\n\n\n    def gen_uuid(apps, schema_editor):\n        MyModel = apps.get_model(\"myapp\", \"MyModel\")\n        while MyModel.objects.filter(uuid__isnull=True).exists():\n            with transaction.atomic():\n                for row in MyModel.objects.filter(uuid__isnull=True)[:1000]:\n                    row.uuid = uuid.uuid4()\n                    row.save()\n\n\n    class Migration(migrations.Migration):\n        atomic = False\n\n        operations = [\n            migrations.RunPython(gen_uuid),\n        ]\n\nThe ``atomic`` attribute doesn't have an effect on databases that don't support\nDDL transactions (e.g. MySQL, Oracle). (MySQL's `atomic DDL statement support\n<https://dev.mysql.com/doc/refman/en/atomic-ddl.html>`_ refers to individual\nstatements rather than multiple statements wrapped in a transaction that can be\nrolled back.)\n\nControlling the order of migrations\n===================================\n\nDjango determines the order in which migrations should be applied not by the"
+        },
+        {
+          "path": "docs/ref/migration-operations.txt",
+          "startLine": 392,
+          "endLine": 434,
+          "text": "        Country.objects.using(db_alias).bulk_create(\n            [\n                Country(name=\"USA\", code=\"us\"),\n                Country(name=\"France\", code=\"fr\"),\n            ]\n        )\n\n\n    def reverse_func(apps, schema_editor):\n        # forwards_func() creates two Country instances,\n        # so reverse_func() should delete them.\n        Country = apps.get_model(\"myapp\", \"Country\")\n        db_alias = schema_editor.connection.alias\n        Country.objects.using(db_alias).filter(name=\"USA\", code=\"us\").delete()\n        Country.objects.using(db_alias).filter(name=\"France\", code=\"fr\").delete()\n\n\n    class Migration(migrations.Migration):\n        dependencies = []\n\n        operations = [\n            migrations.RunPython(forwards_func, reverse_func),\n        ]\n\nThis is generally the operation you would use to create\n:ref:`data migrations <data-migrations>`, run\ncustom data updates and alterations, and anything else you need access to an\nORM and/or Python code for.\n\nMuch like :class:`RunSQL`, ensure that if you change schema inside here you're\neither doing it outside the scope of the Django model system (e.g. triggers) or\nthat you use :class:`SeparateDatabaseAndState` to add in operations that will\nreflect your changes to the model state - otherwise, the versioned ORM and the\nautodetector will stop working correctly.\n\nBy default, ``RunPython`` will run its contents inside a transaction on\ndatabases that do not support DDL transactions (for example, MySQL and\nOracle). This should be safe, but may cause a crash if you attempt to use\nthe ``schema_editor`` provided on these backends; in this case, pass\n``atomic=False`` to the ``RunPython`` operation.\n\nOn databases that do support DDL transactions (SQLite and PostgreSQL),\n``RunPython`` operations do not have any transactions automatically added"
+        },
+        {
+          "path": "docs/topics/testing/advanced.txt",
+          "startLine": 233,
+          "endLine": 241,
+          "text": "will be redirected to point at ``default``. As a result, writes to\n``default`` will appear on ``replica`` -- but because they are actually\nthe same database, not because there is data replication between the\ntwo databases. As this depends on transactions, the tests must use\n:class:`~django.test.TransactionTestCase` instead of\n:class:`~django.test.TestCase`.\n\n.. _topics-testing-creation-dependencies:\n"
+        }
+      ],
+      "error": null,
+      "latency_seconds": 1.0684300959983375,
+      "metrics": {
+        "absent_success": true,
+        "identifier_match_ranks": []
+      }
+    }
+  ],
+  "configuration": {
+    "questions": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/questions/django.dev.jsonl",
+    "engine": "context7-backend",
+    "database": "<home>/DEV/Projects/agent-toolbox-eval/indexes/i1-django-t0-final-t0.sqlite",
+    "backend": "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "corpus_root": null,
+    "mode": "lexical",
+    "rerank": null,
+    "command": null,
+    "command_json": null,
+    "timeout": 120,
+    "budgets": [
+      2000,
+      5000
+    ],
+    "json_output": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/local-core/verified-cli/django-t0.json",
+    "markdown_output": "<home>/DEV/Projects/agent-toolbox/evals/retrieval/results/local-core/verified-cli/django-t0.md"
+  }
+}

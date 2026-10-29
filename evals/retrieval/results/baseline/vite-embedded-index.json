@@ -1,0 +1,27 @@
+{
+  "corpus": "vite",
+  "mode": "embedded",
+  "command": [
+    "/usr/bin/python3",
+    "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "index",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/vite",
+    "--database",
+    "<home>/DEV/Projects/agent-toolbox-eval/indexes/vite-embedded.sqlite",
+    "--library-id",
+    "/eval/vite",
+    "--docs-root",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/vite/docs",
+    "--embed-model",
+    "Xenova/all-MiniLM-L6-v2",
+    "--model-cache",
+    "<home>/DEV/Projects/agent-toolbox-eval/cache/models",
+    "--embedding-runtime",
+    "<home>/DEV/Projects/agent-toolbox-eval/cache/inference-runtime"
+  ],
+  "seconds": 900,
+  "exit_code": 124,
+  "stderr": "Evaluation setup wall-time budget of 900 seconds exceeded; subprocess.TimeoutExpired. No completed embedded index or semantic score.",
+  "database_bytes": 28127232,
+  "notes": "Recovered attempt receipt from embed-e1.log because the first driver did not catch TimeoutExpired. The 900-second value is the configured timeout, not a measured successful index duration. This is a wrapper budget, not a backend file/chunk cap."
+}

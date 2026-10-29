@@ -1,0 +1,10 @@
+{
+  "name": "legacy-local-context7-clients",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@upstash/context7-mcp": "4.0.3",
+    "ctx7": "0.5.13"
+  },
+  "packageManager": "pnpm@11.1.1"
+}

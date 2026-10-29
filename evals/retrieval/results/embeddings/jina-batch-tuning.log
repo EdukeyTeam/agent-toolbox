@@ -1,0 +1,5 @@
+JINA-TUNE {'model': 'jina official int8', 'batch_size': 1, 'windows': 16, 'seconds': 50.91409051499795, 'concurrent_bge': True}
+JINA-TUNE {'model': 'jina official int8', 'batch_size': 16, 'windows': 16, 'seconds': 80.23334126100235, 'concurrent_bge': True}
+
+TUNE-EXIT 0
+LOG-EXIT 0

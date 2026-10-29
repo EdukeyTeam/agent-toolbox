@@ -1,0 +1,39 @@
+{
+  "corpus": "httpx",
+  "mode": "lexical",
+  "command": [
+    "/usr/bin/python3",
+    "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "index",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/httpx",
+    "--database",
+    "<home>/DEV/Projects/agent-toolbox-eval/indexes/httpx-lexical.sqlite",
+    "--library-id",
+    "/eval/httpx",
+    "--docs-root",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/httpx/docs"
+  ],
+  "seconds": 0.7591751959989779,
+  "exit_code": 0,
+  "stderr": "",
+  "database_bytes": 3641344,
+  "index": {
+    "libraryId": "/eval/httpx",
+    "revision": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "corpusId": "f81c25d10fe40bf358b51a33c2d982fa8169d00977f474209d4facfde6184eaa",
+    "files": 97,
+    "chunks": 1177,
+    "chunkChars": 1200,
+    "oversizedChunks": 0,
+    "changed": 97,
+    "deleted": 0,
+    "skippedCount": 0,
+    "skipped": [],
+    "embeddingModel": null,
+    "modelRevision": null,
+    "rerankerModel": null,
+    "rerankerRevision": null,
+    "vectorEngine": "stdlib",
+    "excludes": []
+  }
+}

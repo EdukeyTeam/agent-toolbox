@@ -1,0 +1,85 @@
+Downloading cpython-3.12.15-linux-x86_64-gnu (download) (32.7MiB)
+ Downloaded cpython-3.12.15-linux-x86_64-gnu (download)
+Using CPython 3.12.15
+Creating virtual environment at: model2vec-env
+Activate with: source model2vec-env/bin/activate
+Using Python 3.12.15 environment at: model2vec-env
+Resolved 24 packages in 904ms
+Downloading numpy (16.0MiB)
+Downloading hf-xet (4.0MiB)
+Downloading tokenizers (3.2MiB)
+ Downloaded tokenizers
+ Downloaded hf-xet
+ Downloaded numpy
+Prepared 19 packages in 1.13s
+Installed 24 packages in 307ms
+ + anyio==4.15.1
+ + click==8.5.0
+ + cloudpickle==3.1.2
+ + filelock==4.2.1
+ + fsspec==2026.9.0
+ + h11==0.16.0
+ + hf-xet==1.7.0
+ + httpcore2==2.13.1
+ + httpx2==2.13.1
+ + huggingface-hub==2.2.0
+ + idna==3.20
+ + jinja2==3.1.6
+ + joblib==1.6.0
+ + markupsafe==3.0.4
+ + model2vec==0.10.0
+ + numpy==2.5.4
+ + packaging==26.3
+ + pyyaml==6.0.3
+ + safetensors==0.8.0
+ + sqlite-vec==0.1.9
+ + tokenizers==0.23.3
+ + tqdm==4.70.1
+ + truststore==0.10.5
+ + typing-extensions==4.16.0
+Using CPython 3.12.15
+Creating virtual environment at: fastembed-env
+Activate with: source fastembed-env/bin/activate
+Using Python 3.12.15 environment at: fastembed-env
+Resolved 29 packages in 749ms
+Downloading pillow (6.6MiB)
+Downloading onnxruntime (22.7MiB)
+ Downloaded pillow
+ Downloaded onnxruntime
+Prepared 12 packages in 1.88s
+Installed 29 packages in 410ms
+ + anyio==4.15.1
+ + certifi==2026.7.22
+ + charset-normalizer==3.5.2
+ + click==8.5.0
+ + fastembed==0.9.0
+ + filelock==4.2.1
+ + flatbuffers==25.12.19
+ + fsspec==2026.9.0
+ + h11==0.16.0
+ + hf-xet==1.7.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + huggingface-hub==1.33.0
+ + idna==3.20
+ + loguru==0.7.3
+ + mmh3==5.3.1
+ + numpy==2.5.4
+ + onnxruntime==1.31.0
+ + packaging==26.3
+ + pillow==12.3.0
+ + protobuf==7.36.2
+ + py-rust-stemmers==0.1.8
+ + pyyaml==6.0.3
+ + requests==2.34.2
+ + sqlite-vec==0.1.9
+ + tokenizers==0.23.3
+ + tqdm==4.70.1
+ + typing-extensions==4.16.0
+ + urllib3==2.8.0
+<home>/DEV/Projects/agent-toolbox-eval/embed-bench/model2vec-env/bin/python: No module named pip
+{'model': 'BAAI/bge-small-en-v1.5', 'sources': {'hf': 'Qdrant/bge-small-en-v1.5-onnx-Q', 'url': None, '_deprecated_tar_struct': False}, 'model_file': 'model_optimized.onnx', 'description': 'Text embeddings, Unimodal (text), English, 512 input tokens truncation, Prefixes for queries/documents: not so necessary, 2023 year.', 'license': 'mit', 'size_in_GB': 0.067, 'additional_files': [], 'dim': 384, 'tasks': {}}
+{'model': 'jinaai/jina-embeddings-v2-base-code', 'sources': {'hf': 'jinaai/jina-embeddings-v2-base-code', 'url': None, '_deprecated_tar_struct': False}, 'model_file': 'onnx/model.onnx', 'description': 'Text embeddings, Unimodal (text), Multilingual (English, 30 programming languages), 8192 input tokens truncation, Prefixes for queries/documents: not necessary, 2024 year.', 'license': 'apache-2.0', 'size_in_GB': 0.64, 'additional_files': [], 'dim': 768, 'tasks': {}}
+
+INSTALL-EXIT 0
+LOG-EXIT 0

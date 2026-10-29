@@ -1,5 +1,7 @@
 # ADR: Local code retrieval storage - Main Architecture
 
+**Supersedes / relates:** [ADR 002: Local Code and Documentation Retrieval Engine](002-local-retrieval-engine.md) retains decisions 1-3's single SQLite file, float32 vector side table and optional sqlite-vec design, and specifies format 8, multi-library retrieval, new chunking/search/assembly and refresh behavior; it supersedes conflicting format-7 behavior below. These storage measurements remain historical.
+
 **Date:** 2026-10-07
 **Status:** Accepted pending PR review for decisions 2 and 3. Their format-6 storage layout is implemented and passes platform CI; index format 7 adds configurable source-faithful chunking without changing that layout. The comparison measurements below predate this implementation.
 **PRD:** None. This ADR belongs to the optional private-retrieval workflow of the `legacy-codebase-workflows` skill: [skill entrypoint](../../skills/legacy-codebase-workflows/SKILL.md), [private retrieval reference](../../skills/legacy-codebase-workflows/references/private-retrieval.md), [backend script](../../skills/legacy-codebase-workflows/scripts/context7_backend.py).
@@ -59,6 +61,14 @@ HTTP request connections explicitly use a one-second SQLite busy timeout; CLI co
 Exact exclusions permit literal brackets such as `web/[id]`. Repeat every desired `--exclude` on every indexing invocation: omission intentionally resets the scope to an empty list, while saved metadata describes the last successful scope for freshness. Malformed exclusion metadata requires repair or a fresh database; its diagnostic must not recommend an index operation that the database guard refuses.
 
 The macOS CI request exceeded its ten-second client timeout; Linux reproduces the old five-second SQLite wait. The exact cause of the earlier macOS delay remains unconfirmed; platform QA now passes the bounded lock-wait regression. These corrections follow the actual independent review and approved workflow, without changing SQLite format or adding a service architecture.
+
+### Integration correction: reusable project setup and explicit consent (2026-10-09)
+
+A local project trial exposed repeated launcher/configuration authoring, confusion between hosted and local Context7, and a Windows freshness stall when Git inherited the MCP stdin pipe. The reusable skill will ship one project generator with tested launcher/hook assets and pinned client locks. Git inventory detaches stdin in the shared source, instead of requiring each consumer to monkeypatch it.
+
+Before adding repository instruction pointers or hooks, the agent must ask at the start of the workflow and obtain explicit approval for those additions in this repository. The generator requires separate acknowledgement flags and leaves declined additions absent. Configuring a local backend does not imply consent to modify AGENTS.md or add hooks; hook execution still follows the client's native trust mechanism.
+
+A lightweight refresh checks ownership, scope, HEAD and hashes and skips writes when fresh. Indexing still scans the selected corpus but rewrites only changed/new files and removes deleted entries; there is no single-file update option. Source/configuration is reviewable in Git, while the copied backend, SQLite, clients and isolated authentication state stay outside the source/docs roots. Setup reports exact locations and distinguishes configuration, direct-command checks and native interactive hook verification. Lexical retrieval remains the default; no model downloads or cloud fallback are added.
 
 ## 2. Technology Documentation References
 

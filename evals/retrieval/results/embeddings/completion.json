@@ -1,0 +1,31 @@
+{
+  "status": "complete_with_partial_jina",
+  "finished_utc": "2026-10-17T22:49:34.926610+00:00",
+  "report": "<home>/DEV/Projects/agent-toolbox/docs/retrieval/embedding-benchmark.md",
+  "models": [
+    "potion",
+    "bge",
+    "jina"
+  ],
+  "completed_models": [
+    "potion",
+    "bge"
+  ],
+  "partial_models": {
+    "jina": [
+      "httpx"
+    ]
+  },
+  "source_fingerprints_match": true,
+  "validated_source_hashes_match": true,
+  "bm25_metrics_match": {
+    "httpx": true,
+    "vite": true,
+    "jftp": true
+  },
+  "workspace_cleanup": {
+    "closed": true,
+    "workspace_id": "wMX",
+    "foreground_and_background_verified": true
+  }
+}

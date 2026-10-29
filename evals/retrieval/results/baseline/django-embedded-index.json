@@ -1,0 +1,27 @@
+{
+  "corpus": "django",
+  "mode": "embedded",
+  "command": [
+    "/usr/bin/python3",
+    "<home>/DEV/Projects/agent-toolbox/skills/legacy-codebase-workflows/scripts/context7_backend.py",
+    "index",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/django",
+    "--database",
+    "<home>/DEV/Projects/agent-toolbox-eval/indexes/django-embedded.sqlite",
+    "--library-id",
+    "/eval/django",
+    "--docs-root",
+    "<home>/DEV/Projects/agent-toolbox-eval/corpora/django/docs",
+    "--embed-model",
+    "Xenova/all-MiniLM-L6-v2",
+    "--model-cache",
+    "<home>/DEV/Projects/agent-toolbox-eval/cache/models",
+    "--embedding-runtime",
+    "<home>/DEV/Projects/agent-toolbox-eval/cache/inference-runtime"
+  ],
+  "started_utc": "2026-10-17T20:49:12.573022+00:00",
+  "seconds": 590.8448215749959,
+  "exit_code": -15,
+  "stderr": "",
+  "database_bytes": 79564800
+}

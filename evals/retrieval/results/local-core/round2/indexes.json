@@ -1,0 +1,2815 @@
+{
+  "hybrid": [
+    {
+      "libraryId": "/local/httpx",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "revisions": {
+        "r0": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+        "r1": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+      },
+      "corpusId": "b335d08442f20b93fe685bed90907587c5fb566f579cc5d0491ae7914a72e9ae",
+      "files": 113,
+      "indexed": 113,
+      "discovered": 159,
+      "eligible": 123,
+      "chunks": 1985,
+      "changed": 0,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": false,
+      "skippedCount": 10,
+      "skipped": [
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/butterfly.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail-check.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail-test.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/httpx-help.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/httpx-request.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/logo.jpg",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/rich-progress.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/speakeasy.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/tqdm-progress.gif",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 0,
+      "excludes": [],
+      "byFormat": {
+        "code": 84,
+        "config": 8,
+        "html": 1,
+        "markdown": 29,
+        "rst": 1
+      },
+      "byEncoding": {
+        "unknown": 10,
+        "utf-8": 113
+      },
+      "byTier": {
+        "0": 123
+      },
+      "discovery": {
+        "visited": 159,
+        "discovered": 159,
+        "eligible": 123,
+        "excluded": 2,
+        "excludedExamples": [
+          "scripts/build",
+          "tests/fixtures/.netrc"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 0.3217987969983369,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 11.95703125,
+      "wallSeconds": 0.36682369699701667,
+      "lane": "hybrid",
+      "embeddedUnits": 1985,
+      "allocatedMiB": 11.95703125,
+      "activeMiB": 11.73828125,
+      "embeddingIdentity": {
+        "dimension": 256,
+        "manifest_sha256": {
+          "config.json": "148e5691a6fcc553437156859701fba017a1ba5d340b170f17e0f3668fb861a7",
+          "model.safetensors": "75cf7a6c2171b230ad19b1e7d8e0b1aee86da5a02af8e7cacedd9921d227623c",
+          "tokenizer.json": "107bbdcbad4bff1d299b7a4c3a2fb17c52890688b7dd0e4c9deab79d3c4f3d45"
+        },
+        "max_input_chars": 8000,
+        "model": "minishlab/potion-code-16M-v2",
+        "model_repo": "minishlab/potion-code-16M-v2",
+        "normalized": true,
+        "provider": "local-python",
+        "revision": "e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b",
+        "runtime": "model2vec",
+        "task_settings": "symmetric static mean",
+        "tokenCountKnown": false,
+        "token_limit": null,
+        "token_truncation_observable": false
+      }
+    },
+    {
+      "libraryId": "/local/vite",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "df7503cc499e0b49e45701e3be7546918ee9d322",
+      "revisions": {
+        "r0": "df7503cc499e0b49e45701e3be7546918ee9d322",
+        "r1": "df7503cc499e0b49e45701e3be7546918ee9d322"
+      },
+      "corpusId": "1a63329a53a5d65a5db3efcad71cfbb8d2233b32776f368e4537acdd42b1cdba",
+      "files": 2739,
+      "indexed": 2739,
+      "discovered": 2977,
+      "eligible": 2825,
+      "chunks": 12922,
+      "changed": 2825,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 86,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-lit-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-lit/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-preact-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-preact/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-qwik-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-qwik/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-react-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-react/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-solid-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-solid/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-svelte-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-svelte/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vanilla-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vanilla/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vue-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vue/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/asset/percent%.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/favicon.ico",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/fonts/Inter-Italic.woff",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/fonts/Inter-Italic.woff2",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 63,
+      "excludes": [],
+      "byFormat": {
+        "code": 2315,
+        "config": 417,
+        "markdown": 84,
+        "rst": 9
+      },
+      "byEncoding": {
+        "unknown": 86,
+        "UTF-8": 39,
+        "utf-8": 2696,
+        "utf-8-sig": 4
+      },
+      "byTier": {
+        "0": 2825
+      },
+      "discovery": {
+        "visited": 2977,
+        "discovered": 2977,
+        "eligible": 2825,
+        "excluded": 43,
+        "excludedExamples": [
+          "packages/vite/bin/openChrome.js",
+          "packages/vite/bin/vite.js",
+          "packages/vite/src/node/__tests__/env/.env",
+          "packages/vite/src/node/__tests__/env/.env.development",
+          "packages/vite/src/node/__tests__/env/.env.development2",
+          "packages/vite/src/node/__tests__/env/.env.existing",
+          "packages/vite/src/node/__tests__/env/.env.production",
+          "packages/vite/src/node/__tests__/env/.env.testing",
+          "packages/vite/src/node/__tests__/fixtures/config/native-compat/json-named-import-bare/node_modules/some-pkg/package.json",
+          "packages/vite/src/node/__tests__/fixtures/config/native-compat/json-named-import-ok/node_modules/some-pkg/package.json",
+          "packages/vite/src/node/__tests__/fixtures/config/root-resolution/link",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/index.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/public.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/utils.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/package.json",
+          "packages/vite/src/node/__tests__/optimizer/fixtures/lockfile-hash/yarn-state/node_modules/.yarn-state.yml",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/index.js",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/package.json",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/index.js",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/package.json"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 58.32205698800681,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 80.65625,
+      "wallSeconds": 59.9258874310035,
+      "lane": "hybrid",
+      "embeddedUnits": 12922,
+      "allocatedMiB": 80.65625,
+      "activeMiB": 78.859375,
+      "embeddingIdentity": {
+        "dimension": 256,
+        "manifest_sha256": {
+          "config.json": "148e5691a6fcc553437156859701fba017a1ba5d340b170f17e0f3668fb861a7",
+          "model.safetensors": "75cf7a6c2171b230ad19b1e7d8e0b1aee86da5a02af8e7cacedd9921d227623c",
+          "tokenizer.json": "107bbdcbad4bff1d299b7a4c3a2fb17c52890688b7dd0e4c9deab79d3c4f3d45"
+        },
+        "max_input_chars": 8000,
+        "model": "minishlab/potion-code-16M-v2",
+        "model_repo": "minishlab/potion-code-16M-v2",
+        "normalized": true,
+        "provider": "local-python",
+        "revision": "e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b",
+        "runtime": "model2vec",
+        "task_settings": "symmetric static mean",
+        "tokenCountKnown": false,
+        "token_limit": null,
+        "token_truncation_observable": false
+      }
+    },
+    {
+      "libraryId": "/local/jftp",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+      "revisions": {
+        "r0": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+        "r1": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86"
+      },
+      "corpusId": "269bf8b2083d8ba6a94e2620ebe3c0b43d035b17f275c9a219ee5d2a3147aa9d",
+      "files": 808,
+      "indexed": 808,
+      "discovered": 1157,
+      "eligible": 923,
+      "chunks": 13583,
+      "changed": 923,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 115,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/favicon.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/dashicons/dashicons.ttf",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/eicons/eicons.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-brands/fa-brands-400.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-free/fa-regular-400.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-free/fa-solid-900.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/fontawesome/fontawesome-webfont.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/generatepress/generatepress.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/glyphicons-halflings/glyphicons-halflings-regular.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/lg/lg.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/homepage.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/logo-white.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/abort16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/certificate16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/changeLocalDirectory16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/changeRemoteDirectory16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/closedBook16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/connect16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/deleteLocalFile16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/deleteRemoteFile16.gif",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 9,
+      "excludes": [],
+      "byFormat": {
+        "code": 463,
+        "config": 298,
+        "markdown": 155,
+        "rst": 7
+      },
+      "byEncoding": {
+        "unknown": 115,
+        "UTF-8": 5,
+        "iso-8859-1": 41,
+        "utf-8": 762
+      },
+      "byTier": {
+        "0": 923
+      },
+      "discovery": {
+        "visited": 1157,
+        "discovered": 1157,
+        "eligible": 923,
+        "excluded": 0,
+        "excludedExamples": []
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 72.22578821200295,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/gui/EditPopupMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AboutDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AutoUpdater_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/CertificatePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeLocalDirectoryDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ConnectionDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/DownloadAndUnzipDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ExecuteCommandDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FTPMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FTPSession_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/GeneralConnectionPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/HelpMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/JFTPToolBar_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileFilterDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFilePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalPane_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalSystemMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/PreferencesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ProxyPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileFilterDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFilePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteSystemMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/SecurityPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/StatusWindow_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ToolsMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModeMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModesPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ZipAndUploadDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateManagerDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificatePane_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/SecurityWarningDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/util/CommonResources_de.properties",
+          "encoding": "iso-8859-1"
+        }
+      ],
+      "sizeMiB": 117.18359375,
+      "wallSeconds": 75.02742330200272,
+      "lane": "hybrid",
+      "embeddedUnits": 13583,
+      "allocatedMiB": 117.18359375,
+      "activeMiB": 115.7890625,
+      "embeddingIdentity": {
+        "dimension": 256,
+        "manifest_sha256": {
+          "config.json": "148e5691a6fcc553437156859701fba017a1ba5d340b170f17e0f3668fb861a7",
+          "model.safetensors": "75cf7a6c2171b230ad19b1e7d8e0b1aee86da5a02af8e7cacedd9921d227623c",
+          "tokenizer.json": "107bbdcbad4bff1d299b7a4c3a2fb17c52890688b7dd0e4c9deab79d3c4f3d45"
+        },
+        "max_input_chars": 8000,
+        "model": "minishlab/potion-code-16M-v2",
+        "model_repo": "minishlab/potion-code-16M-v2",
+        "normalized": true,
+        "provider": "local-python",
+        "revision": "e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b",
+        "runtime": "model2vec",
+        "task_settings": "symmetric static mean",
+        "tokenCountKnown": false,
+        "token_limit": null,
+        "token_truncation_observable": false
+      }
+    },
+    {
+      "libraryId": "/local/django",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "d430084791a61b31cecec132bce3dca19194f7f2",
+      "revisions": {
+        "r0": "d430084791a61b31cecec132bce3dca19194f7f2",
+        "r1": "d430084791a61b31cecec132bce3dca19194f7f2"
+      },
+      "corpusId": "6d8b72f6b79038c122a14f8c5863d6631ea2a7a93d8b263c4e6c509f8ccbcdc0",
+      "files": 5701,
+      "indexed": 5701,
+      "discovered": 7819,
+      "eligible": 7079,
+      "chunks": 67929,
+      "changed": 7079,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 1378,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/af/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ar/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ar_DZ/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ast/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/az/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/be/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bg/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bn/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/br/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bs/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ca/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ckb/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/cs/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/cy/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/da/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/de/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/dsb/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/el/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/en/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/en_AU/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 207,
+      "excludes": [],
+      "byFormat": {
+        "code": 6235,
+        "config": 98,
+        "html": 5,
+        "markdown": 8,
+        "rst": 733
+      },
+      "byEncoding": {
+        "unknown": 1378,
+        "UTF-8": 8,
+        "cp1252": 2,
+        "utf-8": 5690,
+        "utf-8-sig": 1
+      },
+      "byTier": {
+        "0": 7079
+      },
+      "discovery": {
+        "visited": 7819,
+        "discovered": 7819,
+        "eligible": 7079,
+        "excluded": 9,
+        "excludedExamples": [
+          "docs/_theme/djangodocs-epub/static/docicons-behindscenes.png",
+          "docs/_theme/djangodocs-epub/static/docicons-note.png",
+          "docs/_theme/djangodocs-epub/static/docicons-philosophy.png",
+          "docs/_theme/djangodocs-epub/static/docicons-warning.png",
+          "tests/staticfiles_tests/apps/test/static/test/CVS",
+          "_theme/djangodocs-epub/static/docicons-behindscenes.png",
+          "_theme/djangodocs-epub/static/docicons-note.png",
+          "_theme/djangodocs-epub/static/docicons-philosophy.png",
+          "_theme/djangodocs-epub/static/docicons-warning.png"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 333.5578472449997,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 463.16796875,
+      "wallSeconds": 342.5038878690102,
+      "lane": "hybrid",
+      "embeddedUnits": 67929,
+      "allocatedMiB": 463.16796875,
+      "activeMiB": 462.44921875,
+      "embeddingIdentity": {
+        "dimension": 256,
+        "manifest_sha256": {
+          "config.json": "148e5691a6fcc553437156859701fba017a1ba5d340b170f17e0f3668fb861a7",
+          "model.safetensors": "75cf7a6c2171b230ad19b1e7d8e0b1aee86da5a02af8e7cacedd9921d227623c",
+          "tokenizer.json": "107bbdcbad4bff1d299b7a4c3a2fb17c52890688b7dd0e4c9deab79d3c4f3d45"
+        },
+        "max_input_chars": 8000,
+        "model": "minishlab/potion-code-16M-v2",
+        "model_repo": "minishlab/potion-code-16M-v2",
+        "normalized": true,
+        "provider": "local-python",
+        "revision": "e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b",
+        "runtime": "model2vec",
+        "task_settings": "symmetric static mean",
+        "tokenCountKnown": false,
+        "token_limit": null,
+        "token_truncation_observable": false
+      }
+    }
+  ],
+  "t1": [
+    {
+      "libraryId": "/local/httpx",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "revisions": {
+        "r0": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+        "r1": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+      },
+      "corpusId": "b335d08442f20b93fe685bed90907587c5fb566f579cc5d0491ae7914a72e9ae",
+      "files": 113,
+      "indexed": 113,
+      "discovered": 159,
+      "eligible": 123,
+      "chunks": 1997,
+      "changed": 0,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": false,
+      "skippedCount": 10,
+      "skipped": [
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/butterfly.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail-check.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail-test.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/httpx-help.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/httpx-request.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/logo.jpg",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/rich-progress.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/speakeasy.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/tqdm-progress.gif",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 0,
+      "excludes": [],
+      "byFormat": {
+        "code": 84,
+        "config": 8,
+        "html": 1,
+        "markdown": 29,
+        "rst": 1
+      },
+      "byEncoding": {
+        "unknown": 10,
+        "utf-8": 113
+      },
+      "byTier": {
+        "0": 62,
+        "1": 61
+      },
+      "discovery": {
+        "visited": 159,
+        "discovered": 159,
+        "eligible": 123,
+        "excluded": 2,
+        "excludedExamples": [
+          "scripts/build",
+          "tests/fixtures/.netrc"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 0.28634782700100914,
+      "warnings": [],
+      "embeddingModel": null,
+      "vectorEngine": "stdlib",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 9.59765625,
+      "wallSeconds": 0.32255460500891786,
+      "lane": "t1",
+      "embeddedUnits": 0,
+      "allocatedMiB": 9.59765625,
+      "activeMiB": 9.1484375
+    },
+    {
+      "libraryId": "/local/vite",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "df7503cc499e0b49e45701e3be7546918ee9d322",
+      "revisions": {
+        "r0": "df7503cc499e0b49e45701e3be7546918ee9d322",
+        "r1": "df7503cc499e0b49e45701e3be7546918ee9d322"
+      },
+      "corpusId": "1a63329a53a5d65a5db3efcad71cfbb8d2233b32776f368e4537acdd42b1cdba",
+      "files": 2739,
+      "indexed": 2739,
+      "discovered": 2977,
+      "eligible": 2825,
+      "chunks": 10184,
+      "changed": 2825,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 86,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-lit-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-lit/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-preact-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-preact/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-qwik-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-qwik/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-react-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-react/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-solid-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-solid/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-svelte-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-svelte/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vanilla-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vanilla/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vue-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vue/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/asset/percent%.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/favicon.ico",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/fonts/Inter-Italic.woff",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/fonts/Inter-Italic.woff2",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 63,
+      "excludes": [],
+      "byFormat": {
+        "code": 2315,
+        "config": 417,
+        "markdown": 84,
+        "rst": 9
+      },
+      "byEncoding": {
+        "unknown": 86,
+        "UTF-8": 39,
+        "utf-8": 2696,
+        "utf-8-sig": 4
+      },
+      "byTier": {
+        "0": 872,
+        "1": 1953
+      },
+      "discovery": {
+        "visited": 2977,
+        "discovered": 2977,
+        "eligible": 2825,
+        "excluded": 43,
+        "excludedExamples": [
+          "packages/vite/bin/openChrome.js",
+          "packages/vite/bin/vite.js",
+          "packages/vite/src/node/__tests__/env/.env",
+          "packages/vite/src/node/__tests__/env/.env.development",
+          "packages/vite/src/node/__tests__/env/.env.development2",
+          "packages/vite/src/node/__tests__/env/.env.existing",
+          "packages/vite/src/node/__tests__/env/.env.production",
+          "packages/vite/src/node/__tests__/env/.env.testing",
+          "packages/vite/src/node/__tests__/fixtures/config/native-compat/json-named-import-bare/node_modules/some-pkg/package.json",
+          "packages/vite/src/node/__tests__/fixtures/config/native-compat/json-named-import-ok/node_modules/some-pkg/package.json",
+          "packages/vite/src/node/__tests__/fixtures/config/root-resolution/link",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/index.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/public.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/utils.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/package.json",
+          "packages/vite/src/node/__tests__/optimizer/fixtures/lockfile-hash/yarn-state/node_modules/.yarn-state.yml",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/index.js",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/package.json",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/index.js",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/package.json"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 43.78460583501146,
+      "warnings": [],
+      "embeddingModel": null,
+      "vectorEngine": "stdlib",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 57.05859375,
+      "wallSeconds": 45.03324869000062,
+      "lane": "t1",
+      "embeddedUnits": 0,
+      "allocatedMiB": 57.05859375,
+      "activeMiB": 56.0859375
+    },
+    {
+      "libraryId": "/local/jftp",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+      "revisions": {
+        "r0": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+        "r1": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86"
+      },
+      "corpusId": "269bf8b2083d8ba6a94e2620ebe3c0b43d035b17f275c9a219ee5d2a3147aa9d",
+      "files": 808,
+      "indexed": 808,
+      "discovered": 1157,
+      "eligible": 923,
+      "chunks": 13609,
+      "changed": 923,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 115,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/favicon.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/dashicons/dashicons.ttf",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/eicons/eicons.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-brands/fa-brands-400.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-free/fa-regular-400.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-free/fa-solid-900.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/fontawesome/fontawesome-webfont.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/generatepress/generatepress.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/glyphicons-halflings/glyphicons-halflings-regular.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/lg/lg.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/homepage.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/logo-white.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/abort16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/certificate16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/changeLocalDirectory16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/changeRemoteDirectory16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/closedBook16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/connect16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/deleteLocalFile16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/deleteRemoteFile16.gif",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 9,
+      "excludes": [],
+      "byFormat": {
+        "code": 463,
+        "config": 298,
+        "markdown": 155,
+        "rst": 7
+      },
+      "byEncoding": {
+        "unknown": 115,
+        "UTF-8": 5,
+        "iso-8859-1": 41,
+        "utf-8": 762
+      },
+      "byTier": {
+        "0": 619,
+        "1": 304
+      },
+      "discovery": {
+        "visited": 1157,
+        "discovered": 1157,
+        "eligible": 923,
+        "excluded": 0,
+        "excludedExamples": []
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 41.486513538999134,
+      "warnings": [],
+      "embeddingModel": null,
+      "vectorEngine": "stdlib",
+      "splitFiles": [],
+      "assumedEncodingFiles": [
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/gui/EditPopupMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AboutDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AutoUpdater_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/CertificatePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeLocalDirectoryDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ConnectionDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/DownloadAndUnzipDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ExecuteCommandDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FTPMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FTPSession_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/GeneralConnectionPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/HelpMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/JFTPToolBar_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileFilterDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFilePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalPane_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalSystemMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/PreferencesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ProxyPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileFilterDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFilePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteSystemMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/SecurityPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/StatusWindow_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ToolsMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModeMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModesPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ZipAndUploadDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateManagerDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificatePane_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/SecurityWarningDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/util/CommonResources_de.properties",
+          "encoding": "iso-8859-1"
+        }
+      ],
+      "sizeMiB": 97.05078125,
+      "wallSeconds": 43.16002324500005,
+      "lane": "t1",
+      "embeddedUnits": 0,
+      "allocatedMiB": 97.05078125,
+      "activeMiB": 94.4453125
+    },
+    {
+      "libraryId": "/local/django",
+      "indexVersion": 8,
+      "generation": 2,
+      "revision": "d430084791a61b31cecec132bce3dca19194f7f2",
+      "revisions": {
+        "r0": "d430084791a61b31cecec132bce3dca19194f7f2",
+        "r1": "d430084791a61b31cecec132bce3dca19194f7f2"
+      },
+      "corpusId": "6d8b72f6b79038c122a14f8c5863d6631ea2a7a93d8b263c4e6c509f8ccbcdc0",
+      "files": 5701,
+      "indexed": 5701,
+      "discovered": 7819,
+      "eligible": 7079,
+      "chunks": 66481,
+      "changed": 7079,
+      "added": 0,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 1378,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/af/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ar/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ar_DZ/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ast/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/az/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/be/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bg/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bn/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/br/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bs/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ca/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ckb/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/cs/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/cy/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/da/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/de/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/dsb/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/el/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/en/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/en_AU/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 207,
+      "excludes": [],
+      "byFormat": {
+        "code": 6235,
+        "config": 98,
+        "html": 5,
+        "markdown": 8,
+        "rst": 733
+      },
+      "byEncoding": {
+        "unknown": 1378,
+        "UTF-8": 8,
+        "cp1252": 2,
+        "utf-8": 5690,
+        "utf-8-sig": 1
+      },
+      "byTier": {
+        "0": 3618,
+        "1": 3461
+      },
+      "discovery": {
+        "visited": 7819,
+        "discovered": 7819,
+        "eligible": 7079,
+        "excluded": 9,
+        "excludedExamples": [
+          "docs/_theme/djangodocs-epub/static/docicons-behindscenes.png",
+          "docs/_theme/djangodocs-epub/static/docicons-note.png",
+          "docs/_theme/djangodocs-epub/static/docicons-philosophy.png",
+          "docs/_theme/djangodocs-epub/static/docicons-warning.png",
+          "tests/staticfiles_tests/apps/test/static/test/CVS",
+          "_theme/djangodocs-epub/static/docicons-behindscenes.png",
+          "_theme/djangodocs-epub/static/docicons-note.png",
+          "_theme/djangodocs-epub/static/docicons-philosophy.png",
+          "_theme/djangodocs-epub/static/docicons-warning.png"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 260.2633227250044,
+      "warnings": [],
+      "embeddingModel": null,
+      "vectorEngine": "stdlib",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 371.890625,
+      "wallSeconds": 267.5346693199972,
+      "lane": "t1",
+      "embeddedUnits": 0,
+      "allocatedMiB": 371.890625,
+      "activeMiB": 370.99609375
+    }
+  ],
+  "initialFreshHybrid": [
+    {
+      "libraryId": "/local/httpx",
+      "indexVersion": 8,
+      "generation": 1,
+      "revision": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "revisions": {
+        "r0": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+        "r1": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+      },
+      "corpusId": "b335d08442f20b93fe685bed90907587c5fb566f579cc5d0491ae7914a72e9ae",
+      "files": 113,
+      "indexed": 113,
+      "discovered": 159,
+      "eligible": 123,
+      "chunks": 1985,
+      "changed": 123,
+      "added": 123,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 10,
+      "skipped": [
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/butterfly.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail-check.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail-test.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/gh-actions-fail.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/httpx-help.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/httpx-request.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/logo.jpg",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/rich-progress.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/speakeasy.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r1",
+          "kind": "docs",
+          "path": "img/tqdm-progress.gif",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 0,
+      "excludes": [],
+      "byFormat": {
+        "code": 84,
+        "config": 8,
+        "html": 1,
+        "markdown": 29,
+        "rst": 1
+      },
+      "byEncoding": {
+        "unknown": 10,
+        "utf-8": 113
+      },
+      "byTier": {
+        "0": 123
+      },
+      "discovery": {
+        "visited": 159,
+        "discovered": 159,
+        "eligible": 123,
+        "excluded": 2,
+        "excludedExamples": [
+          "scripts/build",
+          "tests/fixtures/.netrc"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 10.414455628008,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 10.74609375,
+      "wallSeconds": 10.678547528004856,
+      "lane": "hybrid"
+    },
+    {
+      "libraryId": "/local/vite",
+      "indexVersion": 8,
+      "generation": 1,
+      "revision": "df7503cc499e0b49e45701e3be7546918ee9d322",
+      "revisions": {
+        "r0": "df7503cc499e0b49e45701e3be7546918ee9d322",
+        "r1": "df7503cc499e0b49e45701e3be7546918ee9d322"
+      },
+      "corpusId": "1a63329a53a5d65a5db3efcad71cfbb8d2233b32776f368e4537acdd42b1cdba",
+      "files": 2739,
+      "indexed": 2739,
+      "discovered": 2977,
+      "eligible": 2825,
+      "chunks": 12922,
+      "changed": 2825,
+      "added": 2825,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 86,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-lit-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-lit/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-preact-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-preact/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-qwik-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-qwik/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-react-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-react/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-solid-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-solid/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-svelte-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-svelte/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vanilla-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vanilla/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vue-ts/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "packages/create-vite/template-vue/src/assets/hero.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/asset/percent%.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/favicon.ico",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/fonts/Inter-Italic.woff",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "playground/assets/fonts/Inter-Italic.woff2",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 63,
+      "excludes": [],
+      "byFormat": {
+        "code": 2315,
+        "config": 417,
+        "markdown": 84,
+        "rst": 9
+      },
+      "byEncoding": {
+        "unknown": 86,
+        "UTF-8": 39,
+        "utf-8": 2696,
+        "utf-8-sig": 4
+      },
+      "byTier": {
+        "0": 2825
+      },
+      "discovery": {
+        "visited": 2977,
+        "discovered": 2977,
+        "eligible": 2825,
+        "excluded": 43,
+        "excludedExamples": [
+          "packages/vite/bin/openChrome.js",
+          "packages/vite/bin/vite.js",
+          "packages/vite/src/node/__tests__/env/.env",
+          "packages/vite/src/node/__tests__/env/.env.development",
+          "packages/vite/src/node/__tests__/env/.env.development2",
+          "packages/vite/src/node/__tests__/env/.env.existing",
+          "packages/vite/src/node/__tests__/env/.env.production",
+          "packages/vite/src/node/__tests__/env/.env.testing",
+          "packages/vite/src/node/__tests__/fixtures/config/native-compat/json-named-import-bare/node_modules/some-pkg/package.json",
+          "packages/vite/src/node/__tests__/fixtures/config/native-compat/json-named-import-ok/node_modules/some-pkg/package.json",
+          "packages/vite/src/node/__tests__/fixtures/config/root-resolution/link",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/index.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/public.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/utils.js",
+          "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/package.json",
+          "packages/vite/src/node/__tests__/optimizer/fixtures/lockfile-hash/yarn-state/node_modules/.yarn-state.yml",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/index.js",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/package.json",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/index.js",
+          "packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/package.json"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 65.8169243470038,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 74.1171875,
+      "wallSeconds": 68.25349264600663,
+      "lane": "hybrid"
+    },
+    {
+      "libraryId": "/local/jftp",
+      "indexVersion": 8,
+      "generation": 1,
+      "revision": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+      "revisions": {
+        "r0": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86",
+        "r1": "c0e8a0fa7f8be99907ccdc50ac2bdc4ad7a98a86"
+      },
+      "corpusId": "269bf8b2083d8ba6a94e2620ebe3c0b43d035b17f275c9a219ee5d2a3147aa9d",
+      "files": 808,
+      "indexed": 808,
+      "discovered": 1157,
+      "eligible": 923,
+      "chunks": 13583,
+      "changed": 923,
+      "added": 923,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 115,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/favicon.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/dashicons/dashicons.ttf",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/eicons/eicons.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-brands/fa-brands-400.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-free/fa-regular-400.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/font-awesome-5-free/fa-solid-900.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/fontawesome/fontawesome-webfont.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/generatepress/generatepress.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/glyphicons-halflings/glyphicons-halflings-regular.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/fonts/lg/lg.woff2",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/homepage.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "assets/logo-white.png",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/abort16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/certificate16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/changeLocalDirectory16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/changeRemoteDirectory16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/closedBook16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/connect16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/deleteLocalFile16.gif",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "src/main/help/helpset/content/images/deleteRemoteFile16.gif",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 9,
+      "excludes": [],
+      "byFormat": {
+        "code": 463,
+        "config": 298,
+        "markdown": 155,
+        "rst": 7
+      },
+      "byEncoding": {
+        "unknown": 115,
+        "UTF-8": 5,
+        "iso-8859-1": 41,
+        "utf-8": 762
+      },
+      "byTier": {
+        "0": 923
+      },
+      "discovery": {
+        "visited": 1157,
+        "discovered": 1157,
+        "eligible": 923,
+        "excluded": 0,
+        "excludedExamples": []
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 87.24429702699126,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/gui/EditPopupMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AboutDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/AutoUpdater_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/CertificatePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeLocalDirectoryDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ChangeRemoteDirectoryDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ConnectionDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/DownloadAndUnzipDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ExecuteCommandDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FTPMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FTPSession_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/FavoritesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/GeneralConnectionPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/HelpMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/JFTPToolBar_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileFilterDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFilePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalFileTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalPane_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalSystemMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/LocalePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/PreferencesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ProxyPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileFilterDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFilePropertiesDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteFileTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/RemoteSystemMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/SecurityPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/SoftwareUpdatePrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/StatusWindow_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ToolsMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModeMenu_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/TransferModesPrefsPanel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ZipAndUploadDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateManagerDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificatePane_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/CertificateTableModel_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/jftp/ssl/SecurityWarningDlg_de.properties",
+          "encoding": "iso-8859-1"
+        },
+        {
+          "rootId": "r0",
+          "path": "src/main/resources_de/com/myjavaworld/util/CommonResources_de.properties",
+          "encoding": "iso-8859-1"
+        }
+      ],
+      "sizeMiB": 107.50390625,
+      "wallSeconds": 91.3023328010022,
+      "lane": "hybrid"
+    },
+    {
+      "libraryId": "/local/django",
+      "indexVersion": 8,
+      "generation": 1,
+      "revision": "d430084791a61b31cecec132bce3dca19194f7f2",
+      "revisions": {
+        "r0": "d430084791a61b31cecec132bce3dca19194f7f2",
+        "r1": "d430084791a61b31cecec132bce3dca19194f7f2"
+      },
+      "corpusId": "6d8b72f6b79038c122a14f8c5863d6631ea2a7a93d8b263c4e6c509f8ccbcdc0",
+      "files": 5701,
+      "indexed": 5701,
+      "discovered": 7819,
+      "eligible": 7079,
+      "chunks": 67929,
+      "changed": 7079,
+      "added": 7079,
+      "deleted": 0,
+      "metadataOnly": 0,
+      "refreshed": true,
+      "skippedCount": 1378,
+      "skipped": [
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/af/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ar/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ar_DZ/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ast/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/az/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/be/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bg/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bn/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/br/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/bs/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ca/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/ckb/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/cs/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/cy/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/da/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/de/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/dsb/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/el/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/en/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        },
+        {
+          "rootId": "r0",
+          "kind": "code",
+          "path": "django/conf/locale/en_AU/LC_MESSAGES/django.mo",
+          "reason": "Binary file"
+        }
+      ],
+      "redactedCount": 0,
+      "chunkChars": 1500,
+      "oversizedChunks": 207,
+      "excludes": [],
+      "byFormat": {
+        "code": 6235,
+        "config": 98,
+        "html": 5,
+        "markdown": 8,
+        "rst": 733
+      },
+      "byEncoding": {
+        "unknown": 1378,
+        "UTF-8": 8,
+        "cp1252": 2,
+        "utf-8": 5690,
+        "utf-8-sig": 1
+      },
+      "byTier": {
+        "0": 7079
+      },
+      "discovery": {
+        "visited": 7819,
+        "discovered": 7819,
+        "eligible": 7079,
+        "excluded": 9,
+        "excludedExamples": [
+          "docs/_theme/djangodocs-epub/static/docicons-behindscenes.png",
+          "docs/_theme/djangodocs-epub/static/docicons-note.png",
+          "docs/_theme/djangodocs-epub/static/docicons-philosophy.png",
+          "docs/_theme/djangodocs-epub/static/docicons-warning.png",
+          "tests/staticfiles_tests/apps/test/static/test/CVS",
+          "_theme/djangodocs-epub/static/docicons-behindscenes.png",
+          "_theme/djangodocs-epub/static/docicons-note.png",
+          "_theme/djangodocs-epub/static/docicons-philosophy.png",
+          "_theme/djangodocs-epub/static/docicons-warning.png"
+        ]
+      },
+      "discoveryLimit": 2000000,
+      "elapsedSeconds": 295.03716969900415,
+      "warnings": [],
+      "embeddingModel": "minishlab/potion-code-16M-v2",
+      "vectorEngine": "numpy",
+      "splitFiles": [],
+      "assumedEncodingFiles": [],
+      "sizeMiB": 408.046875,
+      "wallSeconds": 306.315152338997,
+      "lane": "hybrid"
+    }
+  ]
+}

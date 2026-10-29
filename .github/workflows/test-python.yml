@@ -13,6 +13,8 @@ on:
       - 'scripts/check-legacy-release.py'
       - 'scripts/legacy-release.py'
       - 'tests/test_legacy_*.py'
+      - 'evals/retrieval/**/*.py'
+      - 'evals/retrieval/**/*.md'
       - '.github/workflows/test-python.yml'
       # Vendor/license provenance checks depend on checkout bytes.
       - '.gitattributes'
@@ -71,3 +73,13 @@ jobs:
           "$(brew --prefix python@3.12)/bin/python3.12" -m venv "$RUNNER_TEMP/legacy-vector-venv"
           "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m pip install -r skills/legacy-codebase-workflows/requirements-map.txt -r skills/legacy-codebase-workflows/scripts/requirements-retrieval.txt
           "$RUNNER_TEMP/legacy-vector-venv/bin/python" -m unittest discover -s tests -p test_legacy_retrieval.py -v
+      - name: Install pinned Context7 client test tooling
+        if: matrix.python == '3.12' && (runner.os == 'Linux' || runner.os == 'Windows')
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.1
+      - name: Test project-local Context7 MCP and CLI clients
+        if: matrix.python == '3.12' && (runner.os == 'Linux' || runner.os == 'Windows')
+        env:
+          LEGACY_CONTEXT7_CLIENTS: '1'
+        run: python -m unittest discover -s tests -p test_legacy_context7_project.py -v
