@@ -135,7 +135,7 @@ Create a JSON evidence file with a `citations` array. Each card has `path` (rela
 python /path/to/skill/scripts/check_citations.py /path/to/repository /path/to/artifacts/evidence.json
 ```
 
-The checker counts LF/CRLF source lines and normalizes CRLF quotations to LF while hashing the original bytes. The citation array must be nonempty.
+The checker counts LF/CRLF source lines and normalizes CRLF quotations to LF while hashing the original bytes. The citation array must be nonempty. Sources are read as UTF-8 unless `--encoding` names another encoding for the run or a card carries its own `"encoding"` field; the encoding is never guessed.
 
 Exit 0 means the checked citations match current source; exit 1 means at least one is invalid/stale; exit 2 means malformed input or an operational error. Read the machine-readable output. An empty citation set supplies no evidence. Matching quotations do not prove a claim or search completeness.
 
