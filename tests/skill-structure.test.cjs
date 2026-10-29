@@ -53,3 +53,18 @@ for (const folder of skillFolders) {
     validateMetadata(folder, content);
   });
 }
+
+// Skills are installed one folder at a time (skills CLI, plugins), so each
+// folder must carry its own license notice. A folder with its own NOTICE.txt
+// keeps a different license; every other skill ships the root MIT LICENSE.
+const rootLicense = fs.readFileSync(path.resolve(__dirname, '../LICENSE'), 'utf8');
+for (const folder of skillFolders) {
+  test(`${folder} ships a license notice`, () => {
+    const licenseFile = path.join(skillsDir, folder, 'LICENSE.txt');
+    assert.ok(fs.existsSync(licenseFile), `${licenseFile} is missing`);
+    if (!fs.existsSync(path.join(skillsDir, folder, 'NOTICE.txt'))) {
+      assert.equal(fs.readFileSync(licenseFile, 'utf8'), rootLicense,
+        `${folder}/LICENSE.txt must match the root LICENSE`);
+    }
+  });
+}
