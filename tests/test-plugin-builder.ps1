@@ -15,6 +15,7 @@ function New-Fixture {
     Copy-Item -LiteralPath $BuilderPath -Destination (Join-Path $root 'scripts/build-claude-plugin.ps1')
     @{ name = 'agent-toolbox'; version = '0.0.0'; description = 'Synthetic test plugin' } |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $root '.claude-plugin/plugin.json') -Encoding utf8
+    'MIT License (synthetic fixture)' | Set-Content -LiteralPath (Join-Path $root 'LICENSE') -Encoding utf8
     if ($ValidSkill) {
         $skill = Join-Path $root 'skills/known-skill'
         $null = New-Item -ItemType Directory -Path (Join-Path $skill 'references') -Force
@@ -43,12 +44,12 @@ try {
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zips[0].FullName)
     try {
         $entries = @($archive.Entries | ForEach-Object { $_.FullName })
-        foreach ($entry in @('agent-toolbox/skills/known-skill/SKILL.md', 'agent-toolbox/skills/known-skill/references/guide.md')) {
+        foreach ($entry in @('agent-toolbox/LICENSE', 'agent-toolbox/skills/known-skill/SKILL.md', 'agent-toolbox/skills/known-skill/references/guide.md')) {
             if ($entries -notcontains $entry) { throw "Valid plugin omitted $entry" }
         }
     }
     finally { $archive.Dispose() }
-    Write-Output 'PASS: valid skill and reference are packaged.'
+    Write-Output 'PASS: license, valid skill and reference are packaged.'
 
     foreach ($withValid in @($true, $false)) {
         $root = New-Fixture -Name "missing-skill-$withValid" -ValidSkill:$withValid

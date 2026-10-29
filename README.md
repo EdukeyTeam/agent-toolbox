@@ -18,16 +18,16 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 
 ## Install a skill
 
-The recommended installer is the [skills CLI](https://skills.sh/). You need Node.js and an AI agent that supports skills. For example, to install the design-system skill for your user account:
+The recommended installer is the [skills CLI](https://skills.sh/). You need Node.js and an AI agent that supports skills. Run the command from your project's root; the skill is installed into that project only:
+
+```bash
+npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system
+```
+
+Replace `create-design-system` with `write-agents-md`, `write-prd`, `write-adr`, `respond-to-code-review`, `legacy-codebase-workflows`, `cloudflare-safe`, `agent-usage-analytics`, or `web-performance-audit` to install another skill. The installer asks which agent to target when needed. To make a skill available in every project for your user account, add `-g`:
 
 ```bash
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system -g
-```
-
-Replace `create-design-system` with `write-agents-md`, `write-prd`, `write-adr`, `respond-to-code-review`, `legacy-codebase-workflows`, `cloudflare-safe`, `agent-usage-analytics`, or `web-performance-audit` to install another skill. The installer asks which agent to target when needed. To keep a skill in one project, run this from that project's root instead:
-
-```bash
-npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system --project
 ```
 
 Then ask your agent to use the installed skill. For example: “Use create-design-system to document the visual style of this website.” The agent reads the skill's instructions and may need to set up a tool the first time it runs; each skill documents its own requirements.
@@ -41,10 +41,10 @@ npx --yes skills@latest update -g
 
 ## Install the whole toolbox
 
-To add every skill in one run with the [skills CLI](https://skills.sh/), use `--skill '*'`. The installer lets you choose which agent to target. `--all` also targets every supported agent, so it is not needed here.
+To add every skill to the current project in one run with the [skills CLI](https://skills.sh/), use `--skill '*'`. The installer lets you choose which agent to target. `--all` also targets every supported agent, so it is not needed here. Add `-g` to install them for your user account instead.
 
 ```bash
-npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill '*' -g
+npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill '*'
 ```
 
 ### Codex CLI and Codex app
@@ -115,3 +115,7 @@ The skills CLI remains an option for Codex and other supported agents when you w
 Skills live in `skills/<name>/`. Open a pull request for a new skill or a change to an existing one. Include tests for executable behavior and describe a realistic manual trial for instruction-only skills. The [validation workflows](docs/ci.md) use built-in path filters to run only for their inputs; [AGENTS.md](AGENTS.md) has the contribution rules.
 
 Brand assets extracted from other sites may be licensed. Check usage rights before reusing or redistributing them.
+
+## License
+
+[MIT](LICENSE) © 2026 Łukasz Matuszewski and Edukey Sp. z o.o. A skill that ships its own license file keeps that license: [legacy-codebase-workflows](skills/legacy-codebase-workflows/LICENSE.txt) is under Apache 2.0, with notices in its `NOTICE.txt` and `THIRD_PARTY.md`.
