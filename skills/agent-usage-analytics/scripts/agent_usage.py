@@ -180,7 +180,7 @@ def parser() -> argparse.ArgumentParser:
         p.add_argument("--device", default="local")
         p.add_argument("--account", default="local", help="User-chosen alias, not an account ID")
         p.add_argument("--store", type=Path, help="Optional analytics ledger; never a provider database")
-        p.add_argument("--out", type=Path, help="Directory for JSON, Markdown and offline HTML")
+        p.add_argument("--out", type=Path, help="Report directory for DOCX, JSON, Markdown and offline HTML; default: user Documents/Agent Analysis/<unique run>")
         p.add_argument("--input", type=Path)
         p.add_argument("--agent", choices=AGENTS, default="claude")
         p.add_argument("--session", dest="session_id")
@@ -275,11 +275,10 @@ def main(argv: list[str] | None = None) -> int:
                               session_id=args.session_id, compare_since=args.compare_since, compare_until=args.compare_until,
                               share=args.share, complete_coverage=args.complete_coverage, task_map=task_map)
         paths = {}
-        if args.out:
+        if args.out or not args.store or args.command in ("usage", "session"):
             from usage_render import write_reports
-            paths = write_reports(report, args.out)
-        elif not args.store:
-            raise ValueError("Choose --out REPORT_DIR or --store LEDGER.sqlite")
+            from usage_output import new_report_directory
+            paths = write_reports(report, args.out.expanduser() if args.out else new_report_directory())
         print(json.dumps({"summary": report["summary"], "artifacts": paths, "warnings": len(report["warnings"]),
                           "scope": report["scope"], "quota_observations": len(report["quotas"])}))
         return 0

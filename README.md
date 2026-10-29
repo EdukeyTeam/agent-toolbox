@@ -13,7 +13,7 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 | [respond-to-code-review](skills/respond-to-code-review/SKILL.md) | Address and answer review comments on GitHub, GitLab, or Bitbucket pull and merge requests. |
 | [legacy-codebase-workflows](skills/legacy-codebase-workflows/SKILL.md) | Investigate and change unfamiliar legacy repositories with local maps, verified source context, optional workers and private retrieval. |
 | [cloudflare-safe](skills/cloudflare-safe/SKILL.md) | Let an agent inspect a Cloudflare account through a read-only token it never sees, and propose changes for you to approve. |
-| [agent-usage-analytics](skills/agent-usage-analytics/SKILL.md) | Analyze agent tokens, API-equivalent costs, quotas and individual-session context; generate JSON, Markdown and offline HTML reports. |
+| [agent-usage-analytics](skills/agent-usage-analytics/SKILL.md) | Analyze agent tokens, API-equivalent costs, quotas and individual-session context; save DOCX reports in user Documents with JSON, Markdown and offline HTML companions. |
 | [web-performance-audit](skills/web-performance-audit/SKILL.md) | Measure a live page with Chrome DevTools CLI/MCP and Lighthouse (field vs lab vitals, LCP subparts, third parties, INP, memory) and save a Markdown and an interactive HTML report with prioritized fixes in `docs/`. |
 
 ## Install a skill

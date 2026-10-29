@@ -19,7 +19,7 @@ class CLIAndArtifacts(unittest.TestCase):
         return subprocess.run([sys.executable, str(SCRIPTS / "agent_usage.py"), *map(str, args)],
                               capture_output=True, encoding="utf-8", timeout=30)
 
-    def test_three_artifacts_agree_and_embed_data_safely(self):
+    def test_report_artifacts_agree_and_embed_data_safely(self):
         report = build_report(demo_data(), load_rates(), now="2026-10-17T00:00:00Z")
         with tempfile.TemporaryDirectory() as temp:
             paths = write_reports(report, Path(temp))
