@@ -38,6 +38,14 @@ class EngineTests(unittest.TestCase):
     def query(self,q="InvoiceMaker.create_invoice",**kwargs):
         with backend.connect(self.db) as con:
             return backend.query(con,q,**kwargs)
+    def test_changing_max_file_bytes_rechunks_unchanged_files(self):
+        self.index()
+        split=lambda: [row[0] for row in sqlite3.connect(self.db).execute("SELECT path FROM files WHERE status_reason LIKE 'large-file-window-split%'")]
+        self.assertEqual(split(),[])
+        self.index(max_file_bytes=64)
+        self.assertIn("service.py",split())
+        self.index()
+        self.assertEqual(split(),[])
     def test_lexical_source_metadata_and_header(self):
         report=self.index()
         self.assertEqual(report["eligible"],report["files"]+report["skippedCount"])
