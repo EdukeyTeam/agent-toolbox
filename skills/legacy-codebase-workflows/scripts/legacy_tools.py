@@ -24,6 +24,7 @@ SCRIPTS = SKILL / "scripts"
 COMMANDS = {
     "map": ("repo_map", []),
     "check-citations": ("check_citations", []),
+    "members": ("member_ledger", []),
     "index": ("context7_backend", ["index"]),
     "query": ("context7_backend", ["query"]),
     "serve": ("context7_backend", ["serve"]),
@@ -35,6 +36,7 @@ usage: legacy-tools <command> [arguments]
 commands:
   map               generate a repository map (repo_map.py)
   check-citations   check evidence cards against current source (check_citations.py)
+  members           outline, slice and account for Java members (member_ledger.py)
   index             build the local retrieval index (context7_backend.py index)
   query             query the local retrieval index (context7_backend.py query)
   serve             serve the index on loopback (context7_backend.py serve)

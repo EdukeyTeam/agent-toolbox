@@ -127,6 +127,11 @@ class ReleaseTests(unittest.TestCase):
         for path in paths:
             self.assertTrue(check.covered(path.relative_to(check.ROOT).as_posix()), f"unlisted staged resource: {path}")
 
+    def test_repository_license_is_not_a_native_release_input(self):
+        # The native builder never reads the root MIT LICENSE; the bundle ships the
+        # skill's own Apache LICENSE.txt and notices, which stay covered above.
+        self.assertFalse(check.covered("LICENSE"))
+
     def test_coordinated_bump_allows_fix_but_rejects_downgrade(self):
         self.write(check.CRATE + "src/fix.rs", "// fix\n")
         self.git("add", check.CRATE + "src/fix.rs")

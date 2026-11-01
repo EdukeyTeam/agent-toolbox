@@ -11,6 +11,7 @@ on:
       - 'tests/**/*.test.js'
       - 'package.json'
       - 'package-lock.json'
+      - 'LICENSE'
       - 'plugin.json'
       - '.claude-plugin/**'
       - '.agents/plugins/**'

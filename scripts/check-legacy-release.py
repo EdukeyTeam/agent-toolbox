@@ -19,7 +19,7 @@ POLICY = SKILL + "tool-distribution.json"
 # every top-level Python script and retrieval resource, and the index helper
 # imports setup_native. Tests and workflow orchestration are outside this set.
 INPUT_FILES = {
-    POLICY, "LICENSE", ".gitattributes", "scripts/build-legacy-tools.py",
+    POLICY, ".gitattributes", "scripts/build-legacy-tools.py",
     "scripts/create-legacy-release-manifest.py", SKILL + "requirements-map.txt",
     SKILL + "THIRD_PARTY.md", SKILL + "LICENSE.txt", SKILL + "NOTICE.txt",
 }
