@@ -316,6 +316,17 @@ class ProjectTests(unittest.TestCase):
         self.cli("refresh")
         self.assertTrue(json.loads(self.cli("query", "retryTransfer").stdout)["results"])
 
+    def test_changed_docs_root_blocks_queries_until_refresh_rebuilds(self):
+        self.prepare()
+        self.cli("index")
+        (self.root / "manual").mkdir()
+        (self.root / "manual/guide.md").write_text("Demo.archiveTransfer archives a transfer.\n", encoding="utf-8")
+        self.prepare("--docs-root", "manual")
+        self.assertIn("corpus changed", self.cli("query", "archiveTransfer", expected=1).stderr)
+        self.assertTrue(json.loads(self.cli("refresh").stdout)["refreshed"])
+        sources = [result["source"] for result in json.loads(self.cli("query", "archiveTransfer").stdout)["results"]]
+        self.assertIn(("docs", "guide.md"), [(source["kind"], source["path"]) for source in sources])
+
     def test_refresh_does_not_skip_pending_vectors_with_current_source(self):
         report = self.prepare()
         self.cli("index")

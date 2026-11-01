@@ -174,6 +174,21 @@ def policy_matches(con) -> bool:
             and all((embeddings.get(k) or None) == (ENGINE.get(v) or None) for k, v in mapping.items()))
 
 
+CORPUS_CHANGED = "Project corpus changed (repository, docs root or library ID); run python tools/local_context7.py refresh to rebuild the index"
+
+
+def corpus_matches(backend, con) -> bool:
+    """True when the index was built for this checkout's repository, docs root and library ID."""
+    metadata = backend.indexed_metadata(con)
+    return (metadata["root"], metadata["docs_root"], metadata["library_id"]) == (str(ROOT), str(DOCS_ROOT or ""), LIBRARY_ID)
+
+
+def remove_database(database: Path) -> None:
+    """The runtime index is a rebuildable cache; drop it with its SQLite journals."""
+    for path in (database, database.with_name(database.name + "-wal"), database.with_name(database.name + "-shm")):
+        path.unlink(missing_ok=True)
+
+
 def refresh(backend, runtime: Path, *, allow_remote_embeddings=False, automatic=False) -> dict:
     """Check freshness first; write incremental updates only when necessary."""
     database = runtime / "index.sqlite"
@@ -185,9 +200,10 @@ def refresh(backend, runtime: Path, *, allow_remote_embeddings=False, automatic=
     if database.is_file():
         with backend.connect(database) as con:
             metadata = backend.indexed_metadata(con)
-            if (metadata["root"], metadata["docs_root"], metadata["library_id"]) != (str(ROOT), str(DOCS_ROOT or ""), LIBRARY_ID):
-                raise ValueError("Database belongs to another corpus; use a new runtime")
-            if policy_matches(con):
+            rebuild = not corpus_matches(backend, con)
+            if rebuild and automatic:
+                raise ValueError(CORPUS_CHANGED)  # a full rebuild does not belong in a hook's time budget
+            if not rebuild and policy_matches(con):
                 try:
                     backend.assert_fresh(con, metadata)
                 except backend.RetrievalError:
@@ -200,6 +216,8 @@ def refresh(backend, runtime: Path, *, allow_remote_embeddings=False, automatic=
                     if con.execute("SELECT 1 FROM files WHERE library_id=? AND embedding_status='pending' LIMIT 1", (LIBRARY_ID,)).fetchone():
                         return {**backend.refresh(database, LIBRARY_ID, **refresh_options), "refreshed": True}
                     return {"libraryId": LIBRARY_ID, "refreshed": False, "changed": 0, "deleted": 0, "revision": metadata["revision"]}
+        if rebuild:
+            remove_database(database)
     return {**index(backend, runtime, **refresh_options), "refreshed": True}
 
 
@@ -239,6 +257,8 @@ def main(argv=None) -> int:
         database = runtime / "index.sqlite"
         if args.command in {"query", "expand", "serve", "mcp", "library", "docs"}:
             with backend.connect(database) as con:
+                if not corpus_matches(backend, con):
+                    raise ValueError(CORPUS_CHANGED + " before querying")
                 if not policy_matches(con):
                     raise ValueError("Project engine policy changed; run local_context7.py refresh before querying")
         if args.command == "index":
