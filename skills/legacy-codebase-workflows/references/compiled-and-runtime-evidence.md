@@ -49,10 +49,10 @@ Only do this in a test environment you are authorized to run, with data that may
 Start the target JVM with the debug agent, listening on the loopback address:
 
 ```bash
-java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000 -cp build/classes com.example.Main
+java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:8000 -cp build/classes com.example.Main
 ```
 
-`suspend=n` lets the program start normally; the default `suspend=y` waits for the debugger before the main class loads. An address without a host listens on loopback only. `address=*:8000` listens on every network interface and lets anyone who can reach the port control the JVM, so do not use it on a shared network. Add the same option to an application server's JVM arguments to debug a deployed web application in a test instance.
+`suspend=n` lets the program start normally; the default `suspend=y` waits for the debugger before the main class loads. Always name the host. An address without one listens on loopback only from JDK 9, but on every interface on Java 8 and older, which legacy applications often still run. `address=*:8000` listens on every network interface and lets anyone who can reach the port control the JVM, so do not use it on a shared network. Add the same option to an application server's JVM arguments to debug a deployed web application in a test instance.
 
 Attach from a second terminal, pointing at the source so that listings work:
 
