@@ -7,6 +7,7 @@ import json
 import math
 import os
 from pathlib import Path
+import contextlib
 import sqlite3
 import subprocess
 import sys
@@ -40,7 +41,9 @@ class EngineTests(unittest.TestCase):
             return backend.query(con,q,**kwargs)
     def test_changing_max_file_bytes_rechunks_unchanged_files(self):
         self.index()
-        split=lambda: [row[0] for row in sqlite3.connect(self.db).execute("SELECT path FROM files WHERE status_reason LIKE 'large-file-window-split%'")]
+        def split():
+            with contextlib.closing(sqlite3.connect(self.db)) as con:  # Windows cannot delete an open database
+                return [row[0] for row in con.execute("SELECT path FROM files WHERE status_reason LIKE 'large-file-window-split%'")]
         self.assertEqual(split(),[])
         self.index(max_file_bytes=64)
         self.assertIn("service.py",split())
