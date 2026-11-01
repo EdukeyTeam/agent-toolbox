@@ -560,10 +560,11 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
             record["accounted"] = not needs_decision or key in decided
             records.append(record)
 
-    new_files = {path for path in current if path not in before}
-    report_in = set(tracked) | new_files | {path for path, _ in used}
-    added = sorted(f"{path}::{member['id']}" for path in sorted(report_in & set(current)) for member in current[path]["members"]
-                   if not existed(path, member) and (path, member["id"]) not in used and (path, member["id"]) not in claimed)
+    # Every scanned file can gain members. A changed member of a pre-existing scope file is not an addition.
+    preexisting = baseline.get("preexisting", {})
+    added = sorted(f"{path}::{member['id']}" for path in sorted(current) for member in current[path]["members"]
+                   if not existed(path, member) and (path, member["id"]) not in used and (path, member["id"]) not in claimed
+                   and member["id"] not in preexisting.get(path, {}))
     counts: dict[str, int] = {}
     for record in records:
         counts[record["status"]] = counts.get(record["status"], 0) + 1

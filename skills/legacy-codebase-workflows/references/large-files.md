@@ -72,7 +72,7 @@ Each baseline member gets exactly one status:
 | `modified` | Still there under the same identifier, with different tokens | Read this member in full |
 | `missing` | Not found in the tracked files or the scope | Find it, restore it, or record a decision |
 
-Whitespace and comment changes never change a status. Any change to code or to a string literal does. The report also lists `added` members and every file it could not scan.
+Whitespace and comment changes never change a status. Any change to code or to a string literal does. The report also lists `added` members, in the tracked files and anywhere in the scope, and every file it could not scan.
 
 Exit code 0 means every member is accounted for. Exit code 1 means a `missing` member has no decision, or a file in the tracked set or scope cannot be scanned. A truncated file or an unbalanced bracket therefore fails the comparison instead of passing quietly. Exit code 2 is a usage or input error.
 
@@ -100,6 +100,7 @@ Review the `missing`, `modified`, `signature-changed` and `added` members. The `
 
 - **Behavior.** Identical tokens in a new class can behave differently: an unqualified name may now resolve to another field, an import may select another class, an overload may bind differently, and a method that became static no longer dispatches virtually. Compile, and run characterization tests for the affected behavior as described in [changes and modernization](changes.md).
 - **Absence.** `missing` means "not found in the tracked files and the recorded scope". Code moved outside the scope is reported as missing; record a new baseline from the base revision with the right scope.
+- **Edits to other scope files.** A member that already existed in a scope file and was changed there is not reported; only tracked files get a status for every member. Track that file too if it must be reviewed.
 - **Anything outside members.** Package and import statements are not tracked. Anonymous and local classes are part of the member that contains them.
 - **Unusual source.** Unicode escapes outside literals are not interpreted, and only LF and CRLF line endings are supported.
 

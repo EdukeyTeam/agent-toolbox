@@ -396,6 +396,14 @@ class LedgerTests(RepositoryCase):
         self.write("src/app/Binary.java", "class Binary {\x00 one }")
         self.assertFalse(compare(self.repo, baseline)["passed"])
 
+    def test_members_added_to_existing_scope_files_are_reported(self):
+        self.write("src/app/Other.java", "package app;\n\nclass Other {\n    int kept() { return 1; }\n}\n")
+        baseline = self.baseline()
+        self.write("src/app/Other.java", "package app;\n\nclass Other {\n    int kept() { return 2; }\n    int helper() { return 3; }\n}\n")
+        result = compare(self.repo, baseline)
+        self.assertEqual(result["added"], ["src/app/Other.java::Other#helper()"])
+        self.assertIn("ADDED src/app/Other.java::Other#helper()", render_comparison(result))
+
     def test_scope_is_bounded_and_outside_code_is_not_searched(self):
         self.write("lib/Elsewhere.java", 'class Elsewhere {\n    void audit(String who) {\n        System.out.println("audit " + who);\n    }\n}\n')
         self.write("src/app/Small.java", "class Small { }")
