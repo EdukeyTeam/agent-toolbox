@@ -404,6 +404,21 @@ class LedgerTests(RepositoryCase):
         self.assertEqual(result["added"], ["src/app/Other.java::Other#helper()"])
         self.assertIn("ADDED src/app/Other.java::Other#helper()", render_comparison(result))
 
+    def test_one_destination_cannot_account_for_two_removed_members(self):
+        twin = "package app;\n\nclass {name} {{\n    int same() {{ return 7; }}\n}}\n"
+        self.write("src/app/A.java", twin.format(name="A"))
+        self.write("src/app/B.java", twin.format(name="B"))
+        baseline = build_baseline(self.repo, ["src/app/A.java", "src/app/B.java"], ["src/app"])
+        self.write("src/app/A.java", "package app;\n\nclass A {\n}\n")
+        self.write("src/app/B.java", "package app;\n\nclass B {\n}\n")
+        self.write("src/app/C.java", "package app;\n\nclass C {\n    int same() { return 7; }\n}\n")
+        result = compare(self.repo, baseline)
+        self.assertEqual(self.statuses(result), {"A#same()": "moved", "B#same()": "missing"})
+        self.assertEqual((result["passed"], result["unaccounted"]), (False, ["src/app/B.java::B#same()"]))
+        # Two copies account for two members.
+        self.write("src/app/D.java", "package app;\n\nclass D {\n    int same() { return 7; }\n}\n")
+        self.assertEqual(self.statuses(compare(self.repo, baseline)), {"A#same()": "moved", "B#same()": "moved"})
+
     def test_a_malformed_decisions_document_is_an_input_error(self):
         baseline = self.baseline()
         for invalid in ([{"member": "x"}], {"decisions": None}, {"decisions": {"member": "x"}}, "deleted"):

@@ -532,6 +532,11 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
         decided[entry["member"]] = entry
 
     records, used, claimed = [], set(), set()
+
+    def free(candidates: list) -> list:
+        """The first destination no earlier member took: one copy accounts for one member."""
+        return next(([candidate] for candidate in candidates if (candidate[0], candidate[1]["id"]) not in used), [])
+
     for path in tracked:
         now = {member["id"]: member for member in current.get(path, {}).get("members", [])}
         for member in baseline["files"][path]["members"]:
@@ -541,9 +546,9 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
             targets = []
             if here is not None and here["token_sha256"] == member["token_sha256"]:
                 status = "unchanged"
-            elif targets := by_token.get(member["token_sha256"], []):
+            elif targets := free(by_token.get(member["token_sha256"], [])):
                 status = "moved"
-            elif targets := (types_by_name.get(member["name"], []) if member["kind"] == "type" else by_body.get((member["name"], member["body_sha256"]), [])):
+            elif targets := free(types_by_name.get(member["name"], []) if member["kind"] == "type" else by_body.get((member["name"], member["body_sha256"]), [])):
                 status = "signature-changed"
             elif here is not None:
                 status, targets = "modified", [(path, here)]
