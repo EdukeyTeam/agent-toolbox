@@ -17,6 +17,7 @@ import argparse
 import bisect
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -446,10 +447,20 @@ def _scope_files(root: Path, scope: list[str], max_files: int) -> list[str]:
 
 
 def _identity(root: Path, path: str) -> str | None:
-    """Byte hash of a file that could not be scanned, or None when it cannot be read."""
+    """Byte hash of a file that could not be scanned, or None when even its bytes cannot be read.
+
+    Binary, oversized and symlinked files are hashed too, so a change to them is still noticed.
+    """
+    target = root / path
     try:
-        return read_safe_text(root, path, max_file_bytes=MAX_FILE_BYTES, encoding="latin-1")[1]
-    except ValueError:
+        if target.is_symlink():
+            return "symlink:" + hashlib.sha256(os.fsencode(os.readlink(target))).hexdigest()
+        digest = hashlib.sha256()
+        with target.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except OSError:
         return None
 
 
@@ -489,7 +500,8 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
     paths = sorted(set(existing_tracked) | set(_scope_files(root, baseline["scope"], baseline.get("max_files", DEFAULT_MAX_FILES))))
     current, unscanned = _scan_many(root, paths, encoding)
     known_unscanned = {item["path"]: item.get("sha256") for item in baseline.get("unscanned", [])}
-    blocking = [item for item in unscanned if item["path"] not in known_unscanned or known_unscanned[item["path"]] != _identity(root, item["path"])]
+    # Only an equal, known byte hash shows that an unscannable file is unchanged.
+    blocking = [item for item in unscanned if known_unscanned.get(item["path"]) is None or known_unscanned[item["path"]] != _identity(root, item["path"])]
 
     before = {path: {member["id"]: member["token_sha256"] for member in outline["members"]} for path, outline in baseline["files"].items()}
     before.update(baseline.get("preexisting", {}))

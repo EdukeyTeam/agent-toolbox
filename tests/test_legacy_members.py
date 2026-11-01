@@ -381,6 +381,21 @@ class LedgerTests(RepositoryCase):
         result = compare(self.repo, baseline)
         self.assertEqual((result["passed"], [item["path"] for item in result["unscanned"]]), (False, ["src/app/Broken.java"]))
 
+    def test_unreadable_scope_files_are_identified_by_their_bytes(self):
+        # A binary file cannot be read as text, yet a change to it must still block the comparison.
+        self.write("src/app/Binary.java", "class Binary {\x00 one }")
+        baseline = self.baseline()
+        self.assertEqual([item["path"] for item in baseline["unscanned"]], ["src/app/Binary.java"])
+        self.assertIsNotNone(baseline["unscanned"][0]["sha256"])
+        self.assertTrue(compare(self.repo, baseline)["passed"])
+        self.write("src/app/Binary.java", "class Binary {\x00 two }")
+        result = compare(self.repo, baseline)
+        self.assertEqual((result["passed"], [item["path"] for item in result["unscanned"]]), (False, ["src/app/Binary.java"]))
+        # A baseline that could not identify the file never vouches for it.
+        baseline["unscanned"][0]["sha256"] = None
+        self.write("src/app/Binary.java", "class Binary {\x00 one }")
+        self.assertFalse(compare(self.repo, baseline)["passed"])
+
     def test_scope_is_bounded_and_outside_code_is_not_searched(self):
         self.write("lib/Elsewhere.java", 'class Elsewhere {\n    void audit(String who) {\n        System.out.println("audit " + who);\n    }\n}\n')
         self.write("src/app/Small.java", "class Small { }")
