@@ -154,10 +154,16 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
             pruned[rel]["fileCount"] += count
 
         def directory_files(directory):
-            # Metadata only; never follow directory symlinks or open contents.
+            # Metadata only; never follow directory symlinks or open contents. Counting pruned
+            # trees shares one budget of discovery_limit entries, so a huge excluded tree
+            # cannot take unbounded time; past it, counts are lower bounds.
             count = 0
             generated = True
             for folder, folders, files in os.walk(directory, followlinks=False):
+                counters["prunedEntriesScanned"] = counters.get("prunedEntriesScanned", 0) + len(folders) + len(files)
+                if counters["prunedEntriesScanned"] > discovery_limit:
+                    counters["prunedCountsTruncated"] = True
+                    folders[:] = []
                 folders[:] = [p for p in folders if not (Path(folder) / p).is_symlink()]
                 count += len(files)
                 generated &= all(Path(p).suffix.lower() in GENERATED_SUFFIXES for p in files)

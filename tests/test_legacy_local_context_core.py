@@ -599,6 +599,17 @@ class Amendment16Tests(unittest.TestCase):
             list(discover.inventory(discover.roots_for(self.root,[]),discovery_limit=3))
         self.assertTrue(list(discover.inventory(discover.roots_for(self.root,[]),discovery_limit=100)))
 
+    def test_counting_pruned_trees_shares_the_discovery_budget(self):
+        deep=self.root/'node_modules';deep.mkdir()
+        for n in range(20):
+            deep=deep/f'd{n}';deep.mkdir()
+            (deep/'x.js').write_text('1\n')
+        counters={}
+        rows=list(discover.inventory(discover.roots_for(self.root,[]),discovery_limit=5,counters=counters))
+        self.assertEqual([r[1] for r in rows],['service.py'])
+        self.assertTrue(counters['prunedCountsTruncated'])
+        self.assertLessEqual(counters['prunedEntriesScanned'],5+2)
+
     def test_long_query_limit_and_first_32_terms(self):
         self.index()
         self.assertTrue(self.query('InvoiceMaker '+('invoice '*800))['results'])
