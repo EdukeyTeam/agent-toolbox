@@ -152,6 +152,21 @@ class ProjectTests(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
         self.assertTrue(json.loads(self.cli("query", "hookTransfer").stdout)["results"])
 
+    def test_hooks_refresh_only_after_tools_that_can_change_files(self):
+        self.prepare("--agent", "claude", "--agent", "codex", "--agent", "gemini", "--with-hooks", "--consent-hooks")
+        matchers = {path: json.loads((self.root / path).read_text())["hooks"][event][0]["matcher"]
+                    for path, event in ((".claude/settings.json", "PostToolUse"), (".codex/hooks.json", "PostToolUse"), (".gemini/settings.json", "AfterTool"))}
+        self.assertEqual(matchers, {".claude/settings.json": "Edit|Write|MultiEdit|NotebookEdit|Bash", ".codex/hooks.json": "apply_patch|Edit|Write|Bash", ".gemini/settings.json": "write_file|replace|run_shell_command"})
+        self.cli("index")
+        self.java.write_text("public class Demo { public void readOnlyTransfer() {} }\n")
+        handler = json.loads((self.root / ".claude/settings.json").read_text())["hooks"]["PostToolUse"][0]["hooks"][0]
+        def fire(tool):
+            event = {"hook_event_name": "PostToolUse", "cwd": str(self.root), "tool_name": tool}
+            return subprocess.run([handler["command"], *handler["args"]], input=json.dumps(event), cwd=self.root, capture_output=True, text=True, timeout=20, check=True).stdout
+        # A hand-written catch-all matcher still skips the full audit after a read-only tool.
+        self.assertEqual((fire("Read"), fire("mcp__context7-local__query-docs")), ("", ""))
+        self.assertIn("1 changed", fire("Edit"))
+
     def test_backend_hash_failure_is_explicit(self):
         report = self.prepare()
         path = Path(report["runtime"]) / "backend/scripts/repo_files.py"

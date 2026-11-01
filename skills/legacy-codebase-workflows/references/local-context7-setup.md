@@ -62,6 +62,8 @@ Use the setup command above with the corresponding `--agent` value. These format
 | `antigravity` | `.agents/mcp_config.json`, `mcpServers`, command + args | Product/plugin hook surfaces differ; no automatic hooks generated, use CLI refresh |
 | `cursor` | `.cursor/mcp.json`, `mcpServers`, command + args | `.cursor/hooks.json`, version 1, afterFileEdit, afterShellExecution and stop |
 
+A tool-event refresh checks every indexed file, so the generated Claude, Codex and Gemini hooks match only tools that can change files (edits, writes and shell commands), and the handler skips known read-only tools under any matcher. Stop still refreshes once per turn, and queries verify their own results.
+
 Rerunning setup with another `--docs-root` or `--library-id` changes the corpus: queries refuse the old index until `python tools/local_context7.py refresh` rebuilds it. Hooks report the change instead of rebuilding inside their time limit.
 
 Copilot's VS Code Local harness and Copilot harness have different hook formats. This adapter targets Local in VS Code; it does not claim Copilot CLI hook compatibility. Current VS Code also offers portable `.mcp.json`; the requested VS Code-specific destination remains supported. Review the selected harness's reference before enabling hooks. OpenCode and Antigravity have extensibility hooks, but this generator does not install executable plugins. `manualRefreshClients` reports their fallback explicitly. They must follow the generated AGENTS.md refresh instruction; no hook is implied when instructions were declined.

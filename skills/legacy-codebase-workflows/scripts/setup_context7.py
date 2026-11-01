@@ -106,6 +106,15 @@ def read_json(path: Path) -> dict:
     return value
 
 
+# A tool-event refresh audits every indexed file, so hooks fire only for tools that can change files.
+# Stop and query-time freshness checks still catch changes made any other way.
+MUTATING_TOOLS = {
+    "claude": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+    "codex": "apply_patch|Edit|Write|Bash",
+    "gemini": "write_file|replace|run_shell_command",
+}
+
+
 def add_hooks(config: dict, handler: dict, matcher: str) -> dict:
     hooks = config.setdefault("hooks", {})
     if not isinstance(hooks, dict):
@@ -198,7 +207,7 @@ def prepare(args) -> dict:
         plan(".codex/config.toml", existing, merge=True)
         if args.with_hooks:
             hook = {"type": "command", "command": hook_command, "timeout": 30}
-            config = add_hooks(read_json(root / ".codex/hooks.json"), hook, ".*")
+            config = add_hooks(read_json(root / ".codex/hooks.json"), hook, MUTATING_TOOLS["codex"])
             plan(".codex/hooks.json", json.dumps(config, indent=2) + "\n", merge=True)
             hook_clients.append("codex")
     for agent in dict.fromkeys(args.agent):
@@ -227,14 +236,14 @@ def prepare(args) -> dict:
                 groups = hooks.setdefault(event, [])
                 if not isinstance(groups, list):
                     raise ValueError("Hook event configuration must be a list")
-                group = {"hooks": [handler], **({"matcher": ".*"} if event == "AfterTool" else {})}
+                group = {"hooks": [handler], **({"matcher": MUTATING_TOOLS["gemini"]} if event == "AfterTool" else {})}
                 if group not in groups:
                     groups.append(group)
             hook_clients.append(agent)
         plan(relative, json.dumps(config, indent=2) + "\n", merge=True)
         if args.with_hooks and agent == "claude":
             hook = {"type": "command", "command": python_command, "args": ["-c", bootstrap("context7_refresh_hook.py")], "timeout": 30}
-            hooks = add_hooks(read_json(root / ".claude/settings.json"), hook, ".*")
+            hooks = add_hooks(read_json(root / ".claude/settings.json"), hook, MUTATING_TOOLS["claude"])
             plan(".claude/settings.json", json.dumps(hooks, indent=2) + "\n", merge=True)
             hook_clients.append(agent)
         if args.with_hooks and agent in {"copilot", "cursor"}:

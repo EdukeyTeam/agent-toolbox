@@ -7,9 +7,21 @@ import sys
 import local_context7 as local
 
 
+# Read-only tools of the supported agents. A refresh audits every indexed file, so skip it
+# after these even when an older or hand-written hook config matches every tool.
+READ_ONLY_TOOLS = {
+    "Read", "Grep", "Glob", "LS", "NotebookRead", "WebFetch", "WebSearch", "TodoWrite",
+    "read_file", "read_many_files", "glob", "search_file_content", "list_directory", "web_fetch", "google_web_search",
+    "view", "grep",
+}
+
+
 def handle(event: dict) -> dict | None:
     name = event.get("hook_event_name")
     if name not in {"PostToolUse", "Stop", "AfterTool", "AfterAgent", "afterFileEdit", "afterShellExecution", "stop"}:
+        return None
+    tool = event.get("tool_name") or event.get("toolName")
+    if name in {"PostToolUse", "AfterTool"} and (tool in READ_ONLY_TOOLS or str(tool).startswith("mcp__context7-local__")):
         return None
     # Never refresh a different checkout based on paths or commands in input.
     working = event.get("cwd")
