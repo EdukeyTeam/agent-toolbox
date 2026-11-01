@@ -583,6 +583,14 @@ class Amendment16Tests(unittest.TestCase):
         rows=list(discover.inventory(discover.roots_for(self.root,[]),discovery_limit=1))
         self.assertEqual([r[1] for r in rows],['service.py'])
 
+    def test_walk_counts_traversed_directories_against_the_bound(self):
+        deep=self.root
+        for n in range(5):
+            deep=deep/f'empty{n}';deep.mkdir()
+        with self.assertRaisesRegex(RetrievalError,'Discovery entry limit 3'):
+            list(discover.inventory(discover.roots_for(self.root,[]),discovery_limit=3))
+        self.assertTrue(list(discover.inventory(discover.roots_for(self.root,[]),discovery_limit=100)))
+
     def test_long_query_limit_and_first_32_terms(self):
         self.index()
         self.assertTrue(self.query('InvoiceMaker '+('invoice '*800))['results'])

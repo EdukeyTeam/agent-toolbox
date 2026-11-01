@@ -206,6 +206,8 @@ def inventory(roots: list[Root], excludes=(), includes=(), discovery_limit=2_000
                                 generated_count, generated_only = (directory_files(entry.path) if not git_repo and not include_branch and entry.name in OUTPUT_DIRS else (0, False))
                                 if entry.name not in {".git", ".hg", ".svn", "CVS"} and not secret_name(PurePosixPath(rel)) and (include_branch or (entry.name not in SKIP_DIRS and not generated_only and not matches(rel, excludes) and not ignore_match(base, rel, ignore_cache, True))):
                                     stack.append(Path(entry.path))
+                                    counters["visited"] += 1  # traversed directories count, or empty trees escape the bound
+                                    check_bound()
                                 else:
                                     excluded(rel)
                                     count = generated_count if generated_only else directory_files(entry.path)[0]
