@@ -1,0 +1,22 @@
+{
+  "skills/legacy-codebase-workflows/scripts/local_context/__init__.py": "0b35ae1598342a8e886aa0a61a38f65a2282ced835279664eed55e03a776ba9a",
+  "skills/legacy-codebase-workflows/scripts/local_context/__main__.py": "d9536d4924712ac802f9176efb38f7c7ce898bec6c5f54280893233174f010dd",
+  "skills/legacy-codebase-workflows/scripts/local_context/assemble.py": "37d5bb94960d82de17d4c9a9814a351eb3ed01386cc02f6545d5f3b1c988786e",
+  "skills/legacy-codebase-workflows/scripts/local_context/chunk.py": "87f93163e9b41b5880ca19b39c3d04a3f73ec204bede171a4137ac58151801f6",
+  "skills/legacy-codebase-workflows/scripts/local_context/cli.py": "10e5a12774f65cd1cc6a7c7571377c0bd1aee1294e143fb6be84f5ccc57f0064",
+  "skills/legacy-codebase-workflows/scripts/local_context/decode.py": "df86221814e51dcdf790f31e5b03f5940a4b259ee8836f1e220218a060c5083a",
+  "skills/legacy-codebase-workflows/scripts/local_context/discover.py": "124865489c61377bc0b0d6d139132eafe22e95f14f602906a0ad3b70b31f34f2",
+  "skills/legacy-codebase-workflows/scripts/local_context/embed.py": "a30d83fdd4cf5682fa94bb7a166bc11a823a13f1a9ba2c1f9544a07b571dbce5",
+  "skills/legacy-codebase-workflows/scripts/local_context/engine.py": "4de23a4006a64bbc86e6b31eedd4fb27b26099f2aaad585925c3bfc0b2e9ab57",
+  "skills/legacy-codebase-workflows/scripts/local_context/freshness.py": "7d15f8e11debe6f8dbe945e980221ad1006f35ba35b9843a341964d5fb871722",
+  "skills/legacy-codebase-workflows/scripts/local_context/http_api.py": "af8e54f5075f45ce68d0dc44de649056d1d5a323e1de7f4f645884c9b2239c82",
+  "skills/legacy-codebase-workflows/scripts/local_context/protocol.py": "1f509e03e0cee8d06d8efca17c2af95077cad79789d41df8709c883b7ac3a919",
+  "skills/legacy-codebase-workflows/scripts/local_context/search.py": "c54290d080f1b40e3871ed05dc2dd93e6cef5c6c400a0a2362dd6368944d4b04",
+  "skills/legacy-codebase-workflows/scripts/local_context/store.py": "7e4848bd8cee9740e61675d5db7c126fe3cee5621dd1d2f02debd3be30c31bc4",
+  "skills/legacy-codebase-workflows/scripts/local_context/symbols.py": "22132313b1171cc9c0f8138a916132c6305b94077b01ce00dc2b9ffa69999e45",
+  "skills/legacy-codebase-workflows/scripts/local_context/units.py": "4cf0923e7a36f367729d47e48e707c37000caee8b8b80bb4b4ffabf246e51d9c",
+  "skills/legacy-codebase-workflows/scripts/local_context/vectors.py": "942ea5f6e6a53491d783f699cc2f4f3fb5d99d100624b57d8effc90d0453c7d4",
+  "skills/legacy-codebase-workflows/scripts/context7_backend.py": "08cdf26c82db5b270e1a996027c038fa8fd948b4c51a2f6b037a939359f20a2b",
+  "skills/legacy-codebase-workflows/scripts/setup_context7.py": "d4a14bbac80ab5c54996fe680a9bb5ea9134b073f347e7b8188381979c66f42b",
+  "skills/legacy-codebase-workflows/assets/context7/local_context7.py": "e99a8b0391d85f27b3bd955967f105a999d62661a336fa994028f108dc971d3a"
+}

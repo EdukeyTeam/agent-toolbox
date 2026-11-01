@@ -1,0 +1,709 @@
+[
+  {
+    "id": "django-001",
+    "ranges": [
+      {
+        "path": "django/db/transaction.py",
+        "start": 143,
+        "end": 148,
+        "fileSha256": "b7955289b6982bf3a4c272fc80b4fddc1580ea843788f163aee69f0592b6151c",
+        "rangeSha256": "3da73f7bf5d3fcab31fb37d751ecb3b53e376bdde839df43fd32b18a5b16e644"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-002",
+    "ranges": [
+      {
+        "path": "django/db/models/query.py",
+        "start": 1089,
+        "end": 1112,
+        "fileSha256": "af89f1454778a7b3e49652b28bd97dee7756bf28a1bb4e83ba5d751fec7d9149",
+        "rangeSha256": "88c72862d5368bb50f1e751575b52b24ccefad999c5be0311d070e62b25cfa90"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-003",
+    "ranges": [
+      {
+        "path": "django/db/transaction.py",
+        "start": 196,
+        "end": 207,
+        "fileSha256": "b7955289b6982bf3a4c272fc80b4fddc1580ea843788f163aee69f0592b6151c",
+        "rangeSha256": "d7a39543c347bffe6ccff28771d6426fefa5fdebfcbe2b8560bc447fe8d5effe"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-004",
+    "ranges": [
+      {
+        "path": "django/db/models/query.py",
+        "start": 609,
+        "end": 626,
+        "fileSha256": "af89f1454778a7b3e49652b28bd97dee7756bf28a1bb4e83ba5d751fec7d9149",
+        "rangeSha256": "0b1531d60b31cfcbf8a013172613233d4db77672850a18002bb08bb3e4822d1f"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-005",
+    "ranges": [
+      {
+        "path": "django/db/utils.py",
+        "start": 150,
+        "end": 170,
+        "fileSha256": "fd635f28832f6d0f1fb91614c51d3778717935dd6d627dd7401227f60406386e",
+        "rangeSha256": "a170e001b91b6b65ab8cb12da5389ca95bac56fb10267a2a8b99c74fb0e725e9"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-006",
+    "ranges": [
+      {
+        "path": "docs/topics/db/transactions.txt",
+        "start": 29,
+        "end": 44,
+        "fileSha256": "fce19bd320802338c10f437354a5c553cdcecede54063721e49a03f79d80c62a",
+        "rangeSha256": "0632dbc9d67e1b436d801ab1dfe934f1ffaaeb9db522f2e7f36ba9c7ae40b468"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-007",
+    "ranges": [
+      {
+        "path": "django/db/models/query.py",
+        "start": 2173,
+        "end": 2177,
+        "fileSha256": "af89f1454778a7b3e49652b28bd97dee7756bf28a1bb4e83ba5d751fec7d9149",
+        "rangeSha256": "3b081f0a867be12752e4d0bba21adb160233596a22a84e0dcca488a3a3737ab3"
+      },
+      {
+        "path": "django/db/utils.py",
+        "start": 220,
+        "end": 242,
+        "fileSha256": "fd635f28832f6d0f1fb91614c51d3778717935dd6d627dd7401227f60406386e",
+        "rangeSha256": "1fde03d00b50b4e702a0fcb107b750cf8741f1a1bb6ec05027846b26efaf118a"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-008",
+    "ranges": [
+      {
+        "path": "django/db/models/query.py",
+        "start": 2048,
+        "end": 2052,
+        "fileSha256": "af89f1454778a7b3e49652b28bd97dee7756bf28a1bb4e83ba5d751fec7d9149",
+        "rangeSha256": "8597eafa42bbad90dcb129dcf994ef5449d962375c84b4578e6ff5deca7f1989"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "django-009",
+    "ranges": [],
+    "absentIdentifier": "quantum_prefetch"
+  },
+  {
+    "id": "django-010",
+    "ranges": [],
+    "absentIdentifier": "atomic_retry_forever"
+  },
+  {
+    "id": "httpx-001",
+    "ranges": [
+      {
+        "path": "httpx/_client.py",
+        "start": 340,
+        "end": 389,
+        "fileSha256": "ed717b3ac00debb48d089daeb4dd7fbaf47cb5642ebc4a6e76f3a2fc6cfc0f70",
+        "rangeSha256": "aff57216ca2e6c693f08fa76debd2a8878781ae7d78bc4b5b566a3cbdfa3808c"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-002",
+    "ranges": [
+      {
+        "path": "httpx/_models.py",
+        "start": 794,
+        "end": 829,
+        "fileSha256": "af118b075a5bcece608acbc989b221703935cbea128a4a98ca21a23ff3e860ac",
+        "rangeSha256": "b9fa81571dde7a52a2f6778f2fe8f2bc42ed018461c2c45fcde7a7db3c06da21"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-003",
+    "ranges": [
+      {
+        "path": "httpx/_client.py",
+        "start": 964,
+        "end": 974,
+        "fileSha256": "ed717b3ac00debb48d089daeb4dd7fbaf47cb5642ebc4a6e76f3a2fc6cfc0f70",
+        "rangeSha256": "ecc8d1dca5d3fc7f8262a75166e58ae3f4508d9aad002a0f854fa86db279cbcb"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-004",
+    "ranges": [
+      {
+        "path": "httpx/_transports/default.py",
+        "start": 147,
+        "end": 166,
+        "fileSha256": "bfb106716ce33f4c29583cc1e43803109a9dba532613ec4f6fe2cd09e7c022e3",
+        "rangeSha256": "96b27e8f99ed0a65844132970b655628ae0fe1a9293c029da34d3fab911a824f"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-005",
+    "ranges": [
+      {
+        "path": "docs/advanced/resource-limits.md",
+        "start": 1,
+        "end": 13,
+        "fileSha256": "48463dfbcc09e28b174cf07695a937119da537436dc534421b64dcca7a024559",
+        "rangeSha256": "48463dfbcc09e28b174cf07695a937119da537436dc534421b64dcca7a024559"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-006",
+    "ranges": [
+      {
+        "path": "httpx/_client.py",
+        "start": 546,
+        "end": 559,
+        "fileSha256": "ed717b3ac00debb48d089daeb4dd7fbaf47cb5642ebc4a6e76f3a2fc6cfc0f70",
+        "rangeSha256": "a5f417debdf68a7f7b70141a727f07a0644769100b6bc3c513cf6a9e525533de"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-007",
+    "ranges": [
+      {
+        "path": "httpx/_config.py",
+        "start": 111,
+        "end": 130,
+        "fileSha256": "a4fa7653ec2271f70ab05f8a6111352d876dddee84446788a1767c1a3a372d67",
+        "rangeSha256": "19cd4e9928b299793a47d7b710cec2397d972eabbe312a04457ec0ada580a57f"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-008",
+    "ranges": [
+      {
+        "path": "docs/advanced/event-hooks.md",
+        "start": 33,
+        "end": 38,
+        "fileSha256": "96d292f95b3412c54f7f862fd38a569b0efb2bd51a6cacdd5b391072262b9558",
+        "rangeSha256": "b1042d48360456258c5650cebe8d2c7739da048be75b3d981b47b0e0601af7a6"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-009",
+    "ranges": [
+      {
+        "path": "httpx/_client.py",
+        "start": 391,
+        "end": 411,
+        "fileSha256": "ed717b3ac00debb48d089daeb4dd7fbaf47cb5642ebc4a6e76f3a2fc6cfc0f70",
+        "rangeSha256": "7110fd60c19b5cc1a8aa3bb10374b0f6ce618a3a52a9efb8c83c32796a7d8c8d"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-010",
+    "ranges": [
+      {
+        "path": "httpx/_models.py",
+        "start": 884,
+        "end": 905,
+        "fileSha256": "af118b075a5bcece608acbc989b221703935cbea128a4a98ca21a23ff3e860ac",
+        "rangeSha256": "3de1a8986580ab0d03cdad20368616916a8e7905a082c85a19d982925d88c3db"
+      },
+      {
+        "path": "httpx/_decoders.py",
+        "start": 228,
+        "end": 264,
+        "fileSha256": "a74757f08d0d1077b1b37506a784ac66eb62321b17aeb5a5ebe1a7a956f488a3",
+        "rangeSha256": "f60a2c91a92308208d86bd7f032386b3676eaaae8593cf4f5da1b27fae802444"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-011",
+    "ranges": [
+      {
+        "path": "httpx/_transports/mock.py",
+        "start": 15,
+        "end": 43,
+        "fileSha256": "3d3a34779ebb4484d7c46ae48ba90deffebbc300317f088c0dcb972626428c4a",
+        "rangeSha256": "42b34e9f370e9b8eab6951a79769966891e384eb3c916da6a15b643ef7d522de"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-012",
+    "ranges": [
+      {
+        "path": "httpx/_client.py",
+        "start": 239,
+        "end": 251,
+        "fileSha256": "ed717b3ac00debb48d089daeb4dd7fbaf47cb5642ebc4a6e76f3a2fc6cfc0f70",
+        "rangeSha256": "67101e14b7c538f3f5ddc24a2cd1ecdc0df6bd06ab2589a26e119585624fea09"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-013",
+    "ranges": [
+      {
+        "path": "docs/advanced/transports.md",
+        "start": 17,
+        "end": 22,
+        "fileSha256": "55648dd15c551f151f538aa79c8d2934bb581528d85bcc0fe3d810ac4a5ca382",
+        "rangeSha256": "161412e0e2a7e6a31ef348209fe684688d0cd510817b876af112287ead215dea"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "httpx-014",
+    "ranges": [],
+    "absentIdentifier": "RetryPolicyManager"
+  },
+  {
+    "id": "httpx-015",
+    "ranges": [],
+    "absentIdentifier": "enable_magic_retries"
+  },
+  {
+    "id": "jftp-001",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/FTPSession.java",
+        "start": 224,
+        "end": 234,
+        "fileSha256": "7ceb1617ec403a910846bb859cf335e5264646f9dbe6cec4611399e07f27243a",
+        "rangeSha256": "a04dbdb6548ecfd2f90e15b5855077255faa6314afe3051a45a7868cceab1500"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-002",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/util/ResourceLoader.java",
+        "start": 35,
+        "end": 42,
+        "fileSha256": "987cea071f2044eddf460cf41a9688c406cf291548f144db3651688c70637dee",
+        "rangeSha256": "30ea31af7558771e95369e3feb53ae3455a923fdafc64a53e816f9b4972649e9"
+      },
+      {
+        "path": "src/main/java/com/myjavaworld/util/ResourceLoader.java",
+        "start": 56,
+        "end": 59,
+        "fileSha256": "987cea071f2044eddf460cf41a9688c406cf291548f144db3651688c70637dee",
+        "rangeSha256": "657d955f64bd9257cdee4adc772c33f20282ac495952d5c906b7b7cf0b4d6d64"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-003",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/JFTP.java",
+        "start": 512,
+        "end": 524,
+        "fileSha256": "845ae223525ea119e310178201fa0f5010fc13888fa27d12d6c18e1cf108350b",
+        "rangeSha256": "3333ba91c64a9ac9ce376e632350cbdd81cef014b40d38639b60e6b7b06ea1eb"
+      },
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/JFTP.java",
+        "start": 535,
+        "end": 558,
+        "fileSha256": "845ae223525ea119e310178201fa0f5010fc13888fa27d12d6c18e1cf108350b",
+        "rangeSha256": "5813069f68b8da9f4897a7a7761c61ec5fcfd4df8281d5b0659d164f76c5c871"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-004",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/FTPSession.java",
+        "start": 400,
+        "end": 443,
+        "fileSha256": "7ceb1617ec403a910846bb859cf335e5264646f9dbe6cec4611399e07f27243a",
+        "rangeSha256": "5ea44bd5ea1588df2e1059cb2e1ef436559796e8081edc1a7f2a46db3a76064b"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-005",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/FTPSession.java",
+        "start": 622,
+        "end": 631,
+        "fileSha256": "7ceb1617ec403a910846bb859cf335e5264646f9dbe6cec4611399e07f27243a",
+        "rangeSha256": "f1e3048228039b7d76ed4f4d76598affc1351564c0392748b551f2d8cbde817b"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-006",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel.java",
+        "start": 96,
+        "end": 105,
+        "fileSha256": "b1d37c89408360da209c8735b6ba1665609c2ade00bcab285d222c51c2b6bfe3",
+        "rangeSha256": "c33f9456c8cd84a888726a37d615da5e7e9ff19575100039fba2d9e15c216598"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-007",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/AdvancedConnectionPrefsPanel.java",
+        "start": 56,
+        "end": 80,
+        "fileSha256": "b1d37c89408360da209c8735b6ba1665609c2ade00bcab285d222c51c2b6bfe3",
+        "rangeSha256": "833e14c9a28909c9cf3a72898d1c82619206a4de98cb1478d7a107282b2be827"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-008",
+    "ranges": [
+      {
+        "path": "docs/build-and-dependencies.md",
+        "start": 13,
+        "end": 23,
+        "fileSha256": "9c746c0a8513e05d998c7a4e4956dc19a4c14d650918dff9835ce6710f4d6cdb",
+        "rangeSha256": "df175ecc509f4d5b0946d60fc4f9fc062ac9747cde0034d5a2f12dc5a071b80b"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-009",
+    "ranges": [
+      {
+        "path": "docs/ui-and-browser-details.md",
+        "start": 15,
+        "end": 15,
+        "fileSha256": "1e52edfdf7f5f1c77d5d148e9385bb88bb5aa8c54c816c0382b6bc52bd7170c6",
+        "rangeSha256": "06c21883718093cadf8613aa803b5ebecec3d880d2ef512e8043d8d4b47ac64c"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-010",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/actions/UploadAction.java",
+        "start": 51,
+        "end": 56,
+        "fileSha256": "6e17c73a7cf61f9a79c27ddd47f4efefd50e2958ae222d625726cee67d2dcc1b",
+        "rangeSha256": "cbececdd0c8569f0b23c59971ba8a0131813217b42d4ecb931b71ac34a591a47"
+      },
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/FTPSession.java",
+        "start": 835,
+        "end": 855,
+        "fileSha256": "7ceb1617ec403a910846bb859cf335e5264646f9dbe6cec4611399e07f27243a",
+        "rangeSha256": "b78b106f466c338af9294f389b77269d9f685e7c8ee90b942e52ad11bb598480"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-011",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/util/FileChangeMonitor.java",
+        "start": 45,
+        "end": 51,
+        "fileSha256": "23dd8aca7f66d6027cdadd07efb82b271f3131a2e26588f2acf104f7d7f0bbee",
+        "rangeSha256": "73719c0a11a24e4c4e36208e130a3ba40f25c92fd95ee99f1d661eb12fa1cfd2"
+      },
+      {
+        "path": "src/main/java/com/myjavaworld/util/FileChangeMonitor.java",
+        "start": 73,
+        "end": 95,
+        "fileSha256": "23dd8aca7f66d6027cdadd07efb82b271f3131a2e26588f2acf104f7d7f0bbee",
+        "rangeSha256": "31fad540be64b184344539388e0f1ac146ec2754bcd8c37f1b312fa47b449fe8"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-012",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/FTPSession.java",
+        "start": 649,
+        "end": 672,
+        "fileSha256": "7ceb1617ec403a910846bb859cf335e5264646f9dbe6cec4611399e07f27243a",
+        "rangeSha256": "a50f270d2632750c9d43769c84f730f809f53856957f5ea55422307638687db4"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-013",
+    "ranges": [
+      {
+        "path": "src/main/java/com/myjavaworld/jftp/JFTPPreferences.java",
+        "start": 81,
+        "end": 88,
+        "fileSha256": "b94fb2d1eabfcd7484979a88e926717d9b046c6b9c91f4fb18e0caad3dbc2347",
+        "rangeSha256": "ccc8e5646fd866595723410cf9d197d0b914eaeee7066fb4c38d8d4ed419f69c"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "jftp-014",
+    "ranges": [],
+    "absentIdentifier": "SftpSessionPool"
+  },
+  {
+    "id": "jftp-015",
+    "ranges": [],
+    "absentIdentifier": "enableAsyncTransferPipeline"
+  },
+  {
+    "id": "vite-001",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/env.ts",
+        "start": 13,
+        "end": 27,
+        "fileSha256": "c34fe179f16534f2e50d0efa5466c44a6c910c51786af8708ad4e3302dab77fd",
+        "rangeSha256": "64541c857e77e5cf46fb56fcfc53fc09572cf3e5d2f7f31009c00d3708e7ac04"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-002",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/env.ts",
+        "start": 109,
+        "end": 116,
+        "fileSha256": "c34fe179f16534f2e50d0efa5466c44a6c910c51786af8708ad4e3302dab77fd",
+        "rangeSha256": "9b653a220d22d140da9fdf073f5debfc523aba9caeb275f56ca67ec711106c8f"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-003",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/server/hmr.ts",
+        "start": 426,
+        "end": 450,
+        "fileSha256": "70382e5c26bb2369d7385a7a7155b88081551061906d167af4e67a57e4b1c1a2",
+        "rangeSha256": "2aff6ee58695a44a3f7276fd6921b6b4564a2e1469c7ba7a7fd4064904fcdd2f"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-004",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/optimizer/optimizer.ts",
+        "start": 378,
+        "end": 389,
+        "fileSha256": "3b9d8ebbc787075b5999776e52090dbbdcc202cd097b3c2e252983dc783bb761",
+        "rangeSha256": "6ba458cfc469cd58d123857e71395313f43612e8c12e2b908a1a894742302a68"
+      },
+      {
+        "path": "packages/vite/src/node/optimizer/optimizer.ts",
+        "start": 529,
+        "end": 538,
+        "fileSha256": "3b9d8ebbc787075b5999776e52090dbbdcc202cd097b3c2e252983dc783bb761",
+        "rangeSha256": "cb52eeb951f2f329a09d1a77c646ffb41a07756a04ca39b5102fb0c93f9cdf6d"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-005",
+    "ranges": [
+      {
+        "path": "docs/config/server-options.md",
+        "start": 64,
+        "end": 74,
+        "fileSha256": "a446eb568d948f131f382ae4af0379ab13501583430123721a16b3679233c449",
+        "rangeSha256": "5387c46cce38656014774f0ee1f2a9ff8233bf85fcbb7c4a8a6de6a395f9da8b"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-006",
+    "ranges": [
+      {
+        "path": "docs/config/server-options.md",
+        "start": 124,
+        "end": 131,
+        "fileSha256": "a446eb568d948f131f382ae4af0379ab13501583430123721a16b3679233c449",
+        "rangeSha256": "8f839cf5127835458f056c2cfa55440e813719b3214162183c371017f1cd2d13"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-007",
+    "ranges": [
+      {
+        "path": "docs/guide/features.md",
+        "start": 451,
+        "end": 468,
+        "fileSha256": "8d819b6a9f3a793c08f3081eb05e363580b29bb215d58ab0b7b93bfe264e7fc0",
+        "rangeSha256": "de870396ac9e05be5ef3b70c693a852b594bdd3a6805b66286e42895f0edd2c0"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-008",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/server/index.ts",
+        "start": 966,
+        "end": 983,
+        "fileSha256": "381939ebd417b71998bbb21334f12b73b9182a76777323f6c259c020e55acd28",
+        "rangeSha256": "d9cb8960fd539bf04cbea746e1163021f5fcf2aad536075addb4cf5954875b52"
+      },
+      {
+        "path": "packages/vite/src/node/server/moduleGraph.ts",
+        "start": 145,
+        "end": 152,
+        "fileSha256": "459f3329e19e3cc3d2a47790327570b32484123ee2ca4c171f136c7ecd4ff4c0",
+        "rangeSha256": "f0aede893d89e18a237a89efbb2849bb2df948f932c94c3a117865ae8d3907de"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-009",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/server/moduleGraph.ts",
+        "start": 174,
+        "end": 208,
+        "fileSha256": "459f3329e19e3cc3d2a47790327570b32484123ee2ca4c171f136c7ecd4ff4c0",
+        "rangeSha256": "77bb39cb90d99d61c7655c5b71cffaa44b06ff5ce101d77e1aa475f73a436705"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-010",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/env.ts",
+        "start": 83,
+        "end": 101,
+        "fileSha256": "c34fe179f16534f2e50d0efa5466c44a6c910c51786af8708ad4e3302dab77fd",
+        "rangeSha256": "03733bdb44b4e156349289c31dac13a051b13da98b746e5978f3fce7215bda16"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-011",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/optimizer/optimizer.ts",
+        "start": 561,
+        "end": 598,
+        "fileSha256": "3b9d8ebbc787075b5999776e52090dbbdcc202cd097b3c2e252983dc783bb761",
+        "rangeSha256": "bfb23691d18b9ec4bfb15e6b7bc20158bd2215aebcf20832be8dba6bdd43858e"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-012",
+    "ranges": [
+      {
+        "path": "docs/guide/env-and-mode.md",
+        "start": 32,
+        "end": 50,
+        "fileSha256": "c15b7b8483c2ba01486e49f150aa79d987577a85eea3e580be80b9e71d07badc",
+        "rangeSha256": "2f9b1a005b959d89ededa53d5e4816c6b94f4b2ae510a658b0a5b2a7df6c24c7"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-013",
+    "ranges": [
+      {
+        "path": "packages/vite/src/node/server/hmr.ts",
+        "start": 694,
+        "end": 725,
+        "fileSha256": "70382e5c26bb2369d7385a7a7155b88081551061906d167af4e67a57e4b1c1a2",
+        "rangeSha256": "523b7874ad4e1e2ee69d16c27f3e93561d4bb4ccd66d73eb9c10d860c0a3f0b0"
+      }
+    ],
+    "absentIdentifier": null
+  },
+  {
+    "id": "vite-014",
+    "ranges": [],
+    "absentIdentifier": "createTeleportServer"
+  },
+  {
+    "id": "vite-015",
+    "ranges": [],
+    "absentIdentifier": "enableQuantumCache"
+  }
+]

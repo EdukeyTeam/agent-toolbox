@@ -33,6 +33,8 @@ function selected(paths, event) {
 }
 const legacy = 'skills/legacy-codebase-workflows/';
 const cases = [
+  ['evaluation helper', ['evals/retrieval/results/embeddings/vector-scan-source.py'], ['python']],
+  ['evaluation instructions', ['evals/retrieval/questions/dev2-README.md'], ['python']],
   ['repository docs', ['README.md', 'AGENTS.md', 'docs/ci.md', '.github/PULL_REQUEST_TEMPLATE.md'], []],
   ['Rust contributor docs', ['src/legacy-repo-map/README.md'], []],
   ['skill metadata', [legacy + 'SKILL.md'], ['node', 'package']],

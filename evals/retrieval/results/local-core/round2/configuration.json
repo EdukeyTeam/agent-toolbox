@@ -1,0 +1,49 @@
+{
+  "before_commit": "1a41859",
+  "parser_tiers": {
+    "before": 0,
+    "t0": 0,
+    "t1": 1,
+    "hybrid": 0
+  },
+  "hybrid_provider": "local-python",
+  "model": "minishlab/potion-code-16M-v2",
+  "revision": "e9d2a44ca6a05ac6685f3b23709ea57eb7352d5b",
+  "vector_engine": "numpy",
+  "weights": {
+    "symbol": 1.0,
+    "path": 1.5,
+    "fts": 1.0,
+    "shadow": 0.55,
+    "vector": 2.0
+  },
+  "question_hashes": {
+    "httpx.dev": "9f3885b13839777cca56d1933b831204f73b09a29d57619c0b9c414f0dd17e94",
+    "vite.dev": "289477cc635680b0494a59f46e25465e745910c8e083eb9bac31e871bc5c6790",
+    "jftp.dev": "5e891926398b175454dcfc9f9919148c8e33ffb109911ebc7b844f604fe284c8",
+    "django.dev": "edc0c8b1d66f808de9ae160fb249841398eef80a5b3c85b79633bde4b9fc39ce",
+    "httpx.dev2": "992a963c0285a897d73c80ee7791cd0f8bcd08fb9c4bb111c9b9dd8fdfbf94ca",
+    "vite.dev2": "700523a580ccee32f86ce879f23ae3ccfaf225b5eff8d27ed97e3ca59fdd7862",
+    "jftp.dev2": "ba13e64e2e204b2467c67d0ab2c012c9e3267cd390d367efb9e54b871f3f732c",
+    "django.dev2": "ed364c7b6385ae61fd6a09e9461386feeb4add63c36e2579db0d4420bf4ecc28"
+  },
+  "source_sha256": {
+    "assemble.py": "9abd692a97624c4b36285d76e60736dccbc9bf235c88ed36d4c42afa36c6d81c",
+    "chunk.py": "e8602cad2330cb3ef08048a0a2b472ffdefc29659d1c73a11db00d376c8e1176",
+    "cli.py": "379dd644be39f16dae8102cdb29539499f000516e62ace015aacf9e75fb01087",
+    "decode.py": "587a64bf58119fbca02a1114837f9ee7f519313f8cb41f713c42c92c5ac28b48",
+    "discover.py": "e194eb37985157beef8bedf00f1953a8dda52409758893e25ed83f8d5a7402d3",
+    "engine.py": "56525172fed9a7389646b074b402e893c8e880454440f656e67eeeff7fac646f",
+    "freshness.py": "4b008e25f65a39104b826f6a44e69b46dabe9641c75ea75deff60d20bc097fe8",
+    "http_api.py": "6f6d6fc4a3709372fa181338e2cc96abb4b4485c7eaf55368ebda805df516227",
+    "search.py": "998b45640c208a91def14163ca7cbd0a3f4f1a5151780d335464b1ae06baf0a5",
+    "store.py": "25eabf0f283f316ee9cbbba82dd34b1e4eb4568c4b589aff36e4069a4c0cda86",
+    "symbols.py": "5596653f2aa3401f7f75067c5db5e183c15d7acaa402ef93ca09e0eddb9bfa41",
+    "skills/legacy-codebase-workflows/scripts/eval_retrieval.py": "c80f1442917f8f5a2ab2ed77a9135d29605047f9f38dba1f05d6a50cdd9d8158",
+    "skills/legacy-codebase-workflows/scripts/local_context/embed.py": "a30d83fdd4cf5682fa94bb7a166bc11a823a13f1a9ba2c1f9544a07b571dbce5",
+    "skills/legacy-codebase-workflows/scripts/local_context/vectors.py": "942ea5f6e6a53491d783f699cc2f4f3fb5d99d100624b57d8effc90d0453c7d4",
+    "skills/legacy-codebase-workflows/scripts/requirements-embed.txt": "e7633c28782e19863ea3bcb5533764f3d3eef988875b7a3330d666ef14327398",
+    "tests/test_legacy_local_context_core.py": "3577dacaf66a8cfe2384e8f695b36039202b8e857274d3d040ea19aa7b60d35d",
+    "tests/test_legacy_local_context_http.py": "557abe3a9bbbf44ff3551f311b8c8644641d397b9b54107f55f8c66cfcca98ae"
+  }
+}
