@@ -147,8 +147,8 @@ class _Scanner:
             skipped = self._skip_annotation(index, name)
             if skipped != index:
                 index = skipped
-            elif t[index] in MODIFIERS:
-                index += 1
+            elif found := self._modifier(index, name):
+                index += found[1]
             elif t[index] == "<":
                 depth = 0
                 while index < name:
@@ -190,6 +190,13 @@ class _Scanner:
             types.append("".join(t[token_index] for token_index in part))
         return ",".join(types)
 
+    def _modifier(self, index: int, limit: int) -> tuple[str, int] | None:
+        """The modifier at index and its token count; `non-sealed` is lexed as three tokens."""
+        t = self.texts
+        if t[index:index + 3] == ["non", "-", "sealed"] and index + 3 <= limit:
+            return "non-sealed", 3
+        return (t[index], 1) if t[index] in MODIFIERS else None
+
     def _add(self, kind: str, name: str, ident: str, owner: str, start: int, end: int, header_end: int, body: int | None = None) -> None:
         key = f"{owner}#{ident}"
         seen = self._ids[key] = self._ids.get(key, 0) + 1
@@ -198,9 +205,9 @@ class _Scanner:
             skipped = self._skip_annotation(index, header_end)
             if skipped != index:
                 index = skipped
-            elif self.texts[index] in MODIFIERS:
-                modifiers.append(self.texts[index])
-                index += 1
+            elif found := self._modifier(index, header_end):
+                modifiers.append(found[0])
+                index += found[1]
             else:
                 break
         member = {
@@ -567,7 +574,8 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
                     if (path, member["id"]) not in stayed:
                         candidates[lane].setdefault(key, []).append((path, member))
         for found in candidates[lane].values():
-            found.sort(key=lambda candidate: existed(*candidate))  # prefer code that is new at its place
+            # Prefer members new at their place over edited baseline members, so a destination is never code that was already there.
+            found.sort(key=lambda candidate: (candidate[1]["id"] in before.get(candidate[0], {}), existed(*candidate)))
 
     used, outcome = set(), {}
 

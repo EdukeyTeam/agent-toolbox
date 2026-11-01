@@ -145,6 +145,11 @@ class ScannerTests(unittest.TestCase):
             ("Big.Api", "interface", 55, 58, 2), ("Big.Marker", "annotation", 60, 62, 1), ("Big.Point", "record", 64, 66, 1), ("Second", "class", 69, 69, 0),
         ])
 
+    def test_non_sealed_is_one_modifier(self):
+        found = members("public sealed interface Shape permits Square {}\npublic non-sealed class Square implements Shape {\n    Square() {}\n}\n")
+        self.assertEqual((found["Shape#<type>"]["modifiers"], found["Square#<type>"]["modifiers"]), (["public", "sealed"], ["public", "non-sealed"]))
+        self.assertEqual(found["Square#Square()"]["kind"], "constructor")
+
     def test_modifiers_documentation_and_headers_are_reported(self):
         found = members(TRICKY)
         self.assertEqual(found["Big#convert(Map<K,V>,String[],int[],Object...)"]["modifiers"], ["protected", "static"])
@@ -452,6 +457,17 @@ class LedgerTests(RepositoryCase):
         # Nor does changing the header of a method that was already there.
         self.assertEqual(self.statuses(result), {"Orders#field:count": "missing", "Orders#same()": "missing"})
         self.assertFalse(result["passed"])
+
+    def test_a_new_copy_is_preferred_over_an_edited_existing_member(self):
+        self.write("src/app/A.java", "package app;\n\nclass A {\n    private int same() { return 7; }\n}\n")
+        self.write(self.big, BIG.replace("    public int total(", "    int same() { return 7; }\n\n    public int total("))
+        baseline = self.baseline()
+        self.write(self.big, BIG)
+        self.write("src/app/A.java", "package app;\n\nclass A {\n    public int same() { return 7; }\n}\n")
+        self.write("src/app/B.java", "package app;\n\nclass B {\n    static int same() { return 7; }\n}\n")
+        result = compare(self.repo, baseline)
+        moved = {record["member"]: record for record in result["members"]}["src/app/Orders.java::Orders#same()"]
+        self.assertEqual((moved["status"], moved["now"][0]["member"]), ("signature-changed", "src/app/B.java::B#same()"))
 
     def test_scope_is_bounded_and_outside_code_is_not_searched(self):
         self.write("lib/Elsewhere.java", 'class Elsewhere {\n    void audit(String who) {\n        System.out.println("audit " + who);\n    }\n}\n')
