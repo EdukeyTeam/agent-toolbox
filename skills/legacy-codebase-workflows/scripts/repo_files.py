@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import codecs
 import fnmatch
 import hashlib
 import json
@@ -224,7 +225,8 @@ def _candidates(root: Path, git_repo: bool, subtrees, *, max_discovery_entries=N
         pending.extend((False, leaf) for leaf in reversed(leaves))
 
 
-def read_safe_text(root: str | Path, relative_path: str, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES) -> tuple[str, str]:
+def read_safe_text(root: str | Path, relative_path: str, *, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES, encoding: str = "utf-8") -> tuple[str, str]:
+    """Decoded text and the SHA-256 of the original bytes. Name a legacy `encoding` explicitly; it is never guessed."""
     root = Path(root).resolve(strict=True)
     rel = _safe_relative(relative_path)
     if _secret(rel):
@@ -248,9 +250,12 @@ def read_safe_text(root: str | Path, relative_path: str, *, max_file_bytes: int 
     if b"\0" in data:
         raise ValueError("binary file")
     try:
-        return data.decode("utf-8"), hashlib.sha256(data).hexdigest()
+        utf8 = codecs.lookup(encoding).name == "utf-8"
+        return data.decode(encoding), hashlib.sha256(data).hexdigest()
     except UnicodeDecodeError as exc:
-        raise ValueError("non-UTF-8 file") from exc
+        raise ValueError("non-UTF-8 file" if utf8 else f"cannot decode file as {encoding}") from exc
+    except LookupError as exc:  # unknown name, or a codec that is not a text encoding
+        raise ValueError(f"unknown text encoding: {encoding}") from exc
 
 
 def split_source_lines(text: str) -> list[str]:

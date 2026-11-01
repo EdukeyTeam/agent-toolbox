@@ -43,6 +43,8 @@ const cases = [
   ['Rust code and lock', ['src/legacy-repo-map/src/main.rs', 'src/legacy-repo-map/Cargo.lock'], ['native']],
   ['mapper Python', [legacy + 'scripts/repo_map.py'], ['native', 'package', 'python']],
   ['new shared Python helper', [legacy + 'scripts/new_helper.py'], ['native', 'package', 'python', 'semantic']],
+  ['member ledger', [legacy + 'scripts/member_ledger.py'], ['native', 'package', 'python']],
+  ['member ledger tests', ['tests/test_legacy_members.py'], ['python']],
   ['shared inference helper', [legacy + 'scripts/legacy_common.py'], ['native', 'package', 'python', 'semantic']],
   ['retrieval discovery', [legacy + 'scripts/repo_files.py'], ['native', 'package', 'python', 'semantic']],
   ['inference lock', [legacy + 'scripts/retrieval/pnpm-lock.yaml'], ['native', 'package', 'python', 'semantic']],

@@ -11,7 +11,7 @@ from pathlib import Path
 from repo_files import read_safe_text, split_source_lines
 
 
-def check_cards(root: str | Path, evidence: dict) -> dict:
+def check_cards(root: str | Path, evidence: dict, encoding: str = "utf-8") -> dict:
     root = Path(root).resolve(strict=True)
     cards = evidence.get("citations") if isinstance(evidence, dict) else None
     if not isinstance(cards, list) or not cards:
@@ -35,9 +35,12 @@ def check_cards(root: str | Path, evidence: dict) -> dict:
             errors.append("invalid line range")
         if not isinstance(quote, str) or not quote.strip():
             errors.append("quote must be nonempty")
+        card_encoding = card.get("encoding", encoding)
+        if not isinstance(card_encoding, str) or not card_encoding:
+            errors.append("encoding must be a nonempty string")
         if not errors:
             try:
-                text, actual_digest = read_safe_text(root, path, max_file_bytes=20_000_000)
+                text, actual_digest = read_safe_text(root, path, max_file_bytes=20_000_000, encoding=card_encoding)
                 lines = split_source_lines(text)
                 if actual_digest != digest:
                     errors.append("stale source sha256")
@@ -55,10 +58,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repository")
     parser.add_argument("evidence_json", help="JSON file containing {\"citations\": [{path, sha256, start_line, end_line, quote}]} ")
+    parser.add_argument("--encoding", default="utf-8", help="encoding of cited sources without their own \"encoding\" field (default: utf-8)")
     args = parser.parse_args(argv)
     try:
         evidence = json.loads(Path(args.evidence_json).read_text(encoding="utf-8"))
-        result = check_cards(args.repository, evidence)
+        result = check_cards(args.repository, evidence, args.encoding)
     except (OSError, ValueError) as exc:
         print(json.dumps({"valid": False, "error": str(exc)}, sort_keys=True))
         return 2

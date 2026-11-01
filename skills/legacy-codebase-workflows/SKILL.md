@@ -1,13 +1,13 @@
 ---
 name: legacy-codebase-workflows
-description: Investigate, document, or change an unfamiliar legacy codebase using local repository maps, scoped source context, and verified evidence. Use for undocumented internal frameworks, cross-module behavior, or large repositories; a known-file edit or single-symbol search usually needs only direct search.
+description: Investigate, document, or change an unfamiliar legacy codebase using local repository maps, scoped source context, and verified evidence. Use for undocumented internal frameworks, cross-module behavior, large repositories, or source files too large to read or refactor in one pass; a known-file edit or single-symbol search usually needs only direct search.
 ---
 
 # Legacy codebase workflows
 
 Use the workflow that serves the request. Investigation is the default; documentation, startup repair, tests and modernization are optional. A broken build does not turn an investigation into a repair task.
 
-Start with direct search for a known path or symbol; no setup or saved map is needed. For an unfamiliar subsystem, use one native scoped map and original source. For several modules or repeated difficult questions, follow [scale and intake](references/scale-and-intake.md): lazy catalogs, one task map and evidence-based optional pilots. Large size alone does not require retrieval. The bundled tools are bounded and have not been validated on a hundreds-of-megabytes production corpus.
+Start with direct search for a known path or symbol; no setup or saved map is needed. For a Java file of thousands of lines, print its member outline and read one member at a time instead of loading the file; see [very large files](references/large-files.md). For an unfamiliar subsystem, use one native scoped map and original source. For several modules or repeated difficult questions, follow [scale and intake](references/scale-and-intake.md): lazy catalogs, one task map and evidence-based optional pilots. Large size alone does not require retrieval. The bundled tools are bounded and have not been validated on a hundreds-of-megabytes production corpus.
 
 ## First use: setup and saved reports
 
@@ -26,8 +26,6 @@ Do not write machine-specific "ready" or "to do" state into this installed `SKIL
 **Report destination:** honor the user's path; otherwise, when repository writes are authorized, save agent-ready results under `<repository>/docs/repo-maps/`, with a descriptive name such as `repo-map.rust.md`. Announce the destination before generation and link the exact saved files afterward. For read-only work, use an authorized external artifact location. Ask only when the destination cannot be inferred, would overwrite existing work, or conflicts with repository instructions. Keep corpus/module names distinct when comparing several maps.
 
 The low-level mappers require an external output/cache directory and use fixed filenames. Generate there, then use `scripts/export_repo_map.py` to save a named report, raw map and evidence sidecars at the chosen destination. Exported reports include coverage, truncation, token estimates and measured elapsed time when supplied. Keep primary maps and selected source packs in their report directories; put helpers, experiments and supporting evidence in `artifacts/`. For team-shared work, version the primary outputs and necessary provenance within the repository's publication policy. Keep private source out of public history. Follow [saved context](references/saved-context.md) for layout, ignores and sharing, and [repository maps](references/repo-map.md#save-a-named-report) for generation/export commands. Exclude saved reports from later scans so generated context does not map itself.
-
-**Git visibility:** For in-repository reports, add only `<report-directory>/artifacts/` to `.gitignore` by default. Keep the main overview, summary and optional complete-definition index visible to Git. Do not ignore the whole report directory (including a user-chosen destination) or main reports unless the user requests it or applicable confidentiality rules require it. Excluding exported output from mapper scans is a separate step. Escape literal Git pattern characters in custom paths. Check effective ignore rules and follow the [report Git policy](references/repo-map.md#git-visibility-and-scan-exclusions), including custom evidence paths and existing-rule conflicts.
 
 **Git visibility:** For in-repository reports, add only `<report-directory>/artifacts/` to `.gitignore` by default. Keep the main overview, summary and optional complete-definition index visible to Git. Do not ignore the whole report directory (including a user-chosen destination) or main reports unless the user requests it or applicable confidentiality rules require it. Excluding exported output from mapper scans is a separate step. Escape literal Git pattern characters in custom paths. Check effective ignore rules and follow the [report Git policy](references/repo-map.md#git-visibility-and-scan-exclusions), including custom evidence paths and existing-rule conflicts.
 
@@ -64,6 +62,8 @@ After saving a map or Repomix pack, offer an `AGENTS.md` pointer unless the user
 | Document existing application architecture with source-checked Mermaid/UML views | [Architecture diagrams](references/architecture-diagrams.md) |
 | Use inexpensive workers to cover independent modules | [Workers and verification](references/workers.md) |
 | Diagnose startup, add characterization tests, implement a feature, or modernize | [Changes and modernization](references/changes.md) |
+| Read or refactor a Java file too large to load whole, or show that a refactor skipped nothing | [Very large files](references/large-files.md) |
+| Settle a fact from compiled classes, a JAR without source, or a running JVM | [Compiled and runtime evidence](references/compiled-and-runtime-evidence.md) |
 | Choose context for small, medium, large or huge scopes; ask missing intake questions | [Scale and intake](references/scale-and-intake.md) |
 | Pack a selected code slice with Repomix | [Repomix](references/repomix.md) |
 | Search private source and existing/generated docs through a local backend | [Private retrieval](references/private-retrieval.md) |
@@ -78,4 +78,4 @@ For a consequential claim, record the file and original line range, source hash/
 
 For framework APIs, find the definition plus a real caller, test or configuration example. Verify parameter types, lifecycle, side effects and error handling from those sources. Do not invent a familiar public API for an unfamiliar private framework. When evidence is missing, search or ask for the missing source rather than filling the gap.
 
-The citation checker can detect fabricated or stale references. It cannot establish that a claim follows from its quotation; read the cited code and wiring to verify that.
+The citation checker can detect fabricated or stale references. It cannot establish that a claim follows from its quotation; read the cited code and wiring to verify that. In the same way, the member ledger shows that every member of a refactored file is accounted for, not that the result behaves the same.

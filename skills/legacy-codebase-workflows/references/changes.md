@@ -20,4 +20,6 @@ Trace the behavior and framework conventions using source evidence. For a substa
 
 Make small reviewable changes and run checks appropriate to the affected behavior. Modernization, runtime/dependency upgrades, architectural replacement and UI redesign require their own requested scope. Use incremental compatibility changes and preserve a verified baseline; apply patterns such as strangler migration only when the application needs them.
 
+To restructure a Java file of thousands of lines, record a member baseline before the first edit, move code verbatim before changing it, and compare after every batch; follow [very large files](large-files.md). The ledger shows which members were moved unchanged, which were altered and which are missing. It does not replace compiling and characterization tests.
+
 Keep documentation/evidence current for changed APIs. Report what changed, verification performed and remaining blockers, with commands that someone else can reproduce.

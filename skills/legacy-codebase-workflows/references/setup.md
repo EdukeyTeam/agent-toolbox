@@ -76,7 +76,7 @@ python -m pip install --target /path/to/tool-deps -r /path/to/skill/requirements
 PYTHONPATH=/path/to/tool-deps python /path/to/skill/scripts/repo_map.py /path/to/repository --output-dir /path/to/artifacts
 ```
 
-Installation is the only step that downloads anything. The pinned parser package contains its grammars; later parser releases fetch grammars on first use, so keep the pins. `repo_map.py --inventory-only` and `check_citations.py` need only the standard library.
+Installation is the only step that downloads anything. The pinned parser package contains its grammars; later parser releases fetch grammars on first use, so keep the pins. `repo_map.py --inventory-only`, `check_citations.py` and `member_ledger.py` need only the standard library.
 
 `scripts/legacy_tools.py` is one entry point for all tools and passes arguments through unchanged:
 

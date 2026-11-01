@@ -2,14 +2,14 @@
 
 Start from the question, not a predetermined documentation tree. For a new repository, establish language/runtime, build descriptors, entry points, dependency manifests, modules, tests and integration boundaries. Record the examined commit and working-copy changes. Inventory counts must come from commands or tool metadata.
 
-Treat skipped source as a coverage gap. For non-UTF-8 text, confirm its encoding from build configuration and inspect the original with that decoder. Record the encoding and original byte hash, and verify its line ranges manually: the bundled map, index and citation checker accept UTF-8 only.
+Treat skipped source as a coverage gap. For non-UTF-8 text, confirm its encoding from build configuration and inspect the original with that decoder. Record the encoding and original byte hash. The citation checker and the [member outline](large-files.md#legacy-encodings) read such files when given an explicit `--encoding`; the bundled map and index accept UTF-8 only, so verify line ranges taken from them manually.
 
 ## Find behavior across an undocumented framework
 
 1. Locate the application's entry point, feature handler or service and trace its actual caller.
 2. Find the internal framework definitions it invokes. Map that framework separately if it is a different repository; keep each repository's revision and provenance distinct.
 3. Search configuration and resource wiring: XML descriptors, properties, registration code, annotations, reflection, generated sources and plugin discovery. A declaration without a reachable caller does not prove active use.
-4. Read the relevant implementations, types and error paths. Use tests or an authorized runtime observation to distinguish a likely path from verified behavior.
+4. Read the relevant implementations, types and error paths. Use tests or an authorized runtime observation to distinguish a likely path from verified behavior. When the source cannot settle a fact, such as a modifier, the overload a call binds to, or the API of a library without source, read it from the compiled classes; see [compiled and runtime evidence](compiled-and-runtime-evidence.md).
 5. Save a small evidence card for each reusable API or convention: purpose; definition; working example; parameters; lifecycle; side effects/errors; supporting source; unknowns.
 
 For a focused answer, a few evidence cards may suffice. For repository documentation, choose artifacts that reduce future source rediscovery: module map, startup/build assumptions, request/data flow, framework API examples, external integrations and unresolved questions. Include code examples from real callers rather than imagined usage.

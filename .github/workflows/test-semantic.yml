@@ -9,6 +9,7 @@ on:
       - '!skills/legacy-codebase-workflows/scripts/export_repo_map.py'
       - '!skills/legacy-codebase-workflows/scripts/setup_native.py'
       - '!skills/legacy-codebase-workflows/scripts/check_citations.py'
+      - '!skills/legacy-codebase-workflows/scripts/member_ledger.py'
       - '!skills/legacy-codebase-workflows/scripts/legacy_tools.py'
       - 'tests/test_legacy_retrieval.py'
       - '.github/workflows/test-semantic.yml'
