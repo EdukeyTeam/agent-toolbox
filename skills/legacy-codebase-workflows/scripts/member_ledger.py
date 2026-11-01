@@ -474,6 +474,18 @@ def _scan_many(root: Path, paths, encoding: str) -> tuple[dict[str, dict], list[
     return scanned, unscanned
 
 
+def _evidence(member: dict) -> dict:
+    return {"token": member["token_sha256"], "body": member["body_sha256"], "name": member["name"], "kind": member["kind"]}
+
+
+# Ways a baseline member can be found again: verbatim, by name and body (header changed), or a type by name.
+LANES = (
+    ("moved", lambda item: item.get("token")),
+    ("signature-changed", lambda item: (item.get("name"), item["body"]) if item.get("body") and item.get("kind") != "type" else None),
+    ("signature-changed", lambda item: item.get("name") if item.get("kind") == "type" else None),
+)
+
+
 def build_baseline(root: str | Path, tracked: list[str], scope: list[str] = (), encoding: str = "utf-8", max_files: int = DEFAULT_MAX_FILES) -> dict:
     root = Path(root).resolve(strict=True)
     tracked = sorted({_safe_relative(path, cli_input=True).as_posix() for path in tracked})
@@ -486,7 +498,7 @@ def build_baseline(root: str | Path, tracked: list[str], scope: list[str] = (), 
         item["sha256"] = _identity(root, item["path"])
     return {
         "schema": SCHEMA, "encoding": encoding, "tracked": tracked, "scope": scope, "max_files": max_files, "files": files,
-        "preexisting": {path: {member["id"]: member["token_sha256"] for member in outline["members"]} for path, outline in others.items()},
+        "preexisting": {path: {member["id"]: _evidence(member) for member in outline["members"]} for path, outline in others.items()},
         "unscanned": unscanned,
     }
 
@@ -508,26 +520,13 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
         state = "changed" if (root / path).is_file() else "removed"
         blocking.append({"path": path, "reason": f"{state} after the baseline recorded it as unscannable; record a new baseline"})
 
-    before = {path: {member["id"]: member["token_sha256"] for member in outline["members"]} for path, outline in baseline["files"].items()}
-    before.update(baseline.get("preexisting", {}))
+    preexisting = {path: {member_id: item if isinstance(item, dict) else {"token": item} for member_id, item in members.items()}
+                   for path, members in baseline.get("preexisting", {}).items()}
+    before = {path: {member["id"]: _evidence(member) for member in outline["members"]} for path, outline in baseline["files"].items()}
+    before.update(preexisting)
 
     def existed(path: str, member: dict) -> bool:
-        return before.get(path, {}).get(member["id"]) == member["token_sha256"]
-
-    by_token: dict[str, list] = {}
-    by_body: dict[tuple, list] = {}
-    types_by_name: dict[str, list] = {}
-    for path, outline in current.items():
-        if path in known_unscanned:
-            continue  # its baseline members are unknown, so none of them can be a move destination
-        for member in outline["members"]:
-            if existed(path, member):
-                continue  # code that was already there cannot be the destination of a move
-            by_token.setdefault(member["token_sha256"], []).append((path, member))
-            if member["body_sha256"]:
-                by_body.setdefault((member["name"], member["body_sha256"]), []).append((path, member))
-            if member["kind"] == "type":
-                types_by_name.setdefault(member["name"], []).append((path, member))
+        return before.get(path, {}).get(member["id"], {}).get("token") == member["token_sha256"]
 
     decided = {}
     entries = (decisions or {}).get("decisions", []) if isinstance(decisions or {}, dict) else None
@@ -538,12 +537,62 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
             raise ValueError(f"each decision needs member, a reason and a disposition from {', '.join(DISPOSITIONS)}")
         decided[entry["member"]] = entry
 
-    records, used, claimed = [], set(), set()
+    # A move is credited only for an occurrence the scope did not already hold. For each way of finding a
+    # member, credit = occurrences now - occurrences at baseline + tracked members that left their place.
+    # Renamed files or classes and edited pre-existing code therefore cannot account for a removed member.
+    scanned = {path: outline for path, outline in current.items() if path not in known_unscanned}
+    stayed, departed = set(), []
+    for path in tracked:
+        now = {member["id"]: member for member in current.get(path, {}).get("members", [])}
+        for member in baseline["files"][path]["members"]:
+            here = now.get(member["id"])
+            if here is not None and here["token_sha256"] == member["token_sha256"]:
+                stayed.add((path, member["id"]))
+            else:
+                departed.append((path, member))
+    credit = [{} for _ in LANES]
+    candidates = [{} for _ in LANES]
+    for lane, (_, key_of) in enumerate(LANES):
+        for members in before.values():
+            for item in members.values():
+                if (key := key_of(item)) is not None:
+                    credit[lane][key] = credit[lane].get(key, 0) - 1
+        for _, member in departed:
+            if (key := key_of(_evidence(member))) is not None:
+                credit[lane][key] = credit[lane].get(key, 0) + 1
+        for path, outline in scanned.items():
+            for member in outline["members"]:
+                if (key := key_of(_evidence(member))) is not None:
+                    credit[lane][key] = credit[lane].get(key, 0) + 1
+                    if (path, member["id"]) not in stayed:
+                        candidates[lane].setdefault(key, []).append((path, member))
+        for found in candidates[lane].values():
+            found.sort(key=lambda candidate: existed(*candidate))  # prefer code that is new at its place
 
-    def free(candidates: list) -> list:
-        """The first destination no earlier member took: one copy accounts for one member."""
-        return next(([candidate] for candidate in candidates if (candidate[0], candidate[1]["id"]) not in used), [])
+    used, outcome = set(), {}
 
+    def take(path: str, target: dict) -> None:
+        used.add((path, target["id"]))
+        for lane, (_, key_of) in enumerate(LANES):
+            if (key := key_of(_evidence(target))) is not None:
+                credit[lane][key] = credit[lane].get(key, 0) - 1
+
+    for lanes in ((0,), (1, 2)):  # verbatim moves first, so a header-changed match cannot take their copy
+        for path, member in departed:
+            if (path, member["id"]) in outcome:
+                continue
+            for lane in lanes:
+                status, key_of = LANES[lane]
+                key = key_of(_evidence(member))
+                if key is None or credit[lane].get(key, 0) <= 0:
+                    continue
+                target = next((candidate for candidate in candidates[lane].get(key, []) if (candidate[0], candidate[1]["id"]) not in used), None)
+                if target is not None:
+                    take(*target)
+                    outcome[(path, member["id"])] = (status, [target])
+                    break
+
+    records, claimed = [], set()
     for path in tracked:
         now = {member["id"]: member for member in current.get(path, {}).get("members", [])}
         for member in baseline["files"][path]["members"]:
@@ -551,21 +600,19 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
             here = now.get(member["id"])
             record = {"member": key, "kind": member["kind"], "was": {"start_line": member["start_line"], "end_line": member["end_line"], "lines": member["lines"], "modifiers": member["modifiers"]}}
             targets = []
-            if here is not None and here["token_sha256"] == member["token_sha256"]:
+            if (path, member["id"]) in stayed:
                 status = "unchanged"
-            elif targets := free(by_token.get(member["token_sha256"], [])):
-                status = "moved"
-            elif targets := free(types_by_name.get(member["name"], []) if member["kind"] == "type" else by_body.get((member["name"], member["body_sha256"]), [])):
-                status = "signature-changed"
-            elif here is not None:
+            elif (path, member["id"]) in outcome:
+                status, targets = outcome[(path, member["id"])]
+            elif here is not None and (path, here["id"]) not in used:
                 status, targets = "modified", [(path, here)]
+                take(path, here)
             else:
                 status = "missing"
             if here is not None:
                 claimed.add((path, here["id"]))
             if status != "unchanged":
                 record["now"] = [{"member": f"{target_path}::{target['id']}", "start_line": target["start_line"], "end_line": target["end_line"], "lines": target["lines"], "modifiers": target["modifiers"]} for target_path, target in targets]
-                used.update((target_path, target["id"]) for target_path, target in targets)
                 if status in ("moved", "signature-changed") and here is not None and (path, here["id"]) not in {(p, t["id"]) for p, t in targets}:
                     record["origin"] = "still present with different content"
             record["status"] = status
@@ -576,7 +623,6 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
             records.append(record)
 
     # Every scanned file can gain members. A changed member of a pre-existing scope file is not an addition.
-    preexisting = baseline.get("preexisting", {})
     added = sorted(f"{path}::{member['id']}" for path in sorted(set(current) - set(known_unscanned)) for member in current[path]["members"]
                    if not existed(path, member) and (path, member["id"]) not in used and (path, member["id"]) not in claimed
                    and member["id"] not in preexisting.get(path, {}))

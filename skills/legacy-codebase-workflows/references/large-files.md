@@ -72,6 +72,8 @@ Each baseline member gets exactly one status:
 | `modified` | Still there under the same identifier, with different tokens | Read this member in full |
 | `missing` | Not found in the tracked files or the scope | Find it, restore it, or record a decision |
 
+A move is credited only for an occurrence the scope did not already hold, one per removed member. Code that was already in the scope, even in a renamed file or class or with an edited header, cannot account for a removed member; such a member is reported `missing` until a decision is recorded.
+
 Whitespace and comment changes never change a status. Any change to code or to a string literal does. The report also lists `added` members, in the tracked files and anywhere in the scope, and every file it could not scan.
 
 Exit code 0 means every member is accounted for. Exit code 1 means a `missing` member has no decision, or a file in the tracked set or scope cannot be scanned. A truncated file or an unbalanced bracket therefore fails the comparison instead of passing quietly. Exit code 2 is a usage or input error.

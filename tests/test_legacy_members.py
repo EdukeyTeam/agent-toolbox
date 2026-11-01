@@ -440,6 +440,19 @@ class LedgerTests(RepositoryCase):
         (self.repo / "src/app/Broken.java").unlink()
         self.assertEqual([item["reason"] for item in compare(self.repo, baseline)["unscanned"]], ["removed after the baseline recorded it as unscannable; record a new baseline"])
 
+    def test_renamed_or_edited_existing_code_cannot_account_for_a_removed_member(self):
+        self.write("src/app/Other.java", "package app;\n\nclass Other {\n    private int count;\n    private int same() { return 7; }\n}\n")
+        self.write(self.big, BIG.replace("    public int total(", "    int same() { return 7; }\n\n    public int total("))
+        baseline = self.baseline()
+        self.write(self.big, BIG.replace("    private int count;\n", ""))
+        # Renaming the class and its file moves no code into the scope.
+        (self.repo / "src/app/Other.java").unlink()
+        self.write("src/app/Renamed.java", "package app;\n\nclass Renamed {\n    private int count;\n    public int same() { return 7; }\n}\n")
+        result = compare(self.repo, baseline, strict=True)
+        # Nor does changing the header of a method that was already there.
+        self.assertEqual(self.statuses(result), {"Orders#field:count": "missing", "Orders#same()": "missing"})
+        self.assertFalse(result["passed"])
+
     def test_scope_is_bounded_and_outside_code_is_not_searched(self):
         self.write("lib/Elsewhere.java", 'class Elsewhere {\n    void audit(String who) {\n        System.out.println("audit " + who);\n    }\n}\n')
         self.write("src/app/Small.java", "class Small { }")
