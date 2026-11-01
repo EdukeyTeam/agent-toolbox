@@ -523,7 +523,10 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
                 types_by_name.setdefault(member["name"], []).append((path, member))
 
     decided = {}
-    for entry in (decisions or {}).get("decisions", []):
+    entries = (decisions or {}).get("decisions", []) if isinstance(decisions or {}, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError('the decisions file must be an object with a "decisions" list')
+    for entry in entries:
         if not isinstance(entry, dict) or entry.get("disposition") not in DISPOSITIONS or not str(entry.get("reason", "")).strip() or not isinstance(entry.get("member"), str):
             raise ValueError(f"each decision needs member, a reason and a disposition from {', '.join(DISPOSITIONS)}")
         decided[entry["member"]] = entry

@@ -404,6 +404,12 @@ class LedgerTests(RepositoryCase):
         self.assertEqual(result["added"], ["src/app/Other.java::Other#helper()"])
         self.assertIn("ADDED src/app/Other.java::Other#helper()", render_comparison(result))
 
+    def test_a_malformed_decisions_document_is_an_input_error(self):
+        baseline = self.baseline()
+        for invalid in ([{"member": "x"}], {"decisions": None}, {"decisions": {"member": "x"}}, "deleted"):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, "decisions"):
+                compare(self.repo, baseline, invalid)
+
     def test_scope_is_bounded_and_outside_code_is_not_searched(self):
         self.write("lib/Elsewhere.java", 'class Elsewhere {\n    void audit(String who) {\n        System.out.println("audit " + who);\n    }\n}\n')
         self.write("src/app/Small.java", "class Small { }")
