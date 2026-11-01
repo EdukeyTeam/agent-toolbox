@@ -425,6 +425,21 @@ class LedgerTests(RepositoryCase):
             with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, "decisions"):
                 compare(self.repo, baseline, invalid)
 
+    def test_a_repaired_or_removed_unscannable_file_blocks_the_comparison(self):
+        self.write("src/app/Broken.java", "class Broken {\n    int same() { return 7; }\n")
+        self.write(self.big, BIG.replace("    public int total(", "    int same() { return 7; }\n\n    public int total("))
+        baseline = self.baseline()
+        self.assertEqual([item["path"] for item in baseline["unscanned"]], ["src/app/Broken.java"])
+        # Repairing the file must not turn its existing member into a move destination.
+        self.write("src/app/Broken.java", "class Broken {\n    int same() { return 7; }\n}\n")
+        self.write(self.big, BIG)
+        result = compare(self.repo, baseline)
+        self.assertEqual(self.statuses(result), {"Orders#same()": "missing"})
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["unscanned"], [{"path": "src/app/Broken.java", "reason": "changed after the baseline recorded it as unscannable; record a new baseline"}])
+        (self.repo / "src/app/Broken.java").unlink()
+        self.assertEqual([item["reason"] for item in compare(self.repo, baseline)["unscanned"]], ["removed after the baseline recorded it as unscannable; record a new baseline"])
+
     def test_scope_is_bounded_and_outside_code_is_not_searched(self):
         self.write("lib/Elsewhere.java", 'class Elsewhere {\n    void audit(String who) {\n        System.out.println("audit " + who);\n    }\n}\n')
         self.write("src/app/Small.java", "class Small { }")

@@ -502,6 +502,11 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
     known_unscanned = {item["path"]: item.get("sha256") for item in baseline.get("unscanned", [])}
     # Only an equal, known byte hash shows that an unscannable file is unchanged.
     blocking = [item for item in unscanned if known_unscanned.get(item["path"]) is None or known_unscanned[item["path"]] != _identity(root, item["path"])]
+    # A file unscannable at baseline that now scans or is gone has changed, and what it held before is unknown.
+    still_unscanned = {item["path"] for item in unscanned}
+    for path in sorted(set(known_unscanned) - still_unscanned):
+        state = "changed" if (root / path).is_file() else "removed"
+        blocking.append({"path": path, "reason": f"{state} after the baseline recorded it as unscannable; record a new baseline"})
 
     before = {path: {member["id"]: member["token_sha256"] for member in outline["members"]} for path, outline in baseline["files"].items()}
     before.update(baseline.get("preexisting", {}))
@@ -513,6 +518,8 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
     by_body: dict[tuple, list] = {}
     types_by_name: dict[str, list] = {}
     for path, outline in current.items():
+        if path in known_unscanned:
+            continue  # its baseline members are unknown, so none of them can be a move destination
         for member in outline["members"]:
             if existed(path, member):
                 continue  # code that was already there cannot be the destination of a move
@@ -570,7 +577,7 @@ def compare(root: str | Path, baseline: dict, decisions: dict | None = None, str
 
     # Every scanned file can gain members. A changed member of a pre-existing scope file is not an addition.
     preexisting = baseline.get("preexisting", {})
-    added = sorted(f"{path}::{member['id']}" for path in sorted(current) for member in current[path]["members"]
+    added = sorted(f"{path}::{member['id']}" for path in sorted(set(current) - set(known_unscanned)) for member in current[path]["members"]
                    if not existed(path, member) and (path, member["id"]) not in used and (path, member["id"]) not in claimed
                    and member["id"] not in preexisting.get(path, {}))
     counts: dict[str, int] = {}
