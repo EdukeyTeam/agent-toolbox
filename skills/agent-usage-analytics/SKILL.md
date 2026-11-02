@@ -1,6 +1,6 @@
 ---
 name: agent-usage-analytics
-description: Analyze coding-agent token usage, API-equivalent costs, quota observations and individual-session context composition. Use for Codex, Claude Code, Copilot CLI and supported Grok/Antigravity exports, including expensive tools/skills and monthly comparisons. Produces JSON, Markdown and offline HTML reports.
+description: Analyze coding-agent token usage, API-equivalent costs, quota observations and individual-session context composition. Use for Codex, Claude Code, Copilot CLI and supported Grok/Antigravity exports, including expensive tools/skills and monthly comparisons. Produces DOCX reports with JSON, Markdown and offline HTML companions.
 ---
 
 # Agent usage analytics
@@ -11,22 +11,34 @@ Use deterministic local collection for the numbers, then explain the evidence. C
 
 Resolve `scripts/agent_usage.py` relative to this skill directory, not the user's project. Python 3.11+ with its standard SQLite module is required; use `python` on Windows when `python3` is unavailable. No packages, credentials or server are needed for normal reports.
 
+### Report destination
+
+If the user gives a destination, pass that directory as `--out` and honor any requested filename or format. Otherwise omit `--out`: reports go into the current user's **Documents/Agent Analysis/<unique timestamped run>/**, with **`report.docx` as the primary document**. JSON, Markdown and offline HTML are companion artifacts. Each default run gets a separate directory so earlier reports survive.
+
+Resolve Documents on the machine producing the report. The script uses the Windows Documents known folder (including OneDrive or other redirection), Linux's configured XDG Documents folder, or `~/Documents` on macOS/fallback systems. `--home` selects input data, not the output user. When working through WSL for a requested Windows destination, resolve that Windows user's Documents and pass its mounted path with `--out`.
+
+The working directory, analyzed project, installed skill and a template's folder do not set the report destination. Use a template only for formatting; never inherit its output path or another machine's user profile. For a user-selected DOCX filename, generate in its parent directory and rename `report.docx` to that name.
+
+`usage --store` and `session --store` query the ledger and still create reports in Documents when `--out` is omitted. Ingestion commands (`collect`, `import`, `snapshot`, `capture-codex`) with `--store` stay ledger-only unless `--out` is supplied.
+
+If the user requests another document format, convert the generated DOCX with an available local document tool and deliver that format; changing a filename extension is not conversion.
+
 Discover known data roots, or provide an explicit source. Discovery output stays local and can contain paths. Do not scan the entire home directory or read agent authentication/settings files.
 
 ```bash
 python3 scripts/agent_usage.py discover
 ```
 
-Historical example, with a user-selected report directory outside the installed skill:
+Historical example using the default Documents destination:
 
 ```bash
-python3 scripts/agent_usage.py usage --source codex=/path/to/.codex --source claude=/path/to/.claude --since 2026-10-01 --until 2026-11-01 --out /path/to/reports/october
+python3 scripts/agent_usage.py usage --source codex=/path/to/.codex --source claude=/path/to/.claude --since 2026-10-01 --until 2026-11-01
 ```
 
 Codex current-session example:
 
 ```bash
-python3 scripts/agent_usage.py session --current --out /path/to/reports/current-session
+python3 scripts/agent_usage.py session --current
 ```
 
 Explicit session example, usable for any supported native adapter:
@@ -70,7 +82,19 @@ Read [schema-and-pricing.md](references/schema-and-pricing.md) for normalized im
 
 ## Deliver
 
-Create `report.json`, `report.md` and `report.html`. Open/check the HTML when a browser is available; it must work offline. Give a brief chat answer with scope, measured total or lower bound, quota/context status where supported, one or two findings and links to all three artifacts. Add three to five recommendations only when supported by observations; fewer useful findings are better than fabricated advice.
+Deliver `report.docx` by default, with `report.json`, `report.md` and `report.html` beside it, unless the user requested a different format. The script builds DOCX locally without Word, templates or extra packages. Check the DOCX layout with an available document renderer and open/check the HTML when a browser is available; it must work offline. Give a brief chat answer with scope, measured total or lower bound, quota/context status where supported, one or two findings and the primary DOCX link plus companion links. Add three to five recommendations only when supported by observations; fewer useful findings are better than fabricated advice.
+
+### Clickable report links
+
+Every file offered to the user must be a **clickable Markdown link**, with a descriptive label such as `Word`, `Detailed Markdown report`, `HTML` or `JSON`. Use the verified absolute file paths returned in `artifacts`; resolve older relative paths against the directory where the command ran. If a file was renamed or converted, link to its final existing path.
+
+Use the current client's supported local-file link syntax. In Codex, use an absolute filesystem path as the Markdown target, wrapping paths containing spaces in angle brackets, for example:
+
+```markdown
+[Word](</home/example/Documents/Agent Analysis/run/report.docx>) · [Detailed Markdown report](</home/example/Documents/Agent Analysis/run/report.md>) · [HTML](</home/example/Documents/Agent Analysis/run/report.html>) · [JSON](</home/example/Documents/Agent Analysis/run/report.json>)
+```
+
+For a client that requires `file:///` URLs, build the URI from the absolute path with `Path(path).resolve().as_uri()` on the file's native OS so drive letters, spaces and Unicode are encoded correctly, then use it as the Markdown target. A plain path in parentheses or backticks, or a relative `docs/...` target, does not satisfy this delivery contract.
 
 Keep real outputs outside the public source tree and installed skill. Raw prompts, responses, arguments/results, reasoning and credentials are excluded from the report contract. Reports still contain local identifiers by default; add `--share` for pseudonymized course demonstrations. Do not modify configurations, delete histories, install hooks or schedule collection unless requested.
 
