@@ -1,0 +1,152 @@
+# Community PR-Agent v0.47.0 on Azure; pinned images and validated same-repository PRs.
+# Required: AZURE_OPENAI_API_KEY secret; PR_AGENT_MODEL, AZURE_OPENAI_DEPLOYMENT and AZURE_OPENAI_ENDPOINT variables.
+name: Community PR-Agent Azure Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Existing open PR number in this repository
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+env:
+  CONFIG__MODEL: ${{ vars.PR_AGENT_MODEL }}
+  CONFIG__FALLBACK_MODELS: '[]'
+  # Input token budget per model call. PR-Agent's own default is 32000, which made it skip most
+  # files of a large PR. gpt-6-luna accepts about 1.05M tokens, but a request above 272k input
+  # tokens is billed on the long-context meter (about 2x input, 1.5x output, whole request).
+  # 250000 stays under that line; chunking below covers bigger diffs at the normal rate.
+  # Override with the PR_AGENT_MAX_TOKENS variable (lower for a small model or tight quota).
+  CONFIG__CUSTOM_MODEL_MAX_TOKENS: ${{ vars.PR_AGENT_MAX_TOKENS || '250000' }}
+  CONFIG__MAX_MODEL_TOKENS: ${{ vars.PR_AGENT_MAX_TOKENS || '250000' }}
+  CONFIG__REASONING_EFFORT: low
+  CONFIG__ADDITIONAL_REASONING_EFFORT_MODELS: ${{ format('["{0}","azure/{0}"]', vars.PR_AGENT_MODEL) }}
+  CONFIG__NO_TEMPERATURE_MODELS: ${{ format('["{0}","azure/{0}"]', vars.PR_AGENT_MODEL) }}
+  CONFIG__RESTRICTED_MODE: 'true'
+  CONFIG__PROPAGATE_TOOL_ERRORS: 'true'
+  CONFIG__USE_REPO_SETTINGS_FILE: 'false'
+  CONFIG__USE_GLOBAL_SETTINGS_FILE: 'false'
+  CONFIG__REPO_CONTEXT_FILES: '[]'
+  CONFIG__OUTPUT_RUN_DETAILS: 'true'
+  OPENAI__API_TYPE: azure
+  OPENAI__API_BASE: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+  OPENAI__DEPLOYMENT_ID: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
+  OPENAI__API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}
+  PR_REVIEWER__PERSISTENT_COMMENT: 'true'
+  PR_REVIEWER__FINAL_UPDATE_MESSAGE: 'false'
+  PR_REVIEWER__NUM_MAX_FINDINGS: '5'
+  # A diff larger than one budget is reviewed in up to MAX_NUMBER_OF_CALLS chunks instead of
+  # being cut off (4 x 250k = about 1M tokens of diff); files beyond that are still listed
+  # under "Review coverage".
+  PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING: 'true'
+  PR_REVIEWER__MAX_NUMBER_OF_CALLS: '4'
+  PR_REVIEWER__REQUIRE_SECURITY_REVIEW: 'true'
+  PR_REVIEWER__REQUIRE_ESTIMATE_EFFORT_TO_REVIEW: 'false'
+  PR_REVIEWER__ENABLE_REVIEW_LABELS_EFFORT: 'false'
+  PR_REVIEWER__ENABLE_REVIEW_LABELS_SECURITY: 'false'
+  PR_REVIEWER__EXTRA_INSTRUCTIONS: |
+    Review new correctness, security and error-handling defects only.
+    Give the failing scenario, evidence and an actionable fix.
+    Be concise; state missing context and never claim unexecuted tests passed.
+
+jobs:
+  review:
+    if: >-
+      github.event.sender.type != 'Bot' &&
+      ((github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        !github.event.pull_request.draft) ||
+       (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+        (startsWith(github.event.comment.body, '/review') ||
+         startsWith(github.event.comment.body, '/describe') ||
+         startsWith(github.event.comment.body, '/improve') ||
+         startsWith(github.event.comment.body, '/ask'))) ||
+       github.event_name == 'workflow_dispatch')
+    concurrency:
+      group: pr-agent-azure-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # No checkout, execution of PR code, or model call before validation.
+      - name: Validate Azure configuration and PR
+        id: validate
+        shell: bash
+        env:
+          OPENAI__KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_LOGIN: ${{ github.event.comment.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1" >&2; exit 1; }
+          [[ -n "${OPENAI__KEY:-}" ]] || fail 'Set Actions secret AZURE_OPENAI_API_KEY.'
+          [[ -n "${OPENAI__API_BASE:-}" ]] || fail 'Set Actions variable AZURE_OPENAI_ENDPOINT.'
+          [[ -n "${OPENAI__DEPLOYMENT_ID:-}" ]] || fail 'Set Actions variable AZURE_OPENAI_DEPLOYMENT.'
+          [[ -n "${CONFIG__MODEL:-}" ]] || fail 'Set Actions variable PR_AGENT_MODEL.'
+          [[ "$OPENAI__API_BASE" =~ ^https://[a-zA-Z0-9-]+\.(openai\.azure\.com|services\.ai\.azure\.com)/?$ ]] || fail 'AZURE_OPENAI_ENDPOINT must be an Azure resource HTTPS root URL, without API paths.'
+          [[ "$OPENAI__DEPLOYMENT_ID" =~ ^[a-zA-Z0-9_.-]+$ ]] || fail 'Invalid AZURE_OPENAI_DEPLOYMENT.'
+          [[ "$CONFIG__MODEL" =~ ^[a-zA-Z0-9_.-]+$ ]] || fail 'PR_AGENT_MODEL must be the underlying model ID, not a deployment or provider prefix.'
+          # Upper bound = gpt-6-luna's context window; a larger value would fail at the model call.
+          [[ "$CONFIG__MAX_MODEL_TOKENS" =~ ^[1-9][0-9]{3,6}$ ]] && (( CONFIG__MAX_MODEL_TOKENS <= 1050000 )) || fail 'PR_AGENT_MAX_TOKENS must be a whole number of tokens between 1000 and 1050000, e.g. 250000.'
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || fail 'Invalid PR number.'
+          if [[ "$GITHUB_EVENT_NAME" == issue_comment ]]; then
+            permission=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENT_LOGIN/permission" --jq '.permission')
+            [[ "$permission" == write || "$permission" == maintain || "$permission" == admin ]] || fail 'Comment commands require current write, maintain or admin repository permission.'
+          fi
+          metadata=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '[.state,.head.repo.full_name,.draft]|@tsv')
+          IFS=$'\t' read -r state head_repo draft <<< "$metadata"
+          [[ "$state" == open && "$head_repo" == "$GITHUB_REPOSITORY" && "$draft" == false ]] || fail 'Choose an open, non-draft PR from this repository; fork PRs are skipped.'
+          echo "pr_url=https://github.com/$GITHUB_REPOSITORY/pull/$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Automatic review or maintainer comment command
+        if: github.event_name != 'workflow_dispatch'
+        uses: docker://pragent/pr-agent:0.47.0-github_action@sha256:31b9aac6ab067bada9a0c1b001d30ebc500ea4487e00a93c18c59b9ef5fa66db
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI__KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          GITHUB_ACTION_CONFIG__AUTO_REVIEW: 'true'
+          GITHUB_ACTION_CONFIG__AUTO_DESCRIBE: 'false'
+          GITHUB_ACTION_CONFIG__AUTO_IMPROVE: 'false'
+          GITHUB_ACTION_CONFIG__PR_ACTIONS: '["opened","reopened","ready_for_review"]'
+          GITHUB_ACTION_CONFIG__HANDLE_PUSH_TRIGGER: 'true'
+          GITHUB_ACTION_CONFIG__PUSH_COMMANDS: '["/review"]'
+
+      # v0.47.0's action runner has no workflow_dispatch handler; use its CLI.
+      - name: Manually review the requested PR
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          PR_URL: ${{ steps.validate.outputs.pr_url }}
+          GITHUB__USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI__KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges \
+            --env GITHUB__USER_TOKEN --env OPENAI__KEY \
+            --env OPENAI__API_TYPE --env OPENAI__API_BASE --env OPENAI__DEPLOYMENT_ID --env OPENAI__API_VERSION \
+            --env CONFIG__MODEL --env CONFIG__FALLBACK_MODELS --env CONFIG__CUSTOM_MODEL_MAX_TOKENS \
+            --env CONFIG__MAX_MODEL_TOKENS --env CONFIG__REASONING_EFFORT \
+            --env CONFIG__ADDITIONAL_REASONING_EFFORT_MODELS --env CONFIG__NO_TEMPERATURE_MODELS \
+            --env CONFIG__RESTRICTED_MODE --env CONFIG__PROPAGATE_TOOL_ERRORS \
+            --env CONFIG__USE_REPO_SETTINGS_FILE --env CONFIG__USE_GLOBAL_SETTINGS_FILE \
+            --env CONFIG__REPO_CONTEXT_FILES --env CONFIG__OUTPUT_RUN_DETAILS \
+            --env PR_REVIEWER__PERSISTENT_COMMENT --env PR_REVIEWER__FINAL_UPDATE_MESSAGE --env PR_REVIEWER__NUM_MAX_FINDINGS \
+            --env PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING --env PR_REVIEWER__MAX_NUMBER_OF_CALLS \
+            --env PR_REVIEWER__REQUIRE_SECURITY_REVIEW --env PR_REVIEWER__REQUIRE_ESTIMATE_EFFORT_TO_REVIEW \
+            --env PR_REVIEWER__ENABLE_REVIEW_LABELS_EFFORT --env PR_REVIEWER__ENABLE_REVIEW_LABELS_SECURITY \
+            --env PR_REVIEWER__EXTRA_INSTRUCTIONS \
+            --entrypoint python \
+            pragent/pr-agent:0.47.0@sha256:7d98954c29289846a08faf00aaea0f1f1375b1676cd8a2ed303e0af07010af7a \
+            -m pr_agent.cli --pr_url "$PR_URL" review
