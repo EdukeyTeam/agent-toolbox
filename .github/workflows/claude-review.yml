@@ -72,7 +72,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
     steps:
       - name: Checkout trusted default branch
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -85,6 +84,8 @@ jobs:
         uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Scoped workflow token, so Claude cannot use the Claude App's write-capable token.
+          github_token: ${{ github.token }}
           include_fix_links: 'false'
           prompt: |
             REPO: ${{ github.repository }}
