@@ -1,10 +1,11 @@
 # Python 3.10+ must be installed and available as python or py.
 $ErrorActionPreference = 'Stop'
 $client = Join-Path $PSScriptRoot 'atlassian.py'
-$python = Get-Command python -CommandType Application -ErrorAction SilentlyContinue
+# Multiple PATH entries (for example a WindowsApps alias) must not become one filename.
+$python = Get-Command python -CommandType Application -TotalCount 1 -ErrorAction SilentlyContinue
 $pythonArgs = @($client) + @($args)
 if (-not $python) {
-    $python = Get-Command py -CommandType Application -ErrorAction SilentlyContinue
+    $python = Get-Command py -CommandType Application -TotalCount 1 -ErrorAction SilentlyContinue
     $pythonArgs = @('-3') + $pythonArgs
 }
 if (-not $python) {

@@ -496,6 +496,42 @@ $others = @($acl.Access | Where-Object { $_.IdentityReference.Translate([Securit
         self.assertEqual(json.loads(result.stdout)['key'], 'DEMO-1')
 
     @unittest.skipUnless(os.name == 'nt', 'Windows native argument quoting')
+    def test_windows_powershell_uses_first_python_on_path(self):
+        # Hosted runners have a tool-cache Python plus a WindowsApps alias.
+        # A second candidate must never become part of ProcessStartInfo.FileName.
+        shadow = self.directory / 'second Python with spaces'
+        shadow.mkdir()
+        (shadow / 'python.exe').write_bytes(b'not an executable')
+        env = {**self.env, 'PATH': os.pathsep.join([
+            str(Path(sys.executable).parent), str(shadow), self.env.get('PATH', '')])}
+        query = 'text ~ "road & geometry"'
+        for shell in ('powershell.exe', 'pwsh.exe'):
+            with self.subTest(shell=shell):
+                executable = shutil.which(shell)
+                self.assertIsNotNone(executable, f'{shell} is required for Windows regressions.')
+                discovered = subprocess.run([
+                    executable, '-NoProfile', '-Command',
+                    'ConvertTo-Json -Compress @(Get-Command python -CommandType Application | ForEach-Object { $_.Source })'],
+                    env=env, capture_output=True, text=True, timeout=10)
+                self.assertEqual(discovered.returncode, 0, discovered.stderr)
+                candidates = json.loads(discovered.stdout)
+                self.assertGreaterEqual(len(candidates), 2)
+                self.assertEqual(Path(candidates[0]), Path(sys.executable))
+                self.assertIn(str(shadow / 'python.exe'), candidates)
+                self.calls.clear()
+                launcher = [executable, '-NoProfile', '-File', str(SCRIPT.with_suffix('.ps1'))]
+                result = subprocess.run([*launcher, 'jira', 'search', query], env=env,
+                                        capture_output=True, text=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('issues', json.loads(result.stdout))
+                self.assertEqual(self.calls[0]['query']['jql'], [query])
+                failure = subprocess.run([*launcher, 'jira', 'search'], env=env,
+                                         capture_output=True, text=True, timeout=20)
+                self.assertEqual(failure.returncode, 1, failure.stderr)
+                self.assertEqual(failure.stdout, '')
+                self.assertIn('jira search expects 1 argument(s)', failure.stderr)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows native argument quoting')
     def test_windows_powershell_versions_preserve_query_arguments(self):
         for shell in ('powershell.exe', 'pwsh.exe'):
             if not shutil.which(shell):
