@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import ssl
 import subprocess
 import sys
@@ -222,6 +223,70 @@ class AtlassianTests(unittest.TestCase):
             self.assertNotIn(value, result.stderr)
         self.assertIn("[redacted]", result.stderr)
 
+    def test_non_json_error_bodies_are_omitted(self):
+        for body in ['password=synthetic-unconfigured-secret',
+                     '<html><input name="password" value="synthetic-unconfigured-secret"></html>',
+                     '{"password":"synthetic-unconfigured-secret"']:
+            with self.subTest(body=body):
+                self.responses['/jira/rest/api/2/myself'] = (502, body, {})
+                result = self.cli('jira', 'GET', '/rest/api/2/myself')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('HTTP 502', result.stderr)
+                self.assertIn('body omitted', result.stderr)
+                self.assertNotIn('synthetic-unconfigured-secret', result.stderr)
+                self.assertEqual(result.stdout, '')
+
+    def test_shell_workflow_with_server_dc_response_shapes(self):
+        # Execute the public entrypoint, including PowerShell's argument forwarding on Windows.
+        launcher = (['powershell.exe', '-NoProfile', '-File', str(SCRIPT.with_suffix('.ps1'))]
+                    if os.name == 'nt' else ['bash', str(SCRIPT.with_suffix('.sh'))])
+        def invoke(*args, success=True):
+            result = subprocess.run([*launcher, *args], env=self.env, capture_output=True,
+                                    text=True, timeout=20)
+            if success:
+                self.assertEqual(result.returncode, 0, result.stderr)
+            else:
+                self.assertNotEqual(result.returncode, 0)
+            for secret in (TOKEN, OTHER_TOKEN):
+                self.assertNotIn(secret, result.stdout + result.stderr)
+            return json.loads(result.stdout) if success else result
+
+        jql = 'project = DEMO AND text ~ "road & geometry"'
+        search = invoke('jira', 'search', jql, '--query', 'fields=summary,status', '--all')
+        self.assertTrue(search['complete'])
+        self.assertEqual([page['issues'][0]['key'] for page in search['pages']], ['DEMO-1', 'DEMO-2'])
+        self.assertTrue(all(call['query']['jql'] == [jql] for call in self.calls))
+        self.assertEqual(self.calls[0]['query']['fields'], ['summary,status'])
+        issue = invoke('jira', 'issue', 'DEMO-1')
+        self.assertEqual(issue['fields']['summary'], 'Check road geometry')
+        comments = invoke('jira', 'comments', 'DEMO-1', '--all')
+        self.assertEqual(comments['pageCount'], 2)
+        self.assertEqual(comments['pages'][0]['comments'][0]['body'], 'Synthetic review note')
+        pages = invoke('confluence', 'search', 'type = page AND space = DEMO', '--all')
+        self.assertTrue(pages['complete'])
+        self.assertEqual(pages['pages'][0]['results'][0]['title'], 'Geometry notes')
+        page = invoke('confluence', 'page', '123')
+        self.assertEqual(page['version']['number'], 4)
+        self.assertEqual(page['body']['storage']['value'], '<p>Check intersections.</p>')
+        prs = invoke('bitbucket', 'prs', 'DEMO', 'repo', '--query', 'state=OPEN', '--all')
+        self.assertEqual([p['values'][0]['id'] for p in prs['pages']], [7, 8])
+        self.assertTrue(prs['complete'])
+        self.assertEqual(len(self.calls), 10)
+        self.assertTrue(all(call['method'] == 'GET' for call in self.calls))
+        for call in self.calls:
+            token = OTHER_TOKEN if call['path'].startswith('/confluence/') else TOKEN
+            self.assertEqual(call['authorization'], 'Bearer ' + token)
+        # PowerShell 5.1 writes UTF-8 with a BOM; body-file paths can include spaces.
+        body = {'body': 'Sprawdzono geometrię skrzyżowań.'}
+        body_path = Path(self.body_file(body))
+        body_path.write_text(json.dumps(body, ensure_ascii=False), encoding='utf-8-sig')
+        preview = invoke('jira', 'comment', 'DEMO-1', '--body-file', str(body_path), success=False)
+        self.assertIn('Write refused', preview.stderr)
+        self.assertEqual(len(self.calls), 10)
+        invoke('jira', 'comment', 'DEMO-1', '--body-file', str(body_path), '--write', '--confirmed')
+        self.assertEqual(self.calls[-1]['method'], 'POST')
+        self.assertEqual(self.calls[-1]['body'], body)
+
     def test_numeric_password_redaction_preserves_json(self):
         self.config['JIRA_TOKEN'] = '12345'
         self.save()
@@ -345,6 +410,32 @@ class AtlassianTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('interactive terminal', result.stderr)
 
+    def test_timeout_has_no_retry_and_marks_uncertain_write(self):
+        client = client_module.Client('jira', self.config)
+        with patch.object(client.opener, 'open', side_effect=TimeoutError('synthetic transport failure')) as send:
+            with self.assertRaisesRegex(client_module.SafeError, 'write outcome is uncertain'):
+                client.request('/rest/api/2/issue/DEMO-1/comment', 'POST', {'body': 'Synthetic note'})
+            send.assert_called_once()
+            self.assertGreater(send.call_args.kwargs['timeout'], 0)
+            self.assertLessEqual(send.call_args.kwargs['timeout'], 30)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows credential-file ACL')
+    def test_windows_credential_acl_restricts_access(self):
+        self.save()  # Check the final ACL after rotating an existing credential file too.
+        command = '''$ErrorActionPreference = 'Stop'
+$acl = Get-Acl -LiteralPath $env:ATLASSIAN_TEST_CONFIG
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$others = @($acl.Access | Where-Object { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -ne $sid })
+@{ protected = $acl.AreAccessRulesProtected; otherCount = $others.Count; ruleCount = @($acl.Access).Count } | ConvertTo-Json -Compress'''
+        result = subprocess.run(['pwsh.exe', '-NoProfile', '-Command', command],
+                                env={**self.env, 'ATLASSIAN_TEST_CONFIG': str(self.file)},
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        acl = json.loads(result.stdout)
+        self.assertTrue(acl['protected'], result.stdout + result.stderr)
+        self.assertEqual(acl['otherCount'], 0)
+        self.assertGreater(acl['ruleCount'], 0)
+
     def test_setup_private_file_windows_acl_precedes_content(self):
         # Exercise the Windows branch with mocked commands; actual Windows CI also checks it.
         windows_file = self.directory / 'windows.env'
@@ -353,15 +444,33 @@ class AtlassianTests(unittest.TestCase):
             events.append(args[0])
             if args[0] == 'icacls':
                 self.assertEqual(Path(args[1]).read_bytes(), b'')
-                self.assertIn('/inheritance:r', args)
-                self.assertIn('*S-1-5-21-123:F', args)
+                if '/reset' not in args:
+                    self.assertIn('/inheritance:r', args)
+                    self.assertIn('*S-1-5-21-123:F', args)
             return subprocess.CompletedProcess(args, 0, stdout='"user","S-1-5-21-123"\n')
         windows_os = Mock(wraps=os)
         windows_os.name = 'nt'
         with patch.object(client_module, 'os', windows_os), patch.object(client_module.subprocess, 'run', side_effect=run_command):
             client_module.write_private(windows_file, self.config)
-        self.assertEqual(events, ['whoami', 'icacls'])
+        self.assertEqual(events, ['whoami', 'icacls', 'icacls'])
         self.assertIn('JIRA_TOKEN=', windows_file.read_text())
+
+    def test_windows_acl_failure_keeps_previous_file_and_removes_empty_temp(self):
+        windows_os = Mock(wraps=os)
+        windows_os.name = 'nt'
+        before = self.file.read_bytes()
+        for failed_flag in ('/reset', '/grant:r'):
+            def run_command(args, **kwargs):
+                if args[0] == 'icacls':
+                    self.assertEqual(Path(args[1]).read_bytes(), b'')
+                    if failed_flag in args:
+                        raise subprocess.CalledProcessError(1, args)
+                return subprocess.CompletedProcess(args, 0, stdout='"user","S-1-5-21-123"\n')
+            with self.subTest(failed_flag=failed_flag), patch.object(client_module, 'os', windows_os), patch.object(client_module.subprocess, 'run', side_effect=run_command):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    client_module.write_private(self.file, self.config)
+            self.assertEqual(self.file.read_bytes(), before)
+            self.assertEqual(list(self.directory.glob('.tokens-*')), [])
 
     def test_interactive_setup_hides_credentials_and_checks_jira(self):
         self.file.unlink()
@@ -384,7 +493,22 @@ class AtlassianTests(unittest.TestCase):
         result = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(launcher), 'jira', 'issue', 'DEMO-1'],
                                 env=self.env, capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {'ok': True})
+        self.assertEqual(json.loads(result.stdout)['key'], 'DEMO-1')
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows native argument quoting')
+    def test_windows_powershell_versions_preserve_query_arguments(self):
+        for shell in ('powershell.exe', 'pwsh.exe'):
+            if not shutil.which(shell):
+                self.fail(f'{shell} is required for the Windows launcher regressions.')
+            for query in ['text ~ "road & geometry"', r'text ~ "C:\maps\\"',
+                          'text ~ "a\\"b"', 'text ~ trailing\\', 'text ~ "skrzyżowanie"']:
+                with self.subTest(shell=shell, query=query):
+                    self.calls.clear()
+                    result = subprocess.run([shell, '-NoProfile', '-File', str(SCRIPT.with_suffix('.ps1')),
+                                             'jira', 'search', query], env=self.env,
+                                            capture_output=True, text=True, timeout=20)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(self.calls[0]['query']['jql'], [query])
 
 
 if __name__ == '__main__':

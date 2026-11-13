@@ -55,8 +55,9 @@ The file uses quoted data assignments, never executable shell code. Keys per pro
 Setup writes `~/.config/atlassian-onprem/tokens.env`, or
 `%USERPROFILE%\.config\atlassian-onprem\tokens.env` on Windows. New files are private
 before secrets are written, then atomically replace the previous file. POSIX uses
-mode 600 (new directory 700); Windows removes inheritance and grants only the current
-user SID on the new file. Administrators can still take ownership. The runtime
+mode 600 (new directory 700); Windows resets preexisting explicit ACL entries on the
+empty temporary file, removes inheritance and grants only the current user SID before
+writing credentials. Administrators can still take ownership. The runtime
 refuses POSIX files owned by another user or accessible to group/others.
 
 `ATLASSIAN_PROFILE` optionally selects `tokens.<profile>.env`; names contain only

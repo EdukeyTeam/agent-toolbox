@@ -32,13 +32,36 @@ def fake_server():
                                              'isLastPage': start > 0, 'nextPageStart': 7}, {}
             elif path.path.endswith('/search') and '/jira/' in path.path:
                 start = int(parse_qs(path.query).get('startAt', ['0'])[0])
-                status, body, headers = 200, {'issues': [{'key': f'DEMO-{start + 1}'}],
+                status, body, headers = 200, {'issues': [{'id': str(10001 + start), 'key': f'DEMO-{start + 1}',
+                                                        'fields': {'summary': 'Check road geometry', 'status': {'name': 'Open'}}}],
+                                             'startAt': start, 'maxResults': 1, 'total': 2}, {}
+            elif self.command == 'GET' and path.path == '/jira/rest/api/2/issue/DEMO-1':
+                status, body, headers = 200, {'id': '10001', 'key': 'DEMO-1',
+                                             'fields': {'summary': 'Check road geometry', 'status': {'name': 'Open'}}}, {}
+            elif self.command == 'GET' and path.path == '/jira/rest/api/2/issue/DEMO-1/comment':
+                start = int(parse_qs(path.query).get('startAt', ['0'])[0])
+                status, body, headers = 200, {'comments': [{'id': str(20001 + start), 'body': 'Synthetic review note',
+                                                          'author': {'name': 'demo-reader', 'displayName': 'Demo Reader'}}],
                                              'startAt': start, 'maxResults': 1, 'total': 2}, {}
             elif path.path.endswith('/content/search'):
                 start = int(parse_qs(path.query).get('start', ['0'])[0])
                 links = {'next': '/rest/api/content/search?cql=type%3Dpage&start=1&limit=1'} if start == 0 else {}
-                status, body, headers = 200, {'results': [{'id': str(start + 1)}], 'start': start,
+                status, body, headers = 200, {'results': [{'id': str(start + 1), 'type': 'page', 'title': 'Geometry notes'}], 'start': start,
                                              'limit': 1, 'size': 1, '_links': links}, {}
+            elif self.command == 'GET' and path.path == '/confluence/rest/api/content/123':
+                representation = 'view' if 'body.view' in parse_qs(path.query).get('expand', [''])[0] else 'storage'
+                status, body, headers = 200, {'id': '123', 'type': 'page', 'title': 'Geometry notes',
+                                             'version': {'number': 4},
+                                             'body': {representation: {'value': '<p>Check intersections.</p>',
+                                                                       'representation': representation}}}, {}
+            elif self.command == 'GET' and path.path == '/bitbucket/rest/api/1.0/projects/DEMO/repos/repo/pull-requests':
+                start = int(parse_qs(path.query).get('start', ['0'])[0])
+                status, body, headers = 200, {'size': 1, 'limit': 1, 'start': start,
+                                             'values': [{'id': 7 if start == 0 else 8, 'version': 0, 'state': 'OPEN',
+                                                         'title': 'Validate intersections',
+                                                         'fromRef': {'id': 'refs/heads/geometry'},
+                                                         'toRef': {'id': 'refs/heads/main'}}],
+                                             'isLastPage': start > 0, 'nextPageStart': 7}, {}
             elif path.path.endswith('.diff'):
                 status, body, headers = 200, 'diff --git a/demo.txt b/demo.txt\n+hello\n', {}
             elif self.command in ('POST', 'PUT'):

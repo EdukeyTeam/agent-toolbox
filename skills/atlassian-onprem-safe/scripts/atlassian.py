@@ -68,11 +68,11 @@ def scrub_secret_fields(value):
 
 
 def scrub_error_body(text):
-    """Apply secret-key filtering to JSON error bodies; configured values are redacted later."""
+    """Filter structured errors; unstructured proxy/SSO bodies may contain unknown secrets."""
     try:
         return json.dumps(scrub_secret_fields(json.loads(text)), ensure_ascii=True)
     except ValueError:
-        return text
+        return 'Non-JSON error body omitted. Ask the administrator to inspect server logs.'
 
 
 def config_path():
@@ -441,6 +441,10 @@ def write_private(file, config):
             sid = re.search(r'S-1-[0-9-]+', result.stdout)
             if not sid:
                 raise SafeError('Could not identify the current Windows SID. Nothing was stored.')
+            # A new file can already have explicit ACEs. /grant:r only replaces this
+            # SID, so reset explicit entries to inherited defaults before removing them.
+            subprocess.run(['icacls', temporary, '/reset'],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             subprocess.run(['icacls', temporary, '/inheritance:r', '/grant:r', '*' + sid[0] + ':F'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
         else:
