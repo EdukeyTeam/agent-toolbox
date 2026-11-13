@@ -2,6 +2,7 @@
 
 import os
 import errno
+import importlib.util
 import hashlib
 import json
 from unittest.mock import patch
@@ -18,6 +19,7 @@ from repo_files import contains_control_characters, read_safe_text, safe_path_di
 from repo_map import generate
 
 
+@unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("tree_sitter", "tree_sitter_language_pack", "networkx")), "optional map dependencies are not installed")
 class MapTests(unittest.TestCase):
     def make_symlink(self, path, target, *, target_is_directory=False):
         try:

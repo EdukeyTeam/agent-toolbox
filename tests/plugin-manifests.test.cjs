@@ -25,3 +25,31 @@ test('portable and Claude manifests describe the same plugin', () => {
     repo: 'EdukeyTeam/agent-toolbox',
   });
 });
+
+test('Codex marketplace reuses the portable plugin and all its skills', () => {
+  const portable = read('plugin.json');
+  const marketplace = read('.agents/plugins/marketplace.json');
+  const claudeMarketplace = read('.claude-plugin/marketplace.json');
+
+  assert.equal(marketplace.name, claudeMarketplace.name);
+  assert.equal(marketplace.plugins.length, 1);
+  const plugin = marketplace.plugins[0];
+  for (const field of ['name', 'version', 'description', 'repository']) {
+    assert.equal(plugin[field], portable[field], `Codex ${field} must match plugin.json`);
+  }
+  assert.deepEqual(plugin.author, portable.author);
+  assert.deepEqual(plugin.source, { source: 'local', path: './' });
+  assert.deepEqual(plugin.policy, { installation: 'AVAILABLE', authentication: 'ON_INSTALL' });
+  assert.equal(plugin.category, 'Productivity');
+
+  const pluginRoot = path.resolve(root, plugin.source.path);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(pluginRoot, 'plugin.json'), 'utf8')), portable);
+  const skillNames = fs.readdirSync(path.join(pluginRoot, 'skills'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  assert.ok(skillNames.length > 0);
+  for (const name of skillNames) {
+    assert.ok(fs.existsSync(path.join(pluginRoot, 'skills', name, 'SKILL.md')), `${name} must be discoverable`);
+  }
+  assert.equal(fs.existsSync(path.join(pluginRoot, '.codex-plugin', 'plugin.json')), false,
+    'Codex must use the portable manifest without a second manifest overlay');
+});

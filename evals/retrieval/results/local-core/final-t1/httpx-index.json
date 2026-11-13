@@ -1,0 +1,981 @@
+{
+  "libraryId": "/local/httpx",
+  "indexVersion": 8,
+  "generation": 1,
+  "revision": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+  "revisions": {
+    "r0": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "r1": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+  },
+  "corpusId": "55666aa3051c77166e3039b94dd4a7407f64624dd94f800e87ea700d2dd59717",
+  "files": 114,
+  "eligible": 134,
+  "chunks": 1998,
+  "changed": 134,
+  "added": 134,
+  "deleted": 0,
+  "metadataOnly": 0,
+  "refreshed": true,
+  "skippedCount": 20,
+  "skipped": [
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/butterfly.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/gh-actions-fail-check.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/gh-actions-fail-test.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/gh-actions-fail.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/httpx-help.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/httpx-request.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/logo.jpg",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/rich-progress.gif",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/speakeasy.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r0",
+      "kind": "code",
+      "path": "docs/img/tqdm-progress.gif",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/butterfly.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/gh-actions-fail-check.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/gh-actions-fail-test.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/gh-actions-fail.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/httpx-help.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/httpx-request.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/logo.jpg",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/rich-progress.gif",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/speakeasy.png",
+      "reason": "Binary file"
+    },
+    {
+      "rootId": "r1",
+      "kind": "docs",
+      "path": "img/tqdm-progress.gif",
+      "reason": "Binary file"
+    }
+  ],
+  "redactedCount": 0,
+  "chunkChars": 1500,
+  "oversizedChunks": 0,
+  "excludes": [],
+  "byFormat": {
+    "code": 95,
+    "config": 8,
+    "html": 1,
+    "markdown": 29,
+    "rst": 1
+  },
+  "byEncoding": {
+    "unknown": 20,
+    "utf-8": 114
+  },
+  "byTier": {
+    "1": 134
+  },
+  "discovery": {
+    "visited": 161,
+    "excluded": 2,
+    "excludedExamples": [
+      "scripts/build",
+      "tests/fixtures/.netrc"
+    ]
+  },
+  "discoveryLimit": 2000000,
+  "actions": [
+    {
+      "rootId": "r0",
+      "path": ".github/CONTRIBUTING.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".github/FUNDING.yml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".github/ISSUE_TEMPLATE/1-issue.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".github/dependabot.yml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".github/workflows/publish.yml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".github/workflows/test-suite.yml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": ".gitignore",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "CHANGELOG.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "LICENSE.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "README.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/CNAME",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/css/custom.css",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/butterfly.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/gh-actions-fail-check.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/gh-actions-fail-test.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/gh-actions-fail.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/httpx-help.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/httpx-request.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/logo.jpg",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/rich-progress.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/speakeasy.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "docs/img/tqdm-progress.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/__init__.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/__version__.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_api.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_auth.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_client.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_config.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_content.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_decoders.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_exceptions.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_main.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_models.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_multipart.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_status_codes.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_transports/__init__.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_transports/asgi.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_transports/base.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_transports/default.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_transports/mock.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_transports/wsgi.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_types.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_urlparse.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_urls.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/_utils.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "httpx/py.typed",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "mkdocs.yml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "pyproject.toml",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "requirements.txt",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/check",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/clean",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/coverage",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/docs",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/install",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/lint",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/publish",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/sync-version",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "scripts/test",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/__init__.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/__init__.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_async_client.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_auth.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_client.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_cookies.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_event_hooks.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_headers.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_properties.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_proxies.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_queryparams.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/client/test_redirects.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/common.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/concurrency.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/conftest.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/fixtures/.netrc-nopassword",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/__init__.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/test_cookies.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/test_headers.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/test_queryparams.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/test_requests.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/test_responses.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/test_url.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/test_whatwg.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/models/whatwg.json",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_api.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_asgi.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_auth.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_config.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_content.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_decoders.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_exceptions.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_exported_members.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_main.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_multipart.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_status_codes.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_timeouts.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_utils.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r0",
+      "path": "tests/test_wsgi.py",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "CNAME",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/authentication.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/clients.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/event-hooks.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/extensions.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/proxies.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/resource-limits.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/ssl.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/text-encodings.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/timeouts.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "advanced/transports.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "api.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "async.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "code_of_conduct.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "compatibility.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "contributing.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "environment_variables.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "exceptions.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "http2.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/butterfly.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/gh-actions-fail-check.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/gh-actions-fail-test.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/gh-actions-fail.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/httpx-help.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/httpx-request.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/logo.jpg",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/rich-progress.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/speakeasy.png",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "img/tqdm-progress.gif",
+      "action": "added",
+      "status": "binary"
+    },
+    {
+      "rootId": "r1",
+      "path": "index.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "logging.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "overrides/partials/nav.html",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "quickstart.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "third_party_packages.md",
+      "action": "added",
+      "status": "indexed"
+    },
+    {
+      "rootId": "r1",
+      "path": "troubleshooting.md",
+      "action": "added",
+      "status": "indexed"
+    }
+  ],
+  "elapsedSeconds": 4.672572700001183,
+  "warnings": [],
+  "embeddingModel": null,
+  "vectorEngine": "stdlib",
+  "wallSeconds": 5.092733199999202,
+  "databaseBytes": 9289728
+}

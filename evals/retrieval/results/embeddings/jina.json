@@ -1,0 +1,2471 @@
+{
+  "model": "jinaai/jina-embeddings-v2-base-code",
+  "revision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+  "identity": {
+    "provider": "local-python",
+    "model": "jinaai/jina-embeddings-v2-base-code",
+    "revision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+    "dimension": 768,
+    "normalized": true,
+    "runtime": "fastembed",
+    "model_repo": "jinaai/jina-embeddings-v2-base-code",
+    "manifest_sha256": {
+      "config.json": "e426aa684c7f9a95c5f020aa855faf93a24f065f5fad0c9e17b124670cabdea6",
+      "onnx/model.onnx": "ed45870251c9f0cf656e78aab0d37a23489066df8a222bb1c8caf8a45f2cb16d",
+      "special_tokens_map.json": "06e405a36dfe4b9604f484f6a1e619af1a7f7d09e34a8555eb0b77b66318067f",
+      "tokenizer.json": "b01c78a902aa4facb2f47f95449f48e2f7bbfea5d2472ee2f6ce92323c6f86e5",
+      "tokenizer_config.json": "f477aeb15ff9f78d3c1ddf2361d2b0b8b20cf55220f839f29a37f3a18efddd89"
+    },
+    "token_limit": 8192,
+    "task_settings": "fastembed passage_embed/query_embed",
+    "max_input_chars": 8000,
+    "tokenCountKnown": false,
+    "token_truncation_observable": true
+  },
+  "load_seconds": 2.1725426420016447,
+  "download_bytes": 165437004,
+  "runtime": {
+    "total_bytes": 179690791,
+    "packages": [
+      {
+        "name": "anyio",
+        "version": "4.15.1",
+        "installed_bytes": 539391
+      },
+      {
+        "name": "certifi",
+        "version": "2026.7.22",
+        "installed_bytes": 249105
+      },
+      {
+        "name": "charset-normalizer",
+        "version": "3.5.2",
+        "installed_bytes": 761501
+      },
+      {
+        "name": "click",
+        "version": "8.5.0",
+        "installed_bytes": 447891
+      },
+      {
+        "name": "fastembed",
+        "version": "0.9.0",
+        "installed_bytes": 459753
+      },
+      {
+        "name": "filelock",
+        "version": "4.2.1",
+        "installed_bytes": 578705
+      },
+      {
+        "name": "flatbuffers",
+        "version": "25.12.19",
+        "installed_bytes": 88178
+      },
+      {
+        "name": "fsspec",
+        "version": "2026.9.0",
+        "installed_bytes": 810762
+      },
+      {
+        "name": "h11",
+        "version": "0.16.0",
+        "installed_bytes": 104105
+      },
+      {
+        "name": "hf-xet",
+        "version": "1.7.0",
+        "installed_bytes": 11573723
+      },
+      {
+        "name": "httpcore",
+        "version": "1.0.9",
+        "installed_bytes": 288194
+      },
+      {
+        "name": "httpx",
+        "version": "0.28.1",
+        "installed_bytes": 295902
+      },
+      {
+        "name": "huggingface_hub",
+        "version": "1.33.0",
+        "installed_bytes": 3292668
+      },
+      {
+        "name": "idna",
+        "version": "3.20",
+        "installed_bytes": 342670
+      },
+      {
+        "name": "loguru",
+        "version": "0.7.3",
+        "installed_bytes": 225888
+      },
+      {
+        "name": "mmh3",
+        "version": "5.3.1",
+        "installed_bytes": 429630
+      },
+      {
+        "name": "numpy",
+        "version": "2.5.4",
+        "installed_bytes": 56387898
+      },
+      {
+        "name": "onnxruntime",
+        "version": "1.31.0",
+        "installed_bytes": 64529737
+      },
+      {
+        "name": "packaging",
+        "version": "26.3",
+        "installed_bytes": 499357
+      },
+      {
+        "name": "pillow",
+        "version": "12.3.0",
+        "installed_bytes": 19667544
+      },
+      {
+        "name": "protobuf",
+        "version": "7.36.2",
+        "installed_bytes": 1388418
+      },
+      {
+        "name": "py_rust_stemmers",
+        "version": "0.1.8",
+        "installed_bytes": 861463
+      },
+      {
+        "name": "PyYAML",
+        "version": "6.0.3",
+        "installed_bytes": 2903798
+      },
+      {
+        "name": "requests",
+        "version": "2.34.2",
+        "installed_bytes": 234577
+      },
+      {
+        "name": "sqlite-vec",
+        "version": "0.1.9",
+        "installed_bytes": 162732
+      },
+      {
+        "name": "tokenizers",
+        "version": "0.23.3",
+        "installed_bytes": 11699521
+      },
+      {
+        "name": "tqdm",
+        "version": "4.70.1",
+        "installed_bytes": 234078
+      },
+      {
+        "name": "typing_extensions",
+        "version": "4.16.0",
+        "installed_bytes": 182965
+      },
+      {
+        "name": "urllib3",
+        "version": "2.8.0",
+        "installed_bytes": 450637
+      }
+    ]
+  },
+  "cpu_count": 7,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "batch_size": 1,
+  "max_input_chars": 8000,
+  "weight_variant": "official-int8",
+  "corpora": {
+    "httpx": {
+      "windows": 532,
+      "files": 88,
+      "questions": 13,
+      "source_fingerprint": "f08908ac4517cd41673bcc5370645f215d5400415c47e25ae7efb81d7f15ebd6",
+      "unreachable_questions": [],
+      "index_seconds": 566.0212985240069,
+      "windows_per_second": 0.939893960505156,
+      "truncated_windows": 0,
+      "query_embed_ms_p50": 48.4946999931708,
+      "query_embed_ms_p95": 96.06750099919736,
+      "rank_scan_ms_p50": 0.301499996567145,
+      "query_embed_ms_samples": [
+        41.56089999014512,
+        33.683299989206716,
+        40.71210100664757,
+        72.39590000244789,
+        64.32490100269206,
+        34.84100000059698,
+        52.19539999961853,
+        96.06750099919736,
+        48.4946999931708,
+        62.1118009876227,
+        46.3136000034865,
+        59.82680100714788,
+        47.85529999935534
+      ],
+      "dense": {
+        "hit@1": 0.3076923076923077,
+        "hit@5": 0.6153846153846154,
+        "hit@10": 0.6923076923076923,
+        "mrr": 0.4461920175534037,
+        "questions": 13,
+        "per_question": [
+          {
+            "id": "httpx-001",
+            "kind": "exact-symbol",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_client.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "docs/advanced/clients.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1486,
+                "end": 1545
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1081,
+                "end": 1140
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 586,
+                "end": 645
+              },
+              {
+                "path": "docs/api.md",
+                "start": 91,
+                "end": 150
+              }
+            ]
+          },
+          {
+            "id": "httpx-002",
+            "kind": "exact-symbol",
+            "first_hit_rank": 4,
+            "top10": [
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 496,
+                "end": 547
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_status_codes.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 226,
+                "end": 285
+              }
+            ]
+          },
+          {
+            "id": "httpx-003",
+            "kind": "concept",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_client.py",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1666,
+                "end": 1725
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1621,
+                "end": 1680
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 991,
+                "end": 1050
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 856,
+                "end": 915
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 496,
+                "end": 555
+              }
+            ]
+          },
+          {
+            "id": "httpx-004",
+            "kind": "config",
+            "first_hit_rank": 6,
+            "top10": [
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1126,
+                "end": 1142
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1396,
+                "end": 1455
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 136,
+                "end": 195
+              }
+            ]
+          },
+          {
+            "id": "httpx-005",
+            "kind": "docs-howto",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "docs/advanced/resource-limits.md",
+                "start": 1,
+                "end": 13
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1126,
+                "end": 1142
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 586,
+                "end": 645
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 136,
+                "end": 195
+              }
+            ]
+          },
+          {
+            "id": "httpx-006",
+            "kind": "paraphrase",
+            "first_hit_rank": 2,
+            "top10": [
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 496,
+                "end": 555
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 451,
+                "end": 510
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 406,
+                "end": 447
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 226,
+                "end": 248
+              }
+            ]
+          },
+          {
+            "id": "httpx-007",
+            "kind": "config",
+            "first_hit_rank": 2,
+            "top10": [
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/test_timeouts.py",
+                "start": 1,
+                "end": 55
+              },
+              {
+                "path": "tests/test_config.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/test_config.py",
+                "start": 136,
+                "end": 184
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1126,
+                "end": 1142
+              }
+            ]
+          },
+          {
+            "id": "httpx-008",
+            "kind": "docs-howto",
+            "first_hit_rank": 14,
+            "top10": [
+              {
+                "path": "tests/client/test_event_hooks.py",
+                "start": 181,
+                "end": 228
+              },
+              {
+                "path": "tests/client/test_auth.py",
+                "start": 676,
+                "end": 735
+              },
+              {
+                "path": "tests/client/test_event_hooks.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 676,
+                "end": 735
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "tests/client/test_event_hooks.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "tests/client/test_event_hooks.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "tests/conftest.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 496,
+                "end": 555
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 721,
+                "end": 780
+              }
+            ]
+          },
+          {
+            "id": "httpx-009",
+            "kind": "concept",
+            "first_hit_rank": 5,
+            "top10": [
+              {
+                "path": "tests/client/test_client.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_urls.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_urls.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_urls.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "tests/models/test_url.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_urls.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "tests/models/test_url.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 541,
+                "end": 600
+              }
+            ]
+          },
+          {
+            "id": "httpx-010",
+            "kind": "cross-file",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_models.py",
+                "start": 901,
+                "end": 960
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 991,
+                "end": 1050
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 586,
+                "end": 645
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 361,
+                "end": 393
+              }
+            ]
+          },
+          {
+            "id": "httpx-011",
+            "kind": "paraphrase",
+            "first_hit_rank": 25,
+            "top10": [
+              {
+                "path": "tests/conftest.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/conftest.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "tests/client/test_client.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/test_asgi.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/test_main.py",
+                "start": 136,
+                "end": 187
+              },
+              {
+                "path": "tests/test_main.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/test_main.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_async_client.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/test_asgi.py",
+                "start": 181,
+                "end": 224
+              }
+            ]
+          },
+          {
+            "id": "httpx-012",
+            "kind": "config",
+            "first_hit_rank": 16,
+            "top10": [
+              {
+                "path": "httpx/_utils.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_proxies.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/contributing.md",
+                "start": 181,
+                "end": 232
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_proxies.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "tests/client/test_proxies.py",
+                "start": 226,
+                "end": 265
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 406,
+                "end": 454
+              },
+              {
+                "path": "tests/client/test_proxies.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": ".github/CONTRIBUTING.md",
+                "start": 181,
+                "end": 236
+              }
+            ]
+          },
+          {
+            "id": "httpx-013",
+            "kind": "docs-howto",
+            "first_hit_rank": 101,
+            "top10": [
+              {
+                "path": "CHANGELOG.md",
+                "start": 1126,
+                "end": 1142
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "tests/test_config.py",
+                "start": 136,
+                "end": 184
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/advanced/resource-limits.md",
+                "start": 1,
+                "end": 13
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "tests/test_config.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/test_timeouts.py",
+                "start": 1,
+                "end": 55
+              }
+            ]
+          }
+        ]
+      },
+      "bm25": {
+        "hit@1": 0.38461538461538464,
+        "hit@5": 0.6153846153846154,
+        "hit@10": 0.7692307692307693,
+        "mrr": 0.4773253084569136,
+        "questions": 13,
+        "per_question": [
+          {
+            "id": "httpx-001",
+            "kind": "exact-symbol",
+            "first_hit_rank": 5,
+            "top10": [
+              {
+                "path": "tests/client/test_client.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1486,
+                "end": 1545
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 361,
+                "end": 420
+              }
+            ]
+          },
+          {
+            "id": "httpx-002",
+            "kind": "exact-symbol",
+            "first_hit_rank": 6,
+            "top10": [
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 496,
+                "end": 547
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "tests/client/test_client.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "tests/client/test_event_hooks.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 46,
+                "end": 105
+              }
+            ]
+          },
+          {
+            "id": "httpx-003",
+            "kind": "concept",
+            "first_hit_rank": 59,
+            "top10": [
+              {
+                "path": "CHANGELOG.md",
+                "start": 811,
+                "end": 870
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 586,
+                "end": 645
+              },
+              {
+                "path": "docs/compatibility.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 676,
+                "end": 735
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1036,
+                "end": 1095
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/authentication.md",
+                "start": 1,
+                "end": 60
+              }
+            ]
+          },
+          {
+            "id": "httpx-004",
+            "kind": "config",
+            "first_hit_rank": 8,
+            "top10": [
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "docs/contributing.md",
+                "start": 181,
+                "end": 232
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": ".github/CONTRIBUTING.md",
+                "start": 181,
+                "end": 236
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 406,
+                "end": 454
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              }
+            ]
+          },
+          {
+            "id": "httpx-005",
+            "kind": "docs-howto",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "docs/advanced/resource-limits.md",
+                "start": 1,
+                "end": 13
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1081,
+                "end": 1140
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 856,
+                "end": 915
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 901,
+                "end": 960
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1036,
+                "end": 1095
+              },
+              {
+                "path": "docs/advanced/clients.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 46,
+                "end": 83
+              }
+            ]
+          },
+          {
+            "id": "httpx-006",
+            "kind": "paraphrase",
+            "first_hit_rank": 3,
+            "top10": [
+              {
+                "path": "tests/client/test_auth.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "docs/code_of_conduct.md",
+                "start": 1,
+                "end": 56
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 496,
+                "end": 555
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 451,
+                "end": 510
+              },
+              {
+                "path": "docs/advanced/text-encodings.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_auth.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_auth.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              }
+            ]
+          },
+          {
+            "id": "httpx-007",
+            "kind": "config",
+            "first_hit_rank": 3,
+            "top10": [
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/exceptions.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/test_config.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/extensions.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 136,
+                "end": 195
+              }
+            ]
+          },
+          {
+            "id": "httpx-008",
+            "kind": "docs-howto",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "docs/advanced/event-hooks.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 46,
+                "end": 83
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1261,
+                "end": 1320
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1666,
+                "end": 1725
+              },
+              {
+                "path": "docs/compatibility.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "tests/models/test_requests.py",
+                "start": 46,
+                "end": 105
+              }
+            ]
+          },
+          {
+            "id": "httpx-009",
+            "kind": "concept",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_client.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "tests/client/test_client.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 631,
+                "end": 690
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 1,
+                "end": 60
+              }
+            ]
+          },
+          {
+            "id": "httpx-010",
+            "kind": "cross-file",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_decoders.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 856,
+                "end": 915
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 901,
+                "end": 960
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "docs/api.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 991,
+                "end": 1050
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 496,
+                "end": 555
+              }
+            ]
+          },
+          {
+            "id": "httpx-011",
+            "kind": "paraphrase",
+            "first_hit_rank": 85,
+            "top10": [
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 46,
+                "end": 83
+              },
+              {
+                "path": "docs/async.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/clients.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/extensions.md",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "docs/async.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 451,
+                "end": 510
+              },
+              {
+                "path": "docs/advanced/extensions.md",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "docs/advanced/text-encodings.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 1,
+                "end": 60
+              }
+            ]
+          },
+          {
+            "id": "httpx-012",
+            "kind": "config",
+            "first_hit_rank": 55,
+            "top10": [
+              {
+                "path": "CHANGELOG.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1306,
+                "end": 1365
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 586,
+                "end": 645
+              },
+              {
+                "path": "httpx/_api.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 721,
+                "end": 780
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 406,
+                "end": 454
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "docs/environment_variables.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 46,
+                "end": 105
+              }
+            ]
+          },
+          {
+            "id": "httpx-013",
+            "kind": "docs-howto",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 46,
+                "end": 83
+              },
+              {
+                "path": "docs/contributing.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/contributing.md",
+                "start": 181,
+                "end": 232
+              },
+              {
+                "path": ".github/CONTRIBUTING.md",
+                "start": 181,
+                "end": 236
+              },
+              {
+                "path": "docs/compatibility.md",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/extensions.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 1,
+                "end": 60
+              }
+            ]
+          }
+        ]
+      },
+      "hybrid_rrf60": {
+        "hit@1": 0.38461538461538464,
+        "hit@5": 0.6923076923076923,
+        "hit@10": 0.8461538461538461,
+        "mrr": 0.5376984126984127,
+        "questions": 13,
+        "per_question": [
+          {
+            "id": "httpx-001",
+            "kind": "exact-symbol",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_client.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1486,
+                "end": 1545
+              },
+              {
+                "path": "tests/client/test_client.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/advanced/clients.md",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 586,
+                "end": 645
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 586,
+                "end": 645
+              }
+            ]
+          },
+          {
+            "id": "httpx-002",
+            "kind": "exact-symbol",
+            "first_hit_rank": 4,
+            "top10": [
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 496,
+                "end": 547
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 766,
+                "end": 825
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "tests/client/test_client.py",
+                "start": 136,
+                "end": 195
+              }
+            ]
+          },
+          {
+            "id": "httpx-003",
+            "kind": "concept",
+            "first_hit_rank": 12,
+            "top10": [
+              {
+                "path": "docs/compatibility.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 496,
+                "end": 555
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 811,
+                "end": 870
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1036,
+                "end": 1095
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 451,
+                "end": 510
+              }
+            ]
+          },
+          {
+            "id": "httpx-004",
+            "kind": "config",
+            "first_hit_rank": 3,
+            "top10": [
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1126,
+                "end": 1142
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 721,
+                "end": 780
+              }
+            ]
+          },
+          {
+            "id": "httpx-005",
+            "kind": "docs-howto",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "docs/advanced/resource-limits.md",
+                "start": 1,
+                "end": 13
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 676,
+                "end": 735
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1036,
+                "end": 1095
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 856,
+                "end": 915
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "docs/advanced/clients.md",
+                "start": 1,
+                "end": 60
+              }
+            ]
+          },
+          {
+            "id": "httpx-006",
+            "kind": "paraphrase",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_client.py",
+                "start": 496,
+                "end": 555
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 451,
+                "end": 510
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "tests/client/test_auth.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "httpx/_auth.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "docs/compatibility.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "tests/client/test_redirects.py",
+                "start": 406,
+                "end": 447
+              }
+            ]
+          },
+          {
+            "id": "httpx-007",
+            "kind": "config",
+            "first_hit_rank": 2,
+            "top10": [
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/test_config.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "tests/test_timeouts.py",
+                "start": 1,
+                "end": 55
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "tests/test_config.py",
+                "start": 136,
+                "end": 184
+              },
+              {
+                "path": "httpx/_exceptions.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "tests/client/test_properties.py",
+                "start": 46,
+                "end": 68
+              }
+            ]
+          },
+          {
+            "id": "httpx-008",
+            "kind": "docs-howto",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "docs/advanced/event-hooks.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_auth.py",
+                "start": 676,
+                "end": 735
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 451,
+                "end": 510
+              },
+              {
+                "path": "tests/models/test_requests.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "tests/models/test_requests.py",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 1666,
+                "end": 1725
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 136,
+                "end": 195
+              }
+            ]
+          },
+          {
+            "id": "httpx-009",
+            "kind": "concept",
+            "first_hit_rank": 2,
+            "top10": [
+              {
+                "path": "tests/client/test_client.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 361,
+                "end": 420
+              },
+              {
+                "path": "httpx/_urls.py",
+                "start": 316,
+                "end": 375
+              },
+              {
+                "path": "httpx/_urls.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 496,
+                "end": 555
+              },
+              {
+                "path": "httpx/_client.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "tests/client/test_client.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "httpx/_urlparse.py",
+                "start": 406,
+                "end": 465
+              }
+            ]
+          },
+          {
+            "id": "httpx-010",
+            "kind": "cross-file",
+            "first_hit_rank": 1,
+            "top10": [
+              {
+                "path": "httpx/_models.py",
+                "start": 901,
+                "end": 960
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 541,
+                "end": 600
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 226,
+                "end": 285
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 991,
+                "end": 1050
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "httpx/_decoders.py",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 406,
+                "end": 465
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 946,
+                "end": 1005
+              },
+              {
+                "path": "httpx/_models.py",
+                "start": 856,
+                "end": 915
+              },
+              {
+                "path": "tests/models/test_responses.py",
+                "start": 586,
+                "end": 645
+              }
+            ]
+          },
+          {
+            "id": "httpx-011",
+            "kind": "paraphrase",
+            "first_hit_rank": 8,
+            "top10": [
+              {
+                "path": "docs/async.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/advanced/clients.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/async.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_auth.py",
+                "start": 721,
+                "end": 772
+              },
+              {
+                "path": "docs/advanced/extensions.md",
+                "start": 181,
+                "end": 240
+              },
+              {
+                "path": "docs/advanced/extensions.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "tests/test_main.py",
+                "start": 136,
+                "end": 187
+              },
+              {
+                "path": "httpx/_transports/mock.py",
+                "start": 1,
+                "end": 43
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 46,
+                "end": 83
+              },
+              {
+                "path": "docs/quickstart.md",
+                "start": 451,
+                "end": 510
+              }
+            ]
+          },
+          {
+            "id": "httpx-012",
+            "kind": "config",
+            "first_hit_rank": 18,
+            "top10": [
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 406,
+                "end": 454
+              },
+              {
+                "path": "docs/contributing.md",
+                "start": 181,
+                "end": 232
+              },
+              {
+                "path": "httpx/_utils.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": ".github/CONTRIBUTING.md",
+                "start": 181,
+                "end": 236
+              },
+              {
+                "path": "docs/environment_variables.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/environment_variables.md",
+                "start": 46,
+                "end": 79
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 46,
+                "end": 83
+              },
+              {
+                "path": "docs/advanced/proxies.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "tests/client/test_proxies.py",
+                "start": 136,
+                "end": 195
+              }
+            ]
+          },
+          {
+            "id": "httpx-013",
+            "kind": "docs-howto",
+            "first_hit_rank": 7,
+            "top10": [
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 46,
+                "end": 71
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "docs/advanced/extensions.md",
+                "start": 91,
+                "end": 150
+              },
+              {
+                "path": "docs/advanced/timeouts.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 136,
+                "end": 195
+              },
+              {
+                "path": "httpx/_config.py",
+                "start": 46,
+                "end": 105
+              },
+              {
+                "path": "docs/advanced/transports.md",
+                "start": 1,
+                "end": 60
+              },
+              {
+                "path": "httpx/_transports/default.py",
+                "start": 271,
+                "end": 330
+              },
+              {
+                "path": "docs/advanced/resource-limits.md",
+                "start": 1,
+                "end": 13
+              },
+              {
+                "path": "CHANGELOG.md",
+                "start": 1126,
+                "end": 1142
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "peak_rss_mib": 872.734375
+}

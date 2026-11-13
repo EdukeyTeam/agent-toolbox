@@ -6,5 +6,6 @@
   },
   "devDependencies": {
     "yaml": "^2.8.1"
-  }
+  },
+  "license": "MIT"
 }

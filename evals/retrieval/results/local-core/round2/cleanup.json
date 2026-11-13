@@ -1,0 +1,26 @@
+{
+  "closedOwnedWorkspaces": [
+    "wNK",
+    "wNM",
+    "wNN"
+  ],
+  "ownedRemaining": [],
+  "remainingWorkspaces": 5,
+  "descendantAudits": {
+    "wNK": {
+      "workspace": "wNK",
+      "shellPid": 1285907,
+      "shellExists": true,
+      "backgroundDescendants": []
+    },
+    "wNM": {
+      "workspace": "wNM",
+      "shellPid": 1288659,
+      "shellExists": true,
+      "backgroundDescendants": []
+    }
+  },
+  "createdWorktrees": [],
+  "existingWorktreesPreserved": true,
+  "existingWorktreeCount": 1
+}

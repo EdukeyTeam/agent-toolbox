@@ -1,6 +1,6 @@
 ---
 name: write-prd
-description: Use when the user wants to write a PRD, create a product requirements document, or plan a new feature or product.
+description: Use when the user wants to write a PRD, create a product requirements document, plan a new feature or product, or describe what an existing application does from its code or from its interface (black-box, e.g. as a basis for test cases).
 ---
 
 This skill creates a Product Requirements Document (PRD). The PRD covers functional requirements, user flows, UX/UI, personas, and business constraints. Technical architecture, implementation decisions, and testing strategy are NOT part of PRD — they belong in a separate ADR document created in a later step.
@@ -14,8 +14,19 @@ Skip steps that are clearly not applicable, but do not skip the required questio
 ### Step 1 — Gather initial description
 If not already provided, ask the user for a detailed description of the product or feature: what problem it solves, who it's for, and any ideas they already have about how it should work.
 
-### Step 2 — Explore the repo (if applicable)
-If this is a feature added to an existing codebase, explore it to understand the current state. Verify the user's assumptions. Do not skip this if there is relevant existing code.
+### Step 2 — Choose the workflow and explore
+Decide which case this is, read its reference, and explore what it says to explore before asking questions. Ask the user only if the case is unclear.
+
+| Case | Read |
+|---|---|
+| A new product from an idea, brief or draft | [greenfield](references/workflows/greenfield.md) |
+| A new feature or a change to one part of an existing application | [feature in an existing application](references/workflows/existing-app-feature.md) |
+| Describing what an existing application does today, from its code and/or the running web, desktop or mobile app | [existing application as it is](references/workflows/existing-app-as-is.md) |
+| Describing an application only from its interface, without the source code (usually testers) | [black-box](references/workflows/black-box.md) |
+
+The rest of the process and the template are the same in every case. Verify the user's assumptions against what you find; do not skip exploration when there is something to explore.
+
+In the as-is and black-box cases the document describes behavior that exists, so read the process and template that way: ask the Step 3 questions about how the application behaves today instead of what should be built, state in the Executive Summary that the document describes an existing application, use Out of Scope for the parts of the application the document does not cover, and describe the screens in the UI section as they are. Proposed changes go to Further Notes.
 
 ### Step 3 — Ask clarifying questions (REQUIRED — minimum 5)
 Ask the user at least five focused clarifying questions before writing the PRD. Do not start writing until you have answers. If the brief already covers a listed topic, ask a deeper question about another decision instead of repeating it.
@@ -35,12 +46,12 @@ Resolve decisions that affect the main flows before writing. Record any remainin
 If the product involves external APIs, file format constraints, legal requirements, or third-party service limits, research them before writing. Do not put unverified numbers or constraints into the PRD.
 
 ### Step 5 — Write the PRD
-Use the template below. Save the result as `docs/PRD.md` (or the path the user specifies).
+Use the template below. Save the result as `docs/PRD.md`, unless the user specifies another path or the chosen workflow names one (a distinct feature in an existing application gets its own document).
 
 ### Step 6 — Stop, then ask about the ADR
 Stop once the PRD is saved. Do not begin implementation, and do not write the ADR in the same run.
 
-Ask the user whether they want to continue now with the `write-adr` skill to generate the ADR from this PRD. **The user decides** — do not start it unprompted, and do not assume the answer is yes.
+Ask the user whether they want to continue now with the `write-adr` skill to generate the ADR from this PRD. In the black-box case there is usually nothing to build, so offer instead to derive test cases from the acceptance criteria in a separate document. **The user decides** — do not start it unprompted, and do not assume the answer is yes.
 
 ---
 

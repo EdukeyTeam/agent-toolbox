@@ -1,0 +1,37 @@
+name: Test usage analytics
+
+on:
+  pull_request:
+    paths: &paths
+      - 'skills/agent-usage-analytics/**'
+      - 'tests/usage-analytics/**'
+      - 'tests/usage-analytics.test.cjs'
+      - '.github/workflows/test-usage-analytics.yml'
+  push:
+    branches: [main]
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s tests/usage-analytics -p "test_*.py"

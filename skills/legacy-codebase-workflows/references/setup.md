@@ -24,7 +24,7 @@ python /path/to/skill/scripts/setup_native.py status
 python /path/to/skill/scripts/setup_native.py install
 ```
 
-This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release cannot be fetched, installation reports the network or publication error without compiling Rust or silently selecting an old build. If status finds an invalid package already at this version/platform, inspect its reason and rerun installation with explicit `--replace` after resolving the cause.
+This selects the executing OS/CPU, downloads the pinned release index and archive, verifies all packaged file hashes, preserves notices, smoke-tests compact/all-definition mapping, then writes a receipt into the versioned user cache. Use `--cache-dir /path/to/tool-cache` for an isolated cache. Mapping remains offline. If the pinned release cannot be fetched, installation exits 2 with the exact requested URL and HTTP status/network reason, `next_action: report-native-error` and `python_fallback_requires_user_acknowledgment: true`. Tell the user that the native binary is unavailable and include that error. Resolve a transient cause before an explicit retry, or use a reviewed matching CI/local package. Never silently switch to Python, build Rust or select an old release. If status finds an invalid package already at this version/platform, inspect its reason and rerun installation with explicit `--replace` after resolving the cause.
 
 An authenticated `gh` installation can instead fetch a successful matching CI artifact whose index was produced by the test workflow:
 
@@ -42,7 +42,7 @@ python /path/to/skill/scripts/setup_native.py install --local-package /path/to/a
 
 Use `--manifest /path/to/legacy-tools-release.json` only with `--local-package` when the local index is separate. CI and release installs reject that override before fetching or touching the cache, so the authenticated index remains their provenance source. Local dirty-source packages are allowed only as explicit local development evidence; receipts expose `source_dirty`, and those packages cannot be promoted through CI/release aggregation. `--replace` explicitly replaces this version/platform after successful verification; failed verification preserves the prior installation.
 
-`legacy-repo-map` maps locally without Python or a resource download once installed. It remains experimental because parser builds and captured tag sets can differ from the Python reference. If OS policy blocks execution or the platform is unsupported, use isolated Python source. Setup never changes PATH, security policy, quarantine metadata or installed instructions.
+`legacy-repo-map` maps locally without Python or a resource download once installed. It remains experimental because parser builds and captured tag sets can differ from the Python reference. If OS policy blocks execution or the platform is unsupported, report the exact reason and obtain explicit user acknowledgment before using isolated Python source. Setup never changes PATH, security policy, quarantine metadata or installed instructions.
 
 ```bash
 /path/returned/as/program /path/to/repository --output-dir /path/to/artifacts --budget 16384
@@ -50,7 +50,7 @@ Use `--manifest /path/to/legacy-tools-release.json` only with `--local-package` 
 
 ## Python fallback
 
-Use this route when the executing OS/CPU is unsupported, approved native delivery is unavailable, host policy blocks execution, native setup/mapping fails, or an exact Python reference comparison is required. Report the native failure and the selected fallback; do not silently claim native output. If comparing behavior, preserve separate staging/report names and the same source revision, scope and budget.
+Use this route only after the user explicitly acknowledges the native unavailability and agrees to Python, including when the executing OS/CPU has no native asset, host policy blocks execution, or native setup/mapping fails. Report the exact native failure and identify the Python reference implementation before asking. A user request for an exact Python reference comparison already supplies acknowledgment. A failed download alone never authorizes a fallback. If comparing behavior, preserve separate staging/report names and the same source revision, scope and budget.
 
 Install the pinned packages into an environment of their own. Do not install them into the legacy application's environment and do not create the environment inside the source repository.
 
@@ -76,7 +76,7 @@ python -m pip install --target /path/to/tool-deps -r /path/to/skill/requirements
 PYTHONPATH=/path/to/tool-deps python /path/to/skill/scripts/repo_map.py /path/to/repository --output-dir /path/to/artifacts
 ```
 
-Installation is the only step that downloads anything. The pinned parser package contains its grammars; later parser releases fetch grammars on first use, so keep the pins. `repo_map.py --inventory-only` and `check_citations.py` need only the standard library.
+Installation is the only step that downloads anything. The pinned parser package contains its grammars; later parser releases fetch grammars on first use, so keep the pins. `repo_map.py --inventory-only`, `check_citations.py` and `member_ledger.py` need only the standard library.
 
 `scripts/legacy_tools.py` is one entry point for all tools and passes arguments through unchanged:
 
@@ -112,7 +112,7 @@ Keep the adjacent license and notice files with the program when copying or redi
 
 Bundles are built per operating system and CPU architecture; a Linux bundle does not run on macOS or Windows. No binaries are stored in the skill or the repository. The [native test workflow](https://github.com/EdukeyTeam/agent-toolbox/actions/workflows/test-native.yml) retains build artifacts, which are not automatically installed with this skill. Choose a successful run matching the skill source and follow [binary delivery](distribution.md); do not treat a historical benchmark run as the current installation version. Verify the archive against its accompanying `SHA256SUMS`. CI setup requires an explicit matching source SHA. See [binary delivery](distribution.md) for the exact contract.
 
-The bundle covers lexical retrieval completely. Semantic retrieval is not included: it needs Node.js, the pinned inference package and a downloaded model, set up as described under optional retrieval below, and the optional `sqlite-vec` vector engine is not bundled either.
+The bundle covers lexical retrieval completely. Semantic retrieval is not included: it needs an optional embedding runtime (the local Python packages, an existing endpoint, or the Node helper) and a downloaded model, set up as described in [retrieval setup](retrieval-setup.md); the optional `sqlite-vec` vector engine is not bundled either.
 
 ## Build the standalone programs
 
@@ -132,15 +132,11 @@ The build fails if PyInstaller picks up a Python package that is not on the help
 
 ## Optional retrieval
 
-Lexical indexing, querying and serving are separate Python auxiliary tools, available through source or the frozen reference bundle; they use only the standard library with SQLite FTS5. The native mapper does not provide retrieval. For semantic retrieval, create an isolated inference runtime outside the source repository:
+The local retrieval engine (`scripts/context7_backend.py`) indexes and queries private source and documentation; it is available through source or the frozen reference bundle. Lexical indexing, querying, refreshing and serving need only Python 3.12+ with SQLite FTS5: no model, account or network. The native mapper does not provide retrieval.
 
-1. Copy `scripts/retrieval/package.json`, `pnpm-workspace.yaml` and `pnpm-lock.yaml` into an empty directory.
-2. Run `pnpm install --dir /path/to/inference-runtime --frozen-lockfile` with Node.js 24.
-3. Pass that directory as `--embedding-runtime` and a model cache directory as `--model-cache`.
+Optional capabilities, in install order: the pinned tree-sitter parser tier from `requirements-map.txt`; an embedding runtime for semantic and hybrid search (`scripts/requirements-embed.txt` for the local Python provider, an existing OpenAI-compatible endpoint, or the locked Transformers.js Node helper under `scripts/retrieval/`); and vector scan acceleration (pinned `sqlite-vec` 0.1.9 in `scripts/requirements-retrieval.txt`, installed into the tool environment, never globally). Install steps, model and endpoint consent gates, air-gapped installation and Windows/WSL notes are in [retrieval setup](retrieval-setup.md); commands, concepts, evaluation and measured limits are in [private retrieval](private-retrieval.md).
 
-Only the explicit `index --embed-model` command downloads model files; querying and serving use local files. The optional `sqlite-vec` vector engine is a pinned Python package in `scripts/requirements-retrieval.txt`; install it into the tool environment, never globally. See [private retrieval](private-retrieval.md) for commands, models and limits.
-
-The optional vector extension needs both its package and an extension-enabled Python `sqlite3` runtime. If the runtime cannot load extensions, use `--vector-engine stdlib` or explicit `auto` fallback, or a compatible Python build such as Homebrew Python 3.12 on macOS. See [runtime capability notes](private-retrieval.md#evaluate-semantic-retrieval-for-prose-paraphrases).
+The optional vector extension needs both its package and an extension-enabled Python `sqlite3` runtime. If the runtime cannot load extensions, use `--vector-engine stdlib` or `--vector-engine numpy`, or a compatible Python build such as Homebrew Python 3.12 on macOS.
 
 ## Check a Python fallback installation
 

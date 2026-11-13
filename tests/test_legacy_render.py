@@ -1,5 +1,6 @@
 """Observable checks for bounded, AST-based grouped repository maps."""
 
+import importlib.util
 import hashlib
 import json
 import os
@@ -15,6 +16,7 @@ sys.path.insert(0, str(SCRIPTS))
 from repo_map import generate
 
 
+@unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("tree_sitter", "tree_sitter_language_pack", "networkx")), "optional map dependencies are not installed")
 class RenderTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -484,6 +486,7 @@ class Second:
 
 
 
+@unittest.skipUnless(all(importlib.util.find_spec(name) for name in ("tree_sitter", "tree_sitter_language_pack", "networkx")), "optional map dependencies are not installed")
 class CompactTests(unittest.TestCase):
     setUp = RenderTests.setUp
     write = RenderTests.write

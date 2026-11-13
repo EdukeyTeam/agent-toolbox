@@ -11,7 +11,7 @@ The [README](README.md) is for people discovering and installing the toolbox. Ke
 - Add only skills we authored. Install third-party skills from their original source instead of copying them here. An authored skill may bundle an adapted upstream code library when its license permits this; pin its provenance, document changes and preserve all required licenses and notices. This does not permit copying a third-party skill.
 - Do not include secrets, client-specific information, private repository paths, or machine-specific assumptions in public skills.
 - Edit the source in this repository, then reinstall or update the skill. Do not patch an installed `.agents/skills/` or `.claude/skills/` copy.
-- `skills/` is also the source for the Claude and Copilot plugin bundles. Do not copy skill folders into plugin-specific directories. Keep the root `plugin.json`, Claude `.claude-plugin/plugin.json`, and marketplace entry consistent when changing the plugin name or description.
+- `skills/` is also the source for the Codex, Claude and Copilot plugin bundles. Do not copy skill folders into plugin-specific directories. Codex and Copilot reuse the root `plugin.json`; Codex discovers the toolbox through `.agents/plugins/marketplace.json`. Keep the root `plugin.json`, Claude `.claude-plugin/plugin.json`, and both marketplace entries consistent when changing the plugin name, version, description, author or repository.
 
 ## Changes and checks
 

@@ -1,0 +1,25 @@
+{
+  "incremental_100_of_1000": {
+    "seconds": 1.5087409019906772,
+    "changed": 100,
+    "added": 0,
+    "actions": 100,
+    "generation": 2
+  },
+  "returned_stale_among_100": 0,
+  "first": {
+    "seconds": 0.6618400009901961,
+    "changed": 0,
+    "revision": "75d06d37567f21bacfe5dee29b1ae199196e2b40"
+  },
+  "metadata-only": {
+    "seconds": 0.6208728009951301,
+    "changed": 0,
+    "revision": "a8be23b7950a908c4da66f4eb08062bcdd8b4506"
+  },
+  "initial_index": {
+    "files": 1000,
+    "chunks": 1000,
+    "elapsedSeconds": 2.182805603995803
+  }
+}

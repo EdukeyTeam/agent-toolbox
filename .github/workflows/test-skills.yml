@@ -13,8 +13,10 @@ on:
       - 'tests/fixtures/atlassian_fake_server.py'
       - 'package.json'
       - 'package-lock.json'
+      - 'LICENSE'
       - 'plugin.json'
       - '.claude-plugin/**'
+      - '.agents/plugins/**'
       - '.github/workflows/**'
   push:
     branches: [main]

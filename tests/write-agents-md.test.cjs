@@ -36,6 +36,38 @@ for (const workflow of ['web', 'desktop']) {
     assert.equal(fs.realpathSync.native(receipt.destination), fs.realpathSync.native(path.join(project, 'AGENTS.md.candidate')));
     assert.deepEqual(fs.readFileSync(path.join(skillRoot, 'assets', `${workflow}-AGENTS.md`)), source);
   });
+
+  test(`${workflow} candidate fields are documented and can be fully adapted`, t => {
+    const { project } = fixture(t);
+    const values = {
+      PROJECT_CONTEXT: 'A synthetic application for managing local test records.',
+      CHAT_LANGUAGE: 'English',
+      DOCUMENTATION_LANGUAGE: 'English',
+      UI_LANGUAGE_POLICY: 'Preserve the existing UI locale.',
+      NON_OBVIOUS_LANGUAGE_OR_FRAMEWORK_CONSTRAINT: 'Preserve saved record compatibility.',
+      DOCUMENTATION_LABEL: 'Project documentation',
+      DOCUMENTATION_PATH: 'docs/index.md',
+      NONSTANDARD_LAYOUT_RULES: 'Keep migration inputs in their existing resource root.',
+      SCREENSHOTS_PATH: 'docs/qa/screens',
+      [workflow === 'web' ? 'WEB_QA_METHOD' : 'DESKTOP_QA_METHOD']:
+        workflow === 'web' ? 'the established browser runner' : 'native desktop tooling',
+    };
+    const result = run(project, workflow, ['--candidate']);
+    assert.equal(result.status, 0, result.stderr);
+    const candidate = path.join(project, 'AGENTS.md.candidate');
+    const original = fs.readFileSync(candidate, 'utf8');
+    const fields = [...new Set([...original.matchAll(/\{\{([A-Z_]+)\}\}/g)]
+      .map(match => match[1]))];
+    assert.deepEqual(fields.sort(), Object.keys(values).sort(), 'Review changed adaptation fields');
+    const guide = fs.readFileSync(path.join(skillRoot, 'references/scope-and-adaptation.md'), 'utf8');
+    for (const field of fields) {
+      assert.ok(guide.includes(`{{${field}}}`), `${field} needs adaptation guidance`);
+    }
+    const adapted = original.replace(/\{\{([A-Z_]+)\}\}/g, (_, field) => values[field]);
+    fs.writeFileSync(candidate, adapted);
+    assert.doesNotMatch(fs.readFileSync(candidate, 'utf8'), /\{\{|\}\}|undefined/);
+    assert.equal(fs.existsSync(path.join(project, 'AGENTS.md')), false);
+  });
 }
 
 test('nested scope copies the original template without writing root guidance', t => {

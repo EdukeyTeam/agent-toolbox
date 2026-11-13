@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "version": "2026-10-17.2",
+  "currency": "USD",
+  "unit": "per_million_tokens",
+  "verified_at": "2026-10-17",
+  "historical_policy": "Reference rates verified on this date, not a reconstructed historical invoice. Add effective intervals when verified.",
+  "sources": {
+    "openai": "https://developers.openai.com/api/docs/pricing",
+    "anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "zai": "https://docs.z.ai/guides/overview/pricing"
+  },
+  "models": {
+    "claude-opus-5-5": {
+      "provider": "anthropic",
+      "input": 4,
+      "output": 20,
+      "cache_read": 0.2,
+      "cache_write_5m": 5.0,
+      "cache_write_1h": 8,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": 2
+    },
+    "claude-sonnet-5-5": {
+      "provider": "anthropic",
+      "input": 2,
+      "output": 10,
+      "cache_read": 0.1,
+      "cache_write_5m": 2.5,
+      "cache_write_1h": 4,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": null
+    },
+    "claude-fable-5-1": {
+      "provider": "anthropic",
+      "input": 10,
+      "output": 50,
+      "cache_read": 0.25,
+      "cache_write_5m": 12.5,
+      "cache_write_1h": 20,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": null
+    },
+    "claude-mythos-5-1": {
+      "provider": "anthropic",
+      "input": 10,
+      "output": 50,
+      "cache_read": 0.25,
+      "cache_write_5m": 12.5,
+      "cache_write_1h": 20,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": null
+    },
+    "claude-opus-5": {
+      "provider": "anthropic",
+      "input": 5,
+      "output": 25,
+      "cache_read": 0.5,
+      "cache_write_5m": 6.25,
+      "cache_write_1h": 10,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": 2
+    },
+    "claude-opus-4-8": {
+      "provider": "anthropic",
+      "input": 5,
+      "output": 25,
+      "cache_read": 0.5,
+      "cache_write_5m": 6.25,
+      "cache_write_1h": 10,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": 2
+    },
+    "claude-opus-4-7": {
+      "provider": "anthropic",
+      "input": 5,
+      "output": 25,
+      "cache_read": 0.5,
+      "cache_write_5m": 6.25,
+      "cache_write_1h": 10,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": null
+    },
+    "claude-opus-4-6": {
+      "provider": "anthropic",
+      "input": 5,
+      "output": 25,
+      "cache_read": 0.5,
+      "cache_write_5m": 6.25,
+      "cache_write_1h": 10,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": null
+    },
+    "claude-sonnet-4-6": {
+      "provider": "anthropic",
+      "input": 3,
+      "output": 15,
+      "cache_read": 0.3,
+      "cache_write_5m": 3.75,
+      "cache_write_1h": 6,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": null
+    },
+    "claude-haiku-4-5": {
+      "provider": "anthropic",
+      "input": 1,
+      "output": 5,
+      "cache_read": 0.1,
+      "cache_write_5m": 1.25,
+      "cache_write_1h": 2,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": null
+    },
+    "claude-haiku-5-5": {
+      "provider": "anthropic",
+      "input": 0.1,
+      "output": 0.5,
+      "cache_read": 0.01,
+      "cache_write_5m": 0.125,
+      "cache_write_1h": 0.2,
+      "effective_from": null,
+      "effective_until": null,
+      "tiers": [
+        {
+          "above_input_tokens": 100000,
+          "rates": {
+            "input": 0.5,
+            "output": 2.5,
+            "cache_read": 0.05,
+            "cache_write_5m": 0.625,
+            "cache_write_1h": 1
+          }
+        }
+      ]
+    },
+    "gpt-6.1-sol": {
+      "provider": "openai",
+      "input": 2,
+      "output": 10,
+      "cache_read": 0.1,
+      "cache_write_5m": 2.5,
+      "cache_write_1h": 2.5,
+      "effective_from": null,
+      "effective_until": null,
+      "alternate_rates": {
+        "input": 4,
+        "output": 15.0,
+        "cache_read": 0.2,
+        "cache_write_5m": 5.0,
+        "cache_write_1h": 5.0
+      },
+      "alternate_reason": "Official short/long rates differ; threshold was not established from the verified table. Range spans both.",
+      "fast_multiplier": 2,
+      "ultrafast_multiplier": 6
+    },
+    "gpt-6-astra": {
+      "provider": "openai",
+      "input": 10,
+      "output": 50,
+      "cache_read": 1,
+      "cache_write_5m": 12.5,
+      "cache_write_1h": 12.5,
+      "effective_from": null,
+      "effective_until": null,
+      "alternate_rates": {
+        "input": 20,
+        "output": 75.0,
+        "cache_read": 2,
+        "cache_write_5m": 25.0,
+        "cache_write_1h": 25.0
+      },
+      "alternate_reason": "Official short/long rates differ; threshold was not established from the verified table. Range spans both.",
+      "fast_multiplier": 2,
+      "ultrafast_multiplier": 6
+    },
+    "gpt-6-luna": {
+      "provider": "openai",
+      "input": 0.1,
+      "output": 0.5,
+      "cache_read": 0.01,
+      "cache_write_5m": 0.125,
+      "cache_write_1h": 0.125,
+      "effective_from": null,
+      "effective_until": null,
+      "alternate_rates": {
+        "input": 0.2,
+        "output": 0.75,
+        "cache_read": 0.02,
+        "cache_write_5m": 0.25,
+        "cache_write_1h": 0.25
+      },
+      "alternate_reason": "Official short/long rates differ; threshold was not established from the verified table. Range spans both.",
+      "fast_multiplier": 2,
+      "ultrafast_multiplier": 6
+    },
+    "gpt-5.3-codex": {
+      "provider": "openai",
+      "input": 1.75,
+      "output": 14,
+      "cache_read": 0.175,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0,
+      "effective_from": null,
+      "effective_until": null,
+      "fast_multiplier": 2
+    },
+    "glm-5.3": {
+      "provider": "zai",
+      "input": 1.4,
+      "output": 4.4,
+      "cache_read": 0.26,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0,
+      "effective_from": null,
+      "effective_until": null
+    },
+    "glm-5.3-flash": {
+      "provider": "zai",
+      "input": 0.15,
+      "output": 0.5,
+      "cache_read": 0.03,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0,
+      "effective_from": null,
+      "effective_until": null
+    }
+  },
+  "aliases": {
+    "GLM-5.3": "glm-5.3",
+    "GLM-5.3-Flash": "glm-5.3-flash"
+  }
+}

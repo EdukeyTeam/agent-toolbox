@@ -118,6 +118,13 @@ try {
         }
     }
 
+    # MIT requires the notice in every substantial copy, so the ZIP carries the root LICENSE.
+    $licensePath = Join-Path $repoRoot 'LICENSE'
+    if (-not (Test-Path -LiteralPath $licensePath -PathType Leaf)) { throw "Missing LICENSE at $licensePath" }
+    Copy-Item -LiteralPath $licensePath -Destination (Join-Path $pluginRoot 'LICENSE')
+    $licenseHash = (Get-FileHash -LiteralPath $licensePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $hashRecords.Add("LICENSE:$licenseHash")
+
     $sourceHash = Get-HexDigest -Text (($hashRecords | Sort-Object) -join "`n")
     $manifest = Get-Content -LiteralPath $manifestTemplatePath -Raw | ConvertFrom-Json
     $manifest.version = $version
@@ -150,7 +157,7 @@ try {
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
     try {
         $entries = @($archive.Entries | ForEach-Object { $_.FullName })
-        $requiredEntries = @("$PluginName/.claude-plugin/plugin.json") + @(
+        $requiredEntries = @("$PluginName/.claude-plugin/plugin.json", "$PluginName/LICENSE") + @(
             $skillNames | ForEach-Object { "$PluginName/skills/$_/SKILL.md" }
         )
         $legacySkill = Join-Path $SkillsRoot 'legacy-codebase-workflows'

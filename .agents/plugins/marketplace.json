@@ -1,0 +1,26 @@
+{
+  "name": "edukey-agent-toolbox",
+  "interface": {
+    "displayName": "Edukey Agent Toolbox"
+  },
+  "plugins": [
+    {
+      "name": "agent-toolbox",
+      "version": "0.1.0",
+      "description": "Edukey skills for developer and business workflows",
+      "author": {
+        "name": "Edukey"
+      },
+      "repository": "https://github.com/EdukeyTeam/agent-toolbox",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

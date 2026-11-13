@@ -1,0 +1,154 @@
+{
+  "overall": {
+    "questions": 55,
+    "positive_questions": 47,
+    "absent_questions": 8,
+    "errors": 0,
+    "hit@1": 0.5531914893617021,
+    "hit@3": 0.6808510638297872,
+    "hit@5": 0.7659574468085106,
+    "hit@10": 0.7872340425531915,
+    "MRR@10": 0.6296352583586626,
+    "recall@10": 0.7553191489361702,
+    "micro_range_recall@10": 0.7272727272727273,
+    "absent_success": 1.0,
+    "budgets": {
+      "2000": {
+        "hit": 0.7659574468085106,
+        "range_recall": 0.7340425531914894,
+        "character_precision": 0.07194812243825469
+      },
+      "5000": {
+        "hit": 0.7872340425531915,
+        "range_recall": 0.7553191489361702,
+        "character_precision": 0.06277555755338973
+      }
+    },
+    "latency_seconds": {
+      "p50": 0.6983701889985241,
+      "p95": 1.340004402998602
+    }
+  },
+  "corpora": {
+    "httpx": {
+      "questions": 15,
+      "positive_questions": 13,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": 0.7692307692307693,
+      "hit@3": 0.7692307692307693,
+      "hit@5": 0.7692307692307693,
+      "hit@10": 0.7692307692307693,
+      "MRR@10": 0.7692307692307693,
+      "recall@10": 0.7692307692307693,
+      "micro_range_recall@10": 0.7857142857142857,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": 0.7692307692307693,
+          "range_recall": 0.7692307692307693,
+          "character_precision": 0.10467552540998648
+        },
+        "5000": {
+          "hit": 0.7692307692307693,
+          "range_recall": 0.7692307692307693,
+          "character_precision": 0.09701031083298396
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.2661243999900762,
+        "p95": 0.4442547009966802
+      }
+    },
+    "vite": {
+      "questions": 15,
+      "positive_questions": 13,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": 0.38461538461538464,
+      "hit@3": 0.6923076923076923,
+      "hit@5": 0.9230769230769231,
+      "hit@10": 0.9230769230769231,
+      "MRR@10": 0.5538461538461539,
+      "recall@10": 0.9230769230769231,
+      "micro_range_recall@10": 0.8666666666666667,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": 0.9230769230769231,
+          "range_recall": 0.9230769230769231,
+          "character_precision": 0.07947232397232398
+        },
+        "5000": {
+          "hit": 0.9230769230769231,
+          "range_recall": 0.9230769230769231,
+          "character_precision": 0.06530016467028223
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.6320578009908786,
+        "p95": 1.2448534029972507
+      }
+    },
+    "jftp": {
+      "questions": 15,
+      "positive_questions": 13,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": 0.38461538461538464,
+      "hit@3": 0.46153846153846156,
+      "hit@5": 0.5384615384615384,
+      "hit@10": 0.6153846153846154,
+      "MRR@10": 0.45329670329670335,
+      "recall@10": 0.5384615384615384,
+      "micro_range_recall@10": 0.5294117647058824,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": 0.5384615384615384,
+          "range_recall": 0.46153846153846156,
+          "character_precision": 0.03710520164952137
+        },
+        "5000": {
+          "hit": 0.6153846153846154,
+          "range_recall": 0.5384615384615384,
+          "character_precision": 0.03574173650562185
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.9048400980100268,
+        "p95": 1.3988359029899584
+      }
+    },
+    "django": {
+      "questions": 10,
+      "positive_questions": 8,
+      "absent_questions": 2,
+      "errors": 0,
+      "hit@1": 0.75,
+      "hit@3": 0.875,
+      "hit@5": 0.875,
+      "hit@10": 0.875,
+      "MRR@10": 0.8125,
+      "recall@10": 0.8125,
+      "micro_range_recall@10": 0.7777777777777778,
+      "absent_success": 1.0,
+      "budgets": {
+        "2000": {
+          "hit": 0.875,
+          "range_recall": 0.8125,
+          "character_precision": 0.06315901139801952
+        },
+        "5000": {
+          "hit": 0.875,
+          "range_recall": 0.8125,
+          "character_precision": 0.04697155611172165
+        }
+      },
+      "latency_seconds": {
+        "p50": 0.8195740869996371,
+        "p95": 1.7576251809950918
+      }
+    }
+  }
+}

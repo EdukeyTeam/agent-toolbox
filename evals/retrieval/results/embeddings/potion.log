@@ -1,0 +1,28 @@
+INDEX potion httpx 532
+PROGRESS potion httpx 128 0.93
+PROGRESS potion httpx 532 2.79
+RESULT potion httpx {'dense': {'hit@1': 0.23076923076923078, 'hit@5': 0.46153846153846156, 'hit@10': 0.7692307692307693, 'mrr': 0.3648851148851149, 'questions': 13}, 'bm25': {'hit@1': 0.38461538461538464, 'hit@5': 0.6153846153846154, 'hit@10': 0.7692307692307693, 'mrr': 0.4773253084569136, 'questions': 13}, 'hybrid_rrf60': {'hit@1': 0.23076923076923078, 'hit@5': 0.7692307692307693, 'hit@10': 0.7692307692307693, 'mrr': 0.43962703962703964, 'questions': 13}} windows/s 190.8
+INDEX potion vite 4499
+PROGRESS potion vite 128 0.79
+PROGRESS potion vite 640 4.1
+PROGRESS potion vite 1152 8.46
+PROGRESS potion vite 1664 10.32
+PROGRESS potion vite 2176 13.03
+PROGRESS potion vite 2688 14.89
+PROGRESS potion vite 3200 16.2
+PROGRESS potion vite 3712 17.05
+PROGRESS potion vite 4224 17.83
+RESULT potion vite {'dense': {'hit@1': 0.5384615384615384, 'hit@5': 0.8461538461538461, 'hit@10': 0.8461538461538461, 'mrr': 0.6507322748425951, 'questions': 13}, 'bm25': {'hit@1': 0.3076923076923077, 'hit@5': 0.7692307692307693, 'hit@10': 0.8461538461538461, 'mrr': 0.4970588235294118, 'questions': 13}, 'hybrid_rrf60': {'hit@1': 0.6153846153846154, 'hit@5': 0.8461538461538461, 'hit@10': 0.9230769230769231, 'mrr': 0.7104123354123354, 'questions': 13}} windows/s 241.02
+INDEX potion jftp 3358
+PROGRESS potion jftp 128 0.84
+PROGRESS potion jftp 640 4.72
+PROGRESS potion jftp 1152 7.43
+PROGRESS potion jftp 1664 10.35
+PROGRESS potion jftp 2176 13.43
+PROGRESS potion jftp 2688 15.71
+PROGRESS potion jftp 3200 18.87
+RESULT potion jftp {'dense': {'hit@1': 0.23076923076923078, 'hit@5': 0.5384615384615384, 'hit@10': 0.7692307692307693, 'mrr': 0.3995929995929996, 'questions': 13}, 'bm25': {'hit@1': 0.23076923076923078, 'hit@5': 0.38461538461538464, 'hit@10': 0.46153846153846156, 'mrr': 0.3036613144034542, 'questions': 13}, 'hybrid_rrf60': {'hit@1': 0.38461538461538464, 'hit@5': 0.6153846153846154, 'hit@10': 0.7692307692307693, 'mrr': 0.4870686926242482, 'questions': 13}} windows/s 171.01
+FINISHED potion
+
+BENCHMARK-EXIT potion 0
+LOG-EXIT 0
