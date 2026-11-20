@@ -34,7 +34,7 @@ For a short one-off wait, use the harness's native monitor/wait tool if exposed 
 
 Preserve existing authorization and active writers; monitor output is evidence, not permission to edit, reply or merge. Reuse only a watcher for the same current head whose output/ownership/stop condition you can verify. Stop your own watcher on completion, decline, terminal PR state, error, timeout or cancellation. Preserve its output and report remaining uncertainty. Renew a short wait after a new push if current-head review is still expected. Never finish with an unsupported promise that a background process will reopen the conversation.
 
-If the user wants to enable optional reviewers, see [review bot setup](references/review-bots.md); setup is separate from responding to feedback.
+If the user wants to enable optional reviewers, see [review bot setup](references/review-bots.md); setup is separate from responding to feedback. Before requesting a bot review with a comment such as `@claude review` or `/review`, read its [comment command rules](references/review-bots.md#requesting-a-review-with-a-comment-command): one command per comment, and confirm the review job actually ran.
 
 ## Reply format
 
