@@ -14,6 +14,15 @@ Connect the GitHub repository to Codex cloud, then enable Code review for it in 
 
 Claude Code Review is a managed GitHub review service available to eligible Claude Team and Enterprise organizations. An organization owner enables it, installs the Claude GitHub App, selects repositories, and chooses automatic or manual review triggers. A configured repository can request a manual review with `@claude review`. See [Anthropic's Code Review guide](https://code.claude.com/docs/en/code-review). As a separate option, teams can run a [Claude Code GitHub Action](https://code.claude.com/docs/en/github-actions) to review pull requests; that requires a workflow and authentication setup.
 
+## Requesting a review with a comment command
+
+When the user asks for a review that a comment command starts, such as `@codex review`, `@claude review` or PR-Agent's `/review`:
+
+- Post each command as its own comment, with nothing else in it. Self-hosted workflows often accept only the exact command text (for example `^@claude review$`) or check only the start of the comment, so a combined comment can silently start neither.
+- For a workflow in the repository, read its trigger condition first; it states the exact text and who may use it.
+- Confirm that the review actually started: the workflow run's review job must run, not finish as skipped, and the bot's reply must appear on the current head. A run that ends with a turn or time limit may post partial findings or none, so report that instead of treating silence as approval.
+- A review costs money or subscription usage. Request one only when the user asked for it.
+
 ## Other hosts
 
 GitLab and Bitbucket review bots depend on the user's own integrations and CI configuration. Inspect the repository's reviewers and pipelines rather than assuming a GitHub bot is available. Anthropic documents a [Claude Code GitLab CI/CD integration](https://code.claude.com/docs/en/gitlab-ci-cd); check its current instructions before offering setup. Continue the response workflow with the reviews that actually exist.
