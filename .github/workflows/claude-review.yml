@@ -21,6 +21,8 @@ env:
   # and 1,800 lines.
   PART_BYTES: '45000'
   PART_LINES: '1800'
+  # At most this many parts (one Read each); --max-turns below leaves 20 turns for comments.
+  MAX_PARTS: '40'
   # Left out of the diff (git glob pathspecs, one per line); listed for the reviewer by name.
   DIFF_EXCLUDES: |
     **/pnpm-lock.yaml
@@ -125,7 +127,7 @@ jobs:
           import os, pathlib, subprocess
           base, head = os.environ["BASE_SHA"], os.environ["HEAD_SHA"]
           budget, part_max = int(os.environ["MAX_DIFF_BYTES"]), int(os.environ["PART_BYTES"])
-          line_max = int(os.environ["PART_LINES"])
+          line_max, max_parts = int(os.environ["PART_LINES"]), int(os.environ["MAX_PARTS"])
           out = pathlib.Path(os.environ["OUT"]); parts_dir = out / "parts"
           parts_dir.mkdir(parents=True)
           excludes = [f":(exclude,glob){g.strip()}" for g in os.environ["DIFF_EXCLUDES"].splitlines() if g.strip()]
@@ -139,21 +141,33 @@ jobs:
 
           all_files, kept = names("."), names(".", *excludes)
           excluded = sorted(set(all_files) - set(kept))
-          used, reviewed, skipped, parts, current, count = 0, [], [], [], b"", 0
-          for name in kept:
-              # One path per call disables rename detection: a moved file counts as new.
-              diff = git("diff", "--merge-base", base, head, "--", name)
-              if used + len(diff) > budget:
-                  skipped.append(name)
-                  continue
-              used += len(diff)
-              reviewed.append(name)
-              for line in diff.splitlines(keepends=True):
+          def pack(lines, parts, current, count):
+              parts = list(parts)
+              for line in lines:
                   if current and (len(current) + len(line) > part_max or count >= line_max):
                       parts.append(current)
                       current, count = b"", 0
                   current += line
                   count += 1
+              return parts, current, count
+
+          used, reviewed, skipped, too_long = 0, [], [], []
+          parts, current, count = [], b"", 0
+          for name in kept:
+              # One literal path per call (no glob magic); this disables rename detection,
+              # so a moved file counts as new.
+              diff = git("diff", "--merge-base", base, head, "--", f":(literal){name}")
+              lines = diff.splitlines(keepends=True)
+              if any(len(line) > part_max for line in lines):
+                  too_long.append(name)  # minified or generated: one line would not fit a Read
+                  continue
+              packed = pack(lines, parts, current, count)
+              if used + len(diff) > budget or len(packed[0]) + (1 if packed[1] else 0) > max_parts:
+                  skipped.append(name)
+                  continue
+              parts, current, count = packed
+              used += len(diff)
+              reviewed.append(name)
           if current:
               parts.append(current)
           for i, data in enumerate(parts, 1):
@@ -165,12 +179,16 @@ jobs:
               lines += [f"## Excluded by DIFF_EXCLUDES ({len(excluded)} files, not in the parts)", ""] + [f"- {n}" for n in excluded] + [""]
           if skipped:
               lines += [f"## Over the review budget ({len(skipped)} files, not in the parts)", ""] + [f"- {n}" for n in skipped] + [""]
+          if too_long:
+              lines += [f"## Lines too long to read ({len(too_long)} files, not in the parts)", ""] + [f"- {n}" for n in too_long] + [""]
           (out / "index.md").write_text("\n".join(lines), encoding="utf-8")
           coverage = f"{len(reviewed)} of {len(all_files)} files, {used} diff bytes in {len(parts)} parts"
           if excluded:
               coverage += f", {len(excluded)} lockfile/log/fixture files excluded"
           if skipped:
               coverage += f", {len(skipped)} over budget"
+          if too_long:
+              coverage += f", {len(too_long)} with lines too long"
           print(coverage)
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
               fh.write(f"coverage={coverage}\n")
@@ -202,8 +220,10 @@ jobs:
             whose manifest changed.
             Never approve, request changes, block, merge or edit the PR.
             Be concise. Never claim unexecuted tests passed. Post feedback on GitHub.
-          # 10 turns stopped reviews of ordinary PRs (11 to 12 turns) on 2026-11-20. A full 1.1 MB
-          # budget is about 25 part reads, so 60 turns leaves room for comments.
+          # 10 turns stopped reviews of ordinary PRs (11 to 12 turns) on 2026-11-20. At most
+          # MAX_PARTS (40) part reads, so 60 turns leaves 20 for metadata and comments.
+          # Read is allowed only for the prepared diff; nothing else outside the workspace.
           claude_args: |
             --max-turns 60
-            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*)"
+            --allowedTools "Read(./.claude-review/**),mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*)"
+            --disallowedTools "Read(/proc/**),Read(~/**),Read(/home/**),Read(/tmp/**)"
