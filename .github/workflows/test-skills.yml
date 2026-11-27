@@ -11,6 +11,7 @@ on:
       - 'tests/**/*.test.js'
       - 'tests/test_atlassian_onprem.py'
       - 'tests/fixtures/atlassian_fake_server.py'
+      - 'tests/fixtures/course-coach/**'
       - 'package.json'
       - 'package-lock.json'
       - 'LICENSE'
