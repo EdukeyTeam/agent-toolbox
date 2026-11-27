@@ -222,8 +222,10 @@ jobs:
             Be concise. Never claim unexecuted tests passed. Post feedback on GitHub.
           # 10 turns stopped reviews of ordinary PRs (11 to 12 turns) on 2026-11-20. At most
           # MAX_PARTS (40) part reads, so 60 turns leaves 20 for metadata and comments.
-          # Read is allowed only for the prepared diff; nothing else outside the workspace.
+          # Read is granted for the prepared diff. Reads outside the workspace would need an
+          # approval that a headless run never gives; /proc is denied explicitly. Do not deny
+          # ~/** or /home/**: the runner workspace itself is under /home/runner.
           claude_args: |
             --max-turns 60
             --allowedTools "Read(./.claude-review/**),mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*)"
-            --disallowedTools "Read(/proc/**),Read(~/**),Read(/home/**),Read(/tmp/**)"
+            --disallowedTools "Read(/proc/**)"
