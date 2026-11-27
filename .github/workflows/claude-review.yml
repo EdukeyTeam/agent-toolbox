@@ -23,6 +23,9 @@ env:
   PART_LINES: '1800'
   # At most this many parts (one Read each); --max-turns below leaves 20 turns for comments.
   MAX_PARTS: '40'
+  # The Read tool truncates lines longer than 2,000 characters; files with longer diff lines
+  # are listed instead of being reported as reviewed.
+  MAX_LINE_BYTES: '1900'
   # Left out of the diff (git glob pathspecs, one per line); listed for the reviewer by name.
   DIFF_EXCLUDES: |
     **/pnpm-lock.yaml
@@ -128,6 +131,7 @@ jobs:
           base, head = os.environ["BASE_SHA"], os.environ["HEAD_SHA"]
           budget, part_max = int(os.environ["MAX_DIFF_BYTES"]), int(os.environ["PART_BYTES"])
           line_max, max_parts = int(os.environ["PART_LINES"]), int(os.environ["MAX_PARTS"])
+          max_line = int(os.environ["MAX_LINE_BYTES"])
           out = pathlib.Path(os.environ["OUT"]); parts_dir = out / "parts"
           parts_dir.mkdir(parents=True)
           excludes = [f":(exclude,glob){g.strip()}" for g in os.environ["DIFF_EXCLUDES"].splitlines() if g.strip()]
@@ -158,8 +162,8 @@ jobs:
               # so a moved file counts as new.
               diff = git("diff", "--merge-base", base, head, "--", f":(literal){name}")
               lines = diff.splitlines(keepends=True)
-              if any(len(line) > part_max for line in lines):
-                  too_long.append(name)  # minified or generated: one line would not fit a Read
+              if any(len(line) > max_line for line in lines):
+                  too_long.append(name)  # minified or generated: Read would truncate the line
                   continue
               packed = pack(lines, parts, current, count)
               if used + len(diff) > budget or len(packed[0]) + (1 if packed[1] else 0) > max_parts:
