@@ -1,6 +1,6 @@
 # Edukey Agent Toolbox
 
-Practical skills for AI agents, created by [Edukey](https://edukey.ai) and shared with our course participants, clients, and the wider community. The first skills help developers plan software, capture website design systems, respond to code review, and work safely with Cloudflare. We plan to add business skills and plugin bundles for easier installation.
+Practical skills for AI agents, created by [Edukey](https://edukey.ai) and shared with our course participants, clients, and the wider community. The first skills help developers plan software, capture website design systems, respond to code review, work safely with Cloudflare, and keep learning after a course. We plan to add business skills and plugin bundles for easier installation.
 
 ## Available skills
 
@@ -16,6 +16,7 @@ Practical skills for AI agents, created by [Edukey](https://edukey.ai) and share
 | [cloudflare-safe](skills/cloudflare-safe/SKILL.md) | Let an agent inspect a Cloudflare account through a read-only token it never sees, and propose changes for you to approve. |
 | [agent-usage-analytics](skills/agent-usage-analytics/SKILL.md) | Analyze agent tokens, API-equivalent costs, quotas and individual-session context; save DOCX reports in user Documents with JSON, Markdown and offline HTML companions. |
 | [web-performance-audit](skills/web-performance-audit/SKILL.md) | Measure a live page with Chrome DevTools CLI/MCP and Lighthouse (field vs lab vitals, LCP subparts, third parties, INP, memory) and save a Markdown and an interactive HTML report with prioritized fixes in `docs/`. |
+| [course-coach](skills/course-coach/SKILL.md) | A patient AI coach for course participants: explains concepts, finds course materials, helps choose skills, hooks and other agent features, builds a personalized post-course plan with guided setup, and generates branded flashcards, quizzes and cheat sheets. |
 
 ## Install a skill
 
@@ -25,7 +26,7 @@ The recommended installer is the [skills CLI](https://skills.sh/). You need Node
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system
 ```
 
-Replace `create-design-system` with `write-agents-md`, `write-prd`, `write-adr`, `respond-to-code-review`, `legacy-codebase-workflows`, `cloudflare-safe`, `agent-usage-analytics`, `web-performance-audit`, or `atlassian-onprem-safe` to install another skill. The installer asks which agent to target when needed. To make a skill available in every project for your user account, add `-g`:
+Replace `create-design-system` with `write-agents-md`, `write-prd`, `write-adr`, `respond-to-code-review`, `legacy-codebase-workflows`, `cloudflare-safe`, `agent-usage-analytics`, `web-performance-audit`, `course-coach`, or `atlassian-onprem-safe` to install another skill. The installer asks which agent to target when needed. To make a skill available in every project for your user account, add `-g`:
 
 ```bash
 npx --yes skills@latest add EdukeyTeam/agent-toolbox --skill create-design-system -g
