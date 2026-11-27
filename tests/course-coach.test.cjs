@@ -124,3 +124,12 @@ test('CLI builds a file and prints its path', () => {
   assert.match(stdout, /Built flashcards \(pl\)/);
   assert.ok(fs.existsSync(out));
 });
+
+test('toolbar uses the course SVG icons for theme and print', () => {
+  const dir = tmp();
+  const out = path.join(dir, 'a.html');
+  build({ data: writeJson(dir, samples.quiz), out, noLogo: true });
+  const html = fs.readFileSync(out, 'utf8');
+  assert.match(html, /<button type="button" class="icon-btn" id="theme"><svg aria-hidden="true" class="icon-sun"[\s\S]*?class="icon-moon"/);
+  assert.match(html, /id="print"><svg aria-hidden="true"[^>]*><polyline points="6 9 6 2 18 2 18 9">/);
+});

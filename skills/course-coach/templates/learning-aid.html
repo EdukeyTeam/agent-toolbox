@@ -49,7 +49,11 @@ pre code{background:none;color:inherit;padding:0}
 button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--heading);padding:.5rem .9rem;min-height:40px}
 button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
-.band button{font-size:.85rem;padding:.35rem .75rem;min-height:36px;background:transparent;color:var(--brand-band-text);border-color:rgba(241,246,253,.28)}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;padding:0}
+.icon-btn svg{width:20px;height:20px}
+:root[data-theme="dark"] .icon-moon,:root[data-theme="light"] .icon-sun{display:none}
+.band button:focus-visible{outline:3px solid #f7c26d}
+.band button{background:transparent;color:var(--brand-band-text);border-color:rgba(241,246,253,.28)}
 header.hero{padding:28px 0 8px}
 .kind{text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;color:var(--accent);font-weight:700;margin:0}
 h1{color:var(--heading);font-size:clamp(1.5rem,4vw,2.2rem);line-height:1.2;margin:.25rem 0 .4rem}
@@ -112,7 +116,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-betw
 <body>
 <div class="band"><div class="wrap">
   <div class="brand"><img id="logo" alt=""><span class="brand-text" id="brand-text"></span></div>
-  <div class="tools"><button type="button" id="theme"></button><button type="button" id="print"></button></div>
+  <div class="tools"><button type="button" class="icon-btn" id="theme"><svg aria-hidden="true" class="icon-sun" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><line x1="12" x2="12" y1="2" y2="4"></line><line x1="12" x2="12" y1="20" y2="22"></line><line x1="2" x2="4" y1="12" y2="12"></line><line x1="20" x2="22" y1="12" y2="12"></line><line x1="4.93" x2="6.34" y1="4.93" y2="6.34"></line><line x1="17.66" x2="19.07" y1="17.66" y2="19.07"></line><line x1="4.93" x2="6.34" y1="19.07" y2="17.66"></line><line x1="17.66" x2="19.07" y1="6.34" y2="4.93"></line></svg><svg aria-hidden="true" class="icon-moon" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button><button type="button" class="icon-btn" id="print"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button></div>
 </div></div>
 <div class="wrap">
   <header class="hero"><p class="kind" id="kind"></p><h1 id="title"></h1><p class="subtitle" id="subtitle"></p></header>
@@ -125,8 +129,8 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-betw
   "use strict";
   var D = JSON.parse(document.getElementById("aid-data").textContent);
   var L = {
-    pl:{flashcards:"Fiszki",quiz:"Quiz",cheatsheet:"Ściąga",flip:"Kliknij kartę lub naciśnij spację, aby ją odwrócić. Strzałki zmieniają kartę.",prev:"← Poprzednia",next:"Następna →",shuffle:"Przetasuj",card:"Karta",check:"Sprawdź",checkAll:"Sprawdź wszystko",reset:"Od nowa",score:"Wynik",of:"z",correct:"Dobrze!",wrong:"Poprawna odpowiedź:",trainer:"Trener",source:"Źródło",theme:"Motyw",print:"Drukuj"},
-    en:{flashcards:"Flashcards",quiz:"Quiz",cheatsheet:"Cheat sheet",flip:"Click the card or press Space to flip it. Arrow keys change the card.",prev:"← Previous",next:"Next →",shuffle:"Shuffle",card:"Card",check:"Check",checkAll:"Check all",reset:"Start over",score:"Score",of:"of",correct:"Correct!",wrong:"Correct answer:",trainer:"Trainer",source:"Source",theme:"Theme",print:"Print"}
+    pl:{flashcards:"Fiszki",quiz:"Quiz",cheatsheet:"Ściąga",flip:"Kliknij kartę lub naciśnij spację, aby ją odwrócić. Strzałki zmieniają kartę.",prev:"← Poprzednia",next:"Następna →",shuffle:"Przetasuj",card:"Karta",check:"Sprawdź",checkAll:"Sprawdź wszystko",reset:"Od nowa",score:"Wynik",of:"z",correct:"Dobrze!",wrong:"Poprawna odpowiedź:",trainer:"Trener",source:"Źródło",toLight:"Przełącz na jasny motyw",toDark:"Przełącz na ciemny motyw",print:"Drukuj / zapisz jako PDF"},
+    en:{flashcards:"Flashcards",quiz:"Quiz",cheatsheet:"Cheat sheet",flip:"Click the card or press Space to flip it. Arrow keys change the card.",prev:"← Previous",next:"Next →",shuffle:"Shuffle",card:"Card",check:"Check",checkAll:"Check all",reset:"Start over",score:"Score",of:"of",correct:"Correct!",wrong:"Correct answer:",trainer:"Trainer",source:"Source",toLight:"Switch to light theme",toDark:"Switch to dark theme",print:"Print / save as PDF"}
   };
   var T = L[D.lang] || L.en;
   function el(tag, cls, text){ var n=document.createElement(tag); if(cls) n.className=cls; if(text!=null) rich(n,text); return n; }
@@ -162,14 +166,17 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-betw
   document.getElementById("credit").textContent=credit.join(" · ");
   if(B.hub){ var a=document.createElement("a"); a.href=B.hub; a.textContent=B.hub.replace(/^https?:\/\//,"").replace(/\/$/,""); a.rel="noopener"; document.getElementById("hub").appendChild(a); }
   var root=document.documentElement, themeBtn=document.getElementById("theme");
-  themeBtn.textContent=T.theme;
-  try{ var saved=localStorage.getItem("learning-aid-theme"); if(saved) root.setAttribute("data-theme",saved); }catch(e){}
+  function setTheme(t){
+    root.setAttribute("data-theme",t);
+    var label=t==="dark"?T.toLight:T.toDark; themeBtn.setAttribute("aria-label",label); themeBtn.title=label;
+  }
+  var saved=null; try{ saved=localStorage.getItem("learning-aid-theme"); }catch(e){}
+  setTheme(saved==="light"||saved==="dark"?saved:(window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"));
   themeBtn.onclick=function(){
-    var cur=root.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");
-    var next=cur==="light"?"dark":"light"; root.setAttribute("data-theme",next);
+    var next=root.getAttribute("data-theme")==="light"?"dark":"light"; setTheme(next);
     try{ localStorage.setItem("learning-aid-theme",next); }catch(e){}
   };
-  var printBtn=document.getElementById("print"); printBtn.textContent=T.print; printBtn.onclick=function(){ window.print(); };
+  var printBtn=document.getElementById("print"); printBtn.setAttribute("aria-label",T.print); printBtn.title=T.print; printBtn.onclick=function(){ window.print(); };
   var app=document.getElementById("app");
 
   function flashcards(){
